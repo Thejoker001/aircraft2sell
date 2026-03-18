@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aircraft2Sell — Checkout</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- Stripe.js -->
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+:root{--sky:#0a0f1e;--deep:#060b15;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--white:#f0f4f8;--card:#0e1a2e;--border:rgba(200,212,224,0.12);--green:#22c55e;--red:#ef4444}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(1px 1px at 15% 25%,rgba(255,255,255,.5) 0%,transparent 100%),
+  radial-gradient(1px 1px at 70% 60%,rgba(255,255,255,.3) 0%,transparent 100%),
+  radial-gradient(2px 2px at 40% 80%,rgba(255,255,255,.4) 0%,transparent 100%),
+  radial-gradient(1px 1px at 85% 20%,rgba(255,255,255,.5) 0%,transparent 100%)}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.95);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);height:60px;padding:0 2rem;
+  display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.1em;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:.4rem}
+.logo span{color:var(--accent)}
+.logo-icon{animation:flt 4s ease-in-out infinite;display:inline-block;transform:rotate(-10deg)}
+@keyframes flt{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-3px)}}
+.nav-back{color:var(--mist);text-decoration:none;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase;
+  display:flex;align-items:center;gap:.4rem;transition:color .2s}
+.nav-back:hover{color:var(--accent)}
+
+/* MAIN LAYOUT */
+.checkout-wrap{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:3rem 2rem;
+  display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+@media(max-width:700px){.checkout-wrap{grid-template-columns:1fr}}
+
+/* LEFT — Order summary */
+.order-summary{position:sticky;top:80px}
+.summary-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.08em;color:var(--mist);
+  margin-bottom:1.5rem;text-transform:uppercase}
+
+/* PLAN SELECTOR */
+.plan-selector{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:1.5rem}
+.plan-option{background:var(--card);padding:1.2rem 1.4rem;cursor:pointer;
+  display:flex;align-items:center;gap:1rem;transition:background .2s;border-left:3px solid transparent;position:relative}
+.plan-option:hover{background:rgba(255,255,255,.03)}
+.plan-option.selected{background:rgba(232,160,32,.07);border-left-color:var(--accent)}
+.plan-radio{width:18px;height:18px;border:1px solid var(--border);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .2s}
+.plan-option.selected .plan-radio{border-color:var(--accent)}
+.plan-radio::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);
+  opacity:0;transition:opacity .2s}
+.plan-option.selected .plan-radio::after{opacity:1}
+.plan-info{flex:1}
+.plan-name-sm{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.06em;color:var(--white)}
+.plan-desc-sm{font-size:.76rem;color:var(--mist);margin-top:.15rem}
+.plan-price-sm{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--gold);letter-spacing:.04em;flex-shrink:0}
+.plan-badge-sm{position:absolute;top:.6rem;right:.6rem;background:var(--accent);color:var(--deep);
+  font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.15rem .45rem;font-weight:700}
+
+/* ADDON */
+.addon-box{background:var(--card);border:1px solid var(--border);padding:1rem 1.4rem;
+  display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;cursor:pointer;
+  transition:border-color .2s}
+.addon-box:hover{border-color:rgba(232,160,32,.3)}
+.addon-checkbox{width:18px;height:18px;border:1px solid var(--border);display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;font-size:.8rem;transition:all .2s}
+.addon-checkbox.checked{background:var(--accent);border-color:var(--accent);color:var(--deep)}
+.addon-info{flex:1}
+.addon-name{font-size:.88rem;font-weight:600;color:var(--white)}
+.addon-desc-sm{font-size:.74rem;color:var(--mist);margin-top:.1rem}
+.addon-price-sm{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--gold);flex-shrink:0}
+
+/* ORDER TOTAL */
+.order-total{background:var(--card);border:1px solid var(--border);padding:1.4rem}
+.total-row{display:flex;justify-content:space-between;align-items:center;
+  padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.84rem}
+.total-row:last-child{border:none;padding-top:.8rem;margin-top:.3rem}
+.total-label{color:var(--mist)}
+.total-val{color:var(--white);font-weight:500}
+.total-grand{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--gold);letter-spacing:.04em}
+.total-period{font-size:.7rem;color:var(--mist);letter-spacing:.08em;text-transform:uppercase}
+.no-commission{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--green);margin-top:.8rem}
+
+/* RIGHT — Payment form */
+.payment-form-wrap{}
+.form-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.08em;color:var(--mist);
+  margin-bottom:1.5rem;text-transform:uppercase}
+
+.form-section{background:var(--card);border:1px solid var(--border);padding:1.5rem;margin-bottom:1px}
+.form-section-title{font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);
+  font-weight:600;margin-bottom:1.2rem;display:flex;align-items:center;gap:.5rem}
+.form-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.form-row.full{grid-template-columns:1fr}
+.form-group{display:flex;flex-direction:column;gap:.4rem}
+.form-label{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);font-weight:500}
+.form-input{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);
+  padding:.75rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;
+  transition:border-color .2s}
+.form-input:focus{border-color:var(--accent)}
+.form-input::placeholder{color:rgba(143,163,184,.5)}
+
+/* Stripe card element container */
+.stripe-element-wrap{background:rgba(255,255,255,.04);border:1px solid var(--border);padding:.85rem 1rem;transition:border-color .2s}
+.stripe-element-wrap.focused{border-color:var(--accent)}
+#card-errors{color:var(--red);font-size:.78rem;margin-top:.5rem;min-height:1.2em}
+
+/* Payment methods */
+.pay-methods{display:flex;gap:.6rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.pay-method{flex:1;min-width:80px;background:var(--card);border:2px solid var(--border);
+  padding:.55rem .7rem;display:flex;align-items:center;justify-content:center;gap:.4rem;
+  cursor:pointer;font-size:.78rem;color:var(--mist);transition:all .2s;font-weight:500;
+  min-height:44px}
+.pay-method:hover{border-color:var(--accent);color:var(--white)}
+.pay-method.active{border-color:var(--accent);color:var(--white);background:rgba(232,160,32,.08)}
+.pay-icon{font-size:1.2rem}
+/* Apple Pay dark background so white logo is visible */
+.pay-method[onclick*="apple"]{background:#000;border-color:#333}
+.pay-method[onclick*="apple"]:hover{border-color:var(--accent)}
+.pay-method[onclick*="apple"].active{border-color:var(--accent);background:#000}
+/* Google Pay — white background for the multicolor logo */
+.pay-method[onclick*="google"]{background:#fff;border-color:#e0e0e0}
+.pay-method[onclick*="google"]:hover{border-color:var(--accent)}
+.pay-method[onclick*="google"].active{border-color:var(--accent);background:#fff}
+
+/* Submit button */
+.pay-btn{width:100%;background:var(--accent);color:var(--deep);border:none;
+  padding:1.1rem;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.1em;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.8rem;
+  position:relative;overflow:hidden}
+.pay-btn:hover{background:var(--gold)}
+.pay-btn:disabled{background:rgba(232,160,32,.4);cursor:not-allowed}
+.pay-btn .btn-amount{font-size:1rem;opacity:.8}
+
+/* Loading spinner */
+.spinner{width:18px;height:18px;border:2px solid rgba(6,11,21,.3);border-top-color:var(--deep);
+  border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pay-btn.loading .spinner{display:block}
+.pay-btn.loading .btn-text{display:none}
+
+/* Security badges */
+.security-row{display:flex;align-items:center;justify-content:center;gap:1.5rem;
+  margin-top:1rem;flex-wrap:wrap}
+.sec-badge{display:flex;align-items:center;gap:.35rem;font-size:.7rem;color:var(--mist)}
+.sec-icon{font-size:.9rem}
+
+/* Billing info */
+.billing-note{background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.2);
+  padding:.9rem 1rem;font-size:.78rem;color:var(--mist);line-height:1.6;margin-top:1px}
+.billing-note strong{color:var(--accent)}
+
+/* VAT indicator */
+.vat-indicator{display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);margin-bottom:.8rem;
+  transition:all .3s}
+.vat-indicator.zero{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2)}
+.vat-indicator.warning{background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.2)}
+.vat-flag{font-size:1.1rem;flex-shrink:0}
+.vat-info{flex:1}
+.vat-country{font-size:.78rem;font-weight:600;color:var(--white)}
+.vat-rule{font-size:.7rem;color:var(--mist);margin-top:.1rem}
+.vat-rate-badge{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.04em;
+  color:var(--gold);flex-shrink:0}
+.vat-rate-badge.zero-rate{color:var(--green)}
+
+/* VAT number field */
+.vat-number-wrap{overflow:hidden;max-height:0;transition:max-height .3s ease,opacity .3s;opacity:0}
+.vat-number-wrap.show{max-height:80px;opacity:1}
+.vat-status{font-size:.7rem;margin-top:.3rem;min-height:1em}
+.vat-status.valid{color:var(--green)}
+.vat-status.invalid{color:var(--red)}
+.vat-status.checking{color:var(--mist)}
+
+/* OSS tooltip */
+.oss-note{font-size:.7rem;color:var(--mist2);margin-top:.4rem;line-height:1.5;
+  padding:.5rem .7rem;background:rgba(255,255,255,.02);border-left:2px solid var(--border)}
+
+/* LANG */
+.lang-sw{display:flex;gap:2px}
+.lb{background:none;border:none;color:var(--mist);font-size:.7rem;font-weight:600;
+  padding:.2rem .4rem;cursor:pointer;transition:all .15s}
+.lb:hover{color:var(--white)}
+.lb.active{background:var(--accent);color:var(--deep)}
+
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);
+  padding:.9rem 1.4rem;color:var(--white);font-size:.86rem;z-index:999;opacity:0;
+  transform:translateY(20px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="homepage.html" class="logo"><span class="logo-icon">✈</span>Aircraft2<span>Sell</span></a>
+  <div style="display:flex;align-items:center;gap:1.5rem">
+    <div class="lang-sw">
+      <button class="lb active" onclick="setLang('en')">EN</button>
+      <button class="lb" onclick="setLang('fr')">FR</button>
+      <button class="lb" onclick="setLang('de')">DE</button>
+      <button class="lb" onclick="setLang('es')">ES</button>
+      <button class="lb" onclick="setLang('zh')">中文</button>
+    </div>
+    <a href="pricing.html" class="nav-back" id="navBack">← Back to pricing</a>
+  </div>
+</nav>
+
+<div class="checkout-wrap">
+
+  <!-- LEFT: Order Summary -->
+  <div class="order-summary">
+    <div class="summary-title" id="summaryTitle">Your order</div>
+
+    <!-- Plan selector -->
+    <div class="plan-selector">
+      <div class="plan-option" id="opt-essential" onclick="selectPlan('essential')">
+        <div class="plan-radio"></div>
+        <div class="plan-info">
+          <div class="plan-name-sm" id="pn-essential">ESSENTIAL</div>
+          <div class="plan-desc-sm" id="pd-essential">1 listing · 5 photos · 60 days</div>
+        </div>
+        <div class="plan-price-sm">€0</div>
+      </div>
+      <div class="plan-option selected" id="opt-boost" onclick="selectPlan('boost')">
+        <div class="plan-badge-sm" id="pb-popular">Most popular</div>
+        <div class="plan-radio"></div>
+        <div class="plan-info">
+          <div class="plan-name-sm" id="pn-boost">BOOST</div>
+          <div class="plan-desc-sm" id="pd-boost">1 listing · 20 photos · Featured</div>
+        </div>
+        <div class="plan-price-sm">€29<span style="font-size:.8rem;color:var(--mist)">/mo</span></div>
+      </div>
+      <div class="plan-option" id="opt-pro" onclick="selectPlan('pro')">
+        <div class="plan-radio"></div>
+        <div class="plan-info">
+          <div class="plan-name-sm" id="pn-pro">PRO</div>
+          <div class="plan-desc-sm" id="pd-pro">Unlimited listings · Certified badge</div>
+        </div>
+        <div class="plan-price-sm">€79<span style="font-size:.8rem;color:var(--mist)">/mo</span></div>
+      </div>
+    </div>
+
+    <!-- Photos+ addon -->
+    <div class="addon-box" id="addonBox" onclick="toggleAddon()">
+      <div class="addon-checkbox" id="addonCheck">+</div>
+      <div class="addon-info">
+        <div class="addon-name" id="addonName">📸 Photos+ Add-on</div>
+        <div class="addon-desc-sm" id="addonDesc">Add 5 extra photos to Essential (5→10)</div>
+      </div>
+      <div class="addon-price-sm">+€10/mo</div>
+    </div>
+
+    <!-- Order total -->
+    <div class="order-total">
+      <div class="total-row">
+        <span class="total-label" id="tlPlan">Plan</span>
+        <span class="total-val" id="tvPlan">€29/mo</span>
+      </div>
+      <div class="total-row" id="addonRow" style="display:none">
+        <span class="total-label">Photos+</span>
+        <span class="total-val">+€10/mo</span>
+      </div>
+      <div class="total-row" id="discountRow" style="display:none">
+        <span class="total-label" id="dDiscountLbl">Promo discount</span>
+        <span class="total-val" style="color:var(--green)" id="dDiscount">−€0.00</span>
+      </div>
+      <div class="total-row" id="subtotalRow" style="display:none">
+        <span class="total-label" id="tlSubtotal">Subtotal</span>
+        <span class="total-val" id="tvSubtotal">€39/mo</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label" id="tlTax">VAT</span>
+        <span class="total-val" id="tvTax">€5.80</span>
+      </div>
+      <div class="total-row">
+        <div>
+          <div class="total-grand" id="tvTotal">€34.80</div>
+          <div class="total-period" id="tvPeriod">per month · cancel anytime</div>
+        </div>
+      </div>
+      <div class="no-commission">✓ <span id="noCommText">No commission on aircraft sales. Ever.</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Payment Form -->
+  <div class="payment-form-wrap">
+    <div class="form-title" id="formTitle">Payment details</div>
+
+    <!-- Payment methods -->
+    <div class="pay-methods">
+      <div class="pay-method active" onclick="setPayMethod('card',this)">
+        <span class="pay-icon">💳</span><span id="pmCard">Card</span>
+      </div>
+      <div class="pay-method" onclick="setPayMethod('sepa',this)">
+        <span class="pay-icon">🏦</span><span id="pmSepa">SEPA</span>
+      </div>
+      <div class="pay-method" onclick="setPayMethod('apple',this)">
+        <!-- Apple Pay official logo (SVG inline) -->
+        <svg viewBox="0 0 165.52 105.96" xmlns="http://www.w3.org/2000/svg" width="46" height="20" style="flex-shrink:0">
+          <path d="M150.698 0H14.823c-.566 0-1.133 0-1.698.003-.477.004-.953.009-1.43.022C10.565.044 9.433.115 8.318.33a11.04 11.04 0 0 0-3.926 1.648 10.827 10.827 0 0 0-2.732 2.733A10.955 10.955 0 0 0 .013 8.64C-.004 9.76-.003 10.88 0 12v81.968c-.003 1.12-.004 2.237.013 3.355.018 1.12.09 2.246.306 3.35a10.947 10.947 0 0 0 1.648 3.925 10.826 10.826 0 0 0 2.732 2.733 11.04 11.04 0 0 0 3.926 1.648c1.115.215 2.247.287 3.377.306.477.013.953.02 1.43.022.565.002 1.132.002 1.698.002h135.875c.566 0 1.133 0 1.699-.002.476-.002.952-.009 1.428-.022 1.13-.019 2.263-.09 3.378-.306a11.04 11.04 0 0 0 3.926-1.648 10.827 10.827 0 0 0 2.732-2.733 10.952 10.952 0 0 0 1.648-3.926c.216-1.103.288-2.23.307-3.35.013-1.118.012-2.235.012-3.355V12c0-1.12.001-2.24-.012-3.36-.019-1.12-.09-2.248-.307-3.358A10.957 10.957 0 0 0 163.816 1.98a10.826 10.826 0 0 0-2.732-2.732A11.04 11.04 0 0 0 157.158.33C156.042.114 154.91.043 153.78.025c-.476-.013-.952-.018-1.428-.022C151.831 0 151.264 0 150.698 0z" fill="#000"/>
+          <path d="M150.698 3.532l1.672.003c.452.003.906.008 1.36.02 1.027.018 2.046.076 3.065.278a7.51 7.51 0 0 1 2.666 1.12 7.297 7.297 0 0 1 1.843 1.843 7.49 7.49 0 0 1 1.12 2.666c.2 1.01.26 2.03.278 3.065.012 1.073.011 2.147.011 3.218v81.968c0 1.072.001 2.143-.011 3.217-.018 1.036-.078 2.056-.28 3.078a7.484 7.484 0 0 1-1.12 2.662 7.292 7.292 0 0 1-1.843 1.841 7.51 7.51 0 0 1-2.66 1.12c-1.03.2-2.054.261-3.082.279-.45.012-.9.018-1.352.022l-1.672.001H14.824l-1.678-.001a31.738 31.738 0 0 1-1.347-.022c-1.03-.018-2.054-.079-3.087-.28a7.517 7.517 0 0 1-2.659-1.12 7.297 7.297 0 0 1-1.843-1.841 7.49 7.49 0 0 1-1.12-2.663c-.201-1.02-.261-2.04-.279-3.078-.012-1.074-.012-2.145-.012-3.217v-81.97c0-1.07 0-2.143.012-3.214.018-1.036.078-2.055.28-3.072a7.493 7.493 0 0 1 1.119-2.662 7.303 7.303 0 0 1 1.843-1.843 7.517 7.517 0 0 1 2.66-1.12c1.018-.2 2.038-.26 3.065-.278.454-.012.908-.017 1.362-.02l1.67-.003h135.876" fill="#fff"/>
+          <path d="M43.508 35.77c1.404-1.755 2.356-4.112 2.105-6.51-2.062.09-4.576 1.39-6.02 3.147-1.32 1.537-2.482 3.976-2.168 6.29 2.314.18 4.63-1.148 6.083-2.927m2.082 3.352c-3.364-.2-6.226 1.906-7.828 1.906-1.6 0-4.05-1.8-6.716-1.758-3.453.047-6.65 2.01-8.424 5.134-3.6 6.22-.944 15.443 2.567 20.504 1.706 2.51 3.764 5.272 6.472 5.174 2.567-.1 3.564-1.658 6.673-1.658 3.109 0 3.998 1.658 6.716 1.608 2.815-.05 4.57-2.51 6.274-5.022 1.963-2.858 2.77-5.618 2.818-5.768-.05-.05-5.434-2.106-5.484-8.277-.048-5.173 4.217-7.63 4.416-7.778-2.416-3.56-6.173-3.96-7.484-4.065m29.706-10.123v38.508h5.988V55.08h8.284c7.575 0 12.898-5.218 12.898-12.744 0-7.527-5.22-12.693-12.695-12.693zm5.988 5.026h6.9c5.198 0 8.16 2.76 8.16 7.617 0 4.856-2.962 7.64-8.185 7.64h-6.875zm30.77 33.684c3.763 0 7.25-1.905 8.836-4.916h.124v4.616h5.54V48.36c0-5.57-4.466-9.163-11.34-9.163-6.388 0-11.113 3.644-11.29 8.648h5.39c.45-2.36 2.613-3.917 5.663-3.917 3.661 0 5.713 1.706 5.713 4.815v2.112l-7.47.45c-6.943.42-10.693 3.26-10.693 8.198 0 4.987 3.876 8.274 9.527 8.274zm1.62-4.695c-3.188 0-5.215-1.533-5.215-3.868 0-2.41 1.953-3.817 5.688-4.043l6.645-.4v2.16c0 3.595-3.048 6.15-7.118 6.15zm22.27 15.335c5.84 0 8.584-2.234 10.986-9.008l10.52-29.495h-6.12l-7.045 22.947h-.123l-7.045-22.947h-6.32l10.17 28.17-.55 1.707c-.92 2.908-2.416 4.04-5.09 4.04-.474 0-1.396-.05-1.77-.1v4.615c.35.1 1.87.17 2.386.17z" fill="#000"/>
+        </svg>
+      </div>
+      <div class="pay-method" onclick="setPayMethod('google',this)">
+        <!-- Google Pay official logo (SVG inline) -->
+        <svg viewBox="0 0 122.07 48" xmlns="http://www.w3.org/2000/svg" width="52" height="20" style="flex-shrink:0">
+          <path d="M58.16 24.17v14.4h-4.57V4h12.12a10.94 10.94 0 0 1 7.82 3.08 10.08 10.08 0 0 1 3.24 7.66 10.1 10.1 0 0 1-3.24 7.69 10.83 10.83 0 0 1-7.82 3.09h-7.55zm0-15.77v11.4h7.64a6.12 6.12 0 0 0 4.59-1.84 6.03 6.03 0 0 0 1.86-4.35 6 6 0 0 0-1.86-4.32 6.06 6.06 0 0 0-4.59-1.84h-7.64zm29.63 5.66c3.38 0 6.05.9 8 2.72a9.56 9.56 0 0 1 2.93 7.36v14.43H94.3v-3.25h-.19a8.59 8.59 0 0 1-7.47 4 9.65 9.65 0 0 1-6.64-2.31 7.42 7.42 0 0 1-2.62-5.82 7.05 7.05 0 0 1 2.78-5.85c1.86-1.44 4.33-2.16 7.42-2.16a13.49 13.49 0 0 1 6.53 1.44v-1c0-1.51-.64-2.96-1.76-3.99a6.19 6.19 0 0 0-4.27-1.6 6.7 6.7 0 0 0-5.75 3.04l-4.2-2.63a11.13 11.13 0 0 1 9.9-5.43zm-5.91 17.4a3.58 3.58 0 0 0 1.49 2.94 5.46 5.46 0 0 0 3.52 1.19 7.13 7.13 0 0 0 5.04-2.09 6.62 6.62 0 0 0 2.09-4.88 5.87 5.87 0 0 0-5.81-2.62 7.71 7.71 0 0 0-4.53 1.32 4.02 4.02 0 0 0-1.8 3.14zm33.06-16.6l-15.25 35.12h-4.72l5.66-12.26-10.04-22.86h4.98l7.26 17.47h.09l7.08-17.47z" fill="#3c4043"/>
+          <path d="M40.65 20.56a24.47 24.47 0 0 0-.36-4.24H20.75v8.02h11.15a9.52 9.52 0 0 1-4.13 6.25v5.17h6.67a20.1 20.1 0 0 0 6.21-15.2z" fill="#4285f4"/>
+          <path d="M20.75 41.02c5.59 0 10.28-1.85 13.7-5.01l-6.67-5.17a12.69 12.69 0 0 1-7.03 1.99 12.39 12.39 0 0 1-11.62-8.56H2.19v5.34a20.67 20.67 0 0 0 18.56 11.41z" fill="#34a853"/>
+          <path d="M9.13 24.27a12.39 12.39 0 0 1 0-7.91V11H2.19a20.72 20.72 0 0 0 0 18.61l6.94-5.34z" fill="#fbbc04"/>
+          <path d="M20.75 7.82a11.19 11.19 0 0 1 7.92 3.1l5.89-5.89A19.86 19.86 0 0 0 20.75 0 20.67 20.67 0 0 0 2.19 11.41l6.94 5.34a12.35 12.35 0 0 1 11.62-8.93z" fill="#ea4335"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Account info -->
+    <div class="form-section">
+      <div class="form-section-title" id="fsAccount">Account information</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" id="lFirstName">First name</label>
+          <input type="text" class="form-input" id="firstName" placeholder="Jean">
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="lLastName">Last name</label>
+          <input type="text" class="form-input" id="lastName" placeholder="Dupont">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label" id="lEmail">Email address</label>
+          <input type="email" class="form-input" id="email" placeholder="jean@example.com">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label" id="lCompany">Company (optional)</label>
+          <input type="text" class="form-input" id="company" placeholder="Aviation SAS">
+        </div>
+      </div>
+    </div>
+
+    <!-- Card details -->
+    <div class="form-section" id="cardSection">
+      <div class="form-section-title" id="fsCard">Card details</div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label class="form-label" id="lCardNum">Card number</label>
+        <div class="stripe-element-wrap" id="card-element">
+          <!-- Stripe Card Element injected here -->
+        </div>
+        <div id="card-errors"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" id="lExpiry">Expiry</label>
+          <div class="stripe-element-wrap" id="card-expiry"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="lCvc">CVC</label>
+          <div class="stripe-element-wrap" id="card-cvc"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEPA section (hidden by default) -->
+    <div class="form-section" id="sepaSection" style="display:none">
+      <div class="form-section-title" id="fsSepa">SEPA Direct Debit</div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label class="form-label" id="lIban">IBAN</label>
+        <div class="stripe-element-wrap" id="iban-element"></div>
+        <div id="sepa-errors"></div>
+      </div>
+      <p style="font-size:.74rem;color:var(--mist);line-height:1.6;margin-top:.5rem" id="sepaMandate">
+        By providing your IBAN and confirming this payment, you authorise Aircraft2Sell to debit your account for recurring payments.
+      </p>
+    </div>
+
+    <!-- Billing address -->
+    <div class="form-section">
+      <div class="form-section-title" id="fsBilling">Billing address</div>
+
+      <!-- Country selector with flag -->
+      <div class="form-row full" style="margin-bottom:.8rem">
+        <div class="form-group">
+          <label class="form-label" id="lCountry">Country</label>
+          <select class="form-input" id="country" onchange="onCountryChange()">
+            <optgroup label="── Europe ──">
+              <option value="FR">🇫🇷 France</option>
+              <option value="DE">🇩🇪 Germany — Deutschland</option>
+              <option value="ES">🇪🇸 Spain — España</option>
+              <option value="IT">🇮🇹 Italy — Italia</option>
+              <option value="BE">🇧🇪 Belgium — Belgique</option>
+              <option value="NL">🇳🇱 Netherlands</option>
+              <option value="PT">🇵🇹 Portugal</option>
+              <option value="AT">🇦🇹 Austria — Österreich</option>
+              <option value="PL">🇵🇱 Poland — Polska</option>
+              <option value="SE">🇸🇪 Sweden — Sverige</option>
+              <option value="DK">🇩🇰 Denmark — Danmark</option>
+              <option value="FI">🇫🇮 Finland — Suomi</option>
+              <option value="IE">🇮🇪 Ireland</option>
+              <option value="LU">🇱🇺 Luxembourg</option>
+              <option value="GR">🇬🇷 Greece — Ελλάδα</option>
+              <option value="CZ">🇨🇿 Czech Republic</option>
+              <option value="HU">🇭🇺 Hungary</option>
+              <option value="RO">🇷🇴 Romania</option>
+              <option value="BG">🇧🇬 Bulgaria</option>
+              <option value="HR">🇭🇷 Croatia — Hrvatska</option>
+              <option value="SK">🇸🇰 Slovakia</option>
+              <option value="SI">🇸🇮 Slovenia</option>
+              <option value="EE">🇪🇪 Estonia</option>
+              <option value="LV">🇱🇻 Latvia</option>
+              <option value="LT">🇱🇹 Lithuania</option>
+              <option value="CY">🇨🇾 Cyprus</option>
+              <option value="MT">🇲🇹 Malta</option>
+            </optgroup>
+            <optgroup label="── Non-EU Europe ──">
+              <option value="GB">🇬🇧 United Kingdom</option>
+              <option value="CH">🇨🇭 Switzerland — Schweiz</option>
+              <option value="NO">🇳🇴 Norway — Norge</option>
+              <option value="IS">🇮🇸 Iceland</option>
+              <option value="TR">🇹🇷 Turkey — Türkiye</option>
+            </optgroup>
+            <optgroup label="── Rest of World ──">
+              <option value="US">🇺🇸 United States</option>
+              <option value="CA">🇨🇦 Canada</option>
+              <option value="CN">🇨🇳 China — 中国</option>
+              <option value="JP">🇯🇵 Japan — 日本</option>
+              <option value="AE">🇦🇪 UAE</option>
+              <option value="SA">🇸🇦 Saudi Arabia</option>
+              <option value="AU">🇦🇺 Australia</option>
+              <option value="OTHER">🌍 Other</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <!-- Live VAT indicator — updates on country change -->
+      <div class="vat-indicator" id="vatIndicator">
+        <span class="vat-flag" id="vatFlag">🇫🇷</span>
+        <div class="vat-info">
+          <div class="vat-country" id="vatCountryName">France</div>
+          <div class="vat-rule" id="vatRule">Standard EU VAT rate applies</div>
+        </div>
+        <div class="vat-rate-badge" id="vatBadge">20%</div>
+      </div>
+
+      <!-- B2B VAT number field — shown for EU countries -->
+      <div class="vat-number-wrap" id="vatNumberWrap">
+        <div class="form-group" style="margin-bottom:.4rem">
+          <label class="form-label" id="lVatNum">VAT number (optional — B2B)</label>
+          <input type="text" class="form-input" id="vatNumber"
+            placeholder="FR12345678901" oninput="onVatNumberInput()"
+            style="text-transform:uppercase;letter-spacing:.06em">
+          <div class="vat-status" id="vatStatus"></div>
+        </div>
+        <div class="oss-note" id="ossNote">
+          Providing a valid EU VAT number sets your rate to 0% (reverse charge). Your business handles VAT in your country.
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:.8rem">
+        <div class="form-group">
+          <label class="form-label" id="lCity">City</label>
+          <input type="text" class="form-input" id="city" placeholder="Paris">
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="lPostal">Postal code</label>
+          <input type="text" class="form-input" id="postal" placeholder="75001">
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Promo code -->
+    <div class="form-section" id="promoSection">
+      <div class="form-section-title" id="fsPromo">Promo code</div>
+      <div style="display:flex;gap:6px;align-items:stretch">
+        <input type="text" class="form-input" id="promoInput"
+          placeholder="WELCOME10" maxlength="20" style="text-transform:uppercase;letter-spacing:.08em"
+          oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')applyPromo()">
+        <button style="background:rgba(255,255,255,.07);border:1px solid var(--border);color:var(--mist);padding:0 14px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap;letter-spacing:.04em"
+          id="promoBtnEl" onclick="applyPromo()">Apply</button>
+      </div>
+      <div id="promoFeedback" style="display:none;margin-top:6px;font-size:.76rem;padding:6px 9px;border-radius:2px"></div>
+      <div id="promoTag" style="margin-top:5px"></div>
+    </div>
+    <!-- Billing note -->
+    <div class="billing-note" id="billingNote">
+      <strong>Subscription billing:</strong> You will be charged today, then automatically on the same date each month. Cancel anytime from your dashboard with no penalty.
+    </div>
+
+    <!-- Pay button -->
+    <button class="pay-btn" id="payBtn" onclick="handlePayment()" style="margin-top:1px">
+      <div class="btn-text" id="payBtnText">
+        <span id="payBtnLabel">Pay now</span>
+        <span class="btn-amount" id="payBtnAmount">— €34.80/mo</span>
+      </div>
+      <div class="spinner"></div>
+    </button>
+
+    <!-- Security -->
+    <div class="security-row">
+      <div class="sec-badge"><span class="sec-icon">🔒</span><span id="secSSL">SSL encrypted</span></div>
+      <div class="sec-badge"><span class="sec-icon">✅</span><span id="secStripe">Secured by Stripe</span></div>
+      <div class="sec-badge"><span class="sec-icon">🔄</span><span id="secCancel">Cancel anytime</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ─── STRIPE CONFIG ────────────────────────────────────────── */
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_REPLACE_WITH_YOUR_STRIPE_KEY';
+/* ─── PROMO CODES ────────────────────────────────────────────
+   Only WELCOME10 is active — create it in Stripe Dashboard:
+   Stripe → Promotions → + Create promotion code
+   Code: WELCOME10  |  Discount: 10%  |  Recurring
+   ─────────────────────────────────────────────────────────── */
+const PROMO_CODES = {
+  'WELCOME10': { type:'percent', value:10, label:'10% off — Welcome offer' }
+};
+
+const STRIPE_PRICES = {
+  boost_monthly: 'price_REPLACE_BOOST_MONTHLY',
+  pro_monthly:   'price_REPLACE_PRO_MONTHLY',
+  photos_addon:  'price_REPLACE_PHOTOS_ADDON',
+};
+
+/* ─── VAT RATES TABLE ──────────────────────────────────────────
+   Sources: EU Commission, HMRC, ESTV (CH), Skatteverket (SE)
+   All rates are for digital / electronic services (OSS rules)
+   Last updated: 2026
+   ─────────────────────────────────────────────────────────── */
+const VAT_DATA = {
+  // EU Member States — OSS rules apply (local rate for B2C)
+  FR:{rate:0.20, name:'France',           flag:'🇫🇷', eu:true,  label:'FR'},
+  DE:{rate:0.19, name:'Germany',          flag:'🇩🇪', eu:true,  label:'DE'},
+  ES:{rate:0.21, name:'Spain',            flag:'🇪🇸', eu:true,  label:'ES'},
+  IT:{rate:0.22, name:'Italy',            flag:'🇮🇹', eu:true,  label:'IT'},
+  BE:{rate:0.21, name:'Belgium',          flag:'🇧🇪', eu:true,  label:'BE'},
+  NL:{rate:0.21, name:'Netherlands',      flag:'🇳🇱', eu:true,  label:'NL'},
+  PT:{rate:0.23, name:'Portugal',         flag:'🇵🇹', eu:true,  label:'PT'},
+  AT:{rate:0.20, name:'Austria',          flag:'🇦🇹', eu:true,  label:'AT'},
+  PL:{rate:0.23, name:'Poland',           flag:'🇵🇱', eu:true,  label:'PL'},
+  SE:{rate:0.25, name:'Sweden',           flag:'🇸🇪', eu:true,  label:'SE'},
+  DK:{rate:0.25, name:'Denmark',          flag:'🇩🇰', eu:true,  label:'DK'},
+  FI:{rate:0.255,name:'Finland',          flag:'🇫🇮', eu:true,  label:'FI'},
+  IE:{rate:0.23, name:'Ireland',          flag:'🇮🇪', eu:true,  label:'IE'},
+  LU:{rate:0.17, name:'Luxembourg',       flag:'🇱🇺', eu:true,  label:'LU'},
+  GR:{rate:0.24, name:'Greece',           flag:'🇬🇷', eu:true,  label:'GR'},
+  CZ:{rate:0.21, name:'Czech Republic',   flag:'🇨🇿', eu:true,  label:'CZ'},
+  HU:{rate:0.27, name:'Hungary',          flag:'🇭🇺', eu:true,  label:'HU'},
+  RO:{rate:0.19, name:'Romania',          flag:'🇷🇴', eu:true,  label:'RO'},
+  BG:{rate:0.20, name:'Bulgaria',         flag:'🇧🇬', eu:true,  label:'BG'},
+  HR:{rate:0.25, name:'Croatia',          flag:'🇭🇷', eu:true,  label:'HR'},
+  SK:{rate:0.23, name:'Slovakia',         flag:'🇸🇰', eu:true,  label:'SK'},
+  SI:{rate:0.22, name:'Slovenia',         flag:'🇸🇮', eu:true,  label:'SI'},
+  EE:{rate:0.22, name:'Estonia',          flag:'🇪🇪', eu:true,  label:'EE'},
+  LV:{rate:0.21, name:'Latvia',           flag:'🇱🇻', eu:true,  label:'LV'},
+  LT:{rate:0.21, name:'Lithuania',        flag:'🇱🇹', eu:true,  label:'LT'},
+  CY:{rate:0.19, name:'Cyprus',           flag:'🇨🇾', eu:true,  label:'CY'},
+  MT:{rate:0.18, name:'Malta',            flag:'🇲🇹', eu:true,  label:'MT'},
+  // Non-EU Europe
+  GB:{rate:0.20, name:'United Kingdom',   flag:'🇬🇧', eu:false, label:'GB'},
+  CH:{rate:0.081,name:'Switzerland',      flag:'🇨🇭', eu:false, label:'CH'},
+  NO:{rate:0.25, name:'Norway',           flag:'🇳🇴', eu:false, label:'NO'},
+  IS:{rate:0.24, name:'Iceland',          flag:'🇮🇸', eu:false, label:'IS'},
+  TR:{rate:0.20, name:'Turkey',           flag:'🇹🇷', eu:false, label:'TR'},
+  // Rest of World — 0% VAT (export)
+  US:{rate:0,    name:'United States',    flag:'🇺🇸', eu:false, label:'US'},
+  CA:{rate:0,    name:'Canada',           flag:'🇨🇦', eu:false, label:'CA'},
+  CN:{rate:0,    name:'China',            flag:'🇨🇳', eu:false, label:'CN'},
+  JP:{rate:0,    name:'Japan',            flag:'🇯🇵', eu:false, label:'JP'},
+  AE:{rate:0,    name:'UAE',              flag:'🇦🇪', eu:false, label:'AE'},
+  SA:{rate:0,    name:'Saudi Arabia',     flag:'🇸🇦', eu:false, label:'SA'},
+  AU:{rate:0,    name:'Australia',        flag:'🇦🇺', eu:false, label:'AU'},
+  OTHER:{rate:0, name:'Other country',    flag:'🌍',  eu:false, label:''},
+};
+
+/* ─── TRANSLATIONS ─────────────────────────────────────────── */
+const T = {
+  en:{
+    navBack:'← Back to pricing', summaryTitle:'Your order', pbPopular:'Most popular',
+    pnEssential:'ESSENTIAL', pdEssential:'1 listing · 5 photos · 60 days',
+    pnBoost:'BOOST', pdBoost:'1 listing · 20 photos · Featured',
+    pnPro:'PRO', pdPro:'Unlimited listings · Certified badge',
+    addonName:'📸 Photos+ Add-on', addonDesc:'Add 5 extra photos to Essential (5→10)',
+    tlPlan:'Plan', tlTax:'VAT', tlSubtotal:'Subtotal', tvPeriod:'per month · cancel anytime',
+    noComm:'No commission on aircraft sales. Ever.',
+    formTitle:'Payment details', fsAccount:'Account information',
+    lFirstName:'First name', lLastName:'Last name', lEmail:'Email address', lCompany:'Company (optional)',
+    fsCard:'Card details', lCardNum:'Card number', lExpiry:'Expiry', lCvc:'CVC',
+    fsSepa:'SEPA Direct Debit', lIban:'IBAN',
+    sepaMandate:'By providing your IBAN, you authorise Aircraft2Sell to debit your account for recurring payments.',
+    fsBilling:'Billing address', lCountry:'Country', lCity:'City', lPostal:'Postal code',
+    lVatNum:'VAT number (optional — B2B)',
+    billingNote:'<strong>Subscription billing:</strong> You will be charged today, then automatically each month. Cancel anytime from your dashboard.',
+    payBtnLabel:'Pay now', pmCard:'Card', pmSepa:'SEPA transfer',
+    secSSL:'SSL encrypted', secStripe:'Secured by Stripe', secCancel:'Cancel anytime',
+    errRequired:'Please fill in all required fields.',
+    errEmail:'Please enter a valid email address.',
+    processingMsg:'Processing your payment…',
+    freeMsg:'Your Essential listing is free — no payment required!',
+    vatRuleEU:'EU VAT rate applies (OSS)',
+    vatRuleB2B:'B2B reverse charge — VAT 0%',
+    vatRuleNonEU:'VAT exempt — export outside EU',
+    vatRuleCH:'Swiss VAT (MWST) applies',
+    vatRuleGB:'UK VAT (HMRC) applies',
+    vatChecking:'Checking VAT number…',
+    vatValid:'✓ Valid EU VAT number — 0% rate applied',
+    vatInvalid:'✗ Invalid VAT number — standard rate applies',
+    ossNote:'Providing a valid EU VAT number sets your rate to 0% (reverse charge). Your business handles VAT in your country.',
+  },
+  fr:{
+    navBack:'← Retour aux tarifs', summaryTitle:'Votre commande', pbPopular:'Le plus populaire',
+    pnEssential:'ESSENTIEL', pdEssential:'1 annonce · 5 photos · 60 jours',
+    pnBoost:'BOOST', pdBoost:'1 annonce · 20 photos · Mise en avant',
+    pnPro:'PRO', pdPro:'Annonces illimitées · Badge certifié',
+    addonName:'📸 Option Photos+', addonDesc:'Passez de 5 à 10 photos sur Essentiel',
+    tlPlan:'Formule', tlTax:'TVA', tlSubtotal:'Sous-total', tvPeriod:'par mois · annulable à tout moment',
+    noComm:'Aucune commission sur la vente. Jamais.',
+    formTitle:'Informations de paiement', fsAccount:'Informations du compte',
+    lFirstName:'Prénom', lLastName:'Nom', lEmail:'Adresse email', lCompany:'Entreprise (optionnel)',
+    fsCard:'Carte bancaire', lCardNum:'Numéro de carte', lExpiry:'Expiration', lCvc:'CVC',
+    fsSepa:'Prélèvement SEPA', lIban:'IBAN',
+    sepaMandate:"En fournissant votre IBAN, vous autorisez Aircraft2Sell à débiter votre compte.",
+    fsBilling:'Adresse de facturation', lCountry:'Pays', lCity:'Ville', lPostal:'Code postal',
+    lVatNum:'Numéro de TVA (optionnel — B2B)',
+    billingNote:'<strong>Abonnement :</strong> Vous serez prélevé aujourd\'hui, puis automatiquement chaque mois. Annulable à tout moment.',
+    payBtnLabel:'Payer maintenant', pmCard:'Carte', pmSepa:'Virement SEPA',
+    secSSL:'Chiffrement SSL', secStripe:'Sécurisé par Stripe', secCancel:'Annulation facile',
+    errRequired:'Veuillez remplir tous les champs obligatoires.',
+    errEmail:'Veuillez saisir une adresse email valide.',
+    processingMsg:'Traitement du paiement en cours…',
+    freeMsg:"L'annonce Essentiel est gratuite — aucun paiement requis !",
+    vatRuleEU:'Taux TVA UE applicable (OSS)',
+    vatRuleB2B:'Autoliquidation B2B — TVA 0%',
+    vatRuleNonEU:'Exonéré de TVA — exportation hors UE',
+    vatRuleCH:'TVA suisse (MWST) applicable',
+    vatRuleGB:'TVA britannique (HMRC) applicable',
+    vatChecking:'Vérification du numéro de TVA…',
+    vatValid:'✓ Numéro de TVA UE valide — taux 0% appliqué',
+    vatInvalid:'✗ Numéro de TVA invalide — taux standard appliqué',
+    ossNote:'Un numéro de TVA intracommunautaire valide permet l\'application du taux 0% (autoliquidation). Votre entreprise gère la TVA dans son pays.',
+  },
+  de:{
+    navBack:'← Zurück zu Preisen', summaryTitle:'Ihre Bestellung', pbPopular:'Beliebteste Wahl',
+    pnEssential:'BASIS', pdEssential:'1 Inserat · 5 Fotos · 60 Tage',
+    pnBoost:'BOOST', pdBoost:'1 Inserat · 20 Fotos · Hervorgehoben',
+    pnPro:'PRO', pdPro:'Unbegrenzte Inserate · Zertifizierungs-Badge',
+    addonName:'📸 Fotos+ Zusatz', addonDesc:'5 zusätzliche Fotos für Basis (5→10)',
+    tlPlan:'Plan', tlTax:'MwSt.', tlSubtotal:'Zwischensumme', tvPeriod:'pro Monat · jederzeit kündbar',
+    noComm:'Keine Provision auf Ihren Verkauf. Niemals.',
+    formTitle:'Zahlungsdetails', fsAccount:'Kontoinformationen',
+    lFirstName:'Vorname', lLastName:'Nachname', lEmail:'E-Mail-Adresse', lCompany:'Unternehmen (optional)',
+    fsCard:'Kartendaten', lCardNum:'Kartennummer', lExpiry:'Ablaufdatum', lCvc:'CVC',
+    fsSepa:'SEPA-Lastschrift', lIban:'IBAN',
+    sepaMandate:'Durch Angabe Ihrer IBAN ermächtigen Sie Aircraft2Sell, wiederkehrende Zahlungen einzuziehen.',
+    fsBilling:'Rechnungsadresse', lCountry:'Land', lCity:'Stadt', lPostal:'Postleitzahl',
+    lVatNum:'USt-IdNr. (optional — B2B)',
+    billingNote:'<strong>Abonnement:</strong> Sie werden heute belastet, dann automatisch jeden Monat. Jederzeit kündbar.',
+    payBtnLabel:'Jetzt bezahlen', pmCard:'Karte', pmSepa:'SEPA-Überweisung',
+    secSSL:'SSL-verschlüsselt', secStripe:'Gesichert durch Stripe', secCancel:'Jederzeit kündbar',
+    errRequired:'Bitte füllen Sie alle Pflichtfelder aus.',
+    errEmail:'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+    processingMsg:'Zahlung wird verarbeitet…',
+    freeMsg:'Das Basis-Inserat ist kostenlos — keine Zahlung erforderlich!',
+    vatRuleEU:'EU-MwSt.-Satz gilt (OSS)',
+    vatRuleB2B:'B2B Reverse Charge — MwSt. 0%',
+    vatRuleNonEU:'MwSt.-befreit — Export außerhalb der EU',
+    vatRuleCH:'Schweizer MwSt. (MWST) gilt',
+    vatRuleGB:'Britische MwSt. (HMRC) gilt',
+    vatChecking:'USt-IdNr. wird geprüft…',
+    vatValid:'✓ Gültige EU-USt-IdNr. — 0% Satz angewendet',
+    vatInvalid:'✗ Ungültige USt-IdNr. — Standardsatz gilt',
+    ossNote:'Eine gültige EU-USt-IdNr. setzt den Satz auf 0% (Reverse Charge). Ihr Unternehmen verwaltet die MwSt. in Ihrem Land.',
+  },
+  es:{
+    navBack:'← Volver a tarifas', summaryTitle:'Tu pedido', pbPopular:'El más popular',
+    pnEssential:'ESENCIAL', pdEssential:'1 anuncio · 5 fotos · 60 días',
+    pnBoost:'BOOST', pdBoost:'1 anuncio · 20 fotos · Destacado',
+    pnPro:'PRO', pdPro:'Anuncios ilimitados · Insignia certificado',
+    addonName:'📸 Opción Fotos+', addonDesc:'Añade 5 fotos extra al plan Esencial (5→10)',
+    tlPlan:'Plan', tlTax:'IVA', tlSubtotal:'Subtotal', tvPeriod:'por mes · cancela cuando quieras',
+    noComm:'Sin comisión en la venta. Nunca.',
+    formTitle:'Detalles de pago', fsAccount:'Información de la cuenta',
+    lFirstName:'Nombre', lLastName:'Apellido', lEmail:'Dirección de email', lCompany:'Empresa (opcional)',
+    fsCard:'Datos de tarjeta', lCardNum:'Número de tarjeta', lExpiry:'Caducidad', lCvc:'CVC',
+    fsSepa:'Débito SEPA', lIban:'IBAN',
+    sepaMandate:'Al proporcionar tu IBAN, autorizas a Aircraft2Sell a debitar tu cuenta.',
+    fsBilling:'Dirección de facturación', lCountry:'País', lCity:'Ciudad', lPostal:'Código postal',
+    lVatNum:'Número de IVA (opcional — B2B)',
+    billingNote:'<strong>Suscripción:</strong> Se te cobrará hoy y automáticamente cada mes. Cancela cuando quieras.',
+    payBtnLabel:'Pagar ahora', pmCard:'Tarjeta', pmSepa:'Transferencia SEPA',
+    secSSL:'Cifrado SSL', secStripe:'Seguro por Stripe', secCancel:'Cancela cuando quieras',
+    errRequired:'Por favor, rellena todos los campos obligatorios.',
+    errEmail:'Por favor, introduce un email válido.',
+    processingMsg:'Procesando el pago…',
+    freeMsg:'¡El plan Esencial es gratuito — no se requiere pago!',
+    vatRuleEU:'Tipo de IVA de la UE aplicable (OSS)',
+    vatRuleB2B:'Inversión del sujeto pasivo B2B — IVA 0%',
+    vatRuleNonEU:'Exento de IVA — exportación fuera de la UE',
+    vatRuleCH:'IVA suizo (MWST) aplicable',
+    vatRuleGB:'IVA del Reino Unido (HMRC) aplicable',
+    vatChecking:'Verificando número de IVA…',
+    vatValid:'✓ Número de IVA de la UE válido — tipo 0% aplicado',
+    vatInvalid:'✗ Número de IVA inválido — tipo estándar aplicado',
+    ossNote:'Un número de IVA intracomunitario válido fija tu tipo en 0% (inversión del sujeto pasivo).',
+  },
+  zh:{
+    navBack:'← 返回定价', summaryTitle:'您的订单', pbPopular:'最受欢迎',
+    pnEssential:'基础版', pdEssential:'1条广告 · 5张照片 · 60天',
+    pnBoost:'加速版', pdBoost:'1条广告 · 20张照片 · 置顶展示',
+    pnPro:'专业版', pdPro:'无限广告 · 认证卖家徽章',
+    addonName:'📸 照片加强版', addonDesc:'基础版照片从5张升至10张',
+    tlPlan:'方案', tlTax:'增值税', tlSubtotal:'小计', tvPeriod:'每月 · 随时取消',
+    noComm:'成交零佣金，永远如此。',
+    formTitle:'支付详情', fsAccount:'账户信息',
+    lFirstName:'名字', lLastName:'姓氏', lEmail:'电子邮箱', lCompany:'公司（可选）',
+    fsCard:'银行卡信息', lCardNum:'卡号', lExpiry:'有效期', lCvc:'CVC',
+    fsSepa:'SEPA直接借记', lIban:'IBAN',
+    sepaMandate:'提供IBAN即表示您授权Aircraft2Sell从您账户扣取定期付款。',
+    fsBilling:'账单地址', lCountry:'国家', lCity:'城市', lPostal:'邮政编码',
+    lVatNum:'增值税号（可选 — B2B）',
+    billingNote:'<strong>订阅计费：</strong>今日起每月自动扣款，可随时从控制台取消，无违约金。',
+    payBtnLabel:'立即付款', pmCard:'银行卡', pmSepa:'SEPA转账',
+    secSSL:'SSL加密', secStripe:'Stripe安全保障', secCancel:'随时取消',
+    errRequired:'请填写所有必填字段。',
+    errEmail:'请输入有效的电子邮箱地址。',
+    processingMsg:'正在处理付款…',
+    freeMsg:'基础版免费 — 无需付款！',
+    vatRuleEU:'适用欧盟增值税税率（OSS）',
+    vatRuleB2B:'B2B反向征收 — 增值税 0%',
+    vatRuleNonEU:'免增值税 — 欧盟境外出口',
+    vatRuleCH:'适用瑞士增值税（MWST）',
+    vatRuleGB:'适用英国增值税（HMRC）',
+    vatChecking:'正在验证增值税号…',
+    vatValid:'✓ 有效的欧盟增值税号 — 已应用0%税率',
+    vatInvalid:'✗ 无效的增值税号 — 适用标准税率',
+    ossNote:'提供有效的欧盟增值税号可将税率设为0%（反向征收）。您的公司在本国处理增值税。',
+  }
+};
+
+let lang = 'en';
+function t(k){ return (T[lang]&&T[lang][k]) || (T.en[k]) || k; }
+
+let selectedPlan = 'boost';
+let addonActive  = false;
+let payMethod    = 'card';
+let vatB2B       = false; // true when valid VAT number entered
+let vatDebounce  = null;
+
+const PRICES = { essential:0, boost:29, pro:79 };
+
+
+/* ─── PROMO CODE LOGIC ─────────────────────────────────────── */
+let activePromo = null;
+
+function applyPromo(){
+  const input = document.getElementById('promoInput');
+  const code  = input.value.trim().toUpperCase();
+  const fb    = document.getElementById('promoFeedback');
+  const btn   = document.getElementById('promoBtnEl');
+  if(!code) return;
+  btn.textContent='...';btn.style.opacity='.5';btn.style.pointerEvents='none';
+  setTimeout(()=>{
+    btn.textContent='Apply';btn.style.opacity='1';btn.style.pointerEvents='auto';
+    if(PROMO_CODES[code]){
+      activePromo = code;
+      input.style.borderColor='var(--green)';input.style.background='rgba(34,197,94,.06)';
+      const c = PROMO_CODES[code];
+      fb.style.display='flex';fb.style.alignItems='center';fb.style.gap='6px';
+      fb.style.background='rgba(34,197,94,.1)';fb.style.border='1px solid rgba(34,197,94,.25)';fb.style.color='var(--green)';
+      fb.innerHTML = '✓ ' + c.label;
+      document.getElementById('promoTag').innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:var(--green);padding:3px 9px;font-size:.72rem;border-radius:2px"><span style="font-family:monospace;letter-spacing:.06em">'+code+'</span> — '+c.label+' <button onclick="removePromo()" style="background:none;border:none;color:rgba(34,197,94,.6);cursor:pointer;font-size:.85rem;padding:0;margin-left:2px" title="Remove">×</button></span>';
+      input.value='';input.style.borderColor='';input.style.background='';
+      updateTotal();
+    } else {
+      activePromo = null;
+      input.style.borderColor='var(--red)';input.style.background='rgba(239,68,68,.06)';
+      fb.style.display='block';fb.style.background='rgba(239,68,68,.08)';fb.style.border='1px solid rgba(239,68,68,.2)';fb.style.color='var(--red)';
+      fb.textContent = '✕ Code "'+code+'" is invalid or expired.';
+      setTimeout(()=>{input.style.borderColor='';input.style.background='';},1500);
+    }
+  },700);
+}
+
+function removePromo(){
+  activePromo = null;
+  document.getElementById('promoInput').value='';
+  document.getElementById('promoFeedback').style.display='none';
+  document.getElementById('promoTag').innerHTML='';
+  updateTotal();
+}
+
+/* ─── GET CURRENT VAT RATE ─────────────────────────────────── */
+function getCurrentVatRate(){
+  const country = document.getElementById('country').value;
+  const d = VAT_DATA[country] || VAT_DATA['OTHER'];
+  if(vatB2B && d.eu) return 0; // B2B reverse charge
+  return d.rate;
+}
+
+/* ─── UPDATE VAT INDICATOR ─────────────────────────────────── */
+function updateVatIndicator(){
+  const country = document.getElementById('country').value;
+  const d = VAT_DATA[country] || {rate:0, name:'Other', flag:'🌍', eu:false};
+  const effectiveRate = vatB2B && d.eu ? 0 : d.rate;
+  const isZero = effectiveRate === 0;
+  const isB2B  = vatB2B && d.eu;
+
+  document.getElementById('vatFlag').textContent        = d.flag;
+  document.getElementById('vatCountryName').textContent = d.name;
+  document.getElementById('vatBadge').textContent       = isZero ? '0%' : `${Math.round(d.rate*100)}%`;
+  document.getElementById('vatBadge').className         = 'vat-rate-badge' + (isZero ? ' zero-rate' : '');
+
+  // Rule label
+  let rule = '';
+  if(isB2B)          rule = t('vatRuleB2B');
+  else if(!d.eu && d.rate === 0) rule = t('vatRuleNonEU');
+  else if(country==='CH') rule = t('vatRuleCH');
+  else if(country==='GB') rule = t('vatRuleGB');
+  else if(d.eu)      rule = t('vatRuleEU');
+  else               rule = t('vatRuleNonEU');
+  document.getElementById('vatRule').textContent = rule;
+
+  // Indicator class
+  const ind = document.getElementById('vatIndicator');
+  ind.className = 'vat-indicator' + (isZero ? ' zero' : (d.rate >= 0.22 ? ' warning' : ''));
+
+  // Show/hide B2B VAT number field for EU countries
+  document.getElementById('vatNumberWrap').classList.toggle('show', d.eu);
+  document.getElementById('ossNote').textContent = t('ossNote');
+}
+
+/* ─── ON COUNTRY CHANGE ────────────────────────────────────── */
+function onCountryChange(){
+  vatB2B = false;
+  document.getElementById('vatNumber').value = '';
+  document.getElementById('vatStatus').textContent = '';
+  document.getElementById('vatStatus').className = 'vat-status';
+  updateVatIndicator();
+  updateTotal();
+}
+
+/* ─── VAT NUMBER VALIDATION (debounced) ────────────────────── */
+function onVatNumberInput(){
+  clearTimeout(vatDebounce);
+  const val = document.getElementById('vatNumber').value.trim().toUpperCase().replace(/\s/g,'');
+  const statusEl = document.getElementById('vatStatus');
+
+  if(!val){ vatB2B = false; updateVatIndicator(); updateTotal(); return; }
+
+  // Basic format check: 2 letters + 8-12 alphanumeric chars
+  const isFormatOk = /^[A-Z]{2}[A-Z0-9]{6,12}$/.test(val);
+  if(!isFormatOk){ vatB2B=false; statusEl.className='vat-status invalid'; statusEl.textContent=t('vatInvalid'); updateVatIndicator(); updateTotal(); return; }
+
+  statusEl.className='vat-status checking'; statusEl.textContent=t('vatChecking');
+
+  // Debounce — simulate VIES check (in production use /api/validate-vat)
+  vatDebounce = setTimeout(()=>{
+    /* In production replace with:
+       const res = await fetch('/api/validate-vat?vat='+val).then(r=>r.json());
+       vatB2B = res.valid;
+    */
+    // Simulate: any properly formatted number starting with a real EU country code = valid
+    const euCodes = ['AT','BE','BG','CY','CZ','DE','DK','EE','ES','FI','FR','GB','GR','HR','HU','IE','IT','LT','LU','LV','MT','NL','PL','PT','RO','SE','SI','SK'];
+    const countryCode = val.substring(0,2);
+    vatB2B = euCodes.includes(countryCode);
+    if(vatB2B){
+      statusEl.className='vat-status valid';   statusEl.textContent=t('vatValid');
+    } else {
+      statusEl.className='vat-status invalid'; statusEl.textContent=t('vatInvalid');
+    }
+    updateVatIndicator(); updateTotal();
+  }, 800);
+}
+
+/* ─── UPDATE ORDER TOTAL ───────────────────────────────────── */
+function updateTotal(){
+  const base    = PRICES[selectedPlan];
+  const addon   = addonActive ? 10 : 0;
+  let   pretax  = base + addon;
+  // Apply promo discount
+  let   discount = 0;
+  if(activePromo && PROMO_CODES[activePromo]){
+    const pc = PROMO_CODES[activePromo];
+    if(pc.type==='percent') discount = Math.round(pretax * pc.value) / 100;
+    if(pc.type==='fixed')   discount = Math.min(pc.value, pretax);
+  }
+  const subtotal = Math.max(pretax - discount, 0);
+  const rate    = getCurrentVatRate();
+  const vatAmt  = Math.round(subtotal * rate * 100) / 100;
+  const total   = Math.round((subtotal + vatAmt) * 100) / 100;
+  // Show/hide discount row
+  const dRow = document.getElementById('discountRow');
+  if(dRow){ if(discount>0){dRow.style.display='flex';document.getElementById('dDiscount').textContent='−€'+discount.toFixed(2);document.getElementById('dDiscountLbl').textContent='WELCOME10 (−'+PROMO_CODES[activePromo].value+'%)';}else{dRow.style.display='none';}}
+  const rateStr = `${Math.round(rate*100)}%`;
+  const country = document.getElementById('country').value;
+  const d       = VAT_DATA[country] || VAT_DATA['OTHER'];
+
+  // Plan line
+  document.getElementById('tvPlan').textContent = base === 0 ? '€0' : `€${base}/mo`;
+
+  // Subtotal line (show only if there's an addon)
+  const subtotalRow = document.getElementById('subtotalRow');
+  if(subtotalRow) subtotalRow.style.display = addonActive && base > 0 ? 'flex' : 'none';
+  const tvSub = document.getElementById('tvSubtotal');
+  if(tvSub) tvSub.textContent = `€${subtotal}/mo`;
+
+  // VAT line label — shows rate + country code
+  const vatLabel = document.getElementById('tlTax');
+  if(vatLabel){
+    const rateDisplay = rate === 0
+      ? (vatB2B ? t('tlTax')+' 0% (B2B)' : t('tlTax')+' 0%')
+      : `${t('tlTax')} ${rateStr} (${d.label||country})`;
+    vatLabel.textContent = rateDisplay;
+  }
+  document.getElementById('tvTax').textContent  = rate === 0 ? '€0.00' : `€${vatAmt.toFixed(2)}`;
+
+  // Grand total
+  document.getElementById('tvTotal').textContent = `€${total.toFixed(2)}`;
+  document.getElementById('tvPeriod').textContent = t('tvPeriod');
+
+  // Pay button
+  const isFree = base === 0 && !addonActive;
+  document.getElementById('payBtnAmount').textContent = isFree ? '— Free' : `— €${total.toFixed(2)}/mo`;
+  document.getElementById('payBtnLabel').textContent  = isFree ? t('freeMsg').split('—')[0].trim() : t('payBtnLabel');
+  document.getElementById('cardSection').style.opacity = isFree ? '.4' : '1';
+}
+
+/* ─── PLAN & ADDON ──────────────────────────────────────────── */
+function selectPlan(plan){
+  selectedPlan = plan;
+  document.querySelectorAll('.plan-option').forEach(o=>o.classList.remove('selected'));
+  document.getElementById('opt-'+plan).classList.add('selected');
+  document.getElementById('addonBox').style.display = plan==='essential' ? 'flex' : 'none';
+  if(plan !== 'essential'){ addonActive=false; document.getElementById('addonRow').style.display='none'; }
+  updateTotal();
+}
+
+function toggleAddon(){
+  if(selectedPlan !== 'essential') return;
+  addonActive = !addonActive;
+  const cb = document.getElementById('addonCheck');
+  cb.classList.toggle('checked', addonActive);
+  cb.textContent = addonActive ? '✓' : '+';
+  document.getElementById('addonRow').style.display = addonActive ? 'flex' : 'none';
+  updateTotal();
+}
+
+function setPayMethod(method, el){
+  payMethod = method;
+  document.querySelectorAll('.pay-method').forEach(m=>m.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('cardSection').style.display  = ['card','apple','google'].includes(method) ? 'block' : 'none';
+  document.getElementById('sepaSection').style.display  = method==='sepa' ? 'block' : 'none';
+}
+
+/* ─── STRIPE INIT ───────────────────────────────────────────── */
+let stripe, cardElement;
+function initStripe(){
+  try{
+    stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+    const elements = stripe.elements({appearance:{theme:'night',variables:{colorPrimary:'#e8a020',colorBackground:'rgba(255,255,255,0.04)',colorText:'#f0f4f8',colorDanger:'#ef4444',fontFamily:'DM Sans, sans-serif',borderRadius:'0px'}}});
+    cardElement = elements.create('card',{style:{base:{color:'#f0f4f8',fontFamily:'DM Sans, sans-serif',fontSize:'15px','::placeholder':{color:'rgba(143,163,184,0.5)'}},invalid:{color:'#ef4444'}}});
+    cardElement.mount('#card-element');
+    cardElement.on('change',e=>{ document.getElementById('card-errors').textContent=e.error?e.error.message:''; });
+  }catch(e){
+    document.getElementById('card-element').innerHTML='<div style="color:var(--mist);font-size:.8rem;padding:.3rem 0">🔑 Add your Stripe key to enable live payments</div>';
+  }
+}
+
+/* ─── HANDLE PAYMENT ────────────────────────────────────────── */
+async function handlePayment(){
+  const btn       = document.getElementById('payBtn');
+  const firstName = document.getElementById('firstName').value.trim();
+  const lastName  = document.getElementById('lastName').value.trim();
+  const email     = document.getElementById('email').value.trim();
+  const country   = document.getElementById('country').value;
+  const vatNum    = document.getElementById('vatNumber').value.trim().toUpperCase();
+
+  if(!firstName||!lastName){ showToast(t('errRequired')); return; }
+  if(!email||!email.includes('@')){ showToast(t('errEmail')); return; }
+
+  if(selectedPlan==='essential'&&!addonActive){
+    showToast(t('freeMsg'));
+    setTimeout(()=>{ window.location.href='success.html?plan=essential'; },1500);
+    return;
+  }
+
+  btn.classList.add('loading'); btn.disabled=true;
+  showToast(t('processingMsg'));
+
+  try{
+    /* In production replace with real Stripe call:
+    const { sessionId } = await fetch('/api/create-checkout-session',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ plan:selectedPlan, addon:addonActive, email,
+        name:firstName+' '+lastName, country, vatNumber:vatNum,
+        automaticTax:true }) // Stripe Tax handles the rest
+    }).then(r=>r.json());
+    await stripe.redirectToCheckout({ sessionId }); */
+
+    await new Promise(r=>setTimeout(r,2000));
+    const rate = getCurrentVatRate();
+    window.location.href=`success.html?plan=${selectedPlan}&addon=${addonActive}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(firstName)}&country=${country}&vatrate=${Math.round(rate*100)}`;
+  }catch(err){
+    btn.classList.remove('loading'); btn.disabled=false;
+    showToast('Payment error: '+(err.message||'Please try again'));
+  }
+}
+
+/* ─── SET LANG ──────────────────────────────────────────────── */
+function setLang(l){
+  lang = l;
+  document.querySelectorAll('.lb').forEach(b=>{ b.classList.toggle('active', b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase())); });
+  const set=(id,k)=>{ const el=document.getElementById(id); if(el) el.textContent=t(k); };
+  const htm=(id,k)=>{ const el=document.getElementById(id); if(el) el.innerHTML=t(k); };
+  set('navBack','navBack'); set('summaryTitle','summaryTitle'); set('pb-popular','pbPopular');
+  set('pn-essential','pnEssential'); set('pd-essential','pdEssential');
+  set('pn-boost','pnBoost'); set('pd-boost','pdBoost');
+  set('pn-pro','pnPro'); set('pd-pro','pdPro');
+  set('addonName','addonName'); set('addonDesc','addonDesc');
+  set('tlSubtotal','tlSubtotal'); set('tvPeriod','tvPeriod');
+  set('noCommText','noComm'); set('formTitle','formTitle'); set('fsAccount','fsAccount');
+  set('lFirstName','lFirstName'); set('lLastName','lLastName'); set('lEmail','lEmail'); set('lCompany','lCompany');
+  set('fsCard','fsCard'); set('lCardNum','lCardNum'); set('lExpiry','lExpiry'); set('lCvc','lCvc');
+  set('fsSepa','fsSepa'); set('lIban','lIban'); set('sepaMandate','sepaMandate');
+  set('fsPromo','fsPromo'); set('fsBilling','fsBilling'); set('lCountry','lCountry'); set('lCity','lCity'); set('lPostal','lPostal');
+  set('lVatNum','lVatNum'); set('ossNote','ossNote');
+  htm('billingNote','billingNote');
+  set('pmCard','pmCard'); set('pmSepa','pmSepa');
+  set('secSSL','secSSL'); set('secStripe','secStripe'); set('secCancel','secCancel');
+  // Re-render VAT indicator with new language
+  updateVatIndicator(); updateTotal();
+}
+
+let toastTimer;
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+/* ─── INIT ──────────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded',()=>{
+  initStripe();
+  updateVatIndicator();
+  updateTotal();
+  const params = new URLSearchParams(window.location.search);
+  const plan = params.get('plan');
+  if(plan&&['essential','boost','pro'].includes(plan)) selectPlan(plan);
+});
+</script>
+</body>
+</html>

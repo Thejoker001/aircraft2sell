@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aircraft2Sell — Buy & Sell Aircraft</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+:root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--horizon2:#0b1e38;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#5a7490;--white:#f0f4f8;--card-bg:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.1);--green:#22c55e;--red:#ef4444}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(1px 1px at 8% 15%,rgba(255,255,255,.7) 0%,transparent 100%),radial-gradient(1px 1px at 25% 65%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 42% 8%,rgba(255,255,255,.6) 0%,transparent 100%),radial-gradient(1px 1px at 60% 45%,rgba(255,255,255,.3) 0%,transparent 100%),radial-gradient(1px 1px at 78% 78%,rgba(255,255,255,.5) 0%,transparent 100%),radial-gradient(2px 2px at 15% 82%,rgba(255,255,255,.6) 0%,transparent 100%),radial-gradient(2px 2px at 52% 30%,rgba(255,255,255,.7) 0%,transparent 100%),radial-gradient(2px 2px at 84% 55%,rgba(255,255,255,.5) 0%,transparent 100%),radial-gradient(1px 1px at 35% 92%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 95% 40%,rgba(255,255,255,.3) 0%,transparent 100%)}
+nav{position:sticky;top:0;z-index:200;background:rgba(6,11,21,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);height:64px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.1em;color:var(--white);display:flex;align-items:center;gap:.5rem;flex-shrink:0;text-decoration:none}
+.logo span{color:var(--accent)}
+.logo-icon{font-size:1.4rem;transform:rotate(-10deg);display:inline-block;animation:flt 4s ease-in-out infinite}
+@keyframes flt{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-4px)}}
+.nav-links{display:flex;gap:1.5rem;list-style:none;font-size:.82rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase}
+.nav-links a{color:var(--mist);text-decoration:none;transition:color .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-right{display:flex;align-items:center;gap:.7rem;flex-shrink:0}
+.lang-sw{display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.04);border:1px solid var(--border);padding:3px}
+.lb{background:none;border:none;color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:600;padding:.28rem .45rem;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:3px;white-space:nowrap}
+.lb:hover{color:var(--white)}
+.lb.active{background:var(--accent);color:var(--deep)}
+.lf{font-size:.9rem}
+.btn-post{background:var(--accent);color:var(--deep);border:none;padding:.5rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;letter-spacing:.06em;cursor:pointer;transition:background .2s,transform .15s;text-transform:uppercase;white-space:nowrap}
+.btn-post:hover{background:var(--gold);transform:translateY(-1px)}
+.hero{position:relative;z-index:1;min-height:90vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5rem 2rem 4rem;text-align:center;overflow:hidden}
+.hero::before{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:2px;height:35%;background:linear-gradient(0deg,transparent,rgba(232,160,32,.5),transparent);animation:rnwy 3s ease-in-out infinite}
+@keyframes rnwy{0%,100%{opacity:.4;height:28%}50%{opacity:1;height:40%}}
+.hero-eyebrow{font-size:.72rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:1.5rem;font-weight:500;animation:fu .6s .1s both}
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(4rem,9vw,8rem);letter-spacing:.04em;line-height:.88;color:var(--white);margin-bottom:1.8rem;animation:fu .6s .2s both}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero-sub{color:var(--mist);font-size:1.05rem;font-weight:300;max-width:520px;margin:0 auto 2.8rem;line-height:1.7;animation:fu .6s .3s both}
+@keyframes fu{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.hero-search{width:100%;max-width:820px;animation:fu .6s .4s both}
+.search-wrap{background:var(--card-bg);border:1px solid var(--border);display:flex;flex-wrap:wrap;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.sf{flex:1;min-width:140px;padding:1rem 1.1rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--white);font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none}
+.sf::placeholder{color:var(--mist2)}
+.sf:focus{background:rgba(255,255,255,.03)}
+select.sf option{background:var(--card-bg)}
+.sbtn{background:var(--accent);color:var(--deep);border:none;padding:1rem 2rem;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:.1em;cursor:pointer;white-space:nowrap;transition:background .2s}
+.sbtn:hover{background:var(--gold)}
+.quick-filters{display:flex;gap:.5rem;margin-top:.8rem;flex-wrap:wrap;justify-content:center}
+.qf{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.3rem .8rem;font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.qf:hover,.qf.active{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.07)}
+.scroll-hint{position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:.4rem;opacity:.35;animation:bnc 2s infinite}
+.scroll-hint span{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--mist)}
+.scroll-arrow{width:18px;height:18px;border-right:1px solid var(--mist);border-bottom:1px solid var(--mist);transform:rotate(45deg)}
+@keyframes bnc{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(6px)}}
+.stats-bar{position:relative;z-index:1;background:var(--horizon);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1.2rem 2rem;display:flex;justify-content:center;gap:3rem;flex-wrap:wrap}
+.stat{text-align:center}
+.stat-num{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent);letter-spacing:.05em;line-height:1}
+.stat-label{font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mist);margin-top:.2rem}
+.ticker-wrap{background:var(--horizon2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden;padding:.55rem 0;position:relative;z-index:1}
+.ticker-track{display:flex;gap:3rem;animation:tick 35s linear infinite;white-space:nowrap}
+.ticker-track:hover{animation-play-state:paused}
+.ticker-item{font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+.ticker-item strong{color:var(--white);font-weight:500}
+.ticker-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0}
+@keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.section{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:4rem 2rem}
+.section-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em}
+.section-title em{font-style:normal;color:var(--accent)}
+.see-all{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:.4rem;transition:gap .2s;white-space:nowrap}
+.see-all:hover{gap:.8rem}
+.listings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)}
+.card{background:var(--card-bg);overflow:hidden;cursor:pointer;position:relative;display:flex;flex-direction:column;transition:transform .3s,box-shadow .3s;min-width:0}
+.card:hover{transform:translateY(-5px);box-shadow:0 24px 60px rgba(0,0,0,.55);z-index:2}
+.card-img{height:195px;position:relative;overflow:hidden;background:linear-gradient(135deg,#0d2847,#1a3a5c);display:flex;align-items:center;justify-content:center}
+.plane-bg{font-size:5rem;opacity:.12;position:absolute;right:-1rem;bottom:-.5rem;transform:rotate(-15deg)}
+.badge{position:absolute;top:.9rem;left:.9rem;padding:.22rem .6rem;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+.b-new{background:var(--accent);color:var(--deep)}
+.b-urgent{background:#e84040;color:#fff}
+.b-premium{background:linear-gradient(90deg,#b8860b,#f5c842);color:var(--deep)}
+.b-sold{background:#333;color:#777}
+.fav{position:absolute;top:.7rem;right:.7rem;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);color:var(--mist);width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;transition:all .2s;backdrop-filter:blur(8px)}
+.fav:hover{color:#e84040;border-color:#e84040}
+.fav.liked{color:#e84040;border-color:#e84040}
+.urgency{position:absolute;bottom:.7rem;left:.9rem;font-size:.63rem;color:rgba(255,255,255,.65);display:flex;align-items:center;gap:.3rem;background:rgba(0,0,0,.5);padding:.2rem .5rem;backdrop-filter:blur(6px)}
+.urgency-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pls 2s infinite;flex-shrink:0}
+@keyframes pls{0%,100%{opacity:1}50%{opacity:.25}}
+.card-body{padding:1.3rem;flex:1;display:flex;flex-direction:column;gap:.7rem}
+.card-cat{font-size:.65rem;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:1.45rem;letter-spacing:.04em;line-height:1.05;color:var(--white)}
+.card-specs{display:flex;gap:1rem;flex-wrap:wrap}
+.spec{display:flex;align-items:center;gap:.3rem;font-size:.76rem;color:var(--mist)}
+.card-ft{display:flex;justify-content:space-between;align-items:flex-end;padding-top:.8rem;border-top:1px solid var(--border);margin-top:auto}
+.price{font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--gold);letter-spacing:.04em;line-height:1}
+.price-sub{font-size:.68rem;color:var(--mist);letter-spacing:.08em;text-transform:uppercase;margin-top:.1rem}
+.loc{display:flex;align-items:center;gap:.25rem;font-size:.74rem;color:var(--mist)}
+.trust-chip{display:flex;align-items:center;gap:.3rem;font-size:.64rem;color:var(--green);border:1px solid rgba(34,197,94,.25);padding:.13rem .4rem;width:fit-content}
+.featured-banner{grid-column:1/-1;background:linear-gradient(135deg,#0d2847 0%,#1a3a5c 55%,#0e2236 100%);border:1px solid rgba(232,160,32,.3);padding:2rem 2.5rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap;position:relative;overflow:hidden;cursor:pointer;transition:border-color .3s}
+.featured-banner:hover{border-color:var(--accent)}
+.featured-banner::after{content:'✈';position:absolute;right:4rem;top:50%;transform:translateY(-50%) rotate(-12deg);font-size:9rem;opacity:.05;pointer-events:none}
+.feat-label{background:var(--accent);color:var(--deep);font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:.15em;padding:.28rem .75rem;align-self:flex-start;flex-shrink:0}
+.feat-info{flex:1}
+.feat-title{font-family:'Bebas Neue',sans-serif;font-size:2.5rem;letter-spacing:.05em;color:var(--white);line-height:1;margin-bottom:.4rem}
+.feat-specs{display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:.7rem}
+.feat-price{font-family:'Bebas Neue',sans-serif;font-size:3rem;color:var(--gold);letter-spacing:.05em;align-self:center;flex-shrink:0}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)}
+.cat-card{background:var(--card-bg);padding:1.6rem 1.2rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.8rem;transition:background .2s,transform .25s;text-align:center;position:relative;overflow:hidden}
+.cat-card::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .3s}
+.cat-card:hover::before{transform:scaleX(1)}
+.cat-card:hover{background:var(--card2);transform:translateY(-3px)}
+.cat-icon{font-size:2.2rem;line-height:1}
+.cat-name{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.08em;color:var(--white)}
+.cat-count{font-size:.7rem;color:var(--mist);letter-spacing:.1em}
+.trust-section{position:relative;z-index:1;background:var(--horizon2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:3.5rem 2rem}
+.trust-inner{max-width:1100px;margin:0 auto}
+.trust-title-el{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;margin-bottom:2rem;text-align:center}
+.trust-title-el em{font-style:normal;color:var(--accent)}
+.trust-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:2rem}
+.trust-item{display:flex;align-items:flex-start;gap:1rem}
+.t-icon{font-size:2rem;flex-shrink:0;line-height:1}
+.t-title{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.06em;color:var(--white);margin-bottom:.3rem}
+.t-desc{font-size:.8rem;color:var(--mist);line-height:1.6}
+.steps-section{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:4rem 2rem}
+.steps-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)}
+.step{background:var(--card-bg);padding:2rem 1.5rem;position:relative}
+.step-num{font-family:'Bebas Neue',sans-serif;font-size:4rem;color:rgba(232,160,32,.15);line-height:1;margin-bottom:.8rem}
+.step-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.06em;color:var(--white);margin-bottom:.5rem}
+.step-desc{font-size:.82rem;color:var(--mist);line-height:1.6}
+.alert-section{position:relative;z-index:1;background:linear-gradient(135deg,#0d2847,#0f1e38);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:4rem 2rem;text-align:center}
+.alert-section::before{content:'🔔';font-size:2.8rem;display:block;margin-bottom:1rem;opacity:.5}
+.alert-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(1.8rem,4vw,3rem);letter-spacing:.06em;color:var(--white);margin-bottom:.8rem}
+.alert-title em{font-style:normal;color:var(--accent)}
+.alert-sub{color:var(--mist);font-size:.95rem;font-weight:300;max-width:480px;margin:0 auto 2rem;line-height:1.6}
+.alert-form{display:flex;max-width:540px;margin:0 auto;overflow:hidden;border:1px solid var(--border)}
+.alert-input{flex:1;padding:1rem 1.2rem;border:none;background:var(--card-bg);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none}
+.alert-input::placeholder{color:var(--mist2)}
+.alert-btn{background:var(--accent);color:var(--deep);border:none;padding:1rem 1.8rem;font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.1em;cursor:pointer;white-space:nowrap;transition:background .2s}
+.alert-btn:hover{background:var(--gold)}
+.alert-note{font-size:.7rem;color:var(--mist2);margin-top:.8rem;letter-spacing:.06em}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:300;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(12px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card-bg);border:1px solid var(--border);max-width:740px;width:100%;max-height:92vh;overflow-y:auto;animation:sUp .3s ease}
+@keyframes sUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-hd{padding:1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:1.85rem;letter-spacing:.06em}
+.modal-close{background:none;border:1px solid var(--border);color:var(--mist);width:36px;height:36px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.modal-close:hover{border-color:#e84040;color:#e84040}
+.modal-body{padding:1.5rem}
+.modal-img{height:270px;background:linear-gradient(135deg,#0d2847,#1a3a5c);display:flex;align-items:center;justify-content:center;font-size:8rem;color:rgba(255,255,255,.1);margin-bottom:1.5rem;position:relative}
+.photo-dots{position:absolute;bottom:.8rem;left:50%;transform:translateX(-50%);display:flex;gap:.4rem}
+.dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3)}
+.dot.active{background:var(--accent)}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1.5rem}
+.detail-box{background:rgba(255,255,255,.03);border:1px solid var(--border);padding:.9rem}
+.dl{font-size:.64rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mist);margin-bottom:.25rem}
+.dv{font-size:.95rem;color:var(--white);font-weight:500}
+.modal-desc{color:var(--mist);font-size:.88rem;line-height:1.75;margin-bottom:1.5rem}
+.modal-seller{display:flex;align-items:center;gap:.8rem;padding:1rem;background:rgba(255,255,255,.03);border:1px solid var(--border);margin-bottom:1.5rem}
+.s-avatar{width:40px;height:40px;border-radius:50%;background:var(--horizon);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.s-name{font-weight:600;font-size:.88rem;color:var(--white)}
+.s-verified{font-size:.68rem;color:var(--green);display:flex;align-items:center;gap:.2rem}
+.s-meta{font-size:.72rem;color:var(--mist)}
+.urg-row{display:flex;gap:1.5rem;padding:.75rem 1rem;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);margin-bottom:1rem;flex-wrap:wrap}
+.urg-item{display:flex;align-items:center;gap:.4rem;font-size:.76rem;color:rgba(255,255,255,.7)}
+.modal-actions{display:flex;gap:.8rem}
+.btn-cta{flex:1;background:var(--accent);color:var(--deep);border:none;padding:.95rem;font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.1em;cursor:pointer;transition:background .2s}
+.btn-cta:hover{background:var(--gold)}
+.btn-sec{flex:1;background:transparent;color:var(--mist);border:1px solid var(--border);padding:.95rem;font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.1em;cursor:pointer;transition:all .2s}
+.btn-sec:hover{border-color:var(--accent);color:var(--accent)}
+footer{position:relative;z-index:1;background:var(--deep);border-top:1px solid var(--border);padding:3.5rem 2rem 2rem}
+.footer-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:2rem;margin-bottom:2.5rem}
+.footer-brand .f-logo{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.12em;margin-bottom:.8rem}
+.footer-brand .f-logo span{color:var(--accent)}
+.footer-brand p{font-size:.82rem;color:var(--mist);line-height:1.65;max-width:260px}
+.footer-col h4{font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.1em;color:var(--white);margin-bottom:.8rem}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:.4rem}
+.footer-col a{color:var(--mist);text-decoration:none;font-size:.8rem;transition:color .2s}
+.footer-col a:hover{color:var(--accent)}
+.footer-bottom{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:1.5rem;flex-wrap:wrap;gap:1rem}
+.footer-copy{color:#3a4f62;font-size:.76rem;letter-spacing:.05em}
+.footer-langs{display:flex;gap:.4rem}
+.footer-langs button{background:none;border:1px solid var(--border);color:var(--mist);padding:.2rem .5rem;font-size:.7rem;cursor:pointer;transition:all .2s}
+.footer-langs button:hover,.footer-langs button.active{border-color:var(--accent);color:var(--accent)}
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card-bg);border:1px solid var(--accent);padding:.9rem 1.4rem;color:var(--white);font-size:.86rem;z-index:999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none;max-width:300px}
+.toast.show{opacity:1;transform:translateY(0)}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media(max-width:900px){.nav-links{display:none}.lb .lb-lbl{display:none}.footer-inner{grid-template-columns:1fr 1fr}.footer-brand{grid-column:1/-1}}
+@media(max-width:580px){.footer-inner{grid-template-columns:1fr}.listings-grid{grid-template-columns:1fr}.modal-grid{grid-template-columns:1fr}.stats-bar{gap:1.5rem}.featured-banner{flex-direction:column}.feat-price{font-size:2rem}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="logo"><span class="logo-icon">✈</span>Aircraft2<span>Sell</span></a>
+  <ul class="nav-links">
+    <li><a href="#listings" class="active" data-i18n="nav_listings"></a></li>
+    <li><a href="#categories" data-i18n="nav_categories"></a></li>
+    <li><a href="pricing.html" data-i18n="nav_pricing"></a></li>
+    <li><a href="#alert" data-i18n="nav_alerts"></a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="lang-sw">
+      <button class="lb active" onclick="setLang('en')"><span class="lf">🇬🇧</span><span class="lb-lbl">EN</span></button>
+      <button class="lb" onclick="setLang('fr')"><span class="lf">🇫🇷</span><span class="lb-lbl">FR</span></button>
+      <button class="lb" onclick="setLang('de')"><span class="lf">🇩🇪</span><span class="lb-lbl">DE</span></button>
+      <button class="lb" onclick="setLang('es')"><span class="lf">🇪🇸</span><span class="lb-lbl">ES</span></button>
+      <button class="lb" onclick="setLang('zh')"><span class="lf">🇨🇳</span><span class="lb-lbl">中文</span></button>
+    </div>
+    <button class="btn-post" data-i18n="btn_post" onclick="showToast(t('toast_soon'))"></button>
+  </div>
+</nav>
+
+<section class="hero">
+  <p class="hero-eyebrow" data-i18n="hero_eyebrow"></p>
+  <h1 id="heroH1"></h1>
+  <p class="hero-sub" data-i18n="hero_sub"></p>
+  <div class="hero-search">
+    <div class="search-wrap">
+      <input type="text" class="sf" id="searchInput" placeholder="">
+      <select class="sf" id="catSelect">
+        <option data-i18n="cat_all"></option>
+        <option data-i18n="cat_light"></option>
+        <option data-i18n="cat_jet"></option>
+        <option data-i18n="cat_turbo"></option>
+        <option data-i18n="cat_heli"></option>
+        <option data-i18n="cat_ulm"></option>
+        <option data-i18n="cat_airliner"></option>
+      </select>
+      <input type="text" class="sf" id="budgetInput" placeholder="">
+      <button class="sbtn" data-i18n="search_btn" onclick="showToast(t('toast_search'))"></button>
+    </div>
+    <div class="quick-filters">
+      <button class="qf active" onclick="qFilter(this)" data-i18n="filter_all"></button>
+      <button class="qf" onclick="qFilter(this)" data-i18n="cat_light"></button>
+      <button class="qf" onclick="qFilter(this)" data-i18n="cat_turbo"></button>
+      <button class="qf" onclick="qFilter(this)" data-i18n="cat_jet"></button>
+      <button class="qf" onclick="qFilter(this)" data-i18n="cat_heli"></button>
+      <button class="qf" onclick="qFilter(this)" data-i18n="cat_ulm"></button>
+    </div>
+  </div>
+  <div class="scroll-hint"><span data-i18n="scroll_hint"></span><div class="scroll-arrow"></div></div>
+</section>
+
+<div class="stats-bar">
+  <div class="stat"><div class="stat-num" id="sn1">0</div><div class="stat-label" data-i18n="stat_listings"></div></div>
+  <div class="stat"><div class="stat-num" id="sn2">0</div><div class="stat-label" data-i18n="stat_sellers"></div></div>
+  <div class="stat"><div class="stat-num" id="sn3">0</div><div class="stat-label" data-i18n="stat_countries"></div></div>
+  <div class="stat"><div class="stat-num">98%</div><div class="stat-label" data-i18n="stat_satisfaction"></div></div>
+  <div class="stat"><div class="stat-num" id="sn4">0</div><div class="stat-label" data-i18n="stat_today"></div></div>
+</div>
+
+<div class="ticker-wrap"><div class="ticker-track" id="ticker"></div></div>
+
+<div class="section" id="listings">
+  <div class="section-hd">
+    <h2 class="section-title" id="recentTitle"></h2>
+    <a href="#" class="see-all" data-i18n="see_all"></a>
+  </div>
+  <div class="listings-grid" id="listingsGrid"></div>
+  <div style="text-align:center;margin-top:2.5rem">
+    <button class="btn-post" style="font-size:.9rem;padding:.75rem 2.2rem" data-i18n="load_more" onclick="showToast(t('toast_loading'))"></button>
+  </div>
+</div>
+
+<div class="section" id="categories" style="padding-top:1rem">
+  <div class="section-hd"><h2 class="section-title" id="catTitle"></h2></div>
+  <div class="cat-grid" id="catGrid"></div>
+</div>
+
+<div class="trust-section">
+  <div class="trust-inner">
+    <div class="trust-title-el" id="trustTitle"></div>
+    <div class="trust-grid" id="trustGrid"></div>
+  </div>
+</div>
+
+<div class="steps-section">
+  <div class="steps-hd">
+    <h2 class="section-title" id="stepsTitle"></h2>
+    <a href="pricing.html" class="see-all" data-i18n="see_pricing"></a>
+  </div>
+  <div class="steps-grid" id="stepsGrid"></div>
+</div>
+
+<div class="alert-section" id="alert">
+  <h2 class="alert-title" id="alertTitle"></h2>
+  <p class="alert-sub" data-i18n="alert_sub"></p>
+  <div class="alert-form">
+    <input type="email" class="alert-input" id="alertEmail">
+    <button class="alert-btn" data-i18n="alert_btn" onclick="submitAlert()"></button>
+  </div>
+  <p class="alert-note" data-i18n="alert_note"></p>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="f-logo">Aircraft2<span>Sell</span></div>
+      <p data-i18n="footer_desc"></p>
+    </div>
+    <div class="footer-col">
+      <h4 data-i18n="footer_col1"></h4>
+      <ul>
+        <li><a href="#listings" data-i18n="nav_listings"></a></li>
+        <li><a href="#categories" data-i18n="nav_categories"></a></li>
+        <li><a href="#alert" data-i18n="nav_alerts"></a></li>
+        <li><a href="search.html?filter=sold" data-i18n="footer_sold"></a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4 data-i18n="footer_col2"></h4>
+      <ul>
+        <li><a href="post-listing.html" data-i18n="btn_post"></a></li>
+        <li><a href="pricing.html" data-i18n="nav_pricing"></a></li>
+        <li><a href="legal.html#guide" data-i18n="footer_guide"></a></li>
+        <li><a href="legal.html#finance" data-i18n="footer_finance"></a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4 data-i18n="footer_col3"></h4>
+      <ul>
+        <li><a href="legal.html#about" data-i18n="footer_about"></a></li>
+        <li><a href="legal.html#contact" data-i18n="footer_contact"></a></li>
+        <li><a href="legal.html" data-i18n="footer_legal"></a></li>
+        <li><a href="legal.html#privacy" data-i18n="footer_privacy"></a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy" data-i18n="footer_copy"></div>
+    <div class="footer-langs">
+      <button onclick="setLang('en')">EN</button>
+      <button onclick="setLang('fr')">FR</button>
+      <button onclick="setLang('de')">DE</button>
+      <button onclick="setLang('es')">ES</button>
+      <button onclick="setLang('zh')">中文</button>
+    </div>
+  </div>
+</footer>
+
+<div class="modal-overlay" id="modal" onclick="closeOut(event)">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-title" id="mTitle">—</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-img" id="mImg">
+        <span style="font-size:8rem;opacity:.1">✈</span>
+        <div class="photo-dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
+      </div>
+      <div class="urg-row" id="mUrg" style="display:none"></div>
+      <div class="modal-grid">
+        <div class="detail-box"><div class="dl" data-i18n="modal_model"></div><div class="dv" id="dModel">—</div></div>
+        <div class="detail-box"><div class="dl" data-i18n="modal_year"></div><div class="dv" id="dYear">—</div></div>
+        <div class="detail-box"><div class="dl" data-i18n="modal_hours"></div><div class="dv" id="dHours">—</div></div>
+        <div class="detail-box"><div class="dl" data-i18n="modal_location"></div><div class="dv" id="dLoc">—</div></div>
+        <div class="detail-box"><div class="dl" data-i18n="modal_reg"></div><div class="dv" id="dReg">—</div></div>
+        <div class="detail-box"><div class="dl" data-i18n="modal_docs"></div><div class="dv" id="dDoc">—</div></div>
+      </div>
+      <p class="modal-desc" id="mDesc">—</p>
+      <div class="modal-seller">
+        <div class="s-avatar">👤</div>
+        <div>
+          <div class="s-name" id="mSeller">—</div>
+          <div class="s-verified">✓ <span data-i18n="seller_verified"></span></div>
+          <div class="s-meta">★★★★★  ·  5 sales</div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cta" data-i18n="modal_contact" onclick="showToast(t('toast_sent'))"></button>
+        <button class="btn-sec" data-i18n="modal_save" onclick="showToast(t('toast_saved'))"></button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const T={
+en:{nav_listings:'Listings',nav_categories:'Categories',nav_pricing:'Pricing',nav_alerts:'Alerts',btn_post:'Post an Ad',hero_eyebrow:"Europe's #1 Aircraft Marketplace",hero_h1:'Find your<br><em>perfect</em><br>aircraft',hero_sub:'From training singles to business jets — buy, sell and discover exceptional aircraft. No commission, ever.',search_placeholder:'Brand, model or type…',budget_placeholder:'Max budget (€)',search_btn:'Search',cat_all:'All categories',cat_light:'Light aircraft',cat_jet:'Business jets',cat_turbo:'Turboprops',cat_heli:'Helicopters',cat_ulm:'Ultralight / ULM',cat_airliner:'Airliners',filter_all:'All',scroll_hint:'Scroll to explore',stat_listings:'Active listings',stat_sellers:'Verified sellers',stat_countries:'Countries',stat_satisfaction:'Satisfaction',stat_today:'New today',recent_title:'Latest <em>listings</em>',cat_section_title:'Browse by <em>category</em>',see_all:'View all listings →',see_pricing:'View pricing →',load_more:'Load more',trust_title:'Why <em>Aircraft2Sell</em>?',steps_title:'How it <em>works</em>',alert_title:'Never miss your <em>dream</em> aircraft',alert_sub:'Create a free alert and receive an email the moment a matching aircraft is listed.',alert_placeholder:'Your email address…',alert_btn:'Create alert',alert_note:'Free · No spam · Cancel anytime',seller_verified:'Verified seller',modal_model:'Make / Model',modal_year:'Year',modal_hours:'Total hours',modal_location:'Location',modal_reg:'Registration',modal_docs:'Documents',modal_contact:'Contact seller',modal_save:'Save listing',badge_new:'New',badge_urgent:'Urgent',badge_premium:'Premium',badge_sold:'Sold',feat_label:'⭐ Featured',feat_pax:'8 passengers',footer_desc:'The leading European marketplace for buying and selling aircraft.',footer_col1:'Browse',footer_col2:'Sell',footer_col3:'Company',footer_sold:'Recently sold',footer_guide:"Buyer's guide",footer_finance:'Financing',footer_about:'About us',footer_contact:'Contact',footer_legal:'Legal notice',footer_privacy:'Privacy',footer_copy:'© 2026 Aircraft2Sell — All rights reserved',toast_soon:'Coming soon!',toast_search:'Searching…',toast_loading:'Loading…',toast_sent:'Message sent!',toast_saved:'Saved to favourites!',toast_alert:"Alert created! We'll email you when a match appears.",toast_fav_add:'Added to favourites!',toast_fav_remove:'Removed from favourites',empty_title:'No listings yet',empty_sub:'Be the first to list your aircraft on Aircraft2Sell.',urgency_views:' viewing',urgency_fav:' saved',urgency_new:'Listed ',
+trust_items:[{icon:'🔒',title:'Verified sellers',desc:'Every professional seller is manually verified. Identity, company and certifications checked.'},{icon:'🚫',title:'Zero commission',desc:"We never take a cut on your sale. Our only revenue is from listing plans."},{icon:'🌍',title:'38 countries covered',desc:'Buyers and sellers across Europe, Middle East and beyond.'},{icon:'✈️',title:'Aviation specialists',desc:'Our team consists of pilots and aviation professionals.'}],
+steps:[{num:'01',title:'Create account',desc:'Sign up in 2 minutes. Email verification included.'},{num:'02',title:'Post your listing',desc:'Fill in aircraft details, upload photos, set your price.'},{num:'03',title:'Get contacted',desc:'Qualified buyers reach you via our secure messaging.'},{num:'04',title:'Close the deal',desc:'Agree terms, arrange inspection, complete transaction.'}],
+cats:[{icon:'🛩',name:'Light aircraft',count:'0 listings'},{icon:'🚁',name:'Helicopters',count:'0 listings'},{icon:'✈️',name:'Business jets',count:'0 listings'},{icon:'🌀',name:'Turboprops',count:'0 listings'},{icon:'🪂',name:'Ultralight / ULM',count:'0 listings'},{icon:'🛫',name:'Airliners',count:'0 listings'},{icon:'🔧',name:'Spare parts',count:'0 listings'}],
+ticker_items:[],
+desc_:"",
+desc_:"",
+desc_:"",
+desc_:"",
+desc_:"",
+desc_:"",
+desc_:"",
+negotiable:'Negotiable',firm:'Firm price',offers:'Offers welcome',fixed:'Fixed price',leasing:'Leasing available',badge_sold2:'Sold'},
+fr:{nav_listings:'Annonces',nav_categories:'Catégories',nav_pricing:'Tarifs',nav_alerts:'Alertes',btn_post:'Déposer une annonce',hero_eyebrow:"La 1ère marketplace aéronautique d'Europe",hero_h1:'Trouvez<br>votre <em>avion</em><br>idéal',hero_sub:"Des monoplaces d'entraînement aux jets d'affaires — achetez et vendez sans commission, jamais.",search_placeholder:'Marque, modèle ou type…',budget_placeholder:'Budget max (€)',search_btn:'Rechercher',cat_all:'Toutes catégories',cat_light:'Avions légers',cat_jet:"Jets d'affaires",cat_turbo:'Turbopropulseurs',cat_heli:'Hélicoptères',cat_ulm:'ULM',cat_airliner:'Avions de ligne',filter_all:'Tous',scroll_hint:'Défiler pour explorer',stat_listings:'Annonces actives',stat_sellers:'Vendeurs vérifiés',stat_countries:'Pays',stat_satisfaction:'Satisfaction',stat_today:"Nouvelles aujourd'hui",recent_title:'Dernières <em>annonces</em>',cat_section_title:'Explorer par <em>catégorie</em>',see_all:'Voir toutes les annonces →',see_pricing:'Voir les tarifs →',load_more:"Voir plus d'annonces",trust_title:'Pourquoi <em>Aircraft2Sell</em> ?',steps_title:'Comment ça <em>marche</em> ?',alert_title:'Ne ratez plus votre <em>avion idéal</em>',alert_sub:"Créez une alerte gratuite et recevez un email dès qu'une annonce correspond à vos critères.",alert_placeholder:'Votre adresse email…',alert_btn:'Créer une alerte',alert_note:'Gratuit · Sans spam · Désabonnement facile',seller_verified:'Vendeur vérifié',modal_model:'Marque / Modèle',modal_year:'Année',modal_hours:'Heures totales',modal_location:'Localisation',modal_reg:'Matricule',modal_docs:'Documents',modal_contact:'Contacter le vendeur',modal_save:'Sauvegarder',badge_new:'Nouveau',badge_urgent:'Urgent',badge_premium:'Premium',badge_sold:'Vendu',feat_label:'⭐ À la une',feat_pax:'8 passagers',footer_desc:"Le leader européen de la vente d'aéronefs entre particuliers et professionnels.",footer_col1:'Explorer',footer_col2:'Vendre',footer_col3:'Entreprise',footer_sold:'Récemment vendus',footer_guide:'Guide acheteur',footer_finance:'Financement',footer_about:'À propos',footer_contact:'Contact',footer_legal:'Mentions légales',footer_privacy:'Confidentialité',footer_copy:'© 2026 Aircraft2Sell — Tous droits réservés',toast_soon:'Bientôt disponible !',toast_search:'Recherche en cours…',toast_loading:'Chargement…',toast_sent:'Message envoyé !',toast_saved:'Annonce sauvegardée !',toast_alert:"Alerte créée ! Vous serez notifié dès qu'une annonce correspond.",toast_fav_add:'Ajouté aux favoris !',toast_fav_remove:'Retiré des favoris',empty_title:'Aucune annonce pour le moment',empty_sub:'Soyez le premier à publier votre avion sur Aircraft2Sell.',urgency_views:' consultent',urgency_fav:' favoris',urgency_new:'Publiée ',
+trust_items:[{icon:'🔒',title:'Vendeurs vérifiés',desc:'Chaque professionnel est vérifié manuellement. Identité, entreprise et certifications contrôlés.'},{icon:'🚫',title:'Zéro commission',desc:"Nous ne prélevons jamais de commission sur votre vente."},{icon:'🌍',title:'38 pays couverts',desc:"Acheteurs et vendeurs dans toute l'Europe et au-delà."},{icon:'✈️',title:'Spécialistes aviation',desc:'Notre équipe est composée de pilotes et de professionnels de l\'aviation.'}],
+steps:[{num:'01',title:'Créez votre compte',desc:'Inscription en 2 minutes. Vérification par email incluse.'},{num:'02',title:'Publiez votre annonce',desc:'Renseignez les détails, ajoutez vos photos, fixez votre prix.'},{num:'03',title:'Recevez des contacts',desc:'Les acheteurs qualifiés vous contactent via notre messagerie sécurisée.'},{num:'04',title:'Finalisez la vente',desc:"Convenez des conditions, organisez la visite, concluez la transaction."}],
+cats:[{icon:'🛩',name:'Avions légers',count:'1 243 annonces'},{icon:'🚁',name:'Hélicoptères',count:'387 annonces'},{icon:'✈️',name:"Jets d'affaires",count:'156 annonces'},{icon:'🌀',name:'Turbopropulseurs',count:'298 annonces'},{icon:'🪂',name:'ULM',count:'412 annonces'},{icon:'🛫',name:'Avions de ligne',count:'89 annonces'},{icon:'🔧',name:'Pièces détachées',count:'262 annonces'}],
+ticker_items:[],
+desc_:"",
+desc_:"",
+desc_:"",
+desc_:"",
+desc_:"",
+desc_:"",
+desc_:"",
+negotiable:'Prix négociable',firm:'Prix ferme',offers:'Offres bienvenues',fixed:'Prix fixe',leasing:'Leasing possible',badge_sold2:'Vendu'},
+de:{nav_listings:'Anzeigen',nav_categories:'Kategorien',nav_pricing:'Preise',nav_alerts:'Benachrichtigungen',btn_post:'Anzeige aufgeben',hero_eyebrow:'Europas Nr. 1 Flugzeugmarktplatz',hero_h1:'Finden Sie<br>Ihr <em>perfektes</em><br>Flugzeug',hero_sub:'Von Trainingsflugzeugen bis Business-Jets — kaufen und verkaufen ohne Provision.',search_placeholder:'Marke, Modell oder Typ…',budget_placeholder:'Max. Budget (€)',search_btn:'Suchen',cat_all:'Alle Kategorien',cat_light:'Leichtflugzeuge',cat_jet:'Geschäftsreisejets',cat_turbo:'Turboprops',cat_heli:'Hubschrauber',cat_ulm:'Ultraleicht / ULM',cat_airliner:'Verkehrsflugzeuge',filter_all:'Alle',scroll_hint:'Scrollen',stat_listings:'Aktive Anzeigen',stat_sellers:'Verifizierte Verkäufer',stat_countries:'Länder',stat_satisfaction:'Zufriedenheit',stat_today:'Neu heute',recent_title:'Neueste <em>Anzeigen</em>',cat_section_title:'Nach <em>Kategorie</em>',see_all:'Alle ansehen →',see_pricing:'Preise →',load_more:'Mehr laden',trust_title:'Warum <em>Aircraft2Sell</em>?',steps_title:'So <em>funktioniert</em> es',alert_title:'Nie Ihr <em>Traumflugzeug</em> verpassen',alert_sub:'Erstellen Sie einen Alert und erhalten Sie eine E-Mail, sobald ein passendes Flugzeug erscheint.',alert_placeholder:'Ihre E-Mail…',alert_btn:'Alert erstellen',alert_note:'Kostenlos · Kein Spam · Jederzeit kündbar',seller_verified:'Verifizierter Verkäufer',modal_model:'Marke / Modell',modal_year:'Jahr',modal_hours:'Gesamtstunden',modal_location:'Standort',modal_reg:'Kennzeichen',modal_docs:'Dokumente',modal_contact:'Verkäufer kontaktieren',modal_save:'Speichern',badge_new:'Neu',badge_urgent:'Dringend',badge_premium:'Premium',badge_sold:'Verkauft',feat_label:'⭐ Empfohlen',feat_pax:'8 Passagiere',footer_desc:'Der führende europäische Marktplatz für Flugzeuge.',footer_col1:'Entdecken',footer_col2:'Verkaufen',footer_col3:'Unternehmen',footer_sold:'Kürzlich verkauft',footer_guide:'Käuferratgeber',footer_finance:'Finanzierung',footer_about:'Über uns',footer_contact:'Kontakt',footer_legal:'Impressum',footer_privacy:'Datenschutz',footer_copy:'© 2026 Aircraft2Sell — Alle Rechte vorbehalten',toast_soon:'Bald verfügbar!',toast_search:'Suche…',toast_loading:'Laden…',toast_sent:'Gesendet!',toast_saved:'Gespeichert!',toast_alert:'Alert erstellt!',toast_fav_add:'Favorit!',toast_fav_remove:'Entfernt',empty_title:'Noch keine Anzeigen',empty_sub:'Seien Sie der Erste, der ein Flugzeug auf Aircraft2Sell inseriert.',urgency_views:' ansehen',urgency_fav:' gespeichert',urgency_new:'Eingestellt ',
+trust_items:[{icon:'🔒',title:'Verifizierte Verkäufer',desc:'Jeder professionelle Verkäufer wird manuell überprüft.'},{icon:'🚫',title:'Keine Provision',desc:'Wir erheben niemals eine Provision auf Ihren Verkauf.'},{icon:'🌍',title:'38 Länder',desc:'Käufer und Verkäufer in ganz Europa.'},{icon:'✈️',title:'Luftfahrt-Experten',desc:'Unser Team besteht aus Piloten und Fachleuten.'}],
+steps:[{num:'01',title:'Konto erstellen',desc:'In 2 Minuten. E-Mail-Verifizierung inklusive.'},{num:'02',title:'Inserat aufgeben',desc:'Daten eingeben, Fotos hochladen, Preis festlegen.'},{num:'03',title:'Kontakte erhalten',desc:'Qualifizierte Käufer kontaktieren Sie direkt.'},{num:'04',title:'Abschluss',desc:'Konditionen vereinbaren und Transaktion abschließen.'}],
+cats:[{icon:'🛩',name:'Leichtflugzeuge',count:'1.243 Anzeigen'},{icon:'🚁',name:'Hubschrauber',count:'387 Anzeigen'},{icon:'✈️',name:'Geschäftsreisejets',count:'156 Anzeigen'},{icon:'🌀',name:'Turboprops',count:'298 Anzeigen'},{icon:'🪂',name:'Ultraleicht',count:'412 Anzeigen'},{icon:'🛫',name:'Verkehrsflugzeuge',count:'89 Anzeigen'},{icon:'🔧',name:'Ersatzteile',count:'262 Anzeigen'}],
+ticker_items:[],
+desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
+negotiable:'Verhandelbar',firm:'Fester Preis',offers:'Angebote willkommen',fixed:'Festpreis',leasing:'Leasing möglich',badge_sold2:'Verkauft'},
+es:{nav_listings:'Anuncios',nav_categories:'Categorías',nav_pricing:'Tarifas',nav_alerts:'Alertas',btn_post:'Publicar anuncio',hero_eyebrow:'El marketplace aeronáutico nº 1 en Europa',hero_h1:'Encuentra<br>tu <em>avión</em><br>ideal',hero_sub:'Desde monomotores hasta jets ejecutivos — compra y vende sin comisión, nunca.',search_placeholder:'Marca, modelo o tipo…',budget_placeholder:'Presupuesto máx. (€)',search_btn:'Buscar',cat_all:'Todas las categorías',cat_light:'Aviones ligeros',cat_jet:'Jets ejecutivos',cat_turbo:'Turbohélices',cat_heli:'Helicópteros',cat_ulm:'Ultraligero / ULM',cat_airliner:'Aeronaves comerciales',filter_all:'Todos',scroll_hint:'Desplázate',stat_listings:'Anuncios activos',stat_sellers:'Vendedores verificados',stat_countries:'Países',stat_satisfaction:'Satisfacción',stat_today:'Nuevos hoy',recent_title:'Últimos <em>anuncios</em>',cat_section_title:'Explorar por <em>categoría</em>',see_all:'Ver todos →',see_pricing:'Ver tarifas →',load_more:'Ver más',trust_title:'¿Por qué <em>Aircraft2Sell</em>?',steps_title:'¿Cómo <em>funciona</em>?',alert_title:'No te pierdas tu <em>avión ideal</em>',alert_sub:'Crea una alerta gratuita y recibe un email cuando aparezca un avión con tus criterios.',alert_placeholder:'Tu email…',alert_btn:'Crear alerta',alert_note:'Gratis · Sin spam · Cancela cuando quieras',seller_verified:'Vendedor verificado',modal_model:'Marca / Modelo',modal_year:'Año',modal_hours:'Horas totales',modal_location:'Ubicación',modal_reg:'Matrícula',modal_docs:'Documentación',modal_contact:'Contactar vendedor',modal_save:'Guardar',badge_new:'Nuevo',badge_urgent:'Urgente',badge_premium:'Premium',badge_sold:'Vendido',feat_label:'⭐ Destacado',feat_pax:'8 pasajeros',footer_desc:'El marketplace europeo líder para compra y venta de aeronaves.',footer_col1:'Explorar',footer_col2:'Vender',footer_col3:'Empresa',footer_sold:'Vendidos recientemente',footer_guide:'Guía del comprador',footer_finance:'Financiación',footer_about:'Acerca de',footer_contact:'Contacto',footer_legal:'Aviso legal',footer_privacy:'Privacidad',footer_copy:'© 2026 Aircraft2Sell — Todos los derechos reservados',toast_soon:'¡Próximamente!',toast_search:'Buscando…',toast_loading:'Cargando…',toast_sent:'¡Mensaje enviado!',toast_saved:'¡Guardado!',toast_alert:'¡Alerta creada!',toast_fav_add:'¡Favorito!',toast_fav_remove:'Eliminado',empty_title:'Todavía no hay anuncios',empty_sub:'Sé el primero en publicar tu aeronave en Aircraft2Sell.',urgency_views:' viendo',urgency_fav:' guardados',urgency_new:'Publicado ',
+trust_items:[{icon:'🔒',title:'Vendedores verificados',desc:'Cada vendedor profesional es verificado manualmente.'},{icon:'🚫',title:'Sin comisión',desc:'Nunca cobramos comisión sobre tu venta.'},{icon:'🌍',title:'38 países',desc:'Compradores y vendedores en toda Europa.'},{icon:'✈️',title:'Especialistas',desc:'Nuestro equipo está formado por pilotos y profesionales.'}],
+steps:[{num:'01',title:'Crea tu cuenta',desc:'Regístrate en 2 minutos.'},{num:'02',title:'Publica tu anuncio',desc:'Datos, fotos, precio.'},{num:'03',title:'Recibe contactos',desc:'Compradores serios te escriben.'},{num:'04',title:'Cierra la venta',desc:'Acuerda términos y firma.'}],
+cats:[{icon:'🛩',name:'Aviones ligeros',count:'1.243 anuncios'},{icon:'🚁',name:'Helicópteros',count:'387 anuncios'},{icon:'✈️',name:'Jets ejecutivos',count:'156 anuncios'},{icon:'🌀',name:'Turbohélices',count:'298 anuncios'},{icon:'🪂',name:'Ultraligero',count:'412 anuncios'},{icon:'🛫',name:'Aeronaves comerciales',count:'89 anuncios'},{icon:'🔧',name:'Repuestos',count:'262 anuncios'}],
+ticker_items:[],
+desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
+negotiable:'Precio negociable',firm:'Precio fijo',offers:'Se aceptan ofertas',fixed:'Precio fijo',leasing:'Leasing disponible',badge_sold2:'Vendido'},
+zh:{nav_listings:'列表',nav_categories:'分类',nav_pricing:'定价',nav_alerts:'提醒',btn_post:'发布广告',hero_eyebrow:'欧洲第一航空器交易平台',hero_h1:'寻找您的<br><em>理想</em><br>飞机',hero_sub:'从训练单发机到商务喷气机 — 零佣金买卖，永远如此。',search_placeholder:'品牌、型号或类型…',budget_placeholder:'最高预算（€）',search_btn:'搜索',cat_all:'全部类别',cat_light:'轻型飞机',cat_jet:'公务机',cat_turbo:'涡桨飞机',cat_heli:'直升机',cat_ulm:'超轻型飞机',cat_airliner:'客机',filter_all:'全部',scroll_hint:'滚动探索',stat_listings:'在售广告',stat_sellers:'认证卖家',stat_countries:'覆盖国家',stat_satisfaction:'满意度',stat_today:'今日新增',recent_title:'最新<em>广告</em>',cat_section_title:'按<em>类别</em>浏览',see_all:'查看全部 →',see_pricing:'查看定价 →',load_more:'加载更多',trust_title:'为什么选择<em>Aircraft2Sell</em>？',steps_title:'如何<em>运作</em>',alert_title:'永不错过您的<em>理想飞机</em>',alert_sub:'创建免费提醒，一旦有匹配飞机上架立即收到邮件。',alert_placeholder:'您的邮箱…',alert_btn:'创建提醒',alert_note:'免费 · 无垃圾邮件 · 随时取消',seller_verified:'认证卖家',modal_model:'品牌 / 型号',modal_year:'年份',modal_hours:'总飞行时间',modal_location:'所在地',modal_reg:'注册号',modal_docs:'文件',modal_contact:'联系卖家',modal_save:'收藏广告',badge_new:'新发布',badge_urgent:'紧急',badge_premium:'高端',badge_sold:'已售',feat_label:'⭐ 精选',feat_pax:'8名乘客',footer_desc:'欧洲领先的飞机买卖交易平台，深受飞行员和航空专业人士信赖。',footer_col1:'浏览',footer_col2:'出售',footer_col3:'公司',footer_sold:'近期成交',footer_guide:'买家指南',footer_finance:'融资方案',footer_about:'关于我们',footer_contact:'联系我们',footer_legal:'法律声明',footer_privacy:'隐私政策',footer_copy:'© 2026 Aircraft2Sell — 版权所有',toast_soon:'功能即将上线！',toast_search:'搜索中…',toast_loading:'加载中…',toast_sent:'消息已发送！',toast_saved:'已收藏！',toast_alert:'提醒已创建！',toast_fav_add:'已添加！',toast_fav_remove:'已移除',empty_title:'暂无广告',empty_sub:'成为第一个在Aircraft2Sell发布飞机广告的卖家。',urgency_views:'人查看',urgency_fav:'次收藏',urgency_new:'发布于',
+trust_items:[{icon:'🔒',title:'认证卖家',desc:'每位专业卖家均经过人工审核。'},{icon:'🚫',title:'零佣金',desc:'我们从不在您的成交中收取任何佣金。'},{icon:'🌍',title:'覆盖38国',desc:'欧洲及中东各地买卖双方。'},{icon:'✈️',title:'航空专业团队',desc:'由飞行员和航空专业人士组成的团队。'}],
+steps:[{num:'01',title:'创建账户',desc:'2分钟完成注册。'},{num:'02',title:'发布广告',desc:'填写信息，上传照片，设定价格。'},{num:'03',title:'接收联系',desc:'合格买家通过安全消息联系您。'},{num:'04',title:'完成交易',desc:'商定条款，安排检验，成交。'}],
+cats:[{icon:'🛩',name:'轻型飞机',count:'1,243条'},{icon:'🚁',name:'直升机',count:'387条'},{icon:'✈️',name:'公务机',count:'156条'},{icon:'🌀',name:'涡桨飞机',count:'298条'},{icon:'🪂',name:'超轻型',count:'412条'},{icon:'🛫',name:'客机',count:'89条'},{icon:'🔧',name:'备用零件',count:'262条'}],
+ticker_items:[],
+desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
+negotiable:'价格可议',firm:'定价出售',offers:'欢迎出价',fixed:'固定价格',leasing:'可融资租赁',badge_sold2:'已售'}
+};
+
+const LISTINGS = [];
+
+let lang='en';
+function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
+
+function renderTicker(){
+  const items=t('ticker_items');
+  if(!items||!items.length){document.getElementById('ticker').innerHTML='<div class="ticker-item"><div class="ticker-dot"></div><span>No listings yet — be the first to post!</span></div>';return;}
+  const dbl=[...items,...items];
+  document.getElementById('ticker').innerHTML=dbl.map(i=>`<div class="ticker-item"><div class="ticker-dot"></div><span>${i}</span></div>`).join('');
+}
+
+function renderListings(){
+  const g=document.getElementById('listingsGrid');
+  if(!g) return;
+  if(LISTINGS.length === 0){
+    // Show skeleton loaders while waiting for DB
+    g.innerHTML = Array(6).fill(0).map(()=>`
+      <div class="card" style="pointer-events:none">
+        <div class="card-img" style="background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite"></div>
+        <div class="card-body" style="gap:.6rem">
+          <div style="height:10px;width:60%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
+          <div style="height:14px;width:85%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
+          <div style="height:10px;width:50%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
+          <div style="margin-top:auto;padding-top:.8rem;border-top:1px solid var(--border);display:flex;justify-content:space-between">
+            <div style="height:20px;width:35%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
+            <div style="height:10px;width:20%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px;align-self:center"></div>
+          </div>
+        </div>
+      </div>`).join('');
+    /* SUPABASE: replace skeletons with real data:
+       const { data } = await supabase.from('listings').select('*').eq('status','approved').order('created_at',{ascending:false}).limit(6);
+       LISTINGS.push(...data); renderListings(); */
+    return;
+  }
+  g.innerHTML='';
+  LISTINGS.forEach(l=>{
+    if(l.featured){ const d=document.createElement('div'); d.className='featured-banner'; d.onclick=()=>openModal(l.id); d.innerHTML=`<div class="feat-label">${t('feat_label')}</div><div class="feat-info"><div class="card-cat">${t(l.catDisp)}</div><div class="feat-title">${l.title}</div><div class="feat-specs"><span class="spec">📅 ${l.year} · ${l.hours}</span><span class="spec">🛫 ${l.loc}</span><span class="spec">🪑 ${t('feat_pax')}</span></div></div><div class="feat-price">${l.price}</div>`; g.appendChild(d); return; }
+    const c=document.createElement('div'); c.className='card'; c.onclick=()=>openModal(l.id);
+    c.innerHTML=`<div class="card-img"><div class="plane-bg">${l.icon}</div>${l.badge?`<span class="badge ${l.badge}">${t(l.badgeKey)}</span>`:''}<button class="fav${l.liked?' liked':''}" onclick="event.stopPropagation();toggleFav(this)">${l.liked?'♥':'♡'}</button><div class="urgency"><span class="urgency-dot"></span>${l.views}${t('urgency_views')} · ${l.favs}${t('urgency_fav')}</div></div><div class="card-body"><div class="card-cat">${t(l.catDisp)}</div><div class="card-title">${l.title}</div><div class="card-specs"><span class="spec">📅 ${l.year}</span><span class="spec">⏱ ${l.hours}</span></div><div class="trust-chip">✓ ${t('seller_verified')}</div><div class="card-ft"><div><div class="price">${l.price}</div><div class="price-sub">${t(l.priceSub)}</div></div><div class="loc">📍 ${l.loc}</div></div></div>`;
+    g.appendChild(c);
+  });
+}
+
+function renderCats(){
+  document.getElementById('catGrid').innerHTML=t('cats').map(c=>
+    `<div class="cat-card" onclick="showToast(t('toast_search'))">
+      <div class="cat-icon">${c.icon}</div>
+      <div class="cat-name">${c.name}</div>
+      <div class="cat-count">${c.count}</div>
+    </div>`).join('');
+}
+
+function renderTrust(){
+  document.getElementById('trustGrid').innerHTML=t('trust_items').map(i=>
+    `<div class="trust-item"><div class="t-icon">${i.icon}</div><div><div class="t-title">${i.title}</div><div class="t-desc">${i.desc}</div></div></div>`).join('');
+}
+
+function renderSteps(){
+  const steps=t('steps');
+  document.getElementById('stepsGrid').innerHTML=steps.map((s,i)=>
+    `<div class="step">
+      <div class="step-num">${s.num}</div>
+      <div class="step-title">${s.title}</div>
+      <div class="step-desc">${s.desc}</div>
+      ${i<steps.length-1?'<div style="position:absolute;top:50%;right:-1px;transform:translateY(-50%);width:0;height:0;border-top:12px solid transparent;border-bottom:12px solid transparent;border-left:10px solid var(--border);z-index:1"></div>':''}
+    </div>`).join('');
+}
+
+function openModal(id){
+  const l=LISTINGS.find(x=>x.id===id);if(!l)return;
+  document.getElementById('mTitle').textContent=l.title;
+  document.getElementById('mImg').innerHTML=`<span style="font-size:8rem;opacity:.1">${l.icon}</span><div class="photo-dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>`;
+  document.getElementById('dModel').textContent=l.title;
+  document.getElementById('dYear').textContent=l.year;
+  document.getElementById('dHours').textContent=l.hours;
+  document.getElementById('dLoc').textContent=l.loc;
+  document.getElementById('dReg').textContent=l.reg;
+  document.getElementById('dDoc').textContent=l.doc;
+  document.getElementById('mDesc').textContent=t(l.desc);
+  document.getElementById('mSeller').textContent=l.seller;
+  const urg=document.getElementById('mUrg');
+  if(l.id!=='c6'){
+    urg.style.display='flex';
+    urg.innerHTML=`<div class="urg-item">👁 <strong>${l.views}</strong> ${t('urgency_views')}</div><div class="urg-item">♡ <strong>${l.favs}</strong> ${t('urgency_fav')}</div><div class="urg-item">🕐 ${t('urgency_new')}${l.daysAgo===0?'today':l.daysAgo+'d ago'}</div>`;
+  }else{urg.style.display='none';}
+  document.querySelectorAll('#modal [data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'));});
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';}
+function closeOut(e){if(e.target===document.getElementById('modal'))closeModal();}
+function qFilter(b){document.querySelectorAll('.qf').forEach(x=>x.classList.remove('active'));b.classList.add('active');}
+function toggleFav(btn){btn.classList.toggle('liked');btn.textContent=btn.classList.contains('liked')?'♥':'♡';showToast(t(btn.classList.contains('liked')?'toast_fav_add':'toast_fav_remove'));}
+function submitAlert(){const v=document.getElementById('alertEmail').value;if(v&&v.includes('@')){showToast(t('toast_alert'));document.getElementById('alertEmail').value='';}else showToast('⚠ Please enter a valid email');}
+let tt;
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),3000);}
+
+function setLang(l){
+  lang=l;document.documentElement.lang=l;
+  document.querySelectorAll('.lb').forEach(b=>{b.classList.toggle('active',b.getAttribute('onclick').includes("'"+l+"'"));});
+  document.querySelectorAll('.footer-langs button').forEach(b=>{b.classList.toggle('active',b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase()));});
+  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'));});
+  document.getElementById('searchInput').placeholder=t('search_placeholder');
+  document.getElementById('budgetInput').placeholder=t('budget_placeholder');
+  document.getElementById('alertEmail').placeholder=t('alert_placeholder');
+  document.getElementById('heroH1').innerHTML=t('hero_h1');
+  document.getElementById('recentTitle').innerHTML=t('recent_title');
+  document.getElementById('catTitle').innerHTML=t('cat_section_title');
+  document.getElementById('trustTitle').innerHTML=t('trust_title');
+  document.getElementById('stepsTitle').innerHTML=t('steps_title');
+  document.getElementById('alertTitle').innerHTML=t('alert_title');
+  document.title='Aircraft2Sell — '+(l==='en'?'Buy & Sell Aircraft':l==='fr'?"Achat & Vente d'Avions":l==='de'?'Flugzeuge kaufen & verkaufen':l==='es'?'Compra & Venta de Aeronaves':'飞机买卖平台');
+  renderTicker();renderListings();renderCats();renderTrust();renderSteps();
+}
+
+function animCount(el,target){let c=0;const s=Math.ceil(target/60);const i=setInterval(()=>{c=Math.min(c+s,target);el.textContent=c.toLocaleString();if(c>=target)clearInterval(i);},22);}
+window.addEventListener('load',()=>{setTimeout(()=>{animCount(document.getElementById('sn1'),0);animCount(document.getElementById('sn2'),0);animCount(document.getElementById('sn3'),0);animCount(document.getElementById('sn4'),0);},500);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+setLang('en');
+</script>
+</body>
+</html>

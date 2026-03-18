@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aircraft2Sell — Post a Listing</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#5a7490;--white:#f0f4f8;--card:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.12);--green:#22c55e;--red:#ef4444}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(1px 1px at 15% 20%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(2px 2px at 75% 70%,rgba(255,255,255,.3) 0%,transparent 100%)}
+nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);height:60px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.1em;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:.4rem}
+.logo span{color:var(--accent)}.logo-icon{animation:flt 4s ease-in-out infinite;display:inline-block;transform:rotate(-10deg)}
+@keyframes flt{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-3px)}}
+.lang-sw{display:flex;gap:2px}.lb{background:none;border:none;color:var(--mist);font-size:.7rem;font-weight:600;padding:.2rem .4rem;cursor:pointer;transition:all .15s}.lb.active{background:var(--accent);color:var(--deep)}
+.page-wrap{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:2.5rem 1.5rem;display:grid;grid-template-columns:1fr 320px;gap:2rem;align-items:start}
+@media(max-width:800px){.page-wrap{grid-template-columns:1fr}}
+/* PROGRESS */
+.progress-bar{background:var(--card);border:1px solid var(--border);padding:1.2rem 1.5rem;margin-bottom:1.5px;display:flex;align-items:center;gap:.5rem}
+.step-dot{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:600;color:var(--mist);flex-shrink:0;transition:all .3s}
+.step-dot.done{background:var(--green);border-color:var(--green);color:#fff}
+.step-dot.active{background:var(--accent);border-color:var(--accent);color:var(--deep)}
+.step-line{flex:1;height:1px;background:var(--border)}
+.step-line.done{background:var(--green)}
+/* FORM */
+.form-section{background:var(--card);border:1px solid var(--border);padding:1.5rem;margin-bottom:1.5px}
+.section-title-form{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.08em;color:var(--white);margin-bottom:.3rem;display:flex;align-items:center;gap:.6rem}
+.section-sub{font-size:.78rem;color:var(--mist);margin-bottom:1.3rem}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.form-grid.col3{grid-template-columns:1fr 1fr 1fr}
+.span2{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:.35rem}
+.form-label{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mist);font-weight:500}
+.form-label span.req{color:var(--accent)}
+.form-input{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);padding:.75rem .9rem;font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s;width:100%}
+.form-input:focus{border-color:var(--accent)}
+.form-input::placeholder{color:var(--mist2)}
+select.form-input option{background:var(--card)}
+textarea.form-input{resize:vertical;min-height:120px;line-height:1.6}
+/* PHOTO UPLOAD */
+.photo-upload-zone{border:2px dashed var(--border);padding:2rem;text-align:center;cursor:pointer;transition:all .3s;position:relative}
+.photo-upload-zone:hover,.photo-upload-zone.dragging{border-color:var(--accent);background:rgba(232,160,32,.04)}
+.upload-icon{font-size:2.5rem;margin-bottom:.6rem;opacity:.5}
+.upload-text{font-size:.85rem;color:var(--mist);line-height:1.6}
+.upload-hint{font-size:.72rem;color:var(--mist2);margin-top:.3rem}
+#fileInput{display:none}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.6rem;margin-top:1rem}
+.photo-thumb{aspect-ratio:4/3;background:var(--horizon);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.5rem;position:relative;overflow:hidden}
+.photo-thumb img{width:100%;height:100%;object-fit:cover}
+.photo-del{position:absolute;top:.2rem;right:.2rem;background:rgba(239,68,68,.8);border:none;color:#fff;width:20px;height:20px;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.photo-main-badge{position:absolute;bottom:.2rem;left:.2rem;background:var(--accent);color:var(--deep);font-size:.58rem;letter-spacing:.1em;padding:.1rem .35rem;font-weight:700;text-transform:uppercase}
+/* PLAN REMINDER */
+.plan-reminder{background:rgba(232,160,32,.07);border:1px solid rgba(232,160,32,.25);padding:.9rem 1.1rem;font-size:.78rem;color:var(--mist);line-height:1.6;margin-bottom:1rem}
+.plan-reminder strong{color:var(--accent)}
+/* PREVIEW SIDEBAR */
+.preview-card{background:var(--card);border:1px solid var(--border);position:sticky;top:75px}
+.preview-header{background:var(--horizon);padding:1rem 1.2rem;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.1em;color:var(--mist);display:flex;align-items:center;gap:.5rem}
+.preview-img{height:160px;background:linear-gradient(135deg,#0d2847,#1a3a5c);display:flex;align-items:center;justify-content:center;font-size:4rem;color:rgba(255,255,255,.15);position:relative}
+.preview-body{padding:1.2rem}
+.preview-cat{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem}
+.preview-title{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.04em;color:var(--white);margin-bottom:.6rem}
+.preview-specs{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.8rem}
+.preview-spec{font-size:.76rem;color:var(--mist);display:flex;align-items:center;gap:.4rem}
+.preview-price{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--gold)}
+.preview-loc{font-size:.74rem;color:var(--mist);margin-top:.2rem}
+/* CHECKLIST */
+.checklist{list-style:none;display:flex;flex-direction:column;gap:.5rem;padding:1rem 1.2rem;border-top:1px solid var(--border)}
+.check-item{display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--mist)}
+.check-icon{font-size:.8rem;width:16px;text-align:center}
+.check-item.ok .check-icon::before{content:'✓';color:var(--green)}
+.check-item.nok .check-icon::before{content:'○';color:var(--border)}
+/* SUBMIT */
+.form-actions{display:flex;gap:.8rem;margin-top:.5rem;flex-wrap:wrap}
+.btn-submit{flex:1;background:var(--accent);color:var(--deep);border:none;padding:1rem 1.5rem;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:.1em;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:.6rem}
+.btn-submit:hover{background:var(--gold)}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed}
+.btn-draft{flex:1;background:transparent;color:var(--mist);border:1px solid var(--border);padding:1rem;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:.1em;cursor:pointer;transition:all .2s}
+.btn-draft:hover{border-color:var(--accent);color:var(--accent)}
+.spinner{width:16px;height:16px;border:2px solid rgba(6,11,21,.3);border-top-color:var(--deep);border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn-submit.loading .spinner{display:block}.btn-submit.loading .btn-lbl{display:none}
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);padding:.9rem 1.4rem;color:var(--white);font-size:.86rem;z-index:999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}.form-grid.col3{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="homepage.html" class="logo"><span class="logo-icon">✈</span>Aircraft2<span>Sell</span></a>
+  <div style="display:flex;align-items:center;gap:1rem">
+    <div class="lang-sw">
+      <button class="lb active" onclick="setLang('en')">EN</button>
+      <button class="lb" onclick="setLang('fr')">FR</button>
+      <button class="lb" onclick="setLang('de')">DE</button>
+      <button class="lb" onclick="setLang('es')">ES</button>
+      <button class="lb" onclick="setLang('zh')">中文</button>
+    </div>
+    <a href="dashboard.html" style="color:var(--mist);font-size:.8rem;text-decoration:none;letter-spacing:.08em;text-transform:uppercase">← <span data-i18n="back_dash">Dashboard</span></a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div>
+    <!-- PROGRESS -->
+    <div class="progress-bar">
+      <div class="step-dot done" id="step1">1</div>
+      <div class="step-line done"></div>
+      <div class="step-dot active" id="step2">2</div>
+      <div class="step-line"></div>
+      <div class="step-dot" id="step3">3</div>
+      <div class="step-line"></div>
+      <div class="step-dot" id="step4">4</div>
+    </div>
+
+    <!-- SECTION 1: Aircraft Identity -->
+    <div class="form-section">
+      <div class="section-title-form">✈ <span data-i18n="sec1_title">Aircraft identity</span></div>
+      <p class="section-sub" data-i18n="sec1_sub">Basic identification details about your aircraft.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_category">Category</span> <span class="req">*</span></label>
+          <select class="form-input" id="fCategory" onchange="updatePreview()">
+            <option value="">—</option>
+            <option value="light" data-i18n="cat_light">Light aircraft</option>
+            <option value="jet" data-i18n="cat_jet">Business jet</option>
+            <option value="turbo" data-i18n="cat_turbo">Turboprop</option>
+            <option value="heli" data-i18n="cat_heli">Helicopter</option>
+            <option value="ulm" data-i18n="cat_ulm">Ultralight / ULM</option>
+            <option value="airliner" data-i18n="cat_airliner">Airliner</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_make">Make / Brand</span> <span class="req">*</span></label>
+          <input type="text" class="form-input" id="fMake" placeholder="Cessna" oninput="updatePreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_model">Model</span> <span class="req">*</span></label>
+          <input type="text" class="form-input" id="fModel" placeholder="172 Skyhawk SP" oninput="updatePreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_reg">Registration</span> <span class="req">*</span></label>
+          <input type="text" class="form-input" id="fReg" placeholder="F-GNZX" style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_year">Year</span> <span class="req">*</span></label>
+          <input type="number" class="form-input" id="fYear" placeholder="2015" min="1940" max="2026" oninput="updatePreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_serial">Serial number</span></label>
+          <input type="text" class="form-input" id="fSerial" placeholder="17276543">
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: Technical Specs -->
+    <div class="form-section">
+      <div class="section-title-form">⚙ <span data-i18n="sec2_title">Technical specifications</span></div>
+      <p class="section-sub" data-i18n="sec2_sub">Airframe, engine and avionics details.</p>
+      <div class="form-grid col3">
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_tt">Total time (h TT)</span> <span class="req">*</span></label>
+          <input type="number" class="form-input" id="fTT" placeholder="3420" oninput="updatePreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_smoh">SMOH (h)</span></label>
+          <input type="number" class="form-input" id="fSMOH" placeholder="420">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_prop">Propeller hours</span></label>
+          <input type="number" class="form-input" id="fProp" placeholder="420">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_engines">Engine(s)</span></label>
+          <input type="text" class="form-input" id="fEngines" placeholder="Lycoming IO-360">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_seats">Seats</span></label>
+          <input type="number" class="form-input" id="fSeats" placeholder="4" min="1" max="200">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_range">Range (nm)</span></label>
+          <input type="number" class="form-input" id="fRange" placeholder="800">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:1rem">
+        <div class="form-group">
+          <label class="form-label" data-i18n="lbl_avionics">Avionics</label>
+          <input type="text" class="form-input" id="fAvionics" placeholder="Garmin G1000, Autopilot">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="lbl_equipment">Equipment / Options</label>
+          <input type="text" class="form-input" id="fEquip" placeholder="De-icing, RVSM, ADS-B">
+        </div>
+      </div>
+      <!-- Checkboxes -->
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:1rem">
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--mist);cursor:pointer">
+          <input type="checkbox" id="chkIFR" style="accent-color:var(--accent)"> <span data-i18n="chk_ifr">IFR certified</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--mist);cursor:pointer">
+          <input type="checkbox" id="chkRVSM" style="accent-color:var(--accent)"> <span data-i18n="chk_rvsm">RVSM approved</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--mist);cursor:pointer">
+          <input type="checkbox" id="chkADSB" style="accent-color:var(--accent)"> <span data-i18n="chk_adsb">ADS-B out</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--mist);cursor:pointer">
+          <input type="checkbox" id="chkLogs" style="accent-color:var(--accent)"> <span data-i18n="chk_logs">All logbooks available</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- SECTION 3: Location & Price -->
+    <div class="form-section">
+      <div class="section-title-form">📍 <span data-i18n="sec3_title">Location & price</span></div>
+      <p class="section-sub" data-i18n="sec3_sub">Where is the aircraft based and what is your asking price?</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_country">Country</span> <span class="req">*</span></label>
+          <select class="form-input" id="fCountry" onchange="updatePreview()">
+            <option value="FR">🇫🇷 France</option>
+            <option value="DE">🇩🇪 Germany</option>
+            <option value="ES">🇪🇸 Spain</option>
+            <option value="IT">🇮🇹 Italy</option>
+            <option value="BE">🇧🇪 Belgium</option>
+            <option value="NL">🇳🇱 Netherlands</option>
+            <option value="CH">🇨🇭 Switzerland</option>
+            <option value="GB">🇬🇧 United Kingdom</option>
+            <option value="OTHER">🌍 Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_airport">Base airport (ICAO)</span> <span class="req">*</span></label>
+          <input type="text" class="form-input" id="fAirport" placeholder="LFLY" style="text-transform:uppercase" oninput="updatePreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-i18n="lbl_price">Asking price (€)</span> <span class="req">*</span></label>
+          <input type="number" class="form-input" id="fPrice" placeholder="189000" oninput="updatePreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="lbl_price_type">Price type</label>
+          <select class="form-input" id="fPriceType">
+            <option value="negotiable" data-i18n="pt_negotiable">Negotiable</option>
+            <option value="firm" data-i18n="pt_firm">Firm price</option>
+            <option value="leasing" data-i18n="pt_leasing">Leasing available</option>
+            <option value="offers" data-i18n="pt_offers">Offers welcome</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: Description -->
+    <div class="form-section">
+      <div class="section-title-form">📝 <span data-i18n="sec4_title">Description</span></div>
+      <p class="section-sub" data-i18n="sec4_sub">Describe your aircraft. Be specific about recent work, maintenance, and why you are selling.</p>
+      <div class="form-group span2">
+        <label class="form-label"><span data-i18n="lbl_desc">Description</span> <span class="req">*</span></label>
+        <textarea class="form-input" id="fDesc" placeholder="" data-i18n-placeholder="desc_placeholder"></textarea>
+        <div style="font-size:.7rem;color:var(--mist2);margin-top:.3rem;text-align:right"><span id="charCount">0</span> / 2000</div>
+      </div>
+      <div class="form-group span2" style="margin-top:.5rem">
+        <label class="form-label" data-i18n="lbl_docs">Documents available</label>
+        <input type="text" class="form-input" id="fDocs" placeholder="Airworthiness certificate, logbooks, EASA Form 1…">
+      </div>
+    </div>
+
+    <!-- SECTION 5: Photos -->
+    <div class="form-section">
+      <div class="section-title-form">📸 <span data-i18n="sec5_title">Photos</span></div>
+      <p class="section-sub" id="photoSub">Upload up to 5 photos (Essential plan). <a href="checkout.html?plan=boost" style="color:var(--accent)">Upgrade to Boost for 20 photos →</a></p>
+
+      <div class="plan-reminder" id="planReminder">
+        <strong data-i18n="plan_reminder_title">Essential plan:</strong>
+        <span data-i18n="plan_reminder_text"> 5 photos max. Upgrade to Boost for 20 photos, featured placement and social media boost.</span>
+      </div>
+
+      <div class="photo-upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFiles(event)">
+        <div class="upload-icon">📷</div>
+        <div class="upload-text" data-i18n="upload_text">Click to upload or drag & drop photos</div>
+        <div class="upload-hint" data-i18n="upload_hint">JPG, PNG — Max 10 MB per photo — First photo will be the main image</div>
+        <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)">
+      </div>
+      <div class="photo-grid" id="photoGrid"></div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="form-section">
+      <div class="form-actions">
+        <button class="btn-draft" onclick="saveDraft()" data-i18n="btn_draft">Save draft</button>
+        <button class="btn-submit" id="submitBtn" onclick="submitListing()">
+          <span class="btn-lbl" data-i18n="btn_submit">Publish listing</span>
+          <div class="spinner"></div>
+        </button>
+      </div>
+      <p style="font-size:.72rem;color:var(--mist2);margin-top:.8rem;text-align:center" data-i18n="submit_note">Your listing will be reviewed and published within a few minutes.</p>
+    </div>
+  </div>
+
+  <!-- PREVIEW SIDEBAR -->
+  <div class="preview-card">
+    <div class="preview-header">👁 <span data-i18n="preview_title">Live preview</span></div>
+    <div class="preview-img" id="previewImg">✈</div>
+    <div class="preview-body">
+      <div class="preview-cat" id="previewCat">—</div>
+      <div class="preview-title" id="previewTitle">Your aircraft title</div>
+      <div class="preview-specs">
+        <div class="preview-spec" id="prevYear">📅 —</div>
+        <div class="preview-spec" id="prevTT">⏱ —</div>
+        <div class="preview-spec" id="prevAirport">📍 —</div>
+      </div>
+      <div class="preview-price" id="prevPrice">€ —</div>
+      <div class="preview-loc" id="prevLoc">—</div>
+    </div>
+    <ul class="checklist" id="checklist"></ul>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const T={
+  en:{back_dash:'Dashboard',sec1_title:'Aircraft identity',sec1_sub:'Basic identification details about your aircraft.',sec2_title:'Technical specifications',sec2_sub:'Airframe, engine and avionics details.',sec3_title:'Location & price',sec3_sub:'Where is the aircraft based and what is your asking price?',sec4_title:'Description',sec4_sub:'Describe your aircraft. Be specific about recent maintenance and why you are selling.',sec5_title:'Photos',lbl_category:'Category',lbl_make:'Make / Brand',lbl_model:'Model',lbl_reg:'Registration',lbl_year:'Year',lbl_serial:'Serial number',lbl_tt:'Total time (h TT)',lbl_smoh:'SMOH (h)',lbl_prop:'Propeller hours',lbl_engines:'Engine(s)',lbl_seats:'Seats',lbl_range:'Range (nm)',lbl_avionics:'Avionics',lbl_equipment:'Equipment / Options',chk_ifr:'IFR certified',chk_rvsm:'RVSM approved',chk_adsb:'ADS-B out',chk_logs:'All logbooks available',lbl_country:'Country',lbl_airport:'Base airport (ICAO)',lbl_price:'Asking price (€)',lbl_price_type:'Price type',pt_negotiable:'Negotiable',pt_firm:'Firm price',pt_leasing:'Leasing available',pt_offers:'Offers welcome',lbl_desc:'Description',desc_placeholder:'Describe the condition, recent maintenance, avionics upgrades, reason for selling…',lbl_docs:'Documents available',plan_reminder_title:'Essential plan:',plan_reminder_text:' 5 photos max. Upgrade to Boost for 20 photos.',upload_text:'Click to upload or drag & drop photos',upload_hint:'JPG, PNG — Max 10 MB per photo',btn_draft:'Save draft',btn_submit:'Publish listing',submit_note:'Your listing will be reviewed and published within a few minutes.',preview_title:'Live preview',cat_light:'Light aircraft',cat_jet:'Business jet',cat_turbo:'Turboprop',cat_heli:'Helicopter',cat_ulm:'Ultralight / ULM',cat_airliner:'Airliner',toast_draft:'Draft saved!',toast_submit:'Publishing your listing…',toast_success:'Listing published! Redirecting…',chk1:'Category',chk2:'Make & model',chk3:'Registration',chk4:'Year',chk5:'Total hours',chk6:'Location & price',chk7:'Description',chk8:'At least 1 photo'},
+  fr:{back_dash:'Tableau de bord',sec1_title:"Identité de l'aéronef",sec1_sub:"Informations d'identification de base.",sec2_title:'Caractéristiques techniques',sec2_sub:'Détails cellule, moteur et avionique.',sec3_title:'Localisation & prix',sec3_sub:"Où est basé l'avion et quel est votre prix de vente ?",sec4_title:'Description',sec4_sub:"Décrivez votre avion. Soyez précis sur l'entretien récent et la raison de la vente.",sec5_title:'Photos',lbl_category:'Catégorie',lbl_make:'Marque',lbl_model:'Modèle',lbl_reg:'Matricule',lbl_year:'Année',lbl_serial:'Numéro de série',lbl_tt:'Heures totales (h TT)',lbl_smoh:'SMOH (h)',lbl_prop:'Heures hélice',lbl_engines:'Moteur(s)',lbl_seats:'Places',lbl_range:'Autonomie (nm)',lbl_avionics:'Avionique',lbl_equipment:'Équipements / Options',chk_ifr:'Certifié IFR',chk_rvsm:'Approuvé RVSM',chk_adsb:'ADS-B out',chk_logs:'Carnets de route disponibles',lbl_country:'Pays',lbl_airport:"Aéroport de base (ICAO)",lbl_price:'Prix demandé (€)',lbl_price_type:'Type de prix',pt_negotiable:'Prix négociable',pt_firm:'Prix ferme',pt_leasing:'Leasing possible',pt_offers:'Offres bienvenues',lbl_desc:'Description',desc_placeholder:"Décrivez l'état, la maintenance récente, les améliorations avioniques, la raison de la vente…",lbl_docs:'Documents disponibles',plan_reminder_title:'Formule Essentiel :',plan_reminder_text:' 5 photos max. Passez à Boost pour 20 photos.',upload_text:'Cliquez ou glissez-déposez vos photos',upload_hint:'JPG, PNG — 10 Mo max par photo',btn_draft:'Enregistrer le brouillon',btn_submit:"Publier l'annonce",submit_note:"Votre annonce sera vérifiée et publiée en quelques minutes.",preview_title:'Aperçu en direct',cat_light:'Avion léger',cat_jet:"Jet d'affaires",cat_turbo:'Turbopropulseur',cat_heli:'Hélicoptère',cat_ulm:'ULM',cat_airliner:'Avion de ligne',toast_draft:'Brouillon sauvegardé !',toast_submit:"Publication de l'annonce en cours…",toast_success:'Annonce publiée ! Redirection…',chk1:'Catégorie',chk2:'Marque & modèle',chk3:'Matricule',chk4:'Année',chk5:'Heures totales',chk6:'Localisation & prix',chk7:'Description',chk8:'Au moins 1 photo'},
+  de:{back_dash:'Dashboard',sec1_title:'Flugzeugidentität',sec1_sub:'Grundlegende Identifikationsdaten.',sec2_title:'Technische Daten',sec2_sub:'Zelle, Motor und Avionik.',sec3_title:'Standort & Preis',sec3_sub:'Wo ist das Flugzeug stationiert und was ist Ihr Angebotspreis?',sec4_title:'Beschreibung',sec4_sub:'Beschreiben Sie Ihr Flugzeug. Details zu Wartung und Verkaufsgrund.',sec5_title:'Fotos',lbl_category:'Kategorie',lbl_make:'Marke',lbl_model:'Modell',lbl_reg:'Kennzeichen',lbl_year:'Jahr',lbl_serial:'Seriennummer',lbl_tt:'Gesamtstunden (h TT)',lbl_smoh:'SMOH (h)',lbl_prop:'Propellerstunden',lbl_engines:'Motor(en)',lbl_seats:'Sitze',lbl_range:'Reichweite (nm)',lbl_avionics:'Avionik',lbl_equipment:'Ausrüstung / Optionen',chk_ifr:'IFR-zertifiziert',chk_rvsm:'RVSM genehmigt',chk_adsb:'ADS-B out',chk_logs:'Bordbücher verfügbar',lbl_country:'Land',lbl_airport:'Heimatflughafen (ICAO)',lbl_price:'Angebotspreis (€)',lbl_price_type:'Preistyp',pt_negotiable:'Verhandelbar',pt_firm:'Festpreis',pt_leasing:'Leasing möglich',pt_offers:'Angebote willkommen',lbl_desc:'Beschreibung',desc_placeholder:'Zustand, Wartungshistorie, Avionik-Upgrades, Verkaufsgrund…',lbl_docs:'Verfügbare Dokumente',plan_reminder_title:'Basis-Plan:',plan_reminder_text:' Max. 5 Fotos. Upgrade auf Boost für 20 Fotos.',upload_text:'Klicken oder Fotos hierher ziehen',upload_hint:'JPG, PNG — Max. 10 MB pro Foto',btn_draft:'Entwurf speichern',btn_submit:'Inserat veröffentlichen',submit_note:'Ihr Inserat wird geprüft und in wenigen Minuten veröffentlicht.',preview_title:'Live-Vorschau',cat_light:'Leichtflugzeug',cat_jet:'Geschäftsreisejet',cat_turbo:'Turboprop',cat_heli:'Hubschrauber',cat_ulm:'Ultraleicht',cat_airliner:'Verkehrsflugzeug',toast_draft:'Entwurf gespeichert!',toast_submit:'Inserat wird veröffentlicht…',toast_success:'Veröffentlicht! Weiterleitung…',chk1:'Kategorie',chk2:'Marke & Modell',chk3:'Kennzeichen',chk4:'Jahr',chk5:'Gesamtstunden',chk6:'Standort & Preis',chk7:'Beschreibung',chk8:'Mind. 1 Foto'},
+  es:{back_dash:'Panel',sec1_title:'Identidad de la aeronave',sec1_sub:'Datos básicos de identificación.',sec2_title:'Especificaciones técnicas',sec2_sub:'Célula, motor y aviónica.',sec3_title:'Ubicación y precio',sec3_sub:'¿Dónde está basada la aeronave y cuál es tu precio?',sec4_title:'Descripción',sec4_sub:'Describe tu aeronave. Detalla el mantenimiento reciente y el motivo de venta.',sec5_title:'Fotos',lbl_category:'Categoría',lbl_make:'Marca',lbl_model:'Modelo',lbl_reg:'Matrícula',lbl_year:'Año',lbl_serial:'Número de serie',lbl_tt:'Horas totales (h TT)',lbl_smoh:'SMOH (h)',lbl_prop:'Horas hélice',lbl_engines:'Motor(es)',lbl_seats:'Plazas',lbl_range:'Autonomía (nm)',lbl_avionics:'Aviónica',lbl_equipment:'Equipamiento / Opciones',chk_ifr:'Certificado IFR',chk_rvsm:'Aprobado RVSM',chk_adsb:'ADS-B out',chk_logs:'Libros de vuelo disponibles',lbl_country:'País',lbl_airport:'Aeropuerto base (ICAO)',lbl_price:'Precio pedido (€)',lbl_price_type:'Tipo de precio',pt_negotiable:'Negociable',pt_firm:'Precio fijo',pt_leasing:'Leasing disponible',pt_offers:'Se aceptan ofertas',lbl_desc:'Descripción',desc_placeholder:'Estado, mantenimiento reciente, mejoras de aviónica, motivo de venta…',lbl_docs:'Documentos disponibles',plan_reminder_title:'Plan Esencial:',plan_reminder_text:' Máx. 5 fotos. Actualiza a Boost para 20 fotos.',upload_text:'Haz clic o arrastra fotos aquí',upload_hint:'JPG, PNG — Máx. 10 MB por foto',btn_draft:'Guardar borrador',btn_submit:'Publicar anuncio',submit_note:'Tu anuncio será revisado y publicado en pocos minutos.',preview_title:'Vista previa en vivo',cat_light:'Avión ligero',cat_jet:'Jet ejecutivo',cat_turbo:'Turbohélice',cat_heli:'Helicóptero',cat_ulm:'Ultraligero',cat_airliner:'Aeronave comercial',toast_draft:'¡Borrador guardado!',toast_submit:'Publicando tu anuncio…',toast_success:'¡Publicado! Redirigiendo…',chk1:'Categoría',chk2:'Marca y modelo',chk3:'Matrícula',chk4:'Año',chk5:'Horas totales',chk6:'Ubicación y precio',chk7:'Descripción',chk8:'Al menos 1 foto'},
+  zh:{back_dash:'控制台',sec1_title:'飞机身份信息',sec1_sub:'飞机基本识别信息。',sec2_title:'技术规格',sec2_sub:'机身、发动机和航电设备详情。',sec3_title:'位置与价格',sec3_sub:'飞机驻场地点及要价。',sec4_title:'描述',sec4_sub:'描述您的飞机，详述近期维护情况和出售原因。',sec5_title:'照片',lbl_category:'类别',lbl_make:'品牌',lbl_model:'型号',lbl_reg:'注册号',lbl_year:'年份',lbl_serial:'序列号',lbl_tt:'总飞行时间（h TT）',lbl_smoh:'SMOH（h）',lbl_prop:'螺旋桨时间',lbl_engines:'发动机',lbl_seats:'座位数',lbl_range:'航程（海里）',lbl_avionics:'航电设备',lbl_equipment:'设备/选项',chk_ifr:'IFR认证',chk_rvsm:'RVSM认证',chk_adsb:'ADS-B输出',chk_logs:'飞行日志齐全',lbl_country:'国家',lbl_airport:'基地机场（ICAO）',lbl_price:'要价（€）',lbl_price_type:'价格类型',pt_negotiable:'价格可议',pt_firm:'定价出售',pt_leasing:'可融资租赁',pt_offers:'欢迎出价',lbl_desc:'描述',desc_placeholder:'描述状态、近期维护、航电升级、出售原因…',lbl_docs:'可提供文件',plan_reminder_title:'基础版：',plan_reminder_text:'最多5张照片。升级至加速版可上传20张。',upload_text:'点击上传或拖放照片',upload_hint:'JPG、PNG — 每张最大10MB',btn_draft:'保存草稿',btn_submit:'发布广告',submit_note:'您的广告将在几分钟内审核并发布。',preview_title:'实时预览',cat_light:'轻型飞机',cat_jet:'公务机',cat_turbo:'涡桨飞机',cat_heli:'直升机',cat_ulm:'超轻型飞机',cat_airliner:'客机',toast_draft:'草稿已保存！',toast_submit:'正在发布广告…',toast_success:'广告已发布！正在跳转…',chk1:'类别',chk2:'品牌和型号',chk3:'注册号',chk4:'年份',chk5:'总飞行时间',chk6:'位置和价格',chk7:'描述',chk8:'至少1张照片'}
+};
+let lang='en';
+function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
+let photos=[];
+const MAX_PHOTOS=5;
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('.lb').forEach(b=>{b.classList.toggle('active',b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase()));});
+  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'));});
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{el.placeholder=t(el.getAttribute('data-i18n-placeholder'));});
+  updateChecklist(); updatePreview();
+}
+function updatePreview(){
+  const make=document.getElementById('fMake').value.trim();
+  const model=document.getElementById('fModel').value.trim();
+  const year=document.getElementById('fYear').value;
+  const tt=document.getElementById('fTT').value;
+  const airport=document.getElementById('fAirport').value.trim();
+  const price=document.getElementById('fPrice').value;
+  const catVal=document.getElementById('fCategory').value;
+  const catMap={light:t('cat_light'),jet:t('cat_jet'),turbo:t('cat_turbo'),heli:t('cat_heli'),ulm:t('cat_ulm'),airliner:t('cat_airliner')};
+  document.getElementById('previewCat').textContent=catVal?catMap[catVal]:'—';
+  document.getElementById('previewTitle').textContent=(make||'Make')+' '+(model||'Model');
+  document.getElementById('prevYear').textContent='📅 '+(year||'—');
+  document.getElementById('prevTT').textContent='⏱ '+(tt?tt+' h TT':'—');
+  document.getElementById('prevAirport').textContent='📍 '+(airport||'—');
+  document.getElementById('prevPrice').textContent=price?'€'+Number(price).toLocaleString():'€ —';
+  updateChecklist();
+}
+function updateChecklist(){
+  const checks=[
+    {key:'chk1',ok:!!document.getElementById('fCategory').value},
+    {key:'chk2',ok:!!(document.getElementById('fMake').value&&document.getElementById('fModel').value)},
+    {key:'chk3',ok:!!document.getElementById('fReg').value},
+    {key:'chk4',ok:!!document.getElementById('fYear').value},
+    {key:'chk5',ok:!!document.getElementById('fTT').value},
+    {key:'chk6',ok:!!(document.getElementById('fPrice').value&&document.getElementById('fAirport').value)},
+    {key:'chk7',ok:document.getElementById('fDesc').value.length>50},
+    {key:'chk8',ok:photos.length>0},
+  ];
+  document.getElementById('checklist').innerHTML=checks.map(c=>
+    `<li class="check-item ${c.ok?'ok':'nok'}"><span class="check-icon"></span><span>${t(c.key)}</span></li>`
+  ).join('');
+}
+document.getElementById('fDesc').addEventListener('input',function(){
+  document.getElementById('charCount').textContent=this.value.length;
+  updateChecklist();
+});
+function handleFiles(files){
+  Array.from(files).forEach(f=>{
+    if(photos.length>=MAX_PHOTOS){showToast(`Max ${MAX_PHOTOS} photos`);return;}
+    const url=URL.createObjectURL(f);
+    photos.push({url,name:f.name});
+    renderPhotos();
+  });
+}
+function renderPhotos(){
+  document.getElementById('photoGrid').innerHTML=photos.map((p,i)=>
+    `<div class="photo-thumb">
+      <img src="${p.url}" alt="">
+      ${i===0?'<div class="photo-main-badge">Main</div>':''}
+      <button class="photo-del" onclick="removePhoto(${i})">✕</button>
+    </div>`
+  ).join('');
+  updateChecklist();
+}
+function removePhoto(i){photos.splice(i,1);renderPhotos();}
+function dragOver(e){e.preventDefault();document.getElementById('dropZone').classList.add('dragging');}
+function dragLeave(e){document.getElementById('dropZone').classList.remove('dragging');}
+function dropFiles(e){e.preventDefault();dragLeave(e);handleFiles(e.dataTransfer.files);}
+function saveDraft(){showToast(t('toast_draft'));}
+async function submitListing(){
+  const required=['fCategory','fMake','fModel','fReg','fYear','fTT','fAirport','fPrice','fDesc'];
+  let ok=true;
+  required.forEach(id=>{if(!document.getElementById(id).value.trim())ok=false;});
+  if(!ok){showToast('⚠ '+t('chk1')+' — '+t('chk2'));return;}
+  const btn=document.getElementById('submitBtn');
+  btn.classList.add('loading');btn.disabled=true;
+  showToast(t('toast_submit'));
+  /* SUPABASE:
+     const {data,error} = await supabase.from('listings').insert({
+       seller_id: (await supabase.auth.getUser()).data.user.id,
+       make:document.getElementById('fMake').value, model:document.getElementById('fModel').value,
+       year:+document.getElementById('fYear').value, total_hours:+document.getElementById('fTT').value,
+       price:+document.getElementById('fPrice').value, location:document.getElementById('fAirport').value,
+       description:document.getElementById('fDesc').value, status:'pending'
+     });
+     // Then upload photos to Supabase Storage */
+  await new Promise(r=>setTimeout(r,2000));
+  showToast(t('toast_success'));
+  setTimeout(()=>window.location.href="dashboard.html",1500);
+}
+let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
+setLang('en');
+</script>
+</body>
+</html>

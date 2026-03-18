@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aircraft2Sell — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--sky:#060b15;--deep:#040810;--horizon:#0d2847;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#5a7490;--white:#f0f4f8;--card:#0a1628;--card2:#0d1e35;--border:rgba(200,212,224,0.1);--green:#22c55e;--red:#ef4444;--orange:#f97316;--blue:#60a5fa}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);min-height:100vh;display:grid;grid-template-columns:220px 1fr;grid-template-rows:60px 1fr}
+@media(max-width:800px){body{grid-template-columns:1fr;grid-template-rows:60px auto 1fr}}
+/* TOP BAR */
+.topbar{grid-column:1/-1;background:var(--deep);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;position:sticky;top:0;z-index:100}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.1em;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:.4rem}
+.logo span{color:var(--accent)}.admin-badge{background:var(--red);color:#fff;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;padding:.15rem .45rem;font-weight:700;margin-left:.4rem}
+.topbar-right{display:flex;align-items:center;gap:1rem}
+.notif-btn{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--mist);padding:.35rem .7rem;font-size:.78rem;cursor:pointer;position:relative;transition:all .2s}
+.notif-btn:hover{border-color:var(--accent);color:var(--accent)}
+.notif-dot{position:absolute;top:-.15rem;right:-.15rem;width:8px;height:8px;border-radius:50%;background:var(--red)}
+.admin-user{display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--mist)}
+/* SIDEBAR */
+.sidebar{background:var(--deep);border-right:1px solid var(--border);padding:.8rem 0;overflow-y:auto}
+@media(max-width:800px){.sidebar{display:none}}
+.snav-group{margin-bottom:.3rem}
+.snav-label{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mist2);padding:.5rem 1.2rem;margin-top:.5rem}
+.snav-item{display:flex;align-items:center;gap:.7rem;padding:.65rem 1.2rem;cursor:pointer;font-size:.83rem;color:var(--mist);transition:all .2s;border-left:2px solid transparent;text-decoration:none}
+.snav-item:hover{color:var(--white);background:rgba(255,255,255,.03)}
+.snav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(232,160,32,.05)}
+.snav-icon{font-size:.95rem;width:18px;flex-shrink:0}
+.snav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:1rem}
+.snav-badge.orange{background:var(--orange)}
+.snav-badge.blue{background:var(--blue)}
+/* MAIN */
+.admin-main{padding:1.5rem;overflow-y:auto;max-height:calc(100vh - 60px)}
+.page-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+.page-title{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.06em}
+.page-title em{font-style:normal;color:var(--accent)}
+.btn-sm-accent{background:var(--accent);color:var(--deep);border:none;padding:.45rem 1rem;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;transition:background .2s}
+.btn-sm-accent:hover{background:var(--gold)}
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:1.5rem}
+.stat-box{background:var(--card);padding:1.1rem;position:relative;overflow:hidden}
+.stat-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-box.pending::before{background:var(--orange)}
+.stat-box.approved::before{background:var(--green)}
+.stat-box.users::before{background:var(--blue)}
+.stat-box.revenue::before{background:var(--accent)}
+.stat-lbl{font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mist);margin-bottom:.4rem}
+.stat-val{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.04em}
+.stat-val.orange{color:var(--orange)}.stat-val.green{color:var(--green)}.stat-val.blue{color:var(--blue)}.stat-val.accent{color:var(--accent)}
+.stat-change{font-size:.7rem;color:var(--mist);margin-top:.2rem}
+/* TABS */
+.admin-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.2rem;gap:0;overflow-x:auto}
+.admin-tab{padding:.7rem 1.2rem;font-size:.82rem;font-weight:500;cursor:pointer;color:var(--mist);border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none}
+.admin-tab:hover{color:var(--white)}
+.admin-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+/* TABLE */
+.admin-table-wrap{background:var(--card);border:1px solid var(--border);overflow:hidden}
+.table-toolbar{padding:.8rem 1rem;display:flex;gap:.8rem;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.search-field{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);padding:.45rem .8rem;font-family:'DM Sans',sans-serif;font-size:.82rem;outline:none;width:220px}
+.search-field:focus{border-color:var(--accent)}
+.search-field::placeholder{color:var(--mist2)}
+.filter-pill{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--mist);padding:.35rem .75rem;font-size:.74rem;cursor:pointer;transition:all .2s}
+.filter-pill.active,.filter-pill:hover{border-color:var(--accent);color:var(--accent)}
+.admin-table{width:100%;border-collapse:collapse}
+.admin-table th{background:var(--horizon);padding:.7rem 1rem;font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mist);font-weight:500;text-align:left;border-bottom:1px solid var(--border)}
+.admin-table td{padding:.75rem 1rem;font-size:.82rem;border-bottom:1px solid var(--border)}
+.admin-table tr:last-child td{border-bottom:none}
+.admin-table tr:hover td{background:rgba(255,255,255,.02)}
+.cell-title{font-weight:600;color:var(--white);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell-seller{color:var(--mist);font-size:.78rem}
+.cell-price{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--gold)}
+.status-pill{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:.2rem .55rem;font-weight:600}
+.sp-pending{background:rgba(249,115,22,.15);color:var(--orange);border:1px solid rgba(249,115,22,.25)}
+.sp-approved{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.sp-rejected{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.action-btns{display:flex;gap:.3rem}
+.action-btn{border:none;padding:.3rem .65rem;font-size:.7rem;font-weight:600;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:all .2s}
+.ab-approve{background:rgba(34,197,94,.15);color:var(--green)}.ab-approve:hover{background:rgba(34,197,94,.3)}
+.ab-reject{background:rgba(239,68,68,.12);color:var(--red)}.ab-reject:hover{background:rgba(239,68,68,.25)}
+.ab-view{background:rgba(255,255,255,.06);color:var(--mist)}.ab-view:hover{background:rgba(255,255,255,.12);color:var(--white)}
+.ab-delete{background:rgba(239,68,68,.08);color:var(--red)}.ab-delete:hover{background:rgba(239,68,68,.2)}
+/* USERS TABLE */
+.user-row td{vertical-align:middle}
+.user-av{width:32px;height:32px;border-radius:50%;background:var(--horizon);display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
+.user-cell{display:flex;align-items:center;gap:.6rem}
+.user-plan{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:.15rem .45rem}
+.up-free{background:rgba(255,255,255,.06);color:var(--mist)}
+.up-boost{background:rgba(232,160,32,.15);color:var(--accent)}
+.up-pro{background:rgba(96,165,250,.12);color:var(--blue)}
+/* TOAST */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);padding:.9rem 1.4rem;color:var(--white);font-size:.86rem;z-index:999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a href="homepage.html" class="logo"><span>✈ Aircraft2</span><span style="color:var(--accent)">Sell</span><span class="admin-badge">ADMIN</span></a>
+  <div class="topbar-right">
+    <button class="notif-btn">🔔 <div class="notif-dot"></div></button>
+    <div class="admin-user">👤 Admin</div>
+    <a href="homepage.html" style="color:var(--mist);font-size:.75rem;text-decoration:none">← Public site</a>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="snav-group">
+    <div class="snav-label">Overview</div>
+    <a class="snav-item active" href="#"><span class="snav-icon">📊</span> Dashboard</a>
+  </div>
+  <div class="snav-group">
+    <div class="snav-label">Listings</div>
+    <a class="snav-item" href="#"><span class="snav-icon">⏳</span> Pending review <span class="snav-badge orange">12</span></a>
+    <a class="snav-item" href="#"><span class="snav-icon">✅</span> Approved <span class="snav-badge" style="background:var(--green)">2,835</span></a>
+    <a class="snav-item" href="#"><span class="snav-icon">❌</span> Rejected <span class="snav-badge">47</span></a>
+    <a class="snav-item" href="#"><span class="snav-icon">🕐</span> Expired</a>
+  </div>
+  <div class="snav-group">
+    <div class="snav-label">Users</div>
+    <a class="snav-item" href="#"><span class="snav-icon">👥</span> All users <span class="snav-badge blue">1,284</span></a>
+    <a class="snav-item" href="#"><span class="snav-icon">🛡</span> Verified sellers</a>
+    <a class="snav-item" href="#"><span class="snav-icon">🚩</span> Reported users</a>
+  </div>
+  <div class="snav-group">
+    <div class="snav-label">Revenue</div>
+    <a class="snav-item" href="#"><span class="snav-icon">💳</span> Subscriptions</a>
+    <a class="snav-item" href="#"><span class="snav-icon">🧾</span> Invoices</a>
+    <a class="snav-item" href="#"><span class="snav-icon">📈</span> Analytics</a>
+  </div>
+  <div class="snav-group">
+    <div class="snav-label">System</div>
+    <a class="snav-item" href="#"><span class="snav-icon">⚙</span> Settings</a>
+    <a class="snav-item" href="#"><span class="snav-icon">📧</span> Email templates</a>
+    <a class="snav-item" href="#"><span class="snav-icon">🌍</span> Translations</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="admin-main">
+  <div class="page-hd">
+    <h1 class="page-title">Admin <em>Dashboard</em></h1>
+    <button class="btn-sm-accent" onclick="showToast('Refreshing data…')">↻ Refresh</button>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-box pending"><div class="stat-lbl">Pending review</div><div class="stat-val orange">12</div><div class="stat-change">+3 today</div></div>
+    <div class="stat-box approved"><div class="stat-lbl">Live listings</div><div class="stat-val green">2,835</div><div class="stat-change">↑ +14 this week</div></div>
+    <div class="stat-box users"><div class="stat-lbl">Total users</div><div class="stat-val blue">1,284</div><div class="stat-change">+27 this month</div></div>
+    <div class="stat-box revenue"><div class="stat-lbl">MRR</div><div class="stat-val accent">€4,820</div><div class="stat-change">↑ +12% vs last month</div></div>
+    <div class="stat-box"><div class="stat-lbl">Active subs</div><div class="stat-val" style="color:var(--white)">163</div><div class="stat-change">Boost: 124 · Pro: 39</div></div>
+    <div class="stat-box"><div class="stat-lbl">Avg. reply time</div><div class="stat-val" style="color:var(--white)">1h 42m</div><div class="stat-change">Good</div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="admin-tabs">
+    <button class="admin-tab active" onclick="switchTab(this,'pending')">⏳ Pending (12)</button>
+    <button class="admin-tab" onclick="switchTab(this,'approved')">✅ Approved</button>
+    <button class="admin-tab" onclick="switchTab(this,'users')">👥 Users</button>
+    <button class="admin-tab" onclick="switchTab(this,'subs')">💳 Subscriptions</button>
+    <button class="admin-tab" onclick="switchTab(this,'reports')">🚩 Reports (3)</button>
+  </div>
+
+  <!-- LISTINGS TABLE -->
+  <div class="admin-table-wrap" id="tableWrap">
+    <div class="table-toolbar">
+      <input type="text" class="search-field" placeholder="Search listings…">
+      <button class="filter-pill active">All</button>
+      <button class="filter-pill">Light aircraft</button>
+      <button class="filter-pill">Jets</button>
+      <button class="filter-pill">Helicopters</button>
+      <button class="filter-pill">France</button>
+    </div>
+    <table class="admin-table" id="adminTable">
+      <thead>
+        <tr>
+          <th>Aircraft</th>
+          <th>Seller</th>
+          <th>Price</th>
+          <th>Location</th>
+          <th>Submitted</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PENDING_DATA=[];
+const APPROVED_DATA=[
+  {title:'[Aircraft name] N',seller:'Club Aérien Toulouse',price:'€95,000',loc:'Toulouse (FR)',date:'2 days ago',status:'approved'},
+  {title:'',seller:'Atlantic Air',price:'€580,000',loc:'Paris CDG (FR)',date:'3 days ago',status:'approved'},
+  {title:'',seller:'Heli Training',price:'€180,000',loc:'Nice (FR)',date:'4 days ago',status:'approved'},
+];
+let activeTab='pending';
+function renderTable(data){
+  const tbody=document.getElementById('listingsTableBody');
+  if(!tbody) return;
+  if(!data||data.length===0){
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--mist);font-size:.8rem">No listings pending review.</td></tr>';
+    return;
+  }
+
+  document.getElementById('tableBody').innerHTML=data.map(r=>`
+    <tr>
+      <td><div class="cell-title">${r.title}</div></td>
+      <td><div class="cell-seller">${r.seller}</div></td>
+      <td><div class="cell-price">${r.price}</div></td>
+      <td style="color:var(--mist);font-size:.78rem">${r.loc}</td>
+      <td style="color:var(--mist);font-size:.76rem">${r.date}</td>
+      <td><span class="status-pill sp-${r.status}">${r.status}</span></td>
+      <td>
+        <div class="action-btns">
+          ${r.status==='pending'?`<button class="action-btn ab-approve" onclick="approve(this)">✓ Approve</button><button class="action-btn ab-reject" onclick="reject(this)">✕ Reject</button>`:''}
+          <button class="action-btn ab-view" onclick="window.open('listing.html')">View</button>
+          <button class="action-btn ab-delete" onclick="deleteRow(this)">Del</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+const USERS_DATA=[];
+const SUBS_DATA=[
+  {user:'Jean Dupont',plan:'BOOST',amount:'€34.80',date:'Mar 16, 2026',status:'active'},
+  {user:'Heli Sud Aviation',plan:'PRO',amount:'€94.80',date:'Mar 10, 2026',status:'active'},
+  {user:'Carlos García',plan:'BOOST',amount:'€34.80',date:'Mar 5, 2026',status:'active'},
+  {user:'Club Aérien Lyon',plan:'PRO',amount:'€94.80',date:'Feb 28, 2026',status:'cancelled'},
+];
+function switchTab(btn, tab){
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active'); activeTab=tab;
+  if(tab==='pending') renderTable(PENDING_DATA);
+  else if(tab==='approved') renderTable(APPROVED_DATA);
+  else if(tab==='users') renderUsersTable();
+  else if(tab==='subs') renderSubsTable();
+  else if(tab==='reports') renderReports();
+}
+function renderUsersTable(){
+  document.querySelector('.admin-table thead tr').innerHTML='<th>User</th><th>Email</th><th>Plan</th><th>Listings</th><th>Joined</th><th>Actions</th>';
+  document.getElementById('tableBody').innerHTML=USERS_DATA.map(u=>`
+    <tr class="user-row">
+      <td><div class="user-cell"><div class="user-av">👤</div><strong>${u.name}</strong></div></td>
+      <td style="color:var(--mist);font-size:.78rem">${u.email}</td>
+      <td><span class="user-plan up-${u.plan.toLowerCase()}">${u.plan}</span></td>
+      <td style="color:var(--white)">${u.listings}</td>
+      <td style="color:var(--mist);font-size:.76rem">${u.joined}</td>
+      <td><div class="action-btns"><button class="action-btn ab-view">View</button><button class="action-btn ab-delete">Ban</button></div></td>
+    </tr>`).join('');
+}
+function renderSubsTable(){
+  document.querySelector('.admin-table thead tr').innerHTML='<th>User</th><th>Plan</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th>';
+  document.getElementById('tableBody').innerHTML=SUBS_DATA.map(s=>`
+    <tr>
+      <td style="font-weight:600;color:var(--white)">${s.user}</td>
+      <td><span class="user-plan up-${s.plan.toLowerCase()}">${s.plan}</span></td>
+      <td><div class="cell-price">${s.amount}</div></td>
+      <td style="color:var(--mist);font-size:.76rem">${s.date}</td>
+      <td><span class="status-pill ${s.status==='active'?'sp-approved':'sp-rejected'}">${s.status}</span></td>
+      <td><div class="action-btns"><button class="action-btn ab-view" onclick="showToast('Opening Stripe…')">Stripe</button><button class="action-btn ab-reject" onclick="showToast('Subscription cancelled')">Cancel</button></div></td>
+    </tr>`).join('');
+}
+function renderReports(){
+  document.querySelector('.admin-table thead tr').innerHTML='<th>Reported listing</th><th>Reporter</th><th>Reason</th><th>Date</th><th>Actions</th>';
+  document.getElementById('tableBody').innerHTML=[
+    {listing:'[Aircraft name] N — Suspicious price',reporter:'user@gmail.com',reason:'Price too low — possible scam',date:'2 hours ago'},
+    {listing:'[Aircraft name] — Duplicate listing',reporter:'contact@club.fr',reason:'Same aircraft listed twice',date:'1 day ago'},
+    {listing:'PC-12 — Wrong information',reporter:'broker@swiss.ch',reason:'Registration number incorrect',date:'2 days ago'},
+  ].map(r=>`
+    <tr>
+      <td style="font-weight:600;color:var(--white);max-width:200px">${r.listing}</td>
+      <td style="color:var(--mist);font-size:.78rem">${r.reporter}</td>
+      <td style="color:var(--orange);font-size:.78rem">${r.reason}</td>
+      <td style="color:var(--mist);font-size:.76rem">${r.date}</td>
+      <td><div class="action-btns"><button class="action-btn ab-view" onclick="window.open('listing.html')">View</button><button class="action-btn ab-reject" onclick="showToast('Listing removed')">Remove</button><button class="action-btn ab-approve" onclick="showToast('Report dismissed')">Dismiss</button></div></td>
+    </tr>`).join('');
+}
+function approve(btn){const row=btn.closest('tr');row.querySelector('.status-pill').className='status-pill sp-approved';row.querySelector('.status-pill').textContent='approved';btn.parentElement.querySelector('.ab-approve,.ab-reject')?.remove();showToast('✓ Listing approved and published');}
+function reject(btn){const row=btn.closest('tr');row.querySelector('.status-pill').className='status-pill sp-rejected';row.querySelector('.status-pill').textContent='rejected';btn.parentElement.innerHTML='<button class="action-btn ab-view" onclick="window.open(\'listing.html\')">View</button>';showToast('✗ Listing rejected');}
+function deleteRow(btn){if(confirm('Delete this listing?')){btn.closest('tr').remove();showToast('Listing deleted');}}
+document.querySelectorAll('.filter-pill').forEach(p=>{p.onclick=function(){document.querySelectorAll('.filter-pill').forEach(x=>x.classList.remove('active'));this.classList.add('active');}});
+let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
+renderTable(PENDING_DATA);
+</script>
+</body>
+</html>

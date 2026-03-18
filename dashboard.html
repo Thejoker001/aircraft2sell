@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aircraft2Sell — Seller Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--white:#f0f4f8;--card:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.11);--green:#22c55e;--red:#ef4444;--orange:#f97316}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(1px 1px at 20% 15%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 75% 60%,rgba(255,255,255,.3) 0%,transparent 100%)}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);height:60px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.1em;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:.4rem;flex-shrink:0}
+.logo span{color:var(--accent)}
+.logo-icon{animation:flt 4s ease-in-out infinite;display:inline-block;transform:rotate(-10deg)}
+@keyframes flt{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-3px)}}
+.nav-user{display:flex;align-items:center;gap:.8rem}
+.user-avatar{width:34px;height:34px;border-radius:50%;background:var(--horizon);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.user-name{font-size:.83rem;font-weight:500;color:var(--white)}
+.user-plan{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.nav-right{display:flex;align-items:center;gap:.7rem}
+.lang-sw{display:flex;gap:2px}
+.lb{background:none;border:none;color:var(--mist);font-size:.7rem;font-weight:600;padding:.2rem .4rem;cursor:pointer;transition:all .15s}
+.lb.active{background:var(--accent);color:var(--deep)}
+.btn-sm{background:var(--accent);color:var(--deep);border:none;padding:.4rem .9rem;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .2s;text-transform:uppercase;letter-spacing:.05em;text-decoration:none;display:inline-block}
+.btn-sm:hover{background:var(--gold)}
+
+/* LAYOUT */
+.dash-wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:2rem 1.5rem;display:grid;grid-template-columns:260px 1fr;gap:1.5rem;align-items:start}
+@media(max-width:800px){.dash-wrap{grid-template-columns:1fr}}
+
+/* SIDEBAR */
+.sidebar{position:sticky;top:75px}
+.sidebar-plan{background:var(--card);border:1px solid var(--border);padding:1.4rem;margin-bottom:1px}
+.plan-header{display:flex;align-items:center;gap:.8rem;margin-bottom:1rem}
+.plan-badge{font-family:'Bebas Neue',sans-serif;font-size:.75rem;letter-spacing:.15em;background:var(--accent);color:var(--deep);padding:.2rem .6rem}
+.plan-name-dash{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.06em;color:var(--white)}
+.plan-status{display:flex;align-items:center;gap:.4rem;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--green);margin-bottom:1rem}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.plan-meta{font-size:.78rem;color:var(--mist);line-height:1.7}
+.plan-meta strong{color:var(--white)}
+.plan-divider{height:1px;background:var(--border);margin:1rem 0}
+.plan-actions{display:flex;flex-direction:column;gap:.5rem}
+.btn-plan-action{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.55rem 1rem;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:500;cursor:pointer;transition:all .2s;text-align:left;letter-spacing:.04em}
+.btn-plan-action:hover{border-color:var(--accent);color:var(--accent)}
+.btn-plan-action.danger:hover{border-color:var(--red);color:var(--red)}
+.btn-plan-action .btn-icon{margin-right:.4rem}
+
+.sidebar-nav{background:var(--card);border:1px solid var(--border);padding:.5rem;margin-top:1px}
+.snav-item{display:flex;align-items:center;gap:.7rem;padding:.75rem 1rem;cursor:pointer;font-size:.84rem;color:var(--mist);transition:all .2s;border-left:2px solid transparent;text-decoration:none}
+.snav-item:hover{color:var(--white);background:rgba(255,255,255,.03)}
+.snav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(232,160,32,.05)}
+.snav-icon{font-size:1rem;flex-shrink:0}
+.snav-badge{margin-left:auto;background:var(--accent);color:var(--deep);font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:1rem}
+
+/* MAIN CONTENT */
+.dash-main{}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.page-title{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.06em}
+.page-title em{font-style:normal;color:var(--accent)}
+
+/* STAT CARDS */
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:1.5rem}
+.stat-card{background:var(--card);padding:1.3rem;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--border)}
+.stat-card.active::before{background:var(--accent)}
+.sc-label{font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mist);margin-bottom:.5rem}
+.sc-value{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:var(--white);letter-spacing:.04em;line-height:1}
+.sc-change{font-size:.72rem;margin-top:.3rem;display:flex;align-items:center;gap:.3rem}
+.sc-change.up{color:var(--green)}
+.sc-change.neutral{color:var(--mist)}
+
+/* LISTING CARDS */
+.listings-section{margin-bottom:1.5rem}
+.section-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.section-label{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.08em;color:var(--white)}
+.listing-card{background:var(--card);border:1px solid var(--border);padding:1.2rem 1.4rem;display:flex;align-items:center;gap:1.2rem;margin-bottom:1px;transition:background .2s;cursor:pointer;flex-wrap:wrap}
+.listing-card:hover{background:var(--card2)}
+.listing-thumb{width:64px;height:48px;background:linear-gradient(135deg,#0d2847,#1a3a5c);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+.listing-info{flex:1;min-width:150px}
+.listing-title-dash{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.04em;color:var(--white)}
+.listing-meta{font-size:.74rem;color:var(--mist);margin-top:.2rem}
+.listing-stats{display:flex;gap:1.2rem;flex-shrink:0;flex-wrap:wrap}
+.lst-stat{text-align:center}
+.lst-val{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--white);line-height:1}
+.lst-lbl{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist)}
+.listing-status{flex-shrink:0}
+.status-pill{font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;padding:.25rem .65rem;font-weight:600}
+.sp-live{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.sp-pending{background:rgba(249,115,22,.12);color:var(--orange);border:1px solid rgba(249,115,22,.2)}
+.sp-expired{background:rgba(100,116,139,.12);color:#64748b;border:1px solid rgba(100,116,139,.2)}
+.sp-sold{background:rgba(107,114,128,.12);color:#6b7280;border:1px solid rgba(107,114,128,.2)}
+.listing-actions{display:flex;gap:.4rem;flex-shrink:0}
+.la-btn{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.35rem .7rem;font-size:.72rem;cursor:pointer;transition:all .2s;letter-spacing:.06em;text-transform:uppercase}
+.la-btn:hover{border-color:var(--accent);color:var(--accent)}
+.la-btn.danger:hover{border-color:var(--red);color:var(--red)}
+
+/* SUBSCRIPTION BOX */
+.sub-box{background:var(--card);border:1px solid var(--border);padding:1.5rem;margin-bottom:1.5rem}
+.sub-box-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.2rem;flex-wrap:wrap;gap:1rem}
+.sub-plan-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.06em}
+.sub-plan-title span{color:var(--accent)}
+.sub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.2rem}
+.sub-item{background:rgba(255,255,255,.03);border:1px solid var(--border);padding:.9rem}
+.sub-item-label{font-size:.66rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mist);margin-bottom:.3rem}
+.sub-item-val{font-size:.92rem;color:var(--white);font-weight:500}
+.sub-item-val.green{color:var(--green)}
+.sub-item-val.orange{color:var(--orange)}
+.sub-actions{display:flex;gap:.8rem;flex-wrap:wrap}
+.sub-btn{background:var(--accent);color:var(--deep);border:none;padding:.65rem 1.3rem;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.1em;cursor:pointer;transition:background .2s;text-decoration:none;display:inline-block}
+.sub-btn:hover{background:var(--gold)}
+.sub-btn.outline{background:transparent;color:var(--mist);border:1px solid var(--border)}
+.sub-btn.outline:hover{border-color:var(--accent);color:var(--accent)}
+.sub-btn.danger{background:transparent;color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.sub-btn.danger:hover{background:rgba(239,68,68,.1)}
+
+/* INVOICE TABLE */
+.invoice-table{width:100%;border-collapse:collapse;margin-top:.5rem}
+.invoice-table th{background:var(--horizon);padding:.75rem 1rem;font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mist);font-weight:500;text-align:left;border:1px solid var(--border)}
+.invoice-table td{padding:.75rem 1rem;font-size:.82rem;border:1px solid var(--border);background:var(--card)}
+.invoice-table tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+.invoice-dl{color:var(--accent);text-decoration:none;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+.invoice-dl:hover{color:var(--gold)}
+.inv-paid{color:var(--green);font-size:.72rem;letter-spacing:.08em}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:3rem 2rem;color:var(--mist)}
+.empty-icon{font-size:3rem;margin-bottom:1rem;opacity:.4}
+.empty-title{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.06em;color:var(--white);margin-bottom:.5rem}
+.empty-sub{font-size:.84rem;line-height:1.6;margin-bottom:1.5rem}
+
+/* TOAST */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);padding:.9rem 1.4rem;color:var(--white);font-size:.86rem;z-index:999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="homepage.html" class="logo"><span class="logo-icon">✈</span>Aircraft2<span>Sell</span></a>
+  <div class="nav-user">
+    <div class="user-avatar">👤</div>
+    <div>
+      <div class="user-name" id="userName">Jean Dupont</div>
+      <div class="user-plan" id="userPlan">BOOST plan</div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="lang-sw">
+      <button class="lb active" onclick="setLang('en')">EN</button>
+      <button class="lb" onclick="setLang('fr')">FR</button>
+      <button class="lb" onclick="setLang('de')">DE</button>
+      <button class="lb" onclick="setLang('es')">ES</button>
+      <button class="lb" onclick="setLang('zh')">中文</button>
+    </div>
+    <a href="checkout.html" class="btn-sm" id="upgradeBtn">Upgrade</a>
+  </div>
+</nav>
+
+<div class="dash-wrap">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-plan">
+      <div class="plan-header">
+        <div class="plan-badge" id="sbPlanBadge">ACTIVE</div>
+      </div>
+      <div class="plan-name-dash" id="sbPlanName">BOOST</div>
+      <div class="plan-status"><span class="status-dot"></span><span id="sbStatus">Active subscription</span></div>
+      <div class="plan-meta" id="sbMeta">
+        <strong id="sbPrice">€29.00</strong> / month<br>
+        Next billing: <strong id="sbNextBill">April 16, 2026</strong><br>
+        Listings: <strong>1 / 1</strong><br>
+        Photos: <strong id="sbPhotos">20 / 20</strong>
+      </div>
+      <div class="plan-divider"></div>
+      <div class="plan-actions">
+        <button class="btn-plan-action" onclick="showToast(t('toast_upgrade'))" id="btnUpgrade"><span class="btn-icon">⬆</span><span id="sbUpgrade">Upgrade to Pro</span></button>
+        <button class="btn-plan-action" onclick="showToast(t('toast_billing'))" id="btnBilling"><span class="btn-icon">💳</span><span id="sbBilling">Update payment</span></button>
+        <button class="btn-plan-action danger" onclick="confirmCancel()" id="btnCancel"><span class="btn-icon">✕</span><span id="sbCancel">Cancel subscription</span></button>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="snav-item active" id="sn1"><span class="snav-icon">📊</span><span id="snOverview">Overview</span></a>
+      <a href="#" class="snav-item" id="sn2"><span class="snav-icon">✈</span><span id="snListings">My listings</span><span class="snav-badge">1</span></a>
+      <a href="#" class="snav-item" id="sn3"><span class="snav-icon">💬</span><span id="snMessages">Messages</span><span class="snav-badge">3</span></a>
+      <a href="#" class="snav-item" id="sn4"><span class="snav-icon">💳</span><span id="snSub">Subscription</span></a>
+      <a href="#" class="snav-item" id="sn5"><span class="snav-icon">🧾</span><span id="snInvoices">Invoices</span></a>
+      <a href="#" class="snav-item" id="sn6"><span class="snav-icon">⚙</span><span id="snSettings">Settings</span></a>
+    </nav>
+  </div>
+
+  <!-- MAIN -->
+  <div class="dash-main">
+    <div class="page-header">
+      <h1 class="page-title" id="pageTitle">Your <em>dashboard</em></h1>
+      <a href="post-listing.html" class="btn-sm" id="btnPostNew">+ Post new listing</a>
+    </div>
+
+    <!-- STATS -->
+    <div class="stat-cards">
+      <div class="stat-card active">
+        <div class="sc-label" id="scLbl1">Total views</div>
+        <div class="sc-value" id="scVal1">0</div>
+        <div class="sc-change up">↑ <span id="scChg1">+34 this week</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label" id="scLbl2">Enquiries</div>
+        <div class="sc-value" id="scVal2">0</div>
+        <div class="sc-change up">↑ <span id="scChg2">+3 this week</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label" id="scLbl3">Saved by buyers</div>
+        <div class="sc-value" id="scVal3">0</div>
+        <div class="sc-change neutral"><span id="scChg3">No change</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label" id="scLbl4">Active listings</div>
+        <div class="sc-value" id="scVal4">0</div>
+        <div class="sc-change neutral"><span id="scChg4">1 / 1 slots used</span></div>
+      </div>
+    </div>
+
+    <!-- ACTIVE LISTINGS -->
+    <div class="listings-section">
+      <div class="section-hd">
+        <div class="section-label" id="slActive">Active listings</div>
+        <a href="#" class="btn-sm" onclick="showToast(t('toast_post'))" id="slAddBtn">+ Add listing</a>
+      </div>
+
+      <div class="listing-card">
+        <div class="listing-thumb">✈</div>
+        <div class="listing-info">
+          <div class="listing-title-dash">[Aircraft name]</div>
+          <div class="listing-meta">2015 · 3,420 h TT · Lyon-Bron · €189,000</div>
+        </div>
+        <div class="listing-stats">
+          <div class="lst-stat"><div class="lst-val">247</div><div class="lst-lbl" id="lsViews">Views</div></div>
+          <div class="lst-stat"><div class="lst-val">12</div><div class="lst-lbl" id="lsEnq">Enquiries</div></div>
+          <div class="lst-stat"><div class="lst-val">28</div><div class="lst-lbl" id="lsFav">Saved</div></div>
+        </div>
+        <div class="listing-status"><span class="status-pill sp-live" id="spLive">Live</span></div>
+        <div class="listing-actions">
+          <button class="la-btn" onclick="showToast(t('toast_edit'))" id="laEdit">Edit</button>
+          <button class="la-btn" onclick="showToast(t('toast_preview'))">👁</button>
+          <button class="la-btn danger" onclick="showToast(t('toast_delete'))">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBSCRIPTION DETAILS -->
+    <div class="sub-box">
+      <div class="sub-box-header">
+        <div class="sub-plan-title" id="subTitle">Subscription — <span>BOOST</span></div>
+        <span class="status-pill sp-live" id="subActivePill">Active</span>
+      </div>
+      <div class="sub-grid">
+        <div class="sub-item"><div class="sub-item-label" id="siPlan">Current plan</div><div class="sub-item-val">BOOST</div></div>
+        <div class="sub-item"><div class="sub-item-label" id="siPrice">Monthly price</div><div class="sub-item-val">€34.80 <span style="font-size:.72rem;color:var(--mist)">(incl. VAT)</span></div></div>
+        <div class="sub-item"><div class="sub-item-label" id="siNext">Next payment</div><div class="sub-item-val green" id="siNextVal">April 16, 2026</div></div>
+        <div class="sub-item"><div class="sub-item-label" id="siSince">Member since</div><div class="sub-item-val">March 16, 2026</div></div>
+        <div class="sub-item"><div class="sub-item-label" id="siMethod">Payment method</div><div class="sub-item-val">Visa •••• 4242</div></div>
+        <div class="sub-item"><div class="sub-item-label" id="siStatus">Status</div><div class="sub-item-val green" id="siStatusVal">Active</div></div>
+      </div>
+      <div class="sub-actions">
+        <a href="checkout.html?plan=pro" class="sub-btn" id="sabUpgrade">Upgrade to Pro — €79/mo</a>
+        <button class="sub-btn outline" onclick="showToast(t('toast_billing'))" id="sabBilling">Update card</button>
+        <button class="sub-btn danger" onclick="confirmCancel()" id="sabCancel">Cancel subscription</button>
+      </div>
+    </div>
+
+    <!-- INVOICES -->
+    <div class="section-hd" style="margin-bottom:1rem">
+      <div class="section-label" id="invTitle">Invoice history</div>
+    </div>
+    <table class="invoice-table">
+      <thead>
+        <tr>
+          <th id="thDate">Date</th>
+          <th id="thDesc">Description</th>
+          <th id="thAmt">Amount</th>
+          <th id="thStatus">Status</th>
+          <th id="thAction">Invoice</th>
+        </tr>
+      </thead>
+      <tbody id="invoiceBody"><tr><td colspan="5" style="text-align:center;color:var(--mist);font-size:.8rem;padding:1.5rem">No invoices yet</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const T={
+  en:{
+    sbPlanBadge:'ACTIVE', sbStatus:'Active subscription', sbUpgrade:'Upgrade to Pro', sbBilling:'Update payment method', sbCancel:'Cancel subscription',
+    snOverview:'Overview', snListings:'My listings', snMessages:'Messages', snSub:'Subscription', snInvoices:'Invoices', snSettings:'Settings',
+    pageTitle:'Your <em>dashboard</em>', upgradeBtn:'Upgrade', btnPostNew:'+ Post new listing',
+    scLbl1:'Total views', scLbl2:'Enquiries', scLbl3:'Saved by buyers', scLbl4:'Active listings',
+    scChg1:'+34 this week', scChg2:'+3 this week', scChg3:'No change', scChg4:'1 / 1 slots used',
+    slActive:'Active listings', slAddBtn:'+ Add listing',
+    lsViews:'Views', lsEnq:'Enquiries', lsFav:'Saved', spLive:'Live', laEdit:'Edit',
+    subTitle:'Subscription — BOOST', subActivePill:'Active',
+    siPlan:'Current plan', siPrice:'Monthly price', siNext:'Next payment', siSince:'Member since', siMethod:'Payment method', siStatus:'Status', siStatusVal:'Active',
+    siNextVal:'April 16, 2026',
+    sabUpgrade:'Upgrade to Pro — €79/mo', sabBilling:'Update card', sabCancel:'Cancel subscription',
+    invTitle:'Invoice history', thDate:'Date', thDesc:'Description', thAmt:'Amount', thStatus:'Status', thAction:'Invoice',
+    toast_upgrade:'Redirecting to upgrade page…', toast_billing:'Redirecting to payment update…', toast_cancel:'Are you sure? Click again to confirm cancellation.', toast_post:'Feature coming soon!', toast_edit:'Editing listing…', toast_preview:'Opening preview…', toast_delete:'Listing deleted.',
+    userPlan:'BOOST plan',
+    invoices:[]
+  },
+  fr:{
+    sbPlanBadge:'ACTIF', sbStatus:'Abonnement actif', sbUpgrade:'Passer à Pro', sbBilling:'Modifier le paiement', sbCancel:"Annuler l'abonnement",
+    snOverview:'Vue d\'ensemble', snListings:'Mes annonces', snMessages:'Messages', snSub:'Abonnement', snInvoices:'Factures', snSettings:'Paramètres',
+    pageTitle:'Votre <em>espace</em>', upgradeBtn:'Passer à Pro', btnPostNew:'+ Déposer une annonce',
+    scLbl1:'Vues totales', scLbl2:'Demandes', scLbl3:'Mis en favoris', scLbl4:'Annonces actives',
+    scChg1:'+34 cette semaine', scChg2:'+3 cette semaine', scChg3:'Pas de changement', scChg4:'1 / 1 emplacement utilisé',
+    slActive:'Annonces actives', slAddBtn:'+ Ajouter une annonce',
+    lsViews:'Vues', lsEnq:'Demandes', lsFav:'Favoris', spLive:'En ligne', laEdit:'Modifier',
+    subTitle:'Abonnement — BOOST', subActivePill:'Actif',
+    siPlan:'Formule actuelle', siPrice:'Prix mensuel', siNext:'Prochain paiement', siSince:'Membre depuis', siMethod:'Moyen de paiement', siStatus:'Statut', siStatusVal:'Actif',
+    siNextVal:'16 avril 2026',
+    sabUpgrade:'Passer à Pro — 79 €/mois', sabBilling:'Modifier la carte', sabCancel:"Annuler l'abonnement",
+    invTitle:'Historique des factures', thDate:'Date', thDesc:'Description', thAmt:'Montant', thStatus:'Statut', thAction:'Facture',
+    toast_upgrade:'Redirection vers la mise à niveau…', toast_billing:'Redirection vers la mise à jour du paiement…', toast_cancel:"Êtes-vous sûr ? Cliquez à nouveau pour confirmer l'annulation.", toast_post:'Fonctionnalité bientôt disponible !', toast_edit:"Modification de l'annonce…", toast_preview:'Ouverture de l\'aperçu…', toast_delete:'Annonce supprimée.',
+    userPlan:'Formule BOOST',
+    invoices:[]
+  },
+  de:{
+    sbPlanBadge:'AKTIV', sbStatus:'Aktives Abonnement', sbUpgrade:'Auf Pro upgraden', sbBilling:'Zahlung aktualisieren', sbCancel:'Abonnement kündigen',
+    snOverview:'Übersicht', snListings:'Meine Inserate', snMessages:'Nachrichten', snSub:'Abonnement', snInvoices:'Rechnungen', snSettings:'Einstellungen',
+    pageTitle:'Ihr <em>Dashboard</em>', upgradeBtn:'Upgrade', btnPostNew:'+ Neues Inserat',
+    scLbl1:'Gesamtaufrufe', scLbl2:'Anfragen', scLbl3:'Gespeichert von Käufern', scLbl4:'Aktive Inserate',
+    scChg1:'+34 diese Woche', scChg2:'+3 diese Woche', scChg3:'Keine Änderung', scChg4:'1 / 1 Slots genutzt',
+    slActive:'Aktive Inserate', slAddBtn:'+ Inserat hinzufügen',
+    lsViews:'Aufrufe', lsEnq:'Anfragen', lsFav:'Gespeichert', spLive:'Live', laEdit:'Bearbeiten',
+    subTitle:'Abonnement — BOOST', subActivePill:'Aktiv',
+    siPlan:'Aktueller Plan', siPrice:'Monatspreis', siNext:'Nächste Zahlung', siSince:'Mitglied seit', siMethod:'Zahlungsmethode', siStatus:'Status', siStatusVal:'Aktiv',
+    siNextVal:'16. April 2026',
+    sabUpgrade:'Auf Pro upgraden — 79 €/Mo.', sabBilling:'Karte aktualisieren', sabCancel:'Abonnement kündigen',
+    invTitle:'Rechnungsverlauf', thDate:'Datum', thDesc:'Beschreibung', thAmt:'Betrag', thStatus:'Status', thAction:'Rechnung',
+    toast_upgrade:'Weiterleitung zur Upgrade-Seite…', toast_billing:'Weiterleitung zur Zahlungsaktualisierung…', toast_cancel:'Sind Sie sicher? Erneut klicken zum Bestätigen.', toast_post:'Funktion bald verfügbar!', toast_edit:'Inserat wird bearbeitet…', toast_preview:'Vorschau wird geöffnet…', toast_delete:'Inserat gelöscht.',
+    userPlan:'BOOST-Plan',
+    invoices:[]
+  },
+  es:{
+    sbPlanBadge:'ACTIVO', sbStatus:'Suscripción activa', sbUpgrade:'Actualizar a Pro', sbBilling:'Actualizar pago', sbCancel:'Cancelar suscripción',
+    snOverview:'Resumen', snListings:'Mis anuncios', snMessages:'Mensajes', snSub:'Suscripción', snInvoices:'Facturas', snSettings:'Ajustes',
+    pageTitle:'Tu <em>panel</em>', upgradeBtn:'Actualizar', btnPostNew:'+ Publicar anuncio',
+    scLbl1:'Visitas totales', scLbl2:'Consultas', scLbl3:'Guardados por compradores', scLbl4:'Anuncios activos',
+    scChg1:'+34 esta semana', scChg2:'+3 esta semana', scChg3:'Sin cambios', scChg4:'1 / 1 espacio usado',
+    slActive:'Anuncios activos', slAddBtn:'+ Añadir anuncio',
+    lsViews:'Visitas', lsEnq:'Consultas', lsFav:'Guardados', spLive:'En línea', laEdit:'Editar',
+    subTitle:'Suscripción — BOOST', subActivePill:'Activo',
+    siPlan:'Plan actual', siPrice:'Precio mensual', siNext:'Próximo pago', siSince:'Miembro desde', siMethod:'Método de pago', siStatus:'Estado', siStatusVal:'Activo',
+    siNextVal:'16 de abril de 2026',
+    sabUpgrade:'Actualizar a Pro — €79/mes', sabBilling:'Actualizar tarjeta', sabCancel:'Cancelar suscripción',
+    invTitle:'Historial de facturas', thDate:'Fecha', thDesc:'Descripción', thAmt:'Importe', thStatus:'Estado', thAction:'Factura',
+    toast_upgrade:'Redirigiendo a la página de actualización…', toast_billing:'Redirigiendo a la actualización de pago…', toast_cancel:'¿Estás seguro? Haz clic de nuevo para confirmar la cancelación.', toast_post:'¡Función próximamente!', toast_edit:'Editando anuncio…', toast_preview:'Abriendo vista previa…', toast_delete:'Anuncio eliminado.',
+    userPlan:'Plan BOOST',
+    invoices:[]
+  },
+  zh:{
+    sbPlanBadge:'有效', sbStatus:'订阅有效', sbUpgrade:'升级至专业版', sbBilling:'更新付款方式', sbCancel:'取消订阅',
+    snOverview:'概览', snListings:'我的广告', snMessages:'消息', snSub:'订阅', snInvoices:'发票', snSettings:'设置',
+    pageTitle:'我的<em>控制台</em>', upgradeBtn:'升级', btnPostNew:'+ 发布新广告',
+    scLbl1:'总浏览量', scLbl2:'询盘数', scLbl3:'买家收藏', scLbl4:'有效广告',
+    scChg1:'本周 +34', scChg2:'本周 +3', scChg3:'无变化', scChg4:'已用 1 / 1',
+    slActive:'有效广告', slAddBtn:'+ 添加广告',
+    lsViews:'浏览', lsEnq:'询盘', lsFav:'收藏', spLive:'已上线', laEdit:'编辑',
+    subTitle:'订阅 — 加速版', subActivePill:'有效',
+    siPlan:'当前方案', siPrice:'月费', siNext:'下次付款', siSince:'注册时间', siMethod:'付款方式', siStatus:'状态', siStatusVal:'有效',
+    siNextVal:'2026年4月16日',
+    sabUpgrade:'升级至专业版 — €79/月', sabBilling:'更新银行卡', sabCancel:'取消订阅',
+    invTitle:'发票历史', thDate:'日期', thDesc:'描述', thAmt:'金额', thStatus:'状态', thAction:'发票',
+    toast_upgrade:'正在跳转至升级页面…', toast_billing:'正在跳转至付款更新…', toast_cancel:'确定取消？再次点击确认。', toast_post:'功能即将上线！', toast_edit:'正在编辑广告…', toast_preview:'正在打开预览…', toast_delete:'广告已删除。',
+    userPlan:'加速版方案',
+    invoices:[]
+  }
+};
+
+let lang = 'en';
+function t(k){ return (T[lang]&&T[lang][k]) || (T.en[k]) || k; }
+
+function renderInvoices(){
+  const invoices = t('invoices');
+  document.getElementById('invoiceBody').innerHTML = invoices.map(inv=>
+    `<tr>
+      <td>${inv.date}</td>
+      <td>${inv.desc}</td>
+      <td>${inv.amt}</td>
+      <td><span class="inv-paid">✓ ${inv.status}</span></td>
+      <td><a href="#" class="invoice-dl" onclick="showToast('PDF downloaded')">↓ PDF</a></td>
+    </tr>`
+  ).join('');
+}
+
+function setLang(l){
+  lang = l;
+  document.querySelectorAll('.lb').forEach(b=>{ b.classList.toggle('active', b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase())); });
+  const set=(id,k)=>{const el=document.getElementById(id);if(el)el.textContent=t(k);};
+  const setH=(id,k)=>{const el=document.getElementById(id);if(el)el.innerHTML=t(k);};
+  set('sbPlanBadge','sbPlanBadge'); set('sbStatus','sbStatus'); set('sbUpgrade','sbUpgrade');
+  set('sbBilling','sbBilling'); set('sbCancel','sbCancel');
+  set('sn1','snOverview'); set('sn2','snListings'); set('sn3','snMessages');
+  set('sn4','snSub'); set('sn5','snInvoices'); set('sn6','snSettings');
+  setH('pageTitle','pageTitle'); set('upgradeBtn','upgradeBtn'); set('btnPostNew','btnPostNew');
+  set('scLbl1','scLbl1'); set('scLbl2','scLbl2'); set('scLbl3','scLbl3'); set('scLbl4','scLbl4');
+  set('scChg1','scChg1'); set('scChg2','scChg2'); set('scChg3','scChg3'); set('scChg4','scChg4');
+  set('slActive','slActive'); set('slAddBtn','slAddBtn');
+  set('lsViews','lsViews'); set('lsEnq','lsEnq'); set('lsFav','lsFav');
+  set('spLive','spLive'); set('laEdit','laEdit');
+  setH('subTitle','subTitle'); set('subActivePill','subActivePill');
+  set('siPlan','siPlan'); set('siPrice','siPrice'); set('siNext','siNext');
+  set('siSince','siSince'); set('siMethod','siMethod'); set('siStatus','siStatus'); set('siStatusVal','siStatusVal');
+  set('siNextVal','siNextVal'); set('sbNextBill','siNextVal');
+  set('sabUpgrade','sabUpgrade'); set('sabBilling','sabBilling'); set('sabCancel','sabCancel');
+  set('invTitle','invTitle'); set('thDate','thDate'); set('thDesc','thDesc');
+  set('thAmt','thAmt'); set('thStatus','thStatus'); set('thAction','thAction');
+  set('userPlan','userPlan');
+  renderInvoices();
+  document.title = 'Aircraft2Sell — Dashboard';
+}
+
+function confirmCancel(){
+  showToast(t('toast_cancel'));
+}
+
+let toastTimer;
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>el.classList.remove('show'), 3000);
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{ setLang('en'); });
+</script>
+</body>
+</html>

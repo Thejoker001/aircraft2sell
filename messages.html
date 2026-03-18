@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aircraft2Sell — Messages</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#5a7490;--white:#f0f4f8;--card:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.12);--green:#22c55e;--red:#ef4444}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);min-height:100vh;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(1px 1px at 10% 20%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 80% 60%,rgba(255,255,255,.3) 0%,transparent 100%),radial-gradient(2px 2px at 50% 85%,rgba(255,255,255,.4) 0%,transparent 100%)}
+nav{position:relative;z-index:100;background:rgba(6,11,21,.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);height:60px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.1em;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:.4rem;flex-shrink:0}
+.logo span{color:var(--accent)}
+.logo-icon{animation:flt 4s ease-in-out infinite;display:inline-block;transform:rotate(-10deg)}
+@keyframes flt{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-3px)}}
+.nav-right{display:flex;align-items:center;gap:.8rem}
+.lang-sw{display:flex;gap:2px}
+.lb{background:none;border:none;color:var(--mist);font-size:.7rem;font-weight:600;padding:.2rem .4rem;cursor:pointer;transition:all .15s}
+.lb.active{background:var(--accent);color:var(--deep)}
+.btn-sm{background:var(--accent);color:var(--deep);border:none;padding:.4rem .9rem;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;text-decoration:none;display:inline-block}
+.btn-sm:hover{background:var(--gold)}
+
+/* LAYOUT */
+.msg-layout{position:relative;z-index:1;display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 60px)}
+
+/* SIDEBAR */
+.msg-sidebar{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-header{padding:1.2rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sidebar-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.08em}
+.unread-count{background:var(--accent);color:var(--deep);font-size:.65rem;font-weight:700;padding:.15rem .5rem;border-radius:1rem}
+.search-msg{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);padding:.6rem .9rem;font-family:'DM Sans',sans-serif;font-size:.82rem;outline:none;margin:0}
+.search-msg::placeholder{color:var(--mist2)}
+.search-msg:focus{border-color:var(--accent)}
+.conv-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+
+.conv-item{padding:1rem 1.4rem;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s;display:flex;gap:.9rem;align-items:flex-start;position:relative}
+.conv-item:hover{background:rgba(255,255,255,.03)}
+.conv-item.active{background:rgba(232,160,32,.07);border-left:2px solid var(--accent)}
+.conv-item.unread .conv-name{font-weight:600;color:var(--white)}
+.conv-item.unread .conv-preview{color:rgba(240,244,248,.7)}
+.conv-avatar{width:40px;height:40px;border-radius:50%;background:var(--horizon);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;border:1px solid var(--border)}
+.conv-info{flex:1;min-width:0}
+.conv-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.25rem}
+.conv-name{font-size:.85rem;font-weight:500;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-time{font-size:.68rem;color:var(--mist2);flex-shrink:0;margin-left:.5rem}
+.conv-preview{font-size:.78rem;color:var(--mist);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
+.conv-aircraft{font-size:.68rem;color:var(--accent);margin-bottom:.2rem;letter-spacing:.05em}
+.unread-dot{position:absolute;top:50%;right:1rem;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+/* CHAT AREA */
+.chat-area{display:flex;flex-direction:column;overflow:hidden}
+.chat-header{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1rem;flex-shrink:0;background:rgba(6,11,21,.5)}
+.chat-header-avatar{width:38px;height:38px;border-radius:50%;background:var(--horizon);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.chat-header-info{flex:1}
+.chat-header-name{font-weight:600;font-size:.9rem}
+.chat-header-sub{font-size:.72rem;color:var(--mist)}
+.chat-header-actions{display:flex;gap:.5rem}
+.chat-action-btn{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.35rem .7rem;font-size:.72rem;cursor:pointer;transition:all .2s;letter-spacing:.05em;text-transform:uppercase;text-decoration:none;display:inline-block}
+.chat-action-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+.messages-wrap{flex:1;overflow-y:auto;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+
+/* Message bubbles */
+.msg-group{display:flex;flex-direction:column;gap:.3rem}
+.msg-group.mine{align-items:flex-end}
+.msg-group.theirs{align-items:flex-start}
+.msg-bubble{max-width:68%;padding:.75rem 1rem;font-size:.86rem;line-height:1.5;position:relative}
+.msg-group.mine .msg-bubble{background:rgba(232,160,32,.15);border:1px solid rgba(232,160,32,.25);color:var(--white)}
+.msg-group.theirs .msg-bubble{background:var(--card2);border:1px solid var(--border);color:var(--white)}
+.msg-meta{font-size:.65rem;color:var(--mist2);margin-top:.15rem;display:flex;align-items:center;gap:.3rem}
+.msg-read{color:var(--green);font-size:.8rem}
+
+/* Date separator */
+.date-sep{text-align:center;font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mist2);display:flex;align-items:center;gap:.8rem;margin:.5rem 0}
+.date-sep::before,.date-sep::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Listing card in chat */
+.listing-card-chat{background:var(--card);border:1px solid var(--border);padding:1rem;display:flex;gap:.8rem;align-items:center;margin-bottom:.5rem;max-width:340px}
+.listing-thumb-chat{width:56px;height:42px;background:linear-gradient(135deg,#0d2847,#1a3a5c);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
+.listing-chat-title{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.04em}
+.listing-chat-price{font-size:.78rem;color:var(--gold)}
+.listing-chat-link{font-size:.68rem;color:var(--accent);text-decoration:none;letter-spacing:.06em;text-transform:uppercase}
+
+/* Input area */
+.chat-input-wrap{padding:1rem 1.5rem;border-top:1px solid var(--border);flex-shrink:0;background:rgba(6,11,21,.5)}
+.quick-replies{display:flex;gap:.5rem;margin-bottom:.8rem;flex-wrap:wrap}
+.qr-btn{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.3rem .7rem;font-size:.72rem;cursor:pointer;transition:all .2s;letter-spacing:.04em}
+.qr-btn:hover{border-color:var(--accent);color:var(--accent)}
+.input-row{display:flex;gap:.8rem;align-items:flex-end}
+.msg-textarea{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);padding:.75rem 1rem;font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;resize:none;height:44px;max-height:120px;line-height:1.5;transition:border-color .2s}
+.msg-textarea:focus{border-color:var(--accent)}
+.msg-textarea::placeholder{color:var(--mist2)}
+.send-btn{background:var(--accent);color:var(--deep);border:none;width:44px;height:44px;font-size:1.1rem;cursor:pointer;transition:background .2s;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.send-btn:hover{background:var(--gold)}
+.attach-btn{background:transparent;border:1px solid var(--border);color:var(--mist);width:44px;height:44px;font-size:1rem;cursor:pointer;transition:all .2s;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.attach-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Empty state */
+.chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--mist);text-align:center;padding:3rem}
+.empty-icon-big{font-size:4rem;opacity:.3;margin-bottom:1.2rem}
+.empty-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.06em;color:var(--white);margin-bottom:.5rem}
+.empty-sub{font-size:.85rem;line-height:1.6;max-width:300px}
+
+/* Toast */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);padding:.9rem 1.4rem;color:var(--white);font-size:.86rem;z-index:999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+@media(max-width:700px){
+  .msg-layout{grid-template-columns:1fr}
+  .msg-sidebar{height:45vh;border-right:none;border-bottom:1px solid var(--border)}
+  .chat-area{height:55vh}
+  .lb .lb-lbl{display:none}
+}
+</style>
+</head>
+<body>
+<nav>
+  <a href="homepage.html" class="logo"><span class="logo-icon">✈</span>Aircraft2<span>Sell</span></a>
+  <div class="nav-right">
+    <div class="lang-sw">
+      <button class="lb active" onclick="setLang('en')">EN</button>
+      <button class="lb" onclick="setLang('fr')">FR</button>
+      <button class="lb" onclick="setLang('de')">DE</button>
+      <button class="lb" onclick="setLang('es')">ES</button>
+      <button class="lb" onclick="setLang('zh')">中文</button>
+    </div>
+    <a href="dashboard.html" class="btn-sm" id="navDash">← Dashboard</a>
+  </div>
+</nav>
+
+<div class="msg-layout">
+  <!-- SIDEBAR -->
+  <div class="msg-sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title" id="sideTitle">Messages</span>
+      <span class="unread-count">3</span>
+    </div>
+    <input type="text" class="search-msg" id="searchMsg" placeholder="Search conversations…">
+    <div class="conv-list" id="convList"></div>
+  </div>
+
+  <!-- CHAT AREA -->
+  <div class="chat-area" id="chatArea">
+    <div class="chat-empty" id="chatEmpty">
+      <div class="empty-icon-big">💬</div>
+      <div class="empty-title" id="emptyTitle">Select a conversation</div>
+      <p class="empty-sub" id="emptySub">Choose a conversation on the left to start chatting with a buyer or seller.</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const T={
+  en:{
+    sideTitle:'Messages', navDash:'← Dashboard', searchMsg:'Search conversations…',
+    emptyTitle:'No conversations yet',
+    emptySub:'Choose a conversation on the left to start chatting with a buyer or seller.',
+    quickReplies:['Is it still available?','Can I arrange a viewing?','What is your best price?','Do you have logbooks?'],
+    inputPlaceholder:'Type a message…',
+    btnView:'View listing', btnReport:'Report',
+    dateSeparators:{today:'Today',yesterday:'Yesterday'},
+    verified:'Verified seller',
+    toast_sent:'Message sent!', toast_report:'Conversation reported.',
+  },
+  fr:{
+    sideTitle:'Messages', navDash:'← Tableau de bord', searchMsg:'Rechercher…',
+    emptyTitle:'Sélectionnez une conversation',
+    emptySub:'Choisissez une conversation à gauche pour discuter avec un acheteur ou vendeur.',
+    quickReplies:['Est-ce toujours disponible ?','Puis-je organiser une visite ?','Quel est votre meilleur prix ?','Avez-vous les carnets de bord ?'],
+    inputPlaceholder:'Écrivez un message…',
+    btnView:"Voir l'annonce", btnReport:'Signaler',
+    dateSeparators:{today:"Aujourd'hui",yesterday:'Hier'},
+    verified:'Vendeur vérifié',
+    toast_sent:'Message envoyé !', toast_report:'Conversation signalée.',
+  },
+  de:{
+    sideTitle:'Nachrichten', navDash:'← Dashboard', searchMsg:'Suchen…',
+    emptyTitle:'Gespräch auswählen',
+    emptySub:'Wählen Sie links ein Gespräch aus, um mit einem Käufer oder Verkäufer zu chatten.',
+    quickReplies:['Ist es noch verfügbar?','Kann ich es besichtigen?','Was ist Ihr bester Preis?','Haben Sie Bordbücher?'],
+    inputPlaceholder:'Nachricht schreiben…',
+    btnView:'Inserat ansehen', btnReport:'Melden',
+    dateSeparators:{today:'Heute',yesterday:'Gestern'},
+    verified:'Verifizierter Verkäufer',
+    toast_sent:'Nachricht gesendet!', toast_report:'Gespräch gemeldet.',
+  },
+  es:{
+    sideTitle:'Mensajes', navDash:'← Panel', searchMsg:'Buscar…',
+    emptyTitle:'Selecciona una conversación',
+    emptySub:'Elige una conversación a la izquierda para chatear con un comprador o vendedor.',
+    quickReplies:['¿Sigue disponible?','¿Puedo organizar una visita?','¿Cuál es su mejor precio?','¿Tiene los libros de vuelo?'],
+    inputPlaceholder:'Escribe un mensaje…',
+    btnView:'Ver anuncio', btnReport:'Reportar',
+    dateSeparators:{today:'Hoy',yesterday:'Ayer'},
+    verified:'Vendedor verificado',
+    toast_sent:'¡Mensaje enviado!', toast_report:'Conversación reportada.',
+  },
+  zh:{
+    sideTitle:'消息', navDash:'← 控制台', searchMsg:'搜索对话…',
+    emptyTitle:'选择一个对话',
+    emptySub:'在左侧选择一个对话，开始与买家或卖家聊天。',
+    quickReplies:['还有货吗？','可以安排参观吗？','最低价格是多少？','有飞行日志吗？'],
+    inputPlaceholder:'输入消息…',
+    btnView:'查看广告', btnReport:'举报',
+    dateSeparators:{today:'今天',yesterday:'昨天'},
+    verified:'认证卖家',
+    toast_sent:'消息已发送！', toast_report:'对话已举报。',
+  }
+};
+
+const CONVS=[];
+
+let lang='en', activeConv=null;
+function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
+
+function renderConvList(){
+  const g=document.getElementById('convList');
+  if(!g) return;
+  if(!CONVS||CONVS.length===0){
+    g.innerHTML='<div style="text-align:center;padding:2rem 1rem;color:var(--mist)"><div style="font-size:2rem;opacity:.2;margin-bottom:.8rem">💬</div><div style="font-size:.78rem;line-height:1.6">No messages yet.<br>Contact a seller from a listing.</div></div>';
+    return;
+  }
+
+  const list = document.getElementById('convList');
+  if(!CONVS.length){
+    list.innerHTML = '<div style="padding:2rem 1rem;text-align:center;color:var(--mist);font-size:.78rem;line-height:1.6"><div style="font-size:1.8rem;opacity:.3;margin-bottom:.6rem">💬</div><div style="font-family:var(--font-sans),sans-serif;font-weight:500;color:var(--white);margin-bottom:.3rem">No messages yet</div>Contact a seller from any listing to start a conversation.<br><br><small style="color:var(--mist2)">/* SUPABASE: supabase.from('messages').select('*').eq('recipient_id',user.id) */</small></div>';
+    return;
+  }
+  list.innerHTML=CONVS.map(c=>`
+    <div class="conv-item${activeConv===c.id?' active':''}${c.unread>0?' unread':''}" onclick="openConv(${c.id})">
+      <div class="conv-avatar">${c.avatar}</div>
+      <div class="conv-info">
+        <div class="conv-aircraft">${c.aircraft}</div>
+        <div class="conv-top">
+          <span class="conv-name">${c.name}</span>
+          <span class="conv-time">${c.time}</span>
+        </div>
+        <div class="conv-preview">${c.messages[c.messages.length-1].text}</div>
+      </div>
+      ${c.unread>0?`<div class="unread-dot"></div>`:''}
+    </div>`).join('');
+}
+
+function openConv(id){
+  activeConv=id;
+  const c=CONVS.find(x=>x.id===id);
+  c.unread=0;
+  renderConvList();
+  const area=document.getElementById('chatArea');
+  area.innerHTML=`
+    <div class="chat-header">
+      <div class="chat-header-avatar">${c.avatar}</div>
+      <div class="chat-header-info">
+        <div class="chat-header-name">${c.name} <span style="font-size:.68rem;color:var(--green)">✓ ${t('verified')}</span></div>
+        <div class="chat-header-sub">${c.aircraft} · ${c.price}</div>
+      </div>
+      <div class="chat-header-actions">
+        <a href="listing.html" class="chat-action-btn">${t('btnView')}</a>
+        <button class="chat-action-btn" onclick="showToast(t('toast_report'))">${t('btnReport')}</button>
+      </div>
+    </div>
+    <div class="messages-wrap" id="msgsWrap">
+      <div class="listing-card-chat">
+        <div class="listing-thumb-chat">✈</div>
+        <div>
+          <div class="listing-chat-title">${c.aircraft}</div>
+          <div class="listing-chat-price">${c.price}</div>
+          <a href="listing.html" class="listing-chat-link">${t('btnView')} →</a>
+        </div>
+      </div>
+      <div class="date-sep"><span>${t('dateSeparators').today}</span></div>
+      ${c.messages.map(m=>`
+        <div class="msg-group ${m.from==='me'?'mine':'theirs'}">
+          <div class="msg-bubble">${m.text}</div>
+          <div class="msg-meta">
+            <span>${m.time}</span>
+            ${m.from==='me'?`<span class="msg-read">${m.read?'✓✓':'✓'}</span>`:''}
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="chat-input-wrap">
+      <div class="quick-replies">
+        ${t('quickReplies').map(r=>`<button class="qr-btn" onclick="setQuick(this)">${r}</button>`).join('')}
+      </div>
+      <div class="input-row">
+        <button class="attach-btn" onclick="showToast('Attach file — coming soon')">📎</button>
+        <textarea class="msg-textarea" id="msgInput" placeholder="${t('inputPlaceholder')}" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" onclick="sendMsg()">➤</button>
+      </div>
+    </div>`;
+  scrollToBottom();
+}
+
+function setQuick(btn){
+  document.getElementById('msgInput').value=btn.textContent;
+  document.getElementById('msgInput').focus();
+}
+function autoResize(el){el.style.height='44px';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}
+
+function sendMsg(){
+  const inp=document.getElementById('msgInput');
+  const text=inp.value.trim();
+  if(!text) return;
+  const wrap=document.getElementById('msgsWrap');
+  const div=document.createElement('div');
+  div.className='msg-group mine';
+  const now=new Date();
+  const time=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  div.innerHTML=`<div class="msg-bubble">${text}</div><div class="msg-meta"><span>${time}</span><span class="msg-read">✓</span></div>`;
+  wrap.appendChild(div);
+  inp.value=''; inp.style.height='44px';
+  scrollToBottom();
+  showToast(t('toast_sent'));
+  /* SUPABASE: await supabase.from('messages').insert({...}) */
+}
+
+function scrollToBottom(){
+  const w=document.getElementById('msgsWrap');
+  if(w) setTimeout(()=>w.scrollTop=w.scrollHeight,50);
+}
+
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('.lb').forEach(b=>{b.classList.toggle('active',b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase()));});
+  document.getElementById('sideTitle').textContent=t('sideTitle');
+  document.getElementById('navDash').textContent=t('navDash');
+  document.getElementById('searchMsg').placeholder=t('searchMsg');
+  if(activeConv) openConv(activeConv);
+  else{
+    document.getElementById('emptyTitle').textContent=t('emptyTitle');
+    document.getElementById('emptySub').textContent=t('emptySub');
+  }
+}
+
+let tt;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),3000);}
+
+renderConvList();setLang('en');
+</script>
+</body>
+</html>

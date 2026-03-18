@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aircraft2Sell — Pricing</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky: #0a0f1e; --deep: #060b15; --horizon: #0d2847;
+    --accent: #e8a020; --gold: #f5c842; --mist: #8fa3b8;
+    --white: #f0f4f8; --card-bg: #0e1a2e; --border: rgba(200,212,224,0.12);
+    --green: #22c55e; --red: #ef4444;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);min-height:100vh;overflow-x:hidden}
+
+  body::before{content:'';position:fixed;inset:0;background-image:
+    radial-gradient(1px 1px at 10% 20%,rgba(255,255,255,.5) 0%,transparent 100%),
+    radial-gradient(1px 1px at 30% 70%,rgba(255,255,255,.3) 0%,transparent 100%),
+    radial-gradient(1px 1px at 50% 10%,rgba(255,255,255,.4) 0%,transparent 100%),
+    radial-gradient(1px 1px at 70% 50%,rgba(255,255,255,.25) 0%,transparent 100%),
+    radial-gradient(1px 1px at 90% 80%,rgba(255,255,255,.5) 0%,transparent 100%),
+    radial-gradient(2px 2px at 55% 25%,rgba(255,255,255,.6) 0%,transparent 100%),
+    radial-gradient(2px 2px at 85% 45%,rgba(255,255,255,.4) 0%,transparent 100%),
+    radial-gradient(1px 1px at 20% 60%,rgba(255,255,255,.3) 0%,transparent 100%),
+    radial-gradient(1px 1px at 65% 85%,rgba(255,255,255,.4) 0%,transparent 100%);
+    pointer-events:none;z-index:0}
+
+  /* NAV */
+  nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.93);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.1em;color:var(--white);display:flex;align-items:center;gap:.5rem;flex-shrink:0;text-decoration:none}
+  .logo span{color:var(--accent)}
+  .logo-icon{font-size:1.4rem;transform:rotate(-10deg);display:inline-block;animation:float 4s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-4px)}}
+  .nav-center{display:flex;gap:1.5rem;list-style:none;font-size:.82rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase}
+  .nav-center a{color:var(--mist);text-decoration:none;transition:color .2s}
+  .nav-center a:hover,.nav-center a.active{color:var(--accent)}
+  .nav-right{display:flex;align-items:center;gap:.7rem;flex-shrink:0}
+  .lang-switcher{display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.04);border:1px solid var(--border);padding:3px}
+  .lang-btn{background:none;border:none;color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:600;letter-spacing:.04em;padding:.28rem .45rem;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:3px;white-space:nowrap;line-height:1}
+  .lang-btn:hover{color:var(--white)}
+  .lang-btn.active{background:var(--accent);color:var(--deep)}
+  .lang-flag{font-size:.9rem;line-height:1}
+  .btn-nav{background:var(--accent);color:var(--deep);border:none;padding:.5rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;letter-spacing:.06em;cursor:pointer;transition:background .2s,transform .15s;text-transform:uppercase;white-space:nowrap;text-decoration:none;display:inline-block}
+  .btn-nav:hover{background:var(--gold);transform:translateY(-1px)}
+
+  /* HERO */
+  .pricing-hero{position:relative;z-index:1;padding:4.5rem 2rem 3rem;text-align:center}
+  .pricing-hero::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:500px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+  .hero-eyebrow{font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;font-weight:500}
+  .pricing-hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.8rem,7vw,5.5rem);letter-spacing:.05em;line-height:.95;color:var(--white);margin-bottom:1rem}
+  .pricing-hero h1 em{font-style:normal;color:var(--accent)}
+  .pricing-hero p{color:var(--mist);font-size:1rem;font-weight:300;max-width:500px;margin:0 auto;line-height:1.65}
+
+  /* BILLING TOGGLE */
+  .billing-toggle{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:1rem;margin:2.5rem auto 0;flex-wrap:wrap}
+  .toggle-label{font-size:.85rem;color:var(--mist);font-weight:500}
+  .toggle-label.active-label{color:var(--white)}
+  .toggle-switch{width:52px;height:28px;background:var(--horizon);border:1px solid var(--border);border-radius:0;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+  .toggle-switch.on{background:var(--accent)}
+  .toggle-knob{position:absolute;top:3px;left:3px;width:20px;height:20px;background:var(--white);transition:transform .2s;pointer-events:none}
+  .toggle-switch.on .toggle-knob{transform:translateX(24px)}
+  .save-badge{background:rgba(232,160,32,.15);border:1px solid rgba(232,160,32,.4);color:var(--accent);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;padding:.2rem .6rem;font-weight:600}
+
+  /* PRICING GRID */
+  .pricing-section{position:relative;z-index:1;max-width:1200px;margin:3rem auto 0;padding:0 2rem}
+
+  .plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;background:var(--border);border:1px solid var(--border);margin-bottom:1.5px}
+
+  .plan-card{background:var(--card-bg);padding:2rem;display:flex;flex-direction:column;position:relative;transition:transform .25s,box-shadow .25s}
+  .plan-card:hover{transform:translateY(-6px);box-shadow:0 24px 60px rgba(0,0,0,.5);z-index:2}
+
+  .plan-card.featured{background:linear-gradient(160deg,#0f1e3a 0%,#152840 100%);border:1px solid rgba(232,160,32,.35)}
+  .plan-card.featured::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+
+  .popular-tag{position:absolute;top:-1px;right:2rem;background:var(--accent);color:var(--deep);font-family:'Bebas Neue',sans-serif;font-size:.8rem;letter-spacing:.15em;padding:.25rem .7rem}
+
+  .plan-icon{font-size:2rem;margin-bottom:1rem;line-height:1}
+  .plan-name{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.08em;color:var(--white);margin-bottom:.4rem}
+  .plan-tagline{font-size:.8rem;color:var(--mist);margin-bottom:1.5rem;line-height:1.5;min-height:2.4em}
+
+  .plan-price{margin-bottom:1.5rem}
+  .price-amount{font-family:'Bebas Neue',sans-serif;font-size:3.5rem;color:var(--gold);letter-spacing:.02em;line-height:1}
+  .price-amount.free-price{color:var(--green)}
+  .price-period{font-size:.75rem;color:var(--mist);letter-spacing:.1em;text-transform:uppercase;margin-top:.2rem}
+  .price-annual{font-size:.78rem;color:var(--accent);margin-top:.3rem;min-height:1.2em}
+
+  .plan-divider{height:1px;background:var(--border);margin:0 0 1.5rem}
+
+  .plan-features{list-style:none;display:flex;flex-direction:column;gap:.7rem;flex:1;margin-bottom:1.8rem}
+  .plan-features li{display:flex;align-items:flex-start;gap:.6rem;font-size:.84rem;color:var(--mist);line-height:1.4}
+  .feat-icon{flex-shrink:0;margin-top:.1rem;font-size:.85rem}
+  .feat-icon.yes{color:var(--green)}
+  .feat-icon.no{color:#3a4f62}
+  .feat-text.highlight{color:var(--white);font-weight:500}
+
+  .plan-cta{display:block;text-align:center;padding:.9rem 1.5rem;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.12em;cursor:pointer;transition:all .2s;text-decoration:none;border:none;width:100%}
+  .cta-free{background:transparent;color:var(--mist);border:1px solid var(--border)}
+  .cta-free:hover{border-color:var(--white);color:var(--white)}
+  .cta-boost{background:var(--accent);color:var(--deep)}
+  .cta-boost:hover{background:var(--gold)}
+  .cta-pro{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+  .cta-pro:hover{background:rgba(232,160,32,.1)}
+
+  /* ADD-ON */
+  .addon-row{background:var(--card-bg);border:1px solid var(--border);padding:1.8rem 2rem;display:flex;align-items:center;gap:2rem;flex-wrap:wrap;transition:border-color .2s;margin-bottom:4rem}
+  .addon-row:hover{border-color:rgba(232,160,32,.3)}
+  .addon-badge{background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.3);color:var(--accent);font-family:'Bebas Neue',sans-serif;font-size:.8rem;letter-spacing:.15em;padding:.3rem .8rem;flex-shrink:0}
+  .addon-info{flex:1;min-width:220px}
+  .addon-title{font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.06em;color:var(--white);margin-bottom:.3rem}
+  .addon-desc{font-size:.83rem;color:var(--mist);line-height:1.5}
+  .addon-price-wrap{text-align:right;flex-shrink:0}
+  .addon-price{font-family:'Bebas Neue',sans-serif;font-size:2.5rem;color:var(--gold);letter-spacing:.04em;line-height:1}
+  .addon-period{font-size:.72rem;color:var(--mist);letter-spacing:.1em;text-transform:uppercase}
+  .addon-compatible{font-size:.72rem;color:var(--accent);margin-top:.2rem}
+  .btn-addon{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.6rem 1.4rem;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.1em;cursor:pointer;transition:all .2s;flex-shrink:0}
+  .btn-addon:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* COMPARISON TABLE */
+  .compare-section{position:relative;z-index:1;max-width:1000px;margin:0 auto 5rem;padding:0 2rem}
+  .compare-title{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;text-align:center;margin-bottom:2rem}
+  .compare-title span{color:var(--accent)}
+
+  .compare-table{width:100%;border-collapse:collapse;border:1px solid var(--border)}
+  .compare-table th{background:var(--horizon);padding:1rem;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.1em;font-weight:400;border:1px solid var(--border)}
+  .compare-table th:first-child{text-align:left;color:var(--mist)}
+  .compare-table th:not(:first-child){text-align:center;color:var(--white)}
+  .compare-table th.th-boost{color:var(--accent)}
+  .compare-table td{padding:.85rem 1rem;border:1px solid var(--border);font-size:.83rem;background:var(--card-bg)}
+  .compare-table td:first-child{color:var(--mist)}
+  .compare-table td:not(:first-child){text-align:center;color:var(--white)}
+  .compare-table tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  .compare-table .section-row td{background:var(--horizon);color:var(--accent);font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:.1em;padding:.5rem 1rem}
+  .check-yes{color:var(--green);font-size:1.1rem}
+  .check-no{color:#3a4f62;font-size:1.1rem}
+  .check-partial{color:var(--accent);font-size:.8rem;font-weight:600}
+
+  /* FAQ */
+  .faq-section{position:relative;z-index:1;max-width:720px;margin:0 auto 5rem;padding:0 2rem}
+  .faq-title{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;text-align:center;margin-bottom:2rem}
+  .faq-title span{color:var(--accent)}
+  .faq-item{border:1px solid var(--border);margin-bottom:1.5px;background:var(--card-bg);overflow:hidden}
+  .faq-q{padding:1.1rem 1.3rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:.9rem;font-weight:500;gap:1rem;transition:background .2s}
+  .faq-q:hover{background:rgba(255,255,255,.03)}
+  .faq-arrow{font-size:1rem;color:var(--accent);flex-shrink:0;transition:transform .25s}
+  .faq-item.open .faq-arrow{transform:rotate(180deg)}
+  .faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s}
+  .faq-item.open .faq-a{max-height:200px;padding:0 1.3rem 1.1rem}
+  .faq-a p{font-size:.84rem;color:var(--mist);line-height:1.7}
+
+  /* FOOTER */
+  footer{position:relative;z-index:1;background:var(--deep);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;margin-top:0}
+  .footer-logo{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:.15em;margin-bottom:1rem}
+  .footer-logo span{color:var(--accent)}
+  .footer-links{display:flex;justify-content:center;gap:2rem;list-style:none;margin-bottom:2rem;flex-wrap:wrap}
+  .footer-links a{color:var(--mist);text-decoration:none;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;transition:color .2s}
+  .footer-links a:hover{color:var(--accent)}
+  .footer-copy{color:#3a4f62;font-size:.76rem;letter-spacing:.06em}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:2rem;right:2rem;background:var(--card-bg);border:1px solid var(--accent);padding:1rem 1.5rem;color:var(--white);font-size:.88rem;z-index:999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  /* ANIMATIONS */
+  .fade-in{opacity:0;transform:translateY(20px);animation:fadeIn .5s forwards}
+  @keyframes fadeIn{to{opacity:1;transform:translateY(0)}}
+  .plan-card:nth-child(1){animation-delay:.1s}
+  .plan-card:nth-child(2){animation-delay:.2s}
+  .plan-card:nth-child(3){animation-delay:.3s}
+
+  @media(max-width:860px){
+    .plans-grid{grid-template-columns:1fr}
+    .nav-center{display:none}
+    .lang-btn .lang-lbl{display:none}
+    .addon-row{flex-direction:column;text-align:center}
+    .addon-price-wrap{text-align:center}
+    .compare-table{font-size:.75rem}
+    .compare-table td,.compare-table th{padding:.6rem .5rem}
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="homepage.html" class="logo"><span class="logo-icon">✈</span>Aircraft2<span>Sell</span></a>
+  <ul class="nav-center">
+    <li><a href="homepage.html" data-i18n="nav_listings"></a></li>
+    <li><a href="#" class="active" data-i18n="nav_pricing"></a></li>
+    <li><a href="#" data-i18n="nav_about"></a></li>
+    <li><a href="#" data-i18n="nav_contact"></a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('en')"><span class="lang-flag">🇬🇧</span><span class="lang-lbl">EN</span></button>
+      <button class="lang-btn" onclick="setLang('fr')"><span class="lang-flag">🇫🇷</span><span class="lang-lbl">FR</span></button>
+      <button class="lang-btn" onclick="setLang('de')"><span class="lang-flag">🇩🇪</span><span class="lang-lbl">DE</span></button>
+      <button class="lang-btn" onclick="setLang('es')"><span class="lang-flag">🇪🇸</span><span class="lang-lbl">ES</span></button>
+      <button class="lang-btn" onclick="setLang('zh')"><span class="lang-flag">🇨🇳</span><span class="lang-lbl">中文</span></button>
+    </div>
+    <a href="homepage.html" class="btn-nav" data-i18n="btn_post"></a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="pricing-hero">
+  <p class="hero-eyebrow" data-i18n="pricing_eyebrow"></p>
+  <h1 id="pricingH1"></h1>
+  <p data-i18n="pricing_sub"></p>
+
+  <div class="billing-toggle">
+    <span class="toggle-label active-label" id="monthlyLabel" data-i18n="billing_monthly"></span>
+    <div class="toggle-switch" id="billingToggle" onclick="toggleBilling()">
+      <div class="toggle-knob"></div>
+    </div>
+    <span class="toggle-label" id="annualLabel" data-i18n="billing_annual"></span>
+    <span class="save-badge" data-i18n="save_badge"></span>
+  </div>
+</section>
+
+<!-- PLANS -->
+<div class="pricing-section">
+  <div class="plans-grid">
+
+    <!-- ESSENTIEL -->
+    <div class="plan-card fade-in">
+      <div class="plan-icon">🛩</div>
+      <div class="plan-name" data-i18n="plan1_name"></div>
+      <div class="plan-tagline" data-i18n="plan1_tagline"></div>
+      <div class="plan-price">
+        <div class="price-amount free-price" id="p1price">0 €</div>
+        <div class="price-period" data-i18n="plan1_period"></div>
+        <div class="price-annual" id="p1annual">&nbsp;</div>
+      </div>
+      <div class="plan-divider"></div>
+      <ul class="plan-features" id="features1"></ul>
+      <button class="plan-cta cta-free" href="checkout.html" data-i18n="cta_free"></button>
+    </div>
+
+    <!-- BOOST -->
+    <div class="plan-card featured fade-in">
+      <div class="popular-tag" data-i18n="popular_tag"></div>
+      <div class="plan-icon">⭐</div>
+      <div class="plan-name" data-i18n="plan2_name"></div>
+      <div class="plan-tagline" data-i18n="plan2_tagline"></div>
+      <div class="plan-price">
+        <div class="price-amount" id="p2price">29 €</div>
+        <div class="price-period" data-i18n="plan2_period"></div>
+        <div class="price-annual" id="p2annual">&nbsp;</div>
+      </div>
+      <div class="plan-divider"></div>
+      <ul class="plan-features" id="features2"></ul>
+      <button class="plan-cta cta-boost" href="checkout.html" data-i18n="cta_boost"></button>
+    </div>
+
+    <!-- PRO -->
+    <div class="plan-card fade-in">
+      <div class="plan-icon">🚀</div>
+      <div class="plan-name" data-i18n="plan3_name"></div>
+      <div class="plan-tagline" data-i18n="plan3_tagline"></div>
+      <div class="plan-price">
+        <div class="price-amount" id="p3price">79 €</div>
+        <div class="price-period" data-i18n="plan3_period"></div>
+        <div class="price-annual" id="p3annual">&nbsp;</div>
+      </div>
+      <div class="plan-divider"></div>
+      <ul class="plan-features" id="features3"></ul>
+      <button class="plan-cta cta-pro" href="checkout.html" data-i18n="cta_pro"></button>
+    </div>
+  </div>
+
+  <!-- ADD-ON -->
+  <div class="addon-row">
+    <div class="addon-badge" data-i18n="addon_badge"></div>
+    <div class="addon-info">
+      <div class="addon-title" data-i18n="addon_title"></div>
+      <div class="addon-desc" data-i18n="addon_desc"></div>
+    </div>
+    <div class="addon-price-wrap">
+      <div class="addon-price" id="addonPrice">+10 €</div>
+      <div class="addon-period" data-i18n="addon_period"></div>
+      <div class="addon-compatible" data-i18n="addon_compatible"></div>
+    </div>
+    <button class="btn-addon" onclick="showToast(t('toast_addon'))" data-i18n="addon_cta"></button>
+  </div>
+</div>
+
+<!-- COMPARISON TABLE -->
+<div class="compare-section">
+  <h2 class="compare-title" id="compareTitle"></h2>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th data-i18n="tbl_feature"></th>
+        <th data-i18n="plan1_name"></th>
+        <th class="th-boost" data-i18n="plan2_name"></th>
+        <th data-i18n="plan3_name"></th>
+      </tr>
+    </thead>
+    <tbody id="compareBody"></tbody>
+  </table>
+</div>
+
+<!-- FAQ -->
+<div class="faq-section">
+  <h2 class="faq-title" id="faqTitle"></h2>
+  <div id="faqContainer"></div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Aircraft2<span>Sell</span></div>
+  <ul class="footer-links">
+    <li><a href="homepage.html" data-i18n="nav_listings"></a></li>
+    <li><a href="post-listing.html" data-i18n="btn_post"></a></li>
+    <li><a href="legal.html#contact" data-i18n="footer_contact"></a></li>
+    <li><a href="legal.html" data-i18n="footer_legal"></a></li>
+  </ul>
+  <div class="footer-copy" data-i18n="footer_copy"></div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── TRANSLATIONS ─────────────────────────────────────────── */
+const T = {
+  en:{
+    nav_listings:'Listings', nav_pricing:'Pricing', nav_about:'About', nav_contact:'Contact',
+    btn_post:'Post an Ad',
+    pricing_eyebrow:'Simple, transparent pricing',
+    pricing_h1:'<em>Fly</em> your<br>listing further',
+    pricing_sub:'No commission on sales. Ever. Choose the plan that fits your needs and get your aircraft in front of serious buyers.',
+    billing_monthly:'Monthly', billing_annual:'Annual', save_badge:'Save 20%',
+    popular_tag:'Most popular',
+    plan1_name:'ESSENTIAL', plan1_tagline:'For private sellers listing one aircraft', plan1_period:'Free forever',
+    plan2_name:'BOOST', plan2_tagline:'Sell faster with premium visibility', plan2_period:'per month',
+    plan3_name:'PRO', plan3_tagline:'For brokers & professional dealers', plan3_period:'per month',
+    p2_annual:'€278/year — save €70', p3_annual:'€758/year — save €190',
+    cta_free:'Get started free', cta_boost:'Start Boost', cta_pro:'Start Pro',
+    addon_badge:'ADD-ON', addon_title:'📸 Photos+',
+    addon_desc:'Upgrade your Essential listing from 5 to 10 photos. More angles, more buyers.',
+    addon_period:'per month', addon_compatible:'Compatible with Essential plan only',
+    addon_cta:'Add to my listing',
+    tbl_feature:'Feature',
+    compare_title:'Full comparison',
+    compare_rows:[
+      {section:'Listing'},
+      {label:'Active listings', v:['1','1','Unlimited']},
+      {label:'Listing duration', v:['60 days','30 days renewable','30 days renewable']},
+      {label:'Photos included', v:['5','20','Unlimited']},
+      {label:'No commission on sale', v:['✓','✓','✓']},
+      {section:'Visibility'},
+      {label:'Featured at top of results', v:['—','✓','✓ Priority']},
+      {label:'Newsletter inclusion', v:['—','✓','✓']},
+      {label:'Social media post', v:['—','✓','✓ Boosted']},
+      {label:'Targeted Facebook/Instagram ads', v:['—','—','✓']},
+      {section:'Seller tools'},
+      {label:'View & contact statistics', v:['—','✓','✓ Advanced']},
+      {label:'Certified seller badge', v:['—','—','✓']},
+      {label:'Listing proofreading', v:['—','—','✓']},
+      {label:'Priority messaging', v:['—','—','✓']},
+      {section:'Support'},
+      {label:'Help center access', v:['✓','✓','✓']},
+      {label:'Email support', v:['—','✓','✓ Priority']},
+    ],
+    faqs:[
+      {q:'Is there a commission on the sale?', a:'Never. Aircraft2Sell earns only from listing plans and add-ons. The selling price is entirely yours, whatever the transaction amount.'},
+      {q:'Can I cancel my plan at any time?', a:'Yes, absolutely. Monthly plans can be cancelled at any time without penalty. Your listing remains active until the end of the billing period.'},
+      {q:'What happens when my Essential listing expires after 60 days?', a:'You will receive an email reminder 7 days before expiry. You can renew for free with one click. Your listing data and photos are preserved.'},
+      {q:'Can I switch from Essential to Boost mid-listing?', a:'Yes. You can upgrade at any time from your seller dashboard. The remaining days on your current listing will be carried over.'},
+      {q:'The Photos+ add-on — what does it include exactly?', a:'It allows you to upload up to 10 photos (instead of 5) on your Essential free listing. You can cancel the add-on at any time.'},
+      {q:'How does the Pro plan work for multiple listings?', a:'The Pro plan allows you to publish an unlimited number of simultaneous listings. All listings benefit from boosted visibility and the certified seller badge.'},
+    ],
+    faq_title:'Frequently asked questions',
+    toast_signup:'Redirecting to registration…',
+    toast_addon:'Add-on added to your selection!',
+    footer_contact:'Contact', footer_legal:'Legal notice',
+    footer_copy:'© 2026 Aircraft2Sell — All rights reserved · Aircraft listings across Europe',
+  },
+  fr:{
+    nav_listings:'Annonces', nav_pricing:'Tarifs', nav_about:'À propos', nav_contact:'Contact',
+    btn_post:'Déposer une annonce',
+    pricing_eyebrow:'Des tarifs simples et transparents',
+    pricing_h1:'<em>Décollage</em><br>immédiat pour<br>votre annonce',
+    pricing_sub:"Aucune commission sur la vente. Jamais. Choisissez la formule qui correspond à vos besoins et mettez votre avion face aux bons acheteurs.",
+    billing_monthly:'Mensuel', billing_annual:'Annuel', save_badge:'Économisez 20%',
+    popular_tag:'Le plus populaire',
+    plan1_name:'ESSENTIEL', plan1_tagline:'Pour les particuliers qui vendent un avion', plan1_period:'Gratuit à vie',
+    plan2_name:'BOOST', plan2_tagline:'Vendez plus vite avec une visibilité premium', plan2_period:'par mois',
+    plan3_name:'PRO', plan3_tagline:'Pour les courtiers et revendeurs professionnels', plan3_period:'par mois',
+    p2_annual:'278 €/an — économisez 70 €', p3_annual:'758 €/an — économisez 190 €',
+    cta_free:'Démarrer gratuitement', cta_boost:'Choisir Boost', cta_pro:'Choisir Pro',
+    addon_badge:'OPTION', addon_title:'📸 Photos+',
+    addon_desc:'Passez de 5 à 10 photos sur votre annonce Essentiel. Plus de clichés, plus de contacts.',
+    addon_period:'par mois', addon_compatible:'Compatible avec la formule Essentiel uniquement',
+    addon_cta:'Ajouter à mon annonce',
+    tbl_feature:'Fonctionnalité',
+    compare_title:'Comparaison complète',
+    compare_rows:[
+      {section:'Annonce'},
+      {label:'Annonces actives', v:['1','1','Illimitées']},
+      {label:"Durée de l'annonce", v:['60 jours','30 jours renouvelables','30 jours renouvelables']},
+      {label:'Photos incluses', v:['5','20','Illimitées']},
+      {label:'Aucune commission sur la vente', v:['✓','✓','✓']},
+      {section:'Visibilité'},
+      {label:'Mise en avant en tête de résultats', v:['—','✓','✓ Prioritaire']},
+      {label:'Inclusion dans la newsletter', v:['—','✓','✓']},
+      {label:'Publication sur les réseaux sociaux', v:['—','✓','✓ Boosté']},
+      {label:'Publicités ciblées Facebook/Instagram', v:['—','—','✓']},
+      {section:'Outils vendeur'},
+      {label:'Statistiques de vues et contacts', v:['—','✓','✓ Avancées']},
+      {label:'Badge vendeur certifié', v:['—','—','✓']},
+      {label:"Relecture de l'annonce", v:['—','—','✓']},
+      {label:'Messagerie prioritaire', v:['—','—','✓']},
+      {section:'Support'},
+      {label:"Accès au centre d'aide", v:['✓','✓','✓']},
+      {label:'Support par email', v:['—','✓','✓ Prioritaire']},
+    ],
+    faqs:[
+      {q:'Y a-t-il une commission sur la vente ?', a:"Jamais. Aircraft2Sell se rémunère uniquement sur les formules d'annonce et les options. Le prix de vente vous appartient entièrement, quel que soit le montant de la transaction."},
+      {q:'Puis-je annuler ma formule à tout moment ?', a:"Oui, absolument. Les formules mensuelles peuvent être annulées à tout moment sans frais. Votre annonce reste active jusqu'à la fin de la période en cours."},
+      {q:'Que se passe-t-il quand mon annonce Essentiel expire après 60 jours ?', a:"Vous recevrez un email de rappel 7 jours avant l'expiration. Vous pouvez renouveler gratuitement en un clic. Vos données et photos sont conservées."},
+      {q:"Puis-je passer d'Essentiel à Boost en cours d'annonce ?", a:"Oui. Vous pouvez upgrader à tout moment depuis votre espace vendeur. Les jours restants sur votre annonce actuelle seront reportés."},
+      {q:"L'option Photos+ — qu'est-ce qu'elle comprend exactement ?", a:"Elle vous permet d'uploader jusqu'à 10 photos (au lieu de 5) sur votre annonce Essentiel gratuite. Vous pouvez annuler l'option à tout moment."},
+      {q:'Comment fonctionne la formule Pro pour plusieurs annonces ?', a:"La formule Pro vous permet de publier un nombre illimité d'annonces simultanées. Toutes bénéficient de la visibilité boostée et du badge vendeur certifié."},
+    ],
+    faq_title:'Questions fréquentes',
+    toast_signup:"Redirection vers l'inscription…",
+    toast_addon:'Option ajoutée à votre sélection !',
+    footer_contact:'Contact', footer_legal:'Mentions légales',
+    footer_copy:"© 2026 Aircraft2Sell — Tous droits réservés · Annonces d'aéronefs en Europe",
+  },
+  de:{
+    nav_listings:'Anzeigen', nav_pricing:'Preise', nav_about:'Über uns', nav_contact:'Kontakt',
+    btn_post:'Anzeige aufgeben',
+    pricing_eyebrow:'Einfache, transparente Preise',
+    pricing_h1:'<em>Starten</em> Sie<br>Ihr Inserat<br>durch',
+    pricing_sub:'Keine Provision auf den Verkauf. Niemals. Wählen Sie den passenden Plan und bringen Sie Ihr Flugzeug vor ernsthafte Käufer.',
+    billing_monthly:'Monatlich', billing_annual:'Jährlich', save_badge:'20% sparen',
+    popular_tag:'Beliebteste Wahl',
+    plan1_name:'BASIS', plan1_tagline:'Für Privatverkäufer mit einem Flugzeug', plan1_period:'Dauerhaft kostenlos',
+    plan2_name:'BOOST', plan2_tagline:'Schneller verkaufen mit Premium-Sichtbarkeit', plan2_period:'pro Monat',
+    plan3_name:'PRO', plan3_tagline:'Für Broker & professionelle Händler', plan3_period:'pro Monat',
+    p2_annual:'278 €/Jahr — 70 € sparen', p3_annual:'758 €/Jahr — 190 € sparen',
+    cta_free:'Kostenlos starten', cta_boost:'Boost wählen', cta_pro:'Pro wählen',
+    addon_badge:'ZUSATZ', addon_title:'📸 Fotos+',
+    addon_desc:'Erweitern Sie Ihr Basis-Inserat von 5 auf 10 Fotos. Mehr Perspektiven, mehr Käufer.',
+    addon_period:'pro Monat', addon_compatible:'Nur mit dem Basis-Plan kompatibel',
+    addon_cta:'Zu meiner Anzeige hinzufügen',
+    tbl_feature:'Funktion',
+    compare_title:'Vollständiger Vergleich',
+    compare_rows:[
+      {section:'Inserat'},
+      {label:'Aktive Inserate', v:['1','1','Unbegrenzt']},
+      {label:'Laufzeit des Inserats', v:['60 Tage','30 Tage verlängerbar','30 Tage verlängerbar']},
+      {label:'Enthaltene Fotos', v:['5','20','Unbegrenzt']},
+      {label:'Keine Provision auf den Verkauf', v:['✓','✓','✓']},
+      {section:'Sichtbarkeit'},
+      {label:'Platzierung an der Spitze', v:['—','✓','✓ Priorität']},
+      {label:'Newsletter-Aufnahme', v:['—','✓','✓']},
+      {label:'Social-Media-Beitrag', v:['—','✓','✓ Geboostet']},
+      {label:'Gezielte Facebook/Instagram-Werbung', v:['—','—','✓']},
+      {section:'Verkäufer-Tools'},
+      {label:'Aufrufs- und Kontaktstatistiken', v:['—','✓','✓ Erweitert']},
+      {label:'Zertifizierter Verkäufer-Badge', v:['—','—','✓']},
+      {label:'Korrekturlesen des Inserats', v:['—','—','✓']},
+      {label:'Priorisiertes Messaging', v:['—','—','✓']},
+      {section:'Support'},
+      {label:'Zugang zum Hilfecenter', v:['✓','✓','✓']},
+      {label:'E-Mail-Support', v:['—','✓','✓ Priorität']},
+    ],
+    faqs:[
+      {q:'Gibt es eine Provision auf den Verkauf?', a:'Niemals. Aircraft2Sell verdient ausschließlich an Listingplänen und Add-ons. Der Verkaufspreis gehört vollständig Ihnen.'},
+      {q:'Kann ich meinen Plan jederzeit kündigen?', a:'Ja, absolut. Monatliche Pläne können jederzeit ohne Strafe gekündigt werden. Ihr Inserat bleibt bis zum Ende des Abrechnungszeitraums aktiv.'},
+      {q:'Was passiert, wenn mein Basis-Inserat nach 60 Tagen abläuft?', a:'Sie erhalten 7 Tage vor Ablauf eine E-Mail-Erinnerung. Sie können mit einem Klick kostenlos verlängern. Ihre Daten und Fotos bleiben erhalten.'},
+      {q:'Kann ich während der Laufzeit von Basis auf Boost wechseln?', a:'Ja. Sie können jederzeit über Ihr Verkäufer-Dashboard upgraden. Die verbleibenden Tage werden übertragen.'},
+      {q:'Was beinhaltet das Fotos+ Add-on genau?', a:'Es ermöglicht Ihnen, bis zu 10 Fotos (statt 5) auf Ihrem kostenlosen Basis-Inserat hochzuladen. Sie können das Add-on jederzeit kündigen.'},
+      {q:'Wie funktioniert der Pro-Plan für mehrere Inserate?', a:'Der Pro-Plan ermöglicht die Veröffentlichung einer unbegrenzten Anzahl simultaner Inserate, alle mit Boost-Sichtbarkeit und dem Zertifizierungs-Badge.'},
+    ],
+    faq_title:'Häufige Fragen',
+    toast_signup:'Weiterleitung zur Registrierung…',
+    toast_addon:'Add-on zu Ihrer Auswahl hinzugefügt!',
+    footer_contact:'Kontakt', footer_legal:'Impressum',
+    footer_copy:'© 2026 Aircraft2Sell — Alle Rechte vorbehalten · Flugzeuganzeigen in ganz Europa',
+  },
+  es:{
+    nav_listings:'Anuncios', nav_pricing:'Tarifas', nav_about:'Acerca de', nav_contact:'Contacto',
+    btn_post:'Publicar anuncio',
+    pricing_eyebrow:'Precios simples y transparentes',
+    pricing_h1:'<em>Despega</em><br>tu anuncio<br>hoy',
+    pricing_sub:'Sin comisión en la venta. Nunca. Elige el plan que se adapte a tus necesidades y pon tu aeronave frente a compradores serios.',
+    billing_monthly:'Mensual', billing_annual:'Anual', save_badge:'Ahorra 20%',
+    popular_tag:'El más popular',
+    plan1_name:'ESENCIAL', plan1_tagline:'Para particulares que venden una aeronave', plan1_period:'Gratis para siempre',
+    plan2_name:'BOOST', plan2_tagline:'Vende más rápido con visibilidad premium', plan2_period:'por mes',
+    plan3_name:'PRO', plan3_tagline:'Para brokers y vendedores profesionales', plan3_period:'por mes',
+    p2_annual:'278 €/año — ahorra 70 €', p3_annual:'758 €/año — ahorra 190 €',
+    cta_free:'Empieza gratis', cta_boost:'Elegir Boost', cta_pro:'Elegir Pro',
+    addon_badge:'OPCIÓN', addon_title:'📸 Fotos+',
+    addon_desc:'Amplía tu anuncio Esencial de 5 a 10 fotos. Más ángulos, más compradores.',
+    addon_period:'por mes', addon_compatible:'Compatible solo con el plan Esencial',
+    addon_cta:'Añadir a mi anuncio',
+    tbl_feature:'Característica',
+    compare_title:'Comparación completa',
+    compare_rows:[
+      {section:'Anuncio'},
+      {label:'Anuncios activos', v:['1','1','Ilimitados']},
+      {label:'Duración del anuncio', v:['60 días','30 días renovables','30 días renovables']},
+      {label:'Fotos incluidas', v:['5','20','Ilimitadas']},
+      {label:'Sin comisión en la venta', v:['✓','✓','✓']},
+      {section:'Visibilidad'},
+      {label:'Destacado en la parte superior', v:['—','✓','✓ Prioritario']},
+      {label:'Inclusión en el boletín', v:['—','✓','✓']},
+      {label:'Publicación en redes sociales', v:['—','✓','✓ Amplificado']},
+      {label:'Anuncios dirigidos Facebook/Instagram', v:['—','—','✓']},
+      {section:'Herramientas del vendedor'},
+      {label:'Estadísticas de vistas y contactos', v:['—','✓','✓ Avanzadas']},
+      {label:'Insignia de vendedor certificado', v:['—','—','✓']},
+      {label:'Revisión del anuncio', v:['—','—','✓']},
+      {label:'Mensajería prioritaria', v:['—','—','✓']},
+      {section:'Soporte'},
+      {label:'Acceso al centro de ayuda', v:['✓','✓','✓']},
+      {label:'Soporte por correo', v:['—','✓','✓ Prioritario']},
+    ],
+    faqs:[
+      {q:'¿Hay comisión sobre la venta?', a:'Nunca. Aircraft2Sell obtiene ingresos únicamente de los planes de anuncio y las opciones. El precio de venta es completamente tuyo.'},
+      {q:'¿Puedo cancelar mi plan en cualquier momento?', a:'Sí, absolutamente. Los planes mensuales se pueden cancelar en cualquier momento sin penalización. Tu anuncio permanece activo hasta el final del período de facturación.'},
+      {q:'¿Qué ocurre cuando mi anuncio Esencial caduca a los 60 días?', a:'Recibirás un recordatorio por correo 7 días antes del vencimiento. Puedes renovar gratis con un clic. Tus datos y fotos se conservan.'},
+      {q:'¿Puedo cambiar de Esencial a Boost durante el anuncio?', a:'Sí. Puedes mejorar en cualquier momento desde tu panel de vendedor. Los días restantes de tu anuncio actual se transferirán.'},
+      {q:'¿Qué incluye exactamente la opción Fotos+?', a:'Te permite subir hasta 10 fotos (en lugar de 5) en tu anuncio Esencial gratuito. Puedes cancelar la opción en cualquier momento.'},
+      {q:'¿Cómo funciona el plan Pro para varios anuncios?', a:'El plan Pro te permite publicar un número ilimitado de anuncios simultáneos. Todos se benefician de la visibilidad mejorada y la insignia de vendedor certificado.'},
+    ],
+    faq_title:'Preguntas frecuentes',
+    toast_signup:'Redirigiendo al registro…',
+    toast_addon:'¡Opción añadida a tu selección!',
+    footer_contact:'Contacto', footer_legal:'Aviso legal',
+    footer_copy:'© 2026 Aircraft2Sell — Todos los derechos reservados · Anuncios de aeronaves en Europa',
+  },
+  zh:{
+    nav_listings:'列表', nav_pricing:'定价', nav_about:'关于我们', nav_contact:'联系我们',
+    btn_post:'发布广告',
+    pricing_eyebrow:'简单透明的定价方案',
+    pricing_h1:'<em>助力</em>您的<br>广告腾飞',
+    pricing_sub:'成交无佣金，永久如此。选择适合您的方案，让您的飞机出现在真正买家面前。',
+    billing_monthly:'按月', billing_annual:'按年', save_badge:'节省20%',
+    popular_tag:'最受欢迎',
+    plan1_name:'基础版', plan1_tagline:'适合个人卖家出售单架飞机', plan1_period:'永久免费',
+    plan2_name:'加速版', plan2_tagline:'以高级曝光加快成交速度', plan2_period:'每月',
+    plan3_name:'专业版', plan3_tagline:'适合经纪人和专业经销商', plan3_period:'每月',
+    p2_annual:'每年278欧 — 节省70欧', p3_annual:'每年758欧 — 节省190欧',
+    cta_free:'免费开始', cta_boost:'选择加速版', cta_pro:'选择专业版',
+    addon_badge:'附加选项', addon_title:'📸 照片加强版',
+    addon_desc:'将基础广告的照片从5张升级到10张。更多角度，吸引更多买家。',
+    addon_period:'每月', addon_compatible:'仅适用于基础版方案',
+    addon_cta:'添加到我的广告',
+    tbl_feature:'功能',
+    compare_title:'完整功能对比',
+    compare_rows:[
+      {section:'广告'},
+      {label:'有效广告数量', v:['1','1','无限制']},
+      {label:'广告有效期', v:['60天','30天可续费','30天可续费']},
+      {label:'包含照片数量', v:['5张','20张','无限制']},
+      {label:'成交零佣金', v:['✓','✓','✓']},
+      {section:'曝光度'},
+      {label:'置顶展示', v:['—','✓','✓ 优先']},
+      {label:'收录至电子报', v:['—','✓','✓']},
+      {label:'社交媒体发布', v:['—','✓','✓ 加量推广']},
+      {label:'Facebook/Instagram精准广告', v:['—','—','✓']},
+      {section:'卖家工具'},
+      {label:'浏览量与联系统计', v:['—','✓','✓ 高级数据']},
+      {label:'认证卖家徽章', v:['—','—','✓']},
+      {label:'广告专业审校', v:['—','—','✓']},
+      {label:'优先消息服务', v:['—','—','✓']},
+      {section:'支持服务'},
+      {label:'帮助中心访问', v:['✓','✓','✓']},
+      {label:'邮件支持', v:['—','✓','✓ 优先响应']},
+    ],
+    faqs:[
+      {q:'成交是否收取佣金？', a:'永远不会。Aircraft2Sell仅从广告方案和附加选项中获取收入。无论成交金额多少，售价完全归您所有。'},
+      {q:'可以随时取消方案吗？', a:'可以，绝对可以。月付方案可随时无违约金取消。您的广告将在当前计费周期结束前保持有效。'},
+      {q:'基础版广告60天后到期怎么办？', a:'到期前7天您将收到邮件提醒。可一键免费续费，您的数据和照片均会保留。'},
+      {q:'广告发布中途可以从基础版升级到加速版吗？', a:'可以。您可随时在卖家控制台升级，当前广告的剩余天数将自动转移。'},
+      {q:'照片加强版附加选项具体包含什么？', a:'允许您在免费基础版广告上传最多10张照片（原为5张）。可随时取消该附加选项。'},
+      {q:'专业版如何支持多个广告？', a:'专业版支持同时发布无限数量的广告，所有广告均享有加强曝光和认证卖家徽章。'},
+    ],
+    faq_title:'常见问题',
+    toast_signup:'正在跳转至注册页面…',
+    toast_addon:'附加选项已添加至您的选择！',
+    footer_contact:'联系我们', footer_legal:'法律声明',
+    footer_copy:'© 2026 Aircraft2Sell — 版权所有 · 全欧洲航空器广告平台',
+  }
+};
+
+let lang = 'en';
+let isAnnual = false;
+
+function t(k){ return (T[lang]&&T[lang][k]) || (T.en[k]) || k; }
+
+const FEATURES = {
+  1:[
+    {yes:true, text:'plan_f1_1', hi:false},
+    {yes:true, text:'plan_f1_2', hi:false},
+    {yes:true, text:'plan_f1_3', hi:true},
+    {yes:true, text:'plan_f1_4', hi:false},
+    {yes:false, text:'plan_f1_5', hi:false},
+    {yes:false, text:'plan_f1_6', hi:false},
+  ],
+  2:[
+    {yes:true, text:'plan_f2_1', hi:true},
+    {yes:true, text:'plan_f2_2', hi:false},
+    {yes:true, text:'plan_f2_3', hi:true},
+    {yes:true, text:'plan_f2_4', hi:false},
+    {yes:true, text:'plan_f2_5', hi:true},
+    {yes:false, text:'plan_f2_6', hi:false},
+  ],
+  3:[
+    {yes:true, text:'plan_f3_1', hi:true},
+    {yes:true, text:'plan_f3_2', hi:false},
+    {yes:true, text:'plan_f3_3', hi:true},
+    {yes:true, text:'plan_f3_4', hi:false},
+    {yes:true, text:'plan_f3_5', hi:false},
+    {yes:true, text:'plan_f3_6', hi:true},
+  ]
+};
+
+const FEAT_KEYS = {
+  en:{
+    plan_f1_1:'1 active listing',
+    plan_f1_2:'5 photos',
+    plan_f1_3:'60-day listing duration',
+    plan_f1_4:'No commission on sale',
+    plan_f1_5:'Featured placement',
+    plan_f1_6:'Social media boost',
+    plan_f2_1:'Everything in Essential',
+    plan_f2_2:'1 active listing',
+    plan_f2_3:'Up to 20 photos',
+    plan_f2_4:'Featured at top of results',
+    plan_f2_5:'Newsletter + social media post',
+    plan_f2_6:'Targeted ad campaigns',
+    plan_f3_1:'Everything in Boost',
+    plan_f3_2:'Unlimited simultaneous listings',
+    plan_f3_3:'Unlimited photos per listing',
+    plan_f3_4:'Priority featured placement',
+    plan_f3_5:'Advanced stats dashboard',
+    plan_f3_6:'Certified seller badge ✅',
+  },
+  fr:{
+    plan_f1_1:'1 annonce active',
+    plan_f1_2:'5 photos',
+    plan_f1_3:'Durée de 60 jours',
+    plan_f1_4:'Aucune commission sur la vente',
+    plan_f1_5:'Mise en avant',
+    plan_f1_6:'Boost réseaux sociaux',
+    plan_f2_1:'Tout ce qu\'inclut Essentiel',
+    plan_f2_2:'1 annonce active',
+    plan_f2_3:"Jusqu'à 20 photos",
+    plan_f2_4:'Mise en avant en tête de résultats',
+    plan_f2_5:'Newsletter + publication réseaux sociaux',
+    plan_f2_6:'Campagnes publicitaires ciblées',
+    plan_f3_1:'Tout ce qu\'inclut Boost',
+    plan_f3_2:'Annonces simultanées illimitées',
+    plan_f3_3:'Photos illimitées par annonce',
+    plan_f3_4:'Mise en avant prioritaire',
+    plan_f3_5:'Tableau de bord stats avancé',
+    plan_f3_6:'Badge vendeur certifié ✅',
+  },
+  de:{
+    plan_f1_1:'1 aktives Inserat',
+    plan_f1_2:'5 Fotos',
+    plan_f1_3:'Laufzeit 60 Tage',
+    plan_f1_4:'Keine Provision auf Verkauf',
+    plan_f1_5:'Hervorgehobene Platzierung',
+    plan_f1_6:'Social-Media-Boost',
+    plan_f2_1:'Alles aus Basis',
+    plan_f2_2:'1 aktives Inserat',
+    plan_f2_3:'Bis zu 20 Fotos',
+    plan_f2_4:'Platzierung an der Spitze',
+    plan_f2_5:'Newsletter + Social-Media-Beitrag',
+    plan_f2_6:'Gezielte Werbekampagnen',
+    plan_f3_1:'Alles aus Boost',
+    plan_f3_2:'Unbegrenzte gleichzeitige Inserate',
+    plan_f3_3:'Unbegrenzte Fotos pro Inserat',
+    plan_f3_4:'Priorisierte Platzierung',
+    plan_f3_5:'Erweitertes Statistik-Dashboard',
+    plan_f3_6:'Zertifizierter Verkäufer-Badge ✅',
+  },
+  es:{
+    plan_f1_1:'1 anuncio activo',
+    plan_f1_2:'5 fotos',
+    plan_f1_3:'Duración de 60 días',
+    plan_f1_4:'Sin comisión en la venta',
+    plan_f1_5:'Anuncio destacado',
+    plan_f1_6:'Impulso en redes sociales',
+    plan_f2_1:'Todo lo del plan Esencial',
+    plan_f2_2:'1 anuncio activo',
+    plan_f2_3:'Hasta 20 fotos',
+    plan_f2_4:'Destacado en la parte superior',
+    plan_f2_5:'Boletín + publicación en redes',
+    plan_f2_6:'Campañas publicitarias dirigidas',
+    plan_f3_1:'Todo lo del plan Boost',
+    plan_f3_2:'Anuncios simultáneos ilimitados',
+    plan_f3_3:'Fotos ilimitadas por anuncio',
+    plan_f3_4:'Posición prioritaria destacada',
+    plan_f3_5:'Panel de estadísticas avanzado',
+    plan_f3_6:'Insignia de vendedor certificado ✅',
+  },
+  zh:{
+    plan_f1_1:'1条有效广告',
+    plan_f1_2:'5张照片',
+    plan_f1_3:'60天有效期',
+    plan_f1_4:'成交零佣金',
+    plan_f1_5:'优先展示',
+    plan_f1_6:'社交媒体推广',
+    plan_f2_1:'包含基础版所有功能',
+    plan_f2_2:'1条有效广告',
+    plan_f2_3:'最多20张照片',
+    plan_f2_4:'置顶展示',
+    plan_f2_5:'电子报 + 社交媒体发布',
+    plan_f2_6:'精准广告投放',
+    plan_f3_1:'包含加速版所有功能',
+    plan_f3_2:'无限同时广告',
+    plan_f3_3:'每条广告无限照片',
+    plan_f3_4:'优先置顶展示',
+    plan_f3_5:'高级数据分析面板',
+    plan_f3_6:'认证卖家徽章 ✅',
+  }
+};
+
+function getFeatText(key){
+  const map = FEAT_KEYS[lang] || FEAT_KEYS.en;
+  return map[key] || key;
+}
+
+function renderFeatures(){
+  [1,2,3].forEach(n=>{
+    const ul = document.getElementById('features'+n);
+    ul.innerHTML = '';
+    FEATURES[n].forEach(f=>{
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="feat-icon ${f.yes?'yes':'no'}">${f.yes?'✓':'✕'}</span><span class="feat-text ${f.hi?'highlight':''}">${getFeatText(f.text)}</span>`;
+      ul.appendChild(li);
+    });
+  });
+}
+
+function updatePrices(){
+  const p2m = 29, p3m = 79, addon = 10;
+  if(isAnnual){
+    document.getElementById('p1price').textContent = '0 €';
+    document.getElementById('p2price').textContent = Math.round(p2m*12*0.8/12)+' €';
+    document.getElementById('p3price').textContent = Math.round(p3m*12*0.8/12)+' €';
+    document.getElementById('addonPrice').textContent = '+'+Math.round(addon*12*0.8/12)+' €';
+    document.getElementById('p1annual').innerHTML = '&nbsp;';
+    document.getElementById('p2annual').textContent = t('p2_annual');
+    document.getElementById('p3annual').textContent = t('p3_annual');
+  } else {
+    document.getElementById('p1price').textContent = '0 €';
+    document.getElementById('p2price').textContent = p2m+' €';
+    document.getElementById('p3price').textContent = p3m+' €';
+    document.getElementById('addonPrice').textContent = '+'+addon+' €';
+    document.getElementById('p1annual').innerHTML = '&nbsp;';
+    document.getElementById('p2annual').innerHTML = '&nbsp;';
+    document.getElementById('p3annual').innerHTML = '&nbsp;';
+  }
+}
+
+function renderCompare(){
+  const rows = t('compare_rows');
+  const tbody = document.getElementById('compareBody');
+  tbody.innerHTML = '';
+  rows.forEach(row=>{
+    const tr = document.createElement('tr');
+    if(row.section !== undefined){
+      tr.className = 'section-row';
+      tr.innerHTML = `<td colspan="4">${row.section}</td>`;
+    } else {
+      const isCheck = v => v==='✓';
+      const isDash = v => v==='—';
+      const cell = v => {
+        if(isCheck(v)) return `<span class="check-yes">✓</span>`;
+        if(isDash(v)) return `<span class="check-no">—</span>`;
+        return `<span class="check-partial">${v}</span>`;
+      };
+      tr.innerHTML = `<td>${row.label}</td>${row.v.map(v=>
+        `<td>${cell(v)}</td>`).join('')}`;
+    }
+    tbody.appendChild(tr);
+  });
+  document.getElementById('compareTitle').innerHTML = t('compare_title').replace(/(\w+)$/, '<span>$1</span>');
+}
+
+function renderFAQ(){
+  const faqs = t('faqs');
+  const container = document.getElementById('faqContainer');
+  container.innerHTML = '';
+  faqs.forEach((faq,i)=>{
+    const div = document.createElement('div');
+    div.className = 'faq-item';
+    div.innerHTML = `
+      <div class="faq-q" onclick="toggleFaq(this.parentElement)">
+        <span>${faq.q}</span><span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a"><p>${faq.a}</p></div>`;
+    container.appendChild(div);
+  });
+  document.getElementById('faqTitle').innerHTML = t('faq_title').replace(/(\S+)$/, '<span>$1</span>');
+}
+
+function toggleFaq(el){
+  el.classList.toggle('open');
+}
+
+function toggleBilling(){
+  isAnnual = !isAnnual;
+  const toggle = document.getElementById('billingToggle');
+  toggle.classList.toggle('on', isAnnual);
+  document.getElementById('monthlyLabel').classList.toggle('active-label', !isAnnual);
+  document.getElementById('annualLabel').classList.toggle('active-label', isAnnual);
+  updatePrices();
+}
+
+function setLang(l){
+  lang = l;
+  document.documentElement.lang = l;
+  document.querySelectorAll('.lang-btn').forEach(b=>{
+    b.classList.toggle('active', b.getAttribute('onclick').includes("'"+l+"'"));
+  });
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  document.getElementById('pricingH1').innerHTML = t('pricing_h1');
+  document.title = 'Aircraft2Sell — '+t('nav_pricing');
+  renderFeatures();
+  updatePrices();
+  renderCompare();
+  renderFAQ();
+}
+
+let toastTimer;
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2800);
+}
+
+// Boot
+setLang('en');
+</script>
+</body>
+</html>
