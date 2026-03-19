@@ -141,7 +141,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.95);backdrop-filt
 <body>
 
 <nav>
-  <a href="homepage.html" class="logo"><span class="logo-icon">✈</span>Aircraft2<span>Sell</span></a>
+  <a href="homepage.html" class="logo"><svg viewBox="0 0 64 64" style="width:1.4em;height:1.4em;display:inline-block;vertical-align:middle;fill:var(--accent);flex-shrink:0;animation:flt 4s ease-in-out infinite" xmlns="http://www.w3.org/2000/svg"><path d="M60 22c0-2-2-4-5-4l-12 1-16-14H18l8 14-14 1-5-6H2l3 10-3 10h5l5-6 14 1-8 14h9l16-14 12 1c3 0 5-2 5-4v-3z"/></svg>Aircraft2<span>Sell</span></a>
   <div class="nav-user">
     <div class="user-avatar">👤</div>
     <div>
@@ -158,6 +158,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.95);backdrop-filt
       <button class="lb" onclick="setLang('zh')">中文</button>
     </div>
     <a href="checkout.html" class="btn-sm" id="upgradeBtn">Upgrade</a>
+    <button class="btn-sm" style="background:transparent;border:1px solid var(--border);color:var(--mist)" onclick="logout()">Déconnexion</button>
   </div>
 </nav>
 
@@ -296,6 +297,14 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.95);backdrop-filt
 <div class="toast" id="toast"></div>
 
 <script>
+
+(function(){
+  const isLoggedIn = localStorage.getItem('a2s_logged_in') === 'true';
+  if(!isLoggedIn){
+    window.location.href = 'login.html?redirect=' + encodeURIComponent('dashboard.html');
+  }
+})();
+
 const T={
   en:{
     sbPlanBadge:'ACTIVE', sbStatus:'Active subscription', sbUpgrade:'Upgrade to Pro', sbBilling:'Update payment method', sbCancel:'Cancel subscription',
@@ -432,6 +441,12 @@ function confirmCancel(){
 }
 
 let toastTimer;
+
+function logout(){
+  localStorage.removeItem('a2s_logged_in');
+  /* SUPABASE: await supabase.auth.signOut(); */
+  window.location.href='login.html';
+}
 function showToast(msg){
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');

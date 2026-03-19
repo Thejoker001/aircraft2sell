@@ -72,7 +72,7 @@ nav{position:relative;z-index:10;background:rgba(6,11,21,.95);backdrop-filter:bl
 </head>
 <body>
 <nav>
-  <a href="homepage.html" class="logo"><span class="logo-icon">✈</span>Aircraft2<span>Sell</span></a>
+  <a href="homepage.html" class="logo"><svg viewBox="0 0 64 64" style="width:1.4em;height:1.4em;display:inline-block;vertical-align:middle;fill:var(--accent);flex-shrink:0;animation:flt 4s ease-in-out infinite" xmlns="http://www.w3.org/2000/svg"><path d="M60 22c0-2-2-4-5-4l-12 1-16-14H18l8 14-14 1-5-6H2l3 10-3 10h5l5-6 14 1-8 14h9l16-14 12 1c3 0 5-2 5-4v-3z"/></svg>Aircraft2<span>Sell</span></a>
   <div class="lang-sw">
     <button class="lb active" onclick="setLang('en')">EN</button>
     <button class="lb" onclick="setLang('fr')">FR</button>
@@ -285,9 +285,19 @@ async function handleLogin(){
   /* SUPABASE INTEGRATION:
      const {data,error} = await supabase.auth.signInWithPassword({email,password:pw});
      if(error){ showToast(error.message); btn.classList.remove('loading'); btn.disabled=false; return; }
-     window.location.href="dashboard.html"; */
+     (function(){
+    localStorage.setItem('a2s_logged_in','true');
+    const params=new URLSearchParams(window.location.search);
+    const redirect=params.get('redirect');
+    window.location.href=redirect?decodeURIComponent(redirect):'dashboard.html';
+  })(); */
   await new Promise(r=>setTimeout(r,1500));
-  window.location.href="dashboard.html";
+  (function(){
+    localStorage.setItem('a2s_logged_in','true');
+    const params=new URLSearchParams(window.location.search);
+    const redirect=params.get('redirect');
+    window.location.href=redirect?decodeURIComponent(redirect):'dashboard.html';
+  })();
 }
 async function handleRegister(){
   const first=document.getElementById('regFirst').value.trim();
@@ -314,13 +324,30 @@ async function handleRegister(){
   const s=document.getElementById('regSuccess');
   s.style.display='flex'; s.textContent='✅ '+t('reg_success');
   btn.classList.remove('loading');btn.disabled=false;
-  setTimeout(()=>window.location.href="dashboard.html",2000);
+  setTimeout(()=>(function(){
+    localStorage.setItem('a2s_logged_in','true');
+    const params=new URLSearchParams(window.location.search);
+    const redirect=params.get('redirect');
+    window.location.href=redirect?decodeURIComponent(redirect):'dashboard.html';
+  })(),2000);
 }
 function socialLogin(provider){
   showToast(t('toast_social'));
   /* SUPABASE: await supabase.auth.signInWithOAuth({provider}) */
 }
 let tt;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),3000);}
+// Show message if redirected from wanted section
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('msg') === 'wanted'){
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.3);color:#e8a020;padding:.75rem 1rem;font-size:.78rem;text-align:center;margin-bottom:1rem;border-radius:2px';
+    banner.textContent = '🔍 Please sign in to post an aircraft wanted request.';
+    const authBody = document.querySelector('.auth-body');
+    if(authBody) authBody.insertBefore(banner, authBody.firstChild);
+  }
+})();
+
 // Init
 const params=new URLSearchParams(window.location.search);
 if(params.get('tab')==='register')switchTab('register');

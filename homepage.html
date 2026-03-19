@@ -214,7 +214,7 @@ footer{position:relative;z-index:1;background:var(--deep);border-top:1px solid v
       <button class="lb" onclick="setLang('zh')"><span class="lf">🇨🇳</span><span class="lb-lbl">中文</span></button>
     </div>
     <a href="login.html" class="btn-login" id="btnLogin"><span class="login-icon">👤</span><span id="btnLoginTxt">Connexion</span></a>
-    <button class="btn-post" data-i18n="btn_post" onclick="showToast(t('toast_soon'))"></button>
+    <a href="#" class="btn-post" data-i18n="btn_post" onclick="requireLogin(event,'post-listing.html')"></a>
   </div>
 </nav>
 
@@ -336,7 +336,7 @@ footer{position:relative;z-index:1;background:var(--deep);border-top:1px solid v
     <div class="footer-col">
       <h4 data-i18n="footer_col2"></h4>
       <ul>
-        <li><a href="post-listing.html" data-i18n="btn_post"></a></li>
+        <li><a href="#" onclick="requireLogin(event,'post-listing.html')" data-i18n="btn_post"></a></li>
         <li><a href="pricing.html" data-i18n="nav_pricing"></a></li>
         <li><a href="guide-acheteur.html" data-i18n="footer_guide"></a></li>
               </ul>
@@ -580,6 +580,29 @@ function toggleFav(btn){btn.classList.toggle('liked');btn.textContent=btn.classL
 function submitAlert(){const v=document.getElementById('alertEmail').value;if(v&&v.includes('@')){showToast(t('toast_alert'));document.getElementById('alertEmail').value='';}else showToast('⚠ Please enter a valid email');}
 let tt;
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),3000);}
+
+
+/* ─── AUTH GATE ─────────────────────────────────────────────
+   Checks if user is logged in before navigating.
+   Replace the localStorage check with your real Supabase check:
+   const { data:{ user } } = await supabase.auth.getUser();
+   if(user) window.location.href = dest;
+   ─────────────────────────────────────────────────────────── */
+function requireLogin(e, dest){
+  e.preventDefault();
+  /* SUPABASE — replace this block:
+  supabase.auth.getUser().then(({data:{user}})=>{
+    if(user){ window.location.href = dest; }
+    else { window.location.href = 'login.html?redirect='+encodeURIComponent(dest); }
+  }); */
+  // Temporary check using localStorage (replace with Supabase above)
+  const isLoggedIn = localStorage.getItem('a2s_logged_in') === 'true';
+  if(isLoggedIn){
+    window.location.href = dest;
+  } else {
+    window.location.href = 'login.html?redirect=' + encodeURIComponent(dest);
+  }
+}
 
 function setLang(l){
   lang=l;document.documentElement.lang=l;
