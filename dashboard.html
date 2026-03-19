@@ -136,6 +136,16 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.95);backdrop-filt
 /* TOAST */
 .toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);padding:.9rem 1.4rem;color:var(--white);font-size:.86rem;z-index:999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
+.la-btn.statperiod.active{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.07)}
+.stat-bar-grp{flex:1;display:flex;gap:2px;align-items:flex-end;position:relative}
+.stat-bar{min-width:4px;border-radius:1px 1px 0 0;cursor:pointer;transition:opacity .15s}
+.stat-bar:hover{opacity:.7}
+.stat-bar-lbl{position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);font-size:.5rem;color:var(--mist2);white-space:nowrap}
+.prog-row{display:flex;flex-direction:column;gap:2px;margin-bottom:4px}
+.prog-meta{display:flex;justify-content:space-between;font-size:.68rem;color:var(--mist)}
+.prog-meta span:last-child{color:var(--accent)}
+.prog-track{height:4px;background:rgba(255,255,255,.08);border-radius:2px}
+.prog-fill{height:100%;border-radius:2px}
 </style>
 </head>
 <body>
@@ -149,6 +159,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.95);backdrop-filt
       <div class="user-plan" id="userPlan">BOOST plan</div>
     </div>
   </div>
+  <div id="dashGreeting" style="font-size:.8rem;color:var(--mist);margin-left:.5rem;display:flex;align-items:center;gap:.3rem"></div>
   <div class="nav-right">
     <div class="lang-sw">
       <button class="lb active" onclick="setLang('en')">EN</button>
@@ -189,6 +200,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.95);backdrop-filt
     <nav class="sidebar-nav">
       <a href="#" class="snav-item active" id="sn1"><span class="snav-icon">📊</span><span id="snOverview">Overview</span></a>
       <a href="#" class="snav-item" id="sn2"><span class="snav-icon">✈</span><span id="snListings">My listings</span><span class="snav-badge">1</span></a>
+      <a href="#" class="snav-item" id="sn2b"><span class="snav-icon">📈</span><span id="snStats">Statistics</span></a>
       <a href="#" class="snav-item" id="sn3"><span class="snav-icon">💬</span><span id="snMessages">Messages</span><span class="snav-badge">3</span></a>
       <a href="#" class="snav-item" id="sn4"><span class="snav-icon">💳</span><span id="snSub">Subscription</span></a>
       <a href="#" class="snav-item" id="sn5"><span class="snav-icon">🧾</span><span id="snInvoices">Invoices</span></a>
@@ -251,6 +263,70 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,11,21,.95);backdrop-filt
           <button class="la-btn" onclick="showToast(t('toast_preview'))">👁</button>
           <button class="la-btn danger" onclick="showToast(t('toast_delete'))">✕</button>
         </div>
+      </div>
+    </div>
+
+
+    <!-- STATISTICS SECTION -->
+    <div id="statsSection" style="display:none;margin-bottom:1.5rem">
+      <div class="section-hd" style="margin-bottom:1rem">
+        <div class="section-label" id="statsTitle">Listing statistics</div>
+        <div style="display:flex;gap:.4rem">
+          <button class="la-btn statperiod active" onclick="setStatPeriod(7,this)">7d</button>
+          <button class="la-btn statperiod" onclick="setStatPeriod(30,this)">30d</button>
+          <button class="la-btn statperiod" onclick="setStatPeriod(90,this)">90d</button>
+        </div>
+      </div>
+      <div class="stat-cards" style="margin-bottom:1rem">
+        <div class="stat-card active">
+          <div class="sc-label" id="stLbl1">Total views</div>
+          <div class="sc-value" id="stVal1">0</div>
+          <div class="sc-change neutral"><span id="stSub1">No listings yet</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-label" id="stLbl2">Enquiries</div>
+          <div class="sc-value" id="stVal2">0</div>
+          <div class="sc-change neutral"><span id="stSub2">No listings yet</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-label" id="stLbl3">Saved by buyers</div>
+          <div class="sc-value" id="stVal3">0</div>
+          <div class="sc-change neutral"><span id="stSub3">No listings yet</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-label" id="stLbl4">Contact rate</div>
+          <div class="sc-value" id="stVal4">0%</div>
+          <div class="sc-change neutral"><span id="stSub4">Views → enquiries</span></div>
+        </div>
+      </div>
+
+      <!-- Chart: views per day -->
+      <div style="background:var(--card);border:1px solid var(--border);padding:1.2rem;margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem">
+          <div style="font-size:.78rem;font-weight:500;color:var(--white)" id="chartTitle">Views per day</div>
+          <div style="display:flex;gap:1rem">
+            <div style="display:flex;align-items:center;gap:.3rem;font-size:.68rem;color:var(--mist)"><div style="width:8px;height:8px;background:var(--accent);border-radius:1px"></div><span id="lgViews">Views</span></div>
+            <div style="display:flex;align-items:center;gap:.3rem;font-size:.68rem;color:var(--mist)"><div style="width:8px;height:8px;background:#60a5fa;border-radius:1px"></div><span id="lgEnq">Enquiries</span></div>
+          </div>
+        </div>
+        <div id="statChart" style="display:flex;align-items:flex-end;gap:3px;height:90px;padding-bottom:18px;border-bottom:1px solid var(--border)"></div>
+      </div>
+
+      <!-- Sources + countries -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div style="background:var(--card);border:1px solid var(--border);padding:1rem">
+          <div style="font-size:.72rem;font-weight:500;color:var(--white);margin-bottom:.8rem" id="srcTitle">Traffic sources</div>
+          <div id="srcChart" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);padding:1rem">
+          <div style="font-size:.72rem;font-weight:500;color:var(--white);margin-bottom:.8rem" id="ctyTitle">Visitor countries</div>
+          <div id="ctyChart" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+
+      <!-- Empty state note -->
+      <div style="background:rgba(232,160,32,.05);border:1px solid rgba(232,160,32,.15);padding:1rem;font-size:.78rem;color:var(--mist);text-align:center">
+        <span id="statsEmptyNote">Statistics will populate automatically once your listings are live.</span>
       </div>
     </div>
 
@@ -393,6 +469,137 @@ const T={
   }
 };
 
+
+/* ─── GREETING (lever/coucher soleil selon géoloc) ─────────── */
+function setDashGreeting(lat, lon){
+  const now  = new Date();
+  const hh   = now.getHours() + now.getMinutes()/60;
+  const tz   = -now.getTimezoneOffset()/60;
+  const J2k  = (now - new Date('2000-01-01T12:00:00Z'))/86400000;
+  const Msun = (357.5291 + 0.98560028*J2k) % 360;
+  const C    = 1.9148*Math.sin(Msun*Math.PI/180) + 0.02*Math.sin(2*Msun*Math.PI/180);
+  const lam  = (280.4665 + 0.98564736*J2k + C) % 360;
+  const decl = Math.asin(Math.sin(23.4393*Math.PI/180)*Math.sin(lam*Math.PI/180))*180/Math.PI;
+  const noon = 12 - lon/15 + tz;
+  const cosH = (Math.sin(-0.833*Math.PI/180) - Math.sin(lat*Math.PI/180)*Math.sin(decl*Math.PI/180))
+               / (Math.cos(lat*Math.PI/180)*Math.cos(decl*Math.PI/180));
+  const HA   = Math.acos(Math.max(-1,Math.min(1,cosH)))*180/Math.PI;
+  const sunrise = noon - HA/15;
+  const sunset  = noon + HA/15;
+  let icon, word;
+  if      (hh >= sunrise && hh < 12)      { icon='☀️'; word=lang==='fr'?'Bonjour':lang==='de'?'Guten Morgen':lang==='es'?'Buenos días':lang==='zh'?'早上好':'Good morning'; }
+  else if (hh >= 12 && hh < 14)           { icon='🍽️'; word=lang==='fr'?'Bon appétit':lang==='de'?'Guten Appetit':lang==='es'?'Buen provecho':lang==='zh'?'用餐愉快':'Bon appétit'; }
+  else if (hh >= 14 && hh < sunset)       { icon='🌤️'; word=lang==='fr'?'Bonne après-midi':lang==='de'?'Guten Nachmittag':lang==='es'?'Buenas tardes':lang==='zh'?'下午好':'Good afternoon'; }
+  else                                     { icon='🌙'; word=lang==='fr'?'Bonsoir':lang==='de'?'Guten Abend':lang==='es'?'Buenas noches':lang==='zh'?'晚上好':'Good evening'; }
+  const el = document.getElementById('dashGreeting');
+  if(el){
+    const name = document.getElementById('userName');
+    const uname = name ? name.textContent.split(' ')[0] : '';
+    el.innerHTML = `<span style="font-size:14px">${icon}</span> <span style="color:var(--white);font-weight:500">${word}${uname ? ', '+uname : ''}</span>`;
+  }
+}
+
+function initGreeting(){
+  setDashGreeting(48.86, 2.35); // default Paris
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos => setDashGreeting(pos.coords.latitude, pos.coords.longitude),
+      () => {}
+    );
+  }
+}
+
+/* ─── STATISTICS SECTION ─────────────────────────────────────── */
+let currentStatPeriod = 7;
+const STAT_T = {
+  en:{ title:'Listing statistics', lbl1:'Total views', lbl2:'Enquiries', lbl3:'Saved by buyers', lbl4:'Contact rate',
+       sub:'No listings yet', rate:'Views → enquiries', chart:'Views per day', lgViews:'Views', lgEnq:'Enquiries',
+       src:'Traffic sources', cty:'Visitor countries', empty:'Statistics will populate automatically once your listings are live.',
+       srcLabels:['Direct search','Recommendation','Social media','Newsletter'],
+       ctyLabels:['France','Germany','Switzerland','Other'] },
+  fr:{ title:'Statistiques des annonces', lbl1:'Vues totales', lbl2:'Demandes', lbl3:'Mis en favoris', lbl4:'Taux de contact',
+       sub:'Aucune annonce', rate:'Vues → demandes', chart:'Vues par jour', lgViews:'Vues', lgEnq:'Demandes',
+       src:'Sources de trafic', cty:'Pays des visiteurs', empty:'Les statistiques apparaîtront dès que vos annonces seront en ligne.',
+       srcLabels:['Recherche directe','Recommandation','Réseaux sociaux','Newsletter'],
+       ctyLabels:['France','Allemagne','Suisse','Autres'] },
+  de:{ title:'Inserat-Statistiken', lbl1:'Aufrufe gesamt', lbl2:'Anfragen', lbl3:'Gespeichert', lbl4:'Kontaktrate',
+       sub:'Noch keine Inserate', rate:'Aufrufe → Anfragen', chart:'Aufrufe pro Tag', lgViews:'Aufrufe', lgEnq:'Anfragen',
+       src:'Verkehrsquellen', cty:'Besucherländer', empty:'Statistiken erscheinen sobald Inserate aktiv sind.',
+       srcLabels:['Direkte Suche','Empfehlung','Social Media','Newsletter'],
+       ctyLabels:['Frankreich','Deutschland','Schweiz','Andere'] },
+  es:{ title:'Estadísticas de anuncios', lbl1:'Visitas totales', lbl2:'Consultas', lbl3:'Guardados', lbl4:'Tasa de contacto',
+       sub:'Sin anuncios', rate:'Visitas → consultas', chart:'Visitas por día', lgViews:'Visitas', lgEnq:'Consultas',
+       src:'Fuentes de tráfico', cty:'Países de visitantes', empty:'Las estadísticas aparecerán cuando tus anuncios estén activos.',
+       srcLabels:['Búsqueda directa','Recomendación','Redes sociales','Newsletter'],
+       ctyLabels:['Francia','Alemania','Suiza','Otros'] },
+  zh:{ title:'广告统计', lbl1:'总浏览量', lbl2:'询盘数', lbl3:'收藏次数', lbl4:'联系率',
+       sub:'暂无广告', rate:'浏览→询盘', chart:'每日浏览量', lgViews:'浏览', lgEnq:'询盘',
+       src:'流量来源', cty:'访客国家', empty:'广告上线后，统计数据将自动显示。',
+       srcLabels:['直接搜索','推荐','社交媒体','通讯'],
+       ctyLabels:['法国','德国','瑞士','其他'] },
+};
+
+function renderStatChart(period){
+  const el = document.getElementById('statChart');
+  if(!el) return;
+  const n = period===90 ? 12 : period;
+  const vData = Array(n).fill(0);
+  const eData = Array(n).fill(0);
+  const max   = 1;
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  el.innerHTML = vData.map((v,i) => {
+    const lbl = period===90 ? MONTHS[i] : (i%Math.floor(n/6)===0 ? 'J-'+(n-i) : '');
+    return `<div class="stat-bar-grp">
+      <div style="display:flex;gap:1px;align-items:flex-end">
+        <div class="stat-bar" style="height:2px;background:var(--accent);opacity:.7;width:50%" title="Views: 0"></div>
+        <div class="stat-bar" style="height:2px;background:#60a5fa;opacity:.7;width:50%" title="Enquiries: 0"></div>
+      </div>
+      <span class="stat-bar-lbl">${lbl}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderProgBars(containerId, labels, values, colors){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const total = values.reduce((a,v)=>a+v,0) || 1;
+  el.innerHTML = labels.map((lbl,i) => `
+    <div class="prog-row">
+      <div class="prog-meta"><span>${lbl}</span><span>${Math.round(values[i]/total*100)}%</span></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${Math.round(values[i]/total*100)}%;background:${colors[i]}"></div></div>
+    </div>`).join('');
+}
+
+function updateStatsLang(){
+  const st = STAT_T[lang] || STAT_T.en;
+  const s = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  s('statsTitle', st.title);
+  s('stLbl1', st.lbl1); s('stLbl2', st.lbl2); s('stLbl3', st.lbl3); s('stLbl4', st.lbl4);
+  s('stSub1', st.sub); s('stSub2', st.sub); s('stSub3', st.sub); s('stSub4', st.rate);
+  s('stVal1','0'); s('stVal2','0'); s('stVal3','0'); s('stVal4','0%');
+  s('chartTitle', st.chart); s('lgViews', st.lgViews); s('lgEnq', st.lgEnq);
+  s('srcTitle', st.src); s('ctyTitle', st.cty);
+  s('statsEmptyNote', st.empty);
+  renderProgBars('srcChart', st.srcLabels, [0,0,0,0], ['#e8a020','#60a5fa','#a78bfa','#22c55e']);
+  renderProgBars('ctyChart', st.ctyLabels, [0,0,0,0], ['#e8a020','#60a5fa','#22c55e','#8fa3b8']);
+}
+
+function setStatPeriod(p, btn){
+  currentStatPeriod = p;
+  document.querySelectorAll('.statperiod').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderStatChart(p);
+}
+
+/* ─── NAV SWITCHING (override to include stats) ──────────────── */
+function showSection(idx){
+  const sections = ['overview','listings','stats','messages','subscription','invoices','settings'];
+  const ids = ['sn1','sn2','sn2b','sn3','sn4','sn5','sn6'];
+  const statsBtn = document.getElementById('statsSection');
+  const overviewSection = document.getElementById('statsSection');
+  if(statsBtn) statsBtn.style.display = idx === 2 ? 'block' : 'none';
+}
+
 let lang = 'en';
 function t(k){ return (T[lang]&&T[lang][k]) || (T.en[k]) || k; }
 
@@ -433,6 +640,8 @@ function setLang(l){
   set('thAmt','thAmt'); set('thStatus','thStatus'); set('thAction','thAction');
   set('userPlan','userPlan');
   renderInvoices();
+  updateStatsLang();
+  initGreeting();
   document.title = 'Aircraft2Sell — Dashboard';
 }
 
@@ -453,7 +662,34 @@ function showToast(msg){
   clearTimeout(toastTimer); toastTimer = setTimeout(()=>el.classList.remove('show'), 3000);
 }
 
-window.addEventListener('DOMContentLoaded', ()=>{ setLang('en'); });
+window.addEventListener('DOMContentLoaded', ()=>{
+  setLang('fr');
+  initGreeting();
+  renderStatChart(7);
+  updateStatsLang();
+
+  /* Hook nav items to show/hide stats section */
+  const sn2b = document.getElementById('sn2b');
+  if(sn2b){
+    sn2b.addEventListener('click', e=>{
+      e.preventDefault();
+      document.querySelectorAll('.snav-item').forEach(n=>n.classList.remove('active'));
+      sn2b.classList.add('active');
+      const st = document.getElementById('statsSection');
+      if(st) st.style.display='block';
+      updateStatsLang();
+      renderStatChart(currentStatPeriod);
+    });
+  }
+  /* Hide stats when other nav items clicked */
+  ['sn1','sn2','sn3','sn4','sn5','sn6'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('click', ()=>{
+      const st = document.getElementById('statsSection');
+      if(st) st.style.display='none';
+    });
+  });
+});
 </script>
 </body>
 </html>
