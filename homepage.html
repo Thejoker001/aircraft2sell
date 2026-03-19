@@ -643,18 +643,19 @@ function renderNavDropdown(){
   const menu = document.getElementById('navCatDropdown');
   if(!menu) return;
   const cats = t('cats');
-  if(!cats || !Array.isArray(cats)) return;
-  menu.innerHTML = cats.map(c => {
-    const cls = c.special ? ' special' : c.wanted ? ' wanted' : '';
-    const href = c.url ? c.url : (c.wanted ? 'javascript:openWantedForm()' : 'search.html?cat='+encodeURIComponent(c.name));
-    const onclick = c.wanted ? " onclick="event.preventDefault();openWantedForm()"" : '';
-    return `<a class="dropdown-item${cls}" href="${href}"${onclick}>
-      <span class="di-icon">${c.icon}</span>
-      <span class="di-name">${c.name}</span>
-      <span class="di-count">${c.count}</span>
-    </a>`;
+  if(!cats||!Array.isArray(cats)) return;
+  menu.innerHTML = cats.map(c=>{
+    const cls = c.special?' special':c.wanted?' wanted':'';
+    const href = c.url ? c.url : 'search.html?cat='+encodeURIComponent(c.name);
+    const extra = c.wanted ? 'onclick="event.preventDefault();openWantedForm()" href=\"#\"' : '';
+    return '<a class="dropdown-item'+cls+'" href="'+href+'" '+extra+'>'
+      +'<span class="di-icon">'+c.icon+'</span>'
+      +'<span class="di-name">'+c.name+'</span>'
+      +'<span class="di-count">'+c.count+'</span>'
+      +'</a>';
   }).join('');
 }
+
 function setLang(l){
   lang=l;document.documentElement.lang=l;
   document.querySelectorAll('.lb').forEach(b=>{b.classList.toggle('active',b.getAttribute('onclick').includes("'"+l+"'"));});
