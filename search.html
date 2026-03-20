@@ -95,6 +95,12 @@ select.sf option{background:var(--card)}
 .pg-btn{background:var(--card);border:1px solid var(--border);color:var(--mist);padding:.45rem .75rem;font-size:.82rem;cursor:pointer;transition:all .2s;min-width:36px;text-align:center}
 .pg-btn:hover{border-color:var(--accent);color:var(--accent)}
 .pg-btn.active{background:var(--accent);color:var(--deep);border-color:var(--accent)}
+
+.price-currency-row{display:flex;gap:0;align-items:stretch}
+.price-currency-row .range-input{flex:1;min-width:0}
+.curr-sel{background:rgba(255,255,255,.04);border:1px solid var(--border);border-left:none;color:var(--white);padding:.4rem .5rem;font-family:'DM Sans',sans-serif;font-size:.75rem;outline:none;cursor:pointer;min-width:72px;flex-shrink:0}
+.curr-sel:focus{border-color:var(--accent)}
+.curr-badge{display:inline-block;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.25);color:var(--accent);font-size:.58rem;font-weight:600;letter-spacing:.06em;padding:.1rem .4rem;margin-left:.3rem;vertical-align:middle}
 .toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);padding:.9rem 1.4rem;color:var(--white);font-size:.86rem;z-index:999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}</style>
 </head>
@@ -148,13 +154,40 @@ select.sf option{background:var(--card)}
   <div class="filters-sidebar">
     <div class="filter-box">
       <div class="filter-header" onclick="toggleFilter(this)">
-        <span data-i18n="filter_price">Price range (€)</span><span class="filter-arrow">▼</span>
+        <span data-i18n="filter_price">Price range</span> <span class="curr-badge" id="filterCurrBadge">€</span><span class="filter-arrow">▼</span>
       </div>
       <div class="filter-body">
+        <div style="margin-bottom:.5rem">
+          <select class="sort-select" id="searchCurr" style="width:100%" onchange="updateCurrencyLabel()">
+            <option value="EUR">€ EUR</option>
+            <option value="USD">$ USD</option>
+            <option value="GBP">£ GBP</option>
+            <option value="CHF">Fr CHF</option>
+            <option value="CAD">CA$ CAD</option>
+            <option value="AUD">AU$ AUD</option>
+            <option value="JPY">¥ JPY</option>
+            <option value="CNY">¥ CNY</option>
+            <option value="SEK">kr SEK</option>
+            <option value="NOK">kr NOK</option>
+            <option value="DKK">kr DKK</option>
+            <option value="PLN">zł PLN</option>
+            <option value="CZK">Kč CZK</option>
+            <option value="HUF">Ft HUF</option>
+            <option value="TRY">₺ TRY</option>
+            <option value="BRL">R$ BRL</option>
+            <option value="AED">د.إ AED</option>
+            <option value="SAR">﷼ SAR</option>
+            <option value="INR">₹ INR</option>
+            <option value="SGD">S$ SGD</option>
+            <option value="NZD">NZ$ NZD</option>
+            <option value="HKD">HK$ HKD</option>
+            <option value="ZAR">R ZAR</option>
+          </select>
+        </div>
         <div class="range-wrap">
           <input type="number" class="range-input" id="priceMin" placeholder="0">
           <span class="range-sep" data-i18n="range_to">to</span>
-          <input type="number" class="range-input" id="priceMax" placeholder="500,000">
+          <input type="number" class="range-input" id="priceMax" placeholder="500000">
         </div>
       </div>
     </div>
@@ -244,11 +277,11 @@ select.sf option{background:var(--card)}
 
 <script>
 const T={
-  en:{btn_post:'Post an Ad',search_ph:'Brand, model, or type…',cat_all:'All categories',cat_light:'Light aircraft',cat_jet:'Business jets',cat_turbo:'Turboprops',cat_heli:'Helicopters',cat_ulm:'Ultralight / ULM',all_countries:'All countries',search_btn:'Search',filter_price:'Price range (€)',filter_year:'Year',filter_hours:'Max hours (TT)',filter_country:'Country',filter_equipment:'Equipment',filter_apply:'Apply filters',filter_reset:'Reset all',range_to:'to',results_found:'listings found',sort_recent:'Most recent',sort_price_asc:'Price ↑',sort_price_desc:'Price ↓',sort_hours:'Fewest hours',sort_year:'Newest year',badge_new:'New',badge_urgent:'Urgent',badge_premium:'Premium',toast_filter:'Filters applied!',toast_reset:'Filters reset',toast_fav:'Added to favourites!',prev_page:'← Previous',next_page:'Next →'},
-  fr:{btn_post:'Déposer une annonce',search_ph:'Marque, modèle ou type…',cat_all:'Toutes catégories',cat_light:'Avions légers',cat_jet:"Jets d'affaires",cat_turbo:'Turbopropulseurs',cat_heli:'Hélicoptères',cat_ulm:'ULM',all_countries:'Tous les pays',search_btn:'Rechercher',filter_price:'Fourchette de prix (€)',filter_year:'Année',filter_hours:'Heures max (TT)',filter_country:'Pays',filter_equipment:'Équipements',filter_apply:'Appliquer',filter_reset:'Réinitialiser',range_to:'à',results_found:'annonces trouvées',sort_recent:'Plus récentes',sort_price_asc:'Prix ↑',sort_price_desc:'Prix ↓',sort_hours:"Moins d'heures",sort_year:'Année la plus récente',badge_new:'Nouveau',badge_urgent:'Urgent',badge_premium:'Premium',toast_filter:'Filtres appliqués !',toast_reset:'Filtres réinitialisés',toast_fav:'Ajouté aux favoris !',prev_page:'← Précédent',next_page:'Suivant →'},
-  de:{btn_post:'Anzeige aufgeben',search_ph:'Marke, Modell oder Typ…',cat_all:'Alle Kategorien',cat_light:'Leichtflugzeuge',cat_jet:'Geschäftsreisejets',cat_turbo:'Turboprops',cat_heli:'Hubschrauber',cat_ulm:'Ultraleicht',all_countries:'Alle Länder',search_btn:'Suchen',filter_price:'Preisbereich (€)',filter_year:'Jahr',filter_hours:'Max. Stunden (TT)',filter_country:'Land',filter_equipment:'Ausrüstung',filter_apply:'Filter anwenden',filter_reset:'Zurücksetzen',range_to:'bis',results_found:'Inserate gefunden',sort_recent:'Neueste zuerst',sort_price_asc:'Preis ↑',sort_price_desc:'Preis ↓',sort_hours:'Wenigste Stunden',sort_year:'Neuestes Jahr',badge_new:'Neu',badge_urgent:'Dringend',badge_premium:'Premium',toast_filter:'Filter angewendet!',toast_reset:'Filter zurückgesetzt',toast_fav:'Zu Favoriten!',prev_page:'← Zurück',next_page:'Weiter →'},
-  es:{btn_post:'Publicar anuncio',search_ph:'Marca, modelo o tipo…',cat_all:'Todas las categorías',cat_light:'Aviones ligeros',cat_jet:'Jets ejecutivos',cat_turbo:'Turbohélices',cat_heli:'Helicópteros',cat_ulm:'Ultraligero',all_countries:'Todos los países',search_btn:'Buscar',filter_price:'Rango de precio (€)',filter_year:'Año',filter_hours:'Horas máx. (TT)',filter_country:'País',filter_equipment:'Equipamiento',filter_apply:'Aplicar filtros',filter_reset:'Restablecer',range_to:'a',results_found:'anuncios encontrados',sort_recent:'Más recientes',sort_price_asc:'Precio ↑',sort_price_desc:'Precio ↓',sort_hours:'Menos horas',sort_year:'Año más reciente',badge_new:'Nuevo',badge_urgent:'Urgente',badge_premium:'Premium',toast_filter:'¡Filtros aplicados!',toast_reset:'Filtros restablecidos',toast_fav:'¡Añadido a favoritos!',prev_page:'← Anterior',next_page:'Siguiente →'},
-  zh:{btn_post:'发布广告',search_ph:'品牌、型号或类型…',cat_all:'全部类别',cat_light:'轻型飞机',cat_jet:'公务机',cat_turbo:'涡桨飞机',cat_heli:'直升机',cat_ulm:'超轻型飞机',all_countries:'所有国家',search_btn:'搜索',filter_price:'价格范围（€）',filter_year:'年份',filter_hours:'最大飞行时间（TT）',filter_country:'国家',filter_equipment:'设备',filter_apply:'应用筛选',filter_reset:'重置',range_to:'至',results_found:'条广告',sort_recent:'最新发布',sort_price_asc:'价格 ↑',sort_price_desc:'价格 ↓',sort_hours:'飞行时间最少',sort_year:'最新年份',badge_new:'新发布',badge_urgent:'紧急',badge_premium:'高端',toast_filter:'筛选已应用！',toast_reset:'筛选已重置',toast_fav:'已添加到收藏！',prev_page:'← 上一页',next_page:'下一页 →'}
+  en:{btn_post:'Post an Ad',search_ph:'Brand, model, or type…',cat_all:'All categories',cat_light:'Light aircraft',cat_jet:'Business jets',cat_turbo:'Turboprops',cat_heli:'Helicopters',cat_ulm:'Ultralight / ULM',all_countries:'All countries',search_btn:'Search',filter_price:'Price range',filter_year:'Year',filter_hours:'Max hours (TT)',filter_country:'Country',filter_equipment:'Equipment',filter_apply:'Apply filters',filter_reset:'Reset all',range_to:'to',results_found:'listings found',sort_recent:'Most recent',sort_price_asc:'Price ↑',sort_price_desc:'Price ↓',sort_hours:'Fewest hours',sort_year:'Newest year',badge_new:'New',badge_urgent:'Urgent',badge_premium:'Premium',toast_filter:'Filters applied!',toast_reset:'Filters reset',toast_fav:'Added to favourites!',prev_page:'← Previous',next_page:'Next →'},
+  fr:{btn_post:'Déposer une annonce',search_ph:'Marque, modèle ou type…',cat_all:'Toutes catégories',cat_light:'Avions légers',cat_jet:"Jets d'affaires",cat_turbo:'Turbopropulseurs',cat_heli:'Hélicoptères',cat_ulm:'ULM',all_countries:'Tous les pays',search_btn:'Rechercher',filter_price:'Fourchette de prix',filter_year:'Année',filter_hours:'Heures max (TT)',filter_country:'Pays',filter_equipment:'Équipements',filter_apply:'Appliquer',filter_reset:'Réinitialiser',range_to:'à',results_found:'annonces trouvées',sort_recent:'Plus récentes',sort_price_asc:'Prix ↑',sort_price_desc:'Prix ↓',sort_hours:"Moins d'heures",sort_year:'Année la plus récente',badge_new:'Nouveau',badge_urgent:'Urgent',badge_premium:'Premium',toast_filter:'Filtres appliqués !',toast_reset:'Filtres réinitialisés',toast_fav:'Ajouté aux favoris !',prev_page:'← Précédent',next_page:'Suivant →'},
+  de:{btn_post:'Anzeige aufgeben',search_ph:'Marke, Modell oder Typ…',cat_all:'Alle Kategorien',cat_light:'Leichtflugzeuge',cat_jet:'Geschäftsreisejets',cat_turbo:'Turboprops',cat_heli:'Hubschrauber',cat_ulm:'Ultraleicht',all_countries:'Alle Länder',search_btn:'Suchen',filter_price:'Preisbereich',filter_year:'Jahr',filter_hours:'Max. Stunden (TT)',filter_country:'Land',filter_equipment:'Ausrüstung',filter_apply:'Filter anwenden',filter_reset:'Zurücksetzen',range_to:'bis',results_found:'Inserate gefunden',sort_recent:'Neueste zuerst',sort_price_asc:'Preis ↑',sort_price_desc:'Preis ↓',sort_hours:'Wenigste Stunden',sort_year:'Neuestes Jahr',badge_new:'Neu',badge_urgent:'Dringend',badge_premium:'Premium',toast_filter:'Filter angewendet!',toast_reset:'Filter zurückgesetzt',toast_fav:'Zu Favoriten!',prev_page:'← Zurück',next_page:'Weiter →'},
+  es:{btn_post:'Publicar anuncio',search_ph:'Marca, modelo o tipo…',cat_all:'Todas las categorías',cat_light:'Aviones ligeros',cat_jet:'Jets ejecutivos',cat_turbo:'Turbohélices',cat_heli:'Helicópteros',cat_ulm:'Ultraligero',all_countries:'Todos los países',search_btn:'Buscar',filter_price:'Rango de precio',filter_year:'Año',filter_hours:'Horas máx. (TT)',filter_country:'País',filter_equipment:'Equipamiento',filter_apply:'Aplicar filtros',filter_reset:'Restablecer',range_to:'a',results_found:'anuncios encontrados',sort_recent:'Más recientes',sort_price_asc:'Precio ↑',sort_price_desc:'Precio ↓',sort_hours:'Menos horas',sort_year:'Año más reciente',badge_new:'Nuevo',badge_urgent:'Urgente',badge_premium:'Premium',toast_filter:'¡Filtros aplicados!',toast_reset:'Filtros restablecidos',toast_fav:'¡Añadido a favoritos!',prev_page:'← Anterior',next_page:'Siguiente →'},
+  zh:{btn_post:'发布广告',search_ph:'品牌、型号或类型…',cat_all:'全部类别',cat_light:'轻型飞机',cat_jet:'公务机',cat_turbo:'涡桨飞机',cat_heli:'直升机',cat_ulm:'超轻型飞机',all_countries:'所有国家',search_btn:'搜索',filter_price:'价格范围',filter_year:'年份',filter_hours:'最大飞行时间（TT）',filter_country:'国家',filter_equipment:'设备',filter_apply:'应用筛选',filter_reset:'重置',range_to:'至',results_found:'条广告',sort_recent:'最新发布',sort_price_asc:'价格 ↑',sort_price_desc:'价格 ↓',sort_hours:'飞行时间最少',sort_year:'最新年份',badge_new:'新发布',badge_urgent:'紧急',badge_premium:'高端',toast_filter:'筛选已应用！',toast_reset:'筛选已重置',toast_fav:'已添加到收藏！',prev_page:'← 上一页',next_page:'下一页 →'}
 };
 let lang='en', viewMode='grid', currentPage=1;
 const PER_PAGE=9;
@@ -284,7 +317,7 @@ function renderCards(){
         </div>
         <div class="rc-trust">✓ Verified</div>
         <div class="rc-ft">
-          <div class="rc-price">${c.price}</div>
+          <div class="rc-price" id="price_${c.id||i}">${displayPrice(c.price)}</div>
           <div class="rc-loc">📍 ${c.loc}</div>
         </div>
       </div>
@@ -304,6 +337,40 @@ function setView(v){viewMode=v;document.getElementById('gridBtn').classList.togg
 function toggleFilter(header){header.querySelector('.filter-arrow').style.transform=header.querySelector('.filter-arrow').style.transform==='rotate(180deg)'?'':'rotate(180deg)';}
 function removeFilter(el){el.parentElement.remove();}
 function doSearch(){showToast(t('toast_filter'));}
+const CURR_SYMBOLS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',JPY:'¥',CNY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',PLN:'zł',CZK:'Kč',HUF:'Ft',TRY:'₺',BRL:'R$',AED:'د.إ',SAR:'﷼',INR:'₹',SGD:'S$',NZD:'NZ$',HKD:'HK$',ZAR:'R'};
+let searchCurrency = 'EUR';
+let searchExRate = 1;
+
+async function fetchSearchRate(from, to){
+  if(from === to){ searchExRate=1; return; }
+  try {
+    const r = await fetch('https://api.frankfurter.app/latest?base='+from+'&symbols='+to);
+    const d = await r.json();
+    searchExRate = d.rates[to] || 1;
+  } catch(e){ searchExRate=1; }
+}
+
+function displayPrice(priceEur){
+  if(!priceEur || priceEur === '—') return '—';
+  const sym = CURR_SYMBOLS[searchCurrency] || searchCurrency;
+  const converted = Math.round(Number(priceEur) * searchExRate);
+  return sym + converted.toLocaleString();
+}
+
+function updateCurrencyLabel(){
+  const sel = document.getElementById('searchCurr');
+  if(!sel) return;
+  const code = sel.value;
+  const sym = CURR_SYMBOLS[code] || code;
+  searchCurrency = code;
+  const badge = document.getElementById('filterCurrBadge');
+  if(badge) badge.textContent = sym;
+  // Update filter_price label
+  document.querySelectorAll('[data-i18n="filter_price"]').forEach(el => {
+    el.textContent = t('filter_price');
+  });
+  fetchSearchRate('EUR', code).then(()=>renderCards());
+}
 function setLang(l){
   lang=l;
   document.querySelectorAll('.lb').forEach(b=>{b.classList.toggle('active',b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase()));});
