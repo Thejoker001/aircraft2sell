@@ -647,7 +647,12 @@ async function handleLogin(){
   const btn=document.getElementById('loginBtn');btn.classList.add('loading');btn.disabled=true;
   showToast(t('toast_login'));
   await new Promise(r=>setTimeout(r,1500));
+  const loginEmail = document.getElementById('loginEmail').value.trim();
   localStorage.setItem('a2s_logged_in','true');
+  localStorage.setItem('a2s_user_email', loginEmail);
+  // Nom: on extrait la partie avant @ comme fallback si pas de profil Supabase
+  const emailName = loginEmail.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  if(!localStorage.getItem('a2s_user_name')) localStorage.setItem('a2s_user_name', emailName);
   const params=new URLSearchParams(window.location.search);
   window.location.href=params.get('redirect')?decodeURIComponent(params.get('redirect')):'dashboard.html';
 }
@@ -666,7 +671,16 @@ async function handleRegister(){
   await new Promise(r=>setTimeout(r,1500));
   const s=document.getElementById('regSuccess');s.style.display='flex';s.textContent='✅ '+t('reg_success');
   btn.classList.remove('loading');btn.disabled=false;
-  setTimeout(()=>{localStorage.setItem('a2s_logged_in','true');const params=new URLSearchParams(window.location.search);window.location.href=params.get('redirect')?decodeURIComponent(params.get('redirect')):'dashboard.html';},2000);
+  setTimeout(()=>{
+    const regEmail2 = document.getElementById('regEmail').value.trim();
+    const regFirst2 = document.getElementById('regFirst').value.trim();
+    const regLast2  = document.getElementById('regLast').value.trim();
+    localStorage.setItem('a2s_logged_in','true');
+    localStorage.setItem('a2s_user_email', regEmail2);
+    localStorage.setItem('a2s_user_name', (regFirst2+' '+regLast2).trim());
+    const params=new URLSearchParams(window.location.search);
+    window.location.href=params.get('redirect')?decodeURIComponent(params.get('redirect')):'dashboard.html';
+  },2000);
 }
 function socialLogin(p){showToast(t('toast_social'));}
 let tt;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),3000);}
