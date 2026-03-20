@@ -203,7 +203,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);m
 .tab-content{display:none}
 .tab-content.active{display:block}
 .toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);padding:.9rem 1.4rem;color:var(--white);font-size:.86rem;z-index:999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none;max-width:300px}
-.toast.show{opacity:1;transform:translateY(0)}</style>
+.toast.show{opacity:1;transform:translateY(0)}
+.nav-user{display:flex;align-items:center;gap:.5rem;cursor:default}
+.nav-avatar{width:32px;height:32px;border-radius:50%;background:rgba(232,160,32,.15);border:1.5px solid rgba(232,160,32,.4);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.76rem;color:var(--accent);flex-shrink:0;text-transform:uppercase}
+.nav-user-info{display:flex;flex-direction:column;line-height:1.2}
+.nav-user-name{font-size:.78rem;font-weight:500;color:var(--white)}
+.nav-user-plan{font-size:.58rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+</style>
 </head>
 <body>
 <nav>
@@ -232,8 +238,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);m
       <button class="lb" onclick="setLang('es')"><span class="lf">🇪🇸</span><span class="lb-lbl">ES</span></button>
       <button class="lb" onclick="setLang('zh')"><span class="lf">🇨🇳</span><span class="lb-lbl">中文</span></button>
     </div>
+        <div class="nav-user" id="navUser" style="display:none">
+      <div class="nav-avatar" id="navAvatar">U</div>
+      <div class="nav-user-info">
+        <div class="nav-user-name" id="navUserName">Mon compte</div>
+        <div class="nav-user-plan" id="navUserPlan">Essentiel</div>
+      </div>
+    </div>
     <a href="login.html" class="btn-login" id="btnLogin"><span class="login-icon">👤</span><span id="btnLoginTxt">Connexion</span></a>
-    <a href="#" class="btn-post" data-i18n="btn_post" onclick="requireLogin(event,'post-listing.html')">Déposer une annonce</a>
+    <a href="#" class="btn-post" data-i18n="btn_post" onclick="a2sAuth.requireLogin(event,'post-listing.html')">Déposer une annonce</a>
   </div>
 </nav>
 
@@ -648,7 +661,9 @@ async function handleLogin(){
   showToast(t('toast_login'));
   await new Promise(r=>setTimeout(r,1500));
   const loginEmail = document.getElementById('loginEmail').value.trim();
-  localStorage.setItem('a2s_logged_in','true');
+  const _em = document.getElementById('loginEmail').value.trim();
+  const _nm = _em.split('@')[0].replace(/[._-]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  a2sAuth.login(_nm, _em, 'Essentiel');
   localStorage.setItem('a2s_user_email', loginEmail);
   // Nom: on extrait la partie avant @ comme fallback si pas de profil Supabase
   const emailName = loginEmail.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -675,7 +690,10 @@ async function handleRegister(){
     const regEmail2 = document.getElementById('regEmail').value.trim();
     const regFirst2 = document.getElementById('regFirst').value.trim();
     const regLast2  = document.getElementById('regLast').value.trim();
-    localStorage.setItem('a2s_logged_in','true');
+    const _re = document.getElementById('regEmail').value.trim();
+    const _rf = document.getElementById('regFirst').value.trim();
+    const _rl = document.getElementById('regLast').value.trim();
+    a2sAuth.login((_rf+' '+_rl).trim(), _re, 'Essentiel');
     localStorage.setItem('a2s_user_email', regEmail2);
     localStorage.setItem('a2s_user_name', (regFirst2+' '+regLast2).trim());
     const params=new URLSearchParams(window.location.search);
@@ -688,5 +706,6 @@ const params=new URLSearchParams(window.location.search);
 if(params.get('tab')==='register')switchTab('register');
 setLang('fr'); patchNavLang('fr');
 </script>
+<script src="nav.js"></script>
 </body>
 </html>
