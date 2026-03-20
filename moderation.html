@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aircraft2Sell — Espace modérateur</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#5a7490;--white:#f0f4f8;--card:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.12);--green:#22c55e;--red:#ef4444;--orange:#f97316;--blue:#60a5fa}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);min-height:100vh;display:flex;flex-direction:column}
+
+/* LOGIN OVERLAY */
+.overlay{position:fixed;inset:0;background:rgba(6,11,21,.98);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
+.overlay.hidden{display:none}
+.login-box{background:var(--card);border:1px solid var(--border);width:100%;max-width:400px}
+.lb-hd{background:var(--horizon);padding:1.8rem;text-align:center;border-bottom:1px solid var(--border)}
+.lb-icon{font-size:2.2rem;margin-bottom:.6rem}
+.lb-title{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.08em;color:var(--white)}
+.lb-sub{font-size:.72rem;color:var(--mist);margin-top:.3rem}
+.lb-body{padding:1.6rem}
+.field{margin-bottom:1.1rem}
+.field label{display:block;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);margin-bottom:.4rem}
+.field input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--white);padding:.8rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s}
+.field input:focus{border-color:var(--accent)}
+.field input::placeholder{color:var(--mist2)}
+.btn-login{width:100%;background:var(--accent);color:var(--deep);border:none;padding:.95rem;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:.1em;cursor:pointer;transition:background .2s}
+.btn-login:hover{background:var(--gold)}
+.login-err{font-size:.74rem;color:var(--red);margin-top:.7rem;text-align:center;min-height:1.2em}
+.login-role-note{margin-top:1rem;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);padding:.7rem 1rem;font-size:.72rem;color:var(--blue);line-height:1.6;text-align:center}
+
+/* NAV */
+nav{background:rgba(6,11,21,.97);border-bottom:1px solid var(--border);height:62px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-shrink:0}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:.1em;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:.4rem}
+.logo span{color:var(--accent)}
+@keyframes flt{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-3px)}}
+.nav-badge{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--red);font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.2rem .65rem}
+.nav-mid{display:flex;align-items:center;gap:.6rem}
+.nav-greeting{font-size:.8rem;color:var(--mist)}
+.nav-greeting b{color:var(--white)}
+.nav-right{display:flex;align-items:center;gap:.6rem}
+.nbtn{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.42rem 1rem;font-family:'DM Sans',sans-serif;font-size:.76rem;cursor:pointer;transition:all .2s;letter-spacing:.04em;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center}
+.nbtn:hover{border-color:var(--accent);color:var(--accent)}
+.nbtn.danger:hover{border-color:var(--red);color:var(--red)}
+
+/* LAYOUT */
+.wrap{flex:1;display:grid;grid-template-columns:240px 1fr;min-height:0;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{background:var(--deep);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.sb-profile{padding:1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.8rem}
+.sb-avatar{width:38px;height:38px;border-radius:50%;background:rgba(232,160,32,.15);border:1px solid rgba(232,160,32,.3);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:var(--accent);flex-shrink:0}
+.sb-name{font-size:.82rem;font-weight:500;color:var(--white)}
+.sb-role{font-size:.62rem;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
+.sb-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.sb-stat{background:var(--card);padding:.7rem .9rem}
+.sb-sv{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;line-height:1;color:var(--white)}
+.sb-sl{font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist2);margin-top:.1rem}
+.sb-sv.orange{color:var(--orange)}
+.sb-sv.red{color:var(--red)}
+.sb-sv.green{color:var(--green)}
+.sb-nav{padding:.5rem 0}
+.sn{display:flex;align-items:center;gap:.65rem;padding:.75rem 1.2rem;color:var(--mist);font-size:.82rem;cursor:pointer;transition:all .18s;border-left:2px solid transparent;user-select:none}
+.sn:hover{color:var(--white);background:rgba(255,255,255,.03)}
+.sn.active{color:var(--accent);border-left-color:var(--accent);background:rgba(232,160,32,.05)}
+.sn .ico{font-size:.9rem;width:18px;text-align:center;flex-shrink:0}
+.sn .cnt{margin-left:auto;font-size:.6rem;font-weight:700;padding:.1rem .45rem;border-radius:8px;min-width:20px;text-align:center}
+.cnt-o{background:var(--orange);color:#fff}
+.cnt-g{background:var(--green);color:var(--deep)}
+.cnt-r{background:var(--red);color:#fff}
+.cnt-b{background:var(--blue);color:var(--deep)}
+.sb-sep{height:1px;background:var(--border);margin:.4rem 1.2rem}
+
+/* MAIN */
+.main{overflow-y:auto;padding:1.4rem;display:flex;flex-direction:column;gap:1rem}
+.tab-panel{display:none;flex-direction:column;gap:1rem}
+.tab-panel.active{display:flex}
+
+/* PAGE HEADER */
+.page-hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem}
+.page-title{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:.06em}
+.page-title em{font-style:normal;color:var(--accent)}
+
+/* KPI CARDS */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)}
+.kpi{background:var(--card);padding:1rem;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.kpi-o::before{background:var(--orange)}
+.kpi.kpi-g::before{background:var(--green)}
+.kpi.kpi-r::before{background:var(--red)}
+.kpi.kpi-b::before{background:var(--blue)}
+.kpi.kpi-a::before{background:var(--accent)}
+.kpi-l{font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mist2);margin-bottom:.4rem}
+.kpi-v{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--white);line-height:1;letter-spacing:.04em}
+.kpi-s{font-size:.64rem;color:var(--mist);margin-top:.2rem}
+
+/* FILTER BAR */
+.filter-bar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.filter-bar input{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--white);padding:.4rem .8rem;font-family:'DM Sans',sans-serif;font-size:.78rem;outline:none;width:220px}
+.filter-bar input:focus{border-color:var(--accent)}
+.filter-bar input::placeholder{color:var(--mist2)}
+.fsel{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--mist);padding:.4rem .6rem;font-family:'DM Sans',sans-serif;font-size:.76rem;outline:none;cursor:pointer}
+.fbtn{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.4rem .9rem;font-family:'DM Sans',sans-serif;font-size:.74rem;cursor:pointer;transition:all .15s;letter-spacing:.04em;text-transform:uppercase}
+.fbtn:hover{border-color:var(--accent);color:var(--accent)}
+.fbtn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.07)}
+
+/* LISTING CARDS */
+.listing-cards{display:flex;flex-direction:column;gap:1px}
+.listing-card{background:var(--card);border:1px solid var(--border);display:grid;grid-template-columns:72px 1fr auto;gap:0;overflow:hidden;transition:border-color .15s}
+.listing-card:hover{border-color:rgba(232,160,32,.3)}
+.lc-thumb{background:var(--horizon);display:flex;align-items:center;justify-content:center;font-size:1.8rem;min-height:80px}
+.lc-body{padding:.9rem 1rem;min-width:0}
+.lc-title{font-size:.9rem;font-weight:600;color:var(--white);margin-bottom:.25rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lc-meta{font-size:.7rem;color:var(--mist2);margin-bottom:.5rem;display:flex;flex-wrap:wrap;gap:.4rem}
+.lc-meta span{display:flex;align-items:center;gap:.25rem}
+.lc-desc{font-size:.74rem;color:var(--mist);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.lc-side{padding:.9rem;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;min-width:140px;border-left:1px solid var(--border)}
+.lc-price{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--gold);letter-spacing:.04em}
+.lc-seller{font-size:.65rem;color:var(--mist2);margin-bottom:.6rem;text-align:right}
+.lc-actions{display:flex;flex-direction:column;gap:.3rem;align-items:flex-end}
+.btn-mod{border:none;padding:.38rem .75rem;font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.btn-approve{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.btn-approve:hover{background:rgba(34,197,94,.22)}
+.btn-reject{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+.btn-reject:hover{background:rgba(239,68,68,.2)}
+.btn-view{background:transparent;color:var(--mist);border:1px solid var(--border)}
+.btn-view:hover{border-color:var(--accent);color:var(--accent)}
+.lc-date{font-size:.62rem;color:var(--mist2);margin-top:.3rem}
+
+/* PILL STATUS */
+.pill{font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.22rem .6rem;display:inline-flex;align-items:center;gap:.25rem;white-space:nowrap}
+.pill-pend{background:rgba(249,115,22,.12);color:var(--orange);border:1px solid rgba(249,115,22,.25)}
+.pill-appr{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.pill-reje{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+
+/* TABLE */
+.tbl-wrap{background:var(--card);border:1px solid var(--border);overflow-x:auto}
+.tbl-hd{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;border-bottom:1px solid var(--border)}
+.tbl-title{font-size:.78rem;font-weight:600;color:var(--white)}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+thead th{background:var(--horizon);padding:.6rem 1rem;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);font-weight:500;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:.62rem 1rem;border-bottom:1px solid var(--border);color:var(--mist);vertical-align:middle}
+tbody tr:hover td{background:rgba(255,255,255,.02)}
+tbody tr:last-child td{border-bottom:none}
+.td-b{color:var(--white);font-weight:500}
+
+/* EMPTY */
+.empty{text-align:center;padding:3.5rem 1rem;background:var(--card);border:1px solid var(--border)}
+.empty-icon{font-size:2.8rem;opacity:.12;margin-bottom:.8rem}
+.empty-title{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.06em;color:var(--white);margin-bottom:.4rem}
+.empty-sub{font-size:.78rem;color:var(--mist);line-height:1.7;max-width:380px;margin:0 auto}
+.empty-sub code{font-size:.68rem;color:var(--mist2);display:block;margin-top:.6rem;font-family:monospace}
+
+/* TOAST */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);padding:.85rem 1.3rem;color:var(--white);font-size:.84rem;z-index:9998;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div class="overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="lb-hd">
+      <div class="lb-icon">&#128274;</div>
+      <div class="lb-title">Espace mod&eacute;rateur</div>
+      <div class="lb-sub">Aircraft2Sell &mdash; Acc&egrave;s restreint</div>
+    </div>
+    <div class="lb-body">
+      <div class="field">
+        <label>Email administrateur</label>
+        <input type="email" id="aEmail" placeholder="moderateur@aircraft2sell.com" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="aPw" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn-login" onclick="doLogin()">Acc&eacute;der au panneau</button>
+      <div class="login-err" id="loginErr"></div>
+      <div class="login-role-note">
+        &#128274; Login d&eacute;di&eacute; &middot; V&eacute;rification du r&ocirc;le admin<br>
+        <small>En production : remplac&eacute; par Supabase <code>is_admin</code></small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <a href="homepage.html" class="logo">
+    <svg viewBox="0 0 64 64" style="width:1.3em;height:1.3em;fill:var(--accent);animation:flt 4s ease-in-out infinite" xmlns="http://www.w3.org/2000/svg"><path d="M60 22c0-2-2-4-5-4l-12 1-16-14H18l8 14-14 1-5-6H2l3 10-3 10h5l5-6 14 1-8 14h9l16-14 12 1c3 0 5-2 5-4v-3z"/></svg>
+    Aircraft2<span>Sell</span>
+  </a>
+  <div class="nav-mid">
+    <div class="nav-badge">MODÉRATEUR</div>
+    <div class="nav-greeting" id="navGreeting"></div>
+  </div>
+  <div class="nav-right">
+    <a href="homepage.html" class="nbtn">&#8592; Site public</a>
+    <button class="nbtn danger" onclick="doLogout()">D&eacute;connexion</button>
+  </div>
+</nav>
+
+<!-- WRAP -->
+<div class="wrap">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-profile">
+      <div class="sb-avatar">R</div>
+      <div>
+        <div class="sb-name">Romain</div>
+        <div class="sb-role">&#128274; Mod&eacute;rateur</div>
+      </div>
+    </div>
+    <div class="sb-stats">
+      <div class="sb-stat"><div class="sb-sv orange" id="sbPending">0</div><div class="sb-sl">En attente</div></div>
+      <div class="sb-stat"><div class="sb-sv green" id="sbApproved">0</div><div class="sb-sl">Approuv&eacute;es</div></div>
+      <div class="sb-stat"><div class="sb-sv red" id="sbRejected">0</div><div class="sb-sl">Rejet&eacute;es</div></div>
+      <div class="sb-stat"><div class="sb-sv" id="sbTotal">0</div><div class="sb-sl">Total</div></div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sn active" id="sn-pending" onclick="goTab('pending',this)"><span class="ico">&#9203;</span>En attente<span class="cnt cnt-o" id="cnt-pending">0</span></div>
+      <div class="sn" id="sn-approved" onclick="goTab('approved',this)"><span class="ico">&#9989;</span>Approuv&eacute;es<span class="cnt cnt-g" id="cnt-approved">0</span></div>
+      <div class="sn" id="sn-rejected" onclick="goTab('rejected',this)"><span class="ico">&#10060;</span>Rejet&eacute;es<span class="cnt cnt-r" id="cnt-rejected">0</span></div>
+      <div class="sb-sep"></div>
+      <div class="sn" id="sn-history" onclick="goTab('history',this)"><span class="ico">&#128203;</span>Historique</div>
+    </nav>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- EN ATTENTE -->
+    <div class="tab-panel active" id="tab-pending">
+      <div class="page-hd">
+        <div class="page-title">Annonces <em>en attente</em></div>
+        <div class="filter-bar">
+          <input type="text" placeholder="Chercher par titre, vendeur&#8230;" oninput="filterListings(this.value)">
+          <select class="fsel" id="catFilter" onchange="filterListings('')">
+            <option value="">Toutes les cat&eacute;gories</option>
+            <option>Avions l&eacute;gers</option>
+            <option>Jets d'affaires</option>
+            <option>H&eacute;licopt&egrave;res</option>
+            <option>Turboprops</option>
+            <option>ULM</option>
+            <option>Avions de ligne</option>
+          </select>
+          <button class="fbtn" onclick="approveAll()">&#10003; Tout approuver</button>
+        </div>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi kpi-o"><div class="kpi-l">En attente</div><div class="kpi-v" id="kpi-pending">0</div><div class="kpi-s">Soumises aujourd'hui : 0</div></div>
+        <div class="kpi kpi-b"><div class="kpi-l">Temps moyen de r&eacute;ponse</div><div class="kpi-v">&mdash;</div><div class="kpi-s">Cible : &lt; 24h</div></div>
+        <div class="kpi kpi-a"><div class="kpi-l">Ce mois</div><div class="kpi-v" id="kpi-month">0</div><div class="kpi-s">Soumissions totales</div></div>
+      </div>
+      <div id="pendingList">
+        <div class="empty">
+          <div class="empty-icon">&#9992;</div>
+          <div class="empty-title">File d'attente vide</div>
+          <div class="empty-sub">
+            Les annonces soumises par les vendeurs appara&icirc;tront ici pour validation avant publication.
+            <code>/* SUPABASE: supabase.from('listings').select('*,profiles(full_name,email)').eq('status','pending').order('created_at',{ascending:false}) */</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APPROUVEES -->
+    <div class="tab-panel" id="tab-approved">
+      <div class="page-hd">
+        <div class="page-title">Annonces <em>approuv&eacute;es</em></div>
+        <div class="filter-bar">
+          <input type="text" placeholder="Chercher&#8230;">
+          <select class="fsel"><option>Toutes</option></select>
+        </div>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi kpi-g"><div class="kpi-l">Publi&eacute;es</div><div class="kpi-v" id="kpi-approved">0</div><div class="kpi-s">Actives</div></div>
+        <div class="kpi kpi-a"><div class="kpi-l">Valeur totale</div><div class="kpi-v">0 &euro;</div><div class="kpi-s">Prix cumul&eacute;</div></div>
+        <div class="kpi kpi-b"><div class="kpi-l">Vues totales</div><div class="kpi-v">0</div><div class="kpi-s">Toutes annonces</div></div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-hd"><div class="tbl-title">Liste des annonces publi&eacute;es</div></div>
+        <table>
+          <thead><tr><th>Titre</th><th>Cat&eacute;gorie</th><th>Vendeur</th><th>Prix</th><th>Vues</th><th>Publi&eacute;e le</th><th>Action</th></tr></thead>
+          <tbody><tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--mist);font-size:.78rem">Aucune annonce &mdash; connectez Supabase</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REJETEES -->
+    <div class="tab-panel" id="tab-rejected">
+      <div class="page-hd">
+        <div class="page-title">Annonces <em>rejet&eacute;es</em></div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-hd"><div class="tbl-title">Annonces rejet&eacute;es</div></div>
+        <table>
+          <thead><tr><th>Titre</th><th>Vendeur</th><th>Date soumission</th><th>Motif rejet</th><th>Rejet&eacute;e le</th><th>Action</th></tr></thead>
+          <tbody><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--mist);font-size:.78rem">Aucune annonce rejet&eacute;e</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HISTORIQUE -->
+    <div class="tab-panel" id="tab-history">
+      <div class="page-hd">
+        <div class="page-title"><em>Historique</em> de mod&eacute;ration</div>
+        <div class="filter-bar">
+          <input type="text" placeholder="Rechercher&#8230;">
+          <select class="fsel"><option value="all">Toutes actions</option><option value="approved">Approuv&eacute;es</option><option value="rejected">Rejet&eacute;es</option></select>
+          <button class="fbtn" onclick="showToast('Export CSV \u2014 disponible avec Supabase')">&#8595; Export CSV</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-hd"><div class="tbl-title">Journal des actions de mod&eacute;ration</div></div>
+        <table>
+          <thead><tr><th>Date</th><th>Annonce</th><th>Vendeur</th><th>Cat&eacute;gorie</th><th>Prix</th><th>Action</th><th>Mod&eacute;rateur</th></tr></thead>
+          <tbody><tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--mist);font-size:.78rem">Aucune action enregistr&eacute;e &mdash; connectez Supabase</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* -- AUTH -------------------------------------------- */
+/*
+   IDENTIFIANTS MODÉRATEUR
+   Email    : contact.aircraft2sell@gmail.com
+   Password : A2S@Admin2026!
+   
+   EN PRODUCTION : remplacer par Supabase auth + vérification is_admin:
+   const { data: { user } } = await supabase.auth.getUser()
+   const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+   if (!profile?.is_admin) { doLogout(); return; }
+*/
+const MOD_EMAIL    = 'moderateur@aircraft2sell.com';
+const MOD_PASSWORD = 'A2S@Mod2026!';
+const SESSION_KEY = 'a2s_mod_session';
+
+function doLogin(){
+  const email = document.getElementById('aEmail').value.trim();
+  const pw    = document.getElementById('aPw').value;
+  const err   = document.getElementById('loginErr');
+  err.textContent = '';
+  if(email === MOD_EMAIL && pw === MOD_PASSWORD){
+    /* PRODUCTION: await supabase.auth.signInWithPassword({email, password: pw}) then verify is_admin role */
+    sessionStorage.setItem(SESSION_KEY, btoa(email + ':' + Date.now()));
+    document.getElementById('loginOverlay').classList.add('hidden');
+    initMod();
+    showToast('\u2728 Connexion r\u00e9ussie \u2014 Bienvenue, Romain');
+  } else {
+    err.textContent = 'Email ou mot de passe incorrect';
+    document.getElementById('aPw').value = '';
+    setTimeout(() => err.textContent = '', 3500);
+  }
+}
+
+function doLogout(){
+  /* PRODUCTION: await supabase.auth.signOut() */
+  sessionStorage.removeItem(SESSION_KEY);
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  document.getElementById('aEmail').value = '';
+  document.getElementById('aPw').value = '';
+}
+
+function checkAuth(){
+  if(!sessionStorage.getItem(SESSION_KEY)){
+    document.getElementById('loginOverlay').classList.remove('hidden');
+  } else {
+    document.getElementById('loginOverlay').classList.add('hidden');
+    initMod();
+  }
+}
+
+/* -- GREETING --------------------------------------- */
+function setGreeting(){
+  const now = new Date();
+  const hh  = now.getHours() + now.getMinutes()/60;
+  const lat = 49.19, lon = 2.45;
+  const tz  = -now.getTimezoneOffset()/60;
+  const J2k = (now - new Date('2000-01-01T12:00:00Z'))/86400000;
+  const M   = (357.5291+0.98560028*J2k)%360;
+  const C   = 1.9148*Math.sin(M*Math.PI/180)+0.02*Math.sin(2*M*Math.PI/180);
+  const lam = (280.4665+0.98564736*J2k+C)%360;
+  const decl= Math.asin(Math.sin(23.4393*Math.PI/180)*Math.sin(lam*Math.PI/180))*180/Math.PI;
+  const noon= 12-lon/15+tz;
+  const cosH= (Math.sin(-0.833*Math.PI/180)-Math.sin(lat*Math.PI/180)*Math.sin(decl*Math.PI/180))/(Math.cos(lat*Math.PI/180)*Math.cos(decl*Math.PI/180));
+  const HA  = Math.acos(Math.max(-1,Math.min(1,cosH)))*180/Math.PI;
+  const sr  = noon-HA/15, ss = noon+HA/15;
+  let icon, word;
+  if(hh>=sr&&hh<12)      { icon='&#9728;&#65039;'; word='Bonjour'; }
+  else if(hh>=12&&hh<14) { icon='&#127373;&#65039;'; word='Bon app&eacute;tit'; }
+  else if(hh>=14&&hh<ss) { icon='&#127780;&#65039;'; word='Bonne apr&egrave;s-midi'; }
+  else                   { icon='&#127769;'; word='Bonsoir'; }
+  const el = document.getElementById('navGreeting');
+  if(el) el.innerHTML = icon + ' <b>' + word + ', Romain</b>';
+}
+
+/* -- NAVIGATION -------------------------------------- */
+function goTab(id, el){
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sn').forEach(n => n.classList.remove('active'));
+  const panel = document.getElementById('tab-'+id);
+  if(panel) panel.classList.add('active');
+  if(el) el.classList.add('active');
+}
+
+/* -- MODERATION -------------------------------------- */
+/* 
+  SUPABASE INTEGRATION — remplacer renderPending() par :
+
+  async function loadPending(){
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*, profiles(full_name, email)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if(error){ showToast('Erreur: ' + error.message); return; }
+    renderCards(data);
+    updateCounters(data.length, 0, 0, data.length);
+  }
+
+  async function approve(id){
+    await supabase.from('listings').update({ status: 'approved' }).eq('id', id);
+    showToast('Annonce approuvée ✓');
+    loadPending();
+  }
+
+  async function reject(id, reason){
+    await supabase.from('listings').update({ status: 'rejected', rejection_reason: reason }).eq('id', id);
+    showToast('Annonce rejetée');
+    loadPending();
+  }
+*/
+
+let MOCK_LISTINGS = []; // Sera rempli par Supabase
+
+function updateCounters(pending, approved, rejected, total){
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+  set('sbPending',  pending);
+  set('sbApproved', approved);
+  set('sbRejected', rejected);
+  set('sbTotal',    total);
+  set('cnt-pending',  pending);
+  set('cnt-approved', approved);
+  set('cnt-rejected', rejected);
+  set('kpi-pending',  pending);
+  set('kpi-approved', approved);
+}
+
+function renderPending(){
+  const list = document.getElementById('pendingList');
+  if(!list) return;
+  if(!MOCK_LISTINGS.length){
+    list.innerHTML = '<div class="empty">'
+      + '<div class="empty-icon">&#9992;</div>'
+      + '<div class="empty-title">File d\'attente vide</div>'
+      + '<div class="empty-sub">Les annonces soumises par les vendeurs appara\u00eetront ici pour validation avant publication.'
+      + '<code>/* SUPABASE: supabase.from(\'listings\').select(\'*,profiles(full_name,email)\').eq(\'status\',\'pending\') */</code>'
+      + '</div></div>';
+    return;
+  }
+  list.innerHTML = '<div class="listing-cards">' 
+    + MOCK_LISTINGS.map(l => renderCard(l)).join('') 
+    + '</div>';
+}
+
+function renderCard(l){
+  return '<div class="listing-card" id="card-'+l.id+'">'
+    + '<div class="lc-thumb">'+l.icon+'</div>'
+    + '<div class="lc-body">'
+    + '<div class="lc-title">'+l.title+'</div>'
+    + '<div class="lc-meta">'
+    + '<span>&#128197; '+l.year+'</span>'
+    + '<span>&#9201; '+l.hours+' h TT</span>'
+    + '<span>&#128205; '+l.country+'</span>'
+    + '<span class="pill pill-pend">&#9203; En attente</span>'
+    + '</div>'
+    + '<div class="lc-desc">'+l.desc+'</div>'
+    + '</div>'
+    + '<div class="lc-side">'
+    + '<div>'
+    + '<div class="lc-price">'+l.price+'</div>'
+    + '<div class="lc-seller">'+l.seller+'</div>'
+    + '<div class="lc-date">Soumis '+l.submitted+'</div>'
+    + '</div>'
+    + '<div class="lc-actions">'
+    + '<button class="btn-mod btn-approve" onclick="approveCard('+l.id+')">&#10003; Approuver</button>'
+    + '<button class="btn-mod btn-reject" onclick="rejectCard('+l.id+')">&#10005; Rejeter</button>'
+    + '<button class="btn-mod btn-view" onclick="showToast(\'Redirection vers l\'annonce...\')">&#128065; Voir</button>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+}
+
+function approveCard(id){
+  MOCK_LISTINGS = MOCK_LISTINGS.filter(l => l.id !== id);
+  /* SUPABASE: await supabase.from('listings').update({status:'approved'}).eq('id', id) */
+  renderPending();
+  updateCounters(MOCK_LISTINGS.length, 0, 0, MOCK_LISTINGS.length);
+  showToast('\u2714 Annonce approuv\u00e9e et publi\u00e9e');
+}
+
+function rejectCard(id){
+  const reason = prompt('Motif du rejet (optionnel):', 'Photos insuffisantes');
+  if(reason === null) return;
+  MOCK_LISTINGS = MOCK_LISTINGS.filter(l => l.id !== id);
+  /* SUPABASE: await supabase.from('listings').update({status:'rejected', rejection_reason: reason}).eq('id', id) */
+  renderPending();
+  updateCounters(MOCK_LISTINGS.length, 0, 0, MOCK_LISTINGS.length);
+  showToast('\u2716 Annonce rejet\u00e9e');
+}
+
+function approveAll(){
+  if(!MOCK_LISTINGS.length){ showToast('Aucune annonce en attente'); return; }
+  if(!confirm('Approuver toutes les ' + MOCK_LISTINGS.length + ' annonces en attente ?')) return;
+  const n = MOCK_LISTINGS.length;
+  MOCK_LISTINGS = [];
+  renderPending();
+  updateCounters(0, n, 0, n);
+  showToast('\u2714 ' + n + ' annonces approuv\u00e9es');
+}
+
+function filterListings(q){
+  // Will filter MOCK_LISTINGS when populated from Supabase
+}
+
+/* -- INIT -------------------------------------------- */
+function initMod(){
+  setGreeting();
+  updateCounters(0, 0, 0, 0);
+  renderPending();
+}
+
+/* -- TOAST ------------------------------------------- */
+let tt;
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(tt);
+  tt = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+document.addEventListener('DOMContentLoaded', checkAuth);
+</script>
+</body>
+</html>
