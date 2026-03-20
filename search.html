@@ -310,9 +310,62 @@ function setLang(l){
   document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'));});
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{el.placeholder=t(el.getAttribute('data-i18n-placeholder'));});
   renderCards();
+
+  // Update page title with category if present
+  const _cat = new URLSearchParams(window.location.search).get('cat');
+  if(_cat) document.title = 'Aircraft2Sell — '+decodeURIComponent(_cat);
+  else document.title = 'Aircraft2Sell — '+t('search_btn');
 }
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
-renderCards();setLang('en');
+renderCards();setLang('fr');
+// Read URL params and pre-fill search
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const cat = params.get('cat');
+  const q   = params.get('q');
+  if(q){
+    const qi = document.getElementById('searchQ');
+    if(qi) qi.value = decodeURIComponent(q);
+  }
+  if(cat){
+    const decoded = decodeURIComponent(cat);
+    // Map category names to select option values
+    const catMap = {
+      // EN
+      'Light aircraft':'light','Helicopters':'heli','Business jets':'jet',
+      'Turboprops':'turbo','Ultralight / ULM':'ulm','Airliners':'airliner',
+      'Spare parts':'parts',
+      // FR
+      'Avions légers':'light','Hélicoptères':'heli',"Jets d'affaires":'jet',
+      'Turbopropulseurs':'turbo','ULM':'ulm','Avions de ligne':'airliner',
+      'Pièces détachées':'parts',
+      // DE
+      'Leichtflugzeuge':'light','Hubschrauber':'heli','Geschäftsreisejets':'jet',
+      'Turboprops':'turbo','Ultraleicht':'ulm','Verkehrsflugzeuge':'airliner',
+      'Ersatzteile':'parts',
+      // ES
+      'Aviones ligeros':'light','Helicópteros':'heli','Jets ejecutivos':'jet',
+      'Turbohélices':'turbo','Ultraligero':'ulm','Aeronaves comerciales':'airliner',
+      'Repuestos':'parts',
+    };
+    const sel = document.getElementById('searchCat');
+    const val = catMap[decoded];
+    if(sel && val){
+      for(let i=0;i<sel.options.length;i++){
+        if(sel.options[i].value===val){ sel.selectedIndex=i; break; }
+      }
+    }
+    // Also show active filter tag
+    const af = document.getElementById('activeFilters');
+    if(af && decoded){
+      af.innerHTML = '<div class="af-tag"><span>'+decoded+'</span><span class="af-remove" onclick="this.parentElement.remove()">✕</span></div>';
+    }
+    // Update result count label
+    const rc = document.getElementById('resultCount');
+    if(rc) rc.textContent = '0';
+  }
+})();
+
 </script>
 
 <script>
