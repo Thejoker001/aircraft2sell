@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aircraft2Sell — Seller Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>nav{position:sticky;top:0;z-index:200;background:rgba(6,11,21,.95);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);height:64px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.1em;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+<style>nav{position:sticky;top:0;z-index:200;background:rgba(6,11,21,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);height:64px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.1em;color:var(--white);display:flex;align-items:center;gap:.5rem;flex-shrink:0;text-decoration:none}
 .logo span{color:var(--accent)}
 @keyframes flt{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-4px)}}
 .nav-links{display:flex;gap:1.5rem;list-style:none;font-size:.82rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase}
@@ -18,19 +18,64 @@
 .lb:hover{color:var(--white)}
 .lb.active{background:var(--accent);color:var(--deep)}
 .lf{font-size:.9rem}
-.lb-lbl{font-size:.7rem}
 .btn-login{background:transparent;color:var(--mist);border:1px solid var(--border);padding:.5rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;letter-spacing:.06em;cursor:pointer;transition:all .2s;text-transform:uppercase;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem}
 .btn-login:hover{border-color:var(--accent);color:var(--accent)}
-.login-icon{font-size:.9rem}
-.btn-post{background:var(--accent);color:var(--white);border:none;padding:.5rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;letter-spacing:.06em;cursor:pointer;transition:background .2s,transform .15s;text-transform:uppercase;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center}
+.btn-login .login-icon{font-size:.9rem}
+.btn-post{background:var(--accent);color:var(--deep);border:none;padding:.5rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;letter-spacing:.06em;cursor:pointer;transition:background .2s,transform .15s;text-transform:uppercase;white-space:nowrap}
 .btn-post:hover{background:var(--gold);transform:translateY(-1px)}
+.nav-dropdown{position:relative}
+.nav-dropdown>a{display:flex;align-items:center;gap:.3rem;cursor:pointer}
+.nav-dropdown>a::after{content:'▾';font-size:.6rem;opacity:.6;transition:transform .2s}
+.nav-dropdown:hover>a::after{transform:rotate(180deg)}
+.dropdown-menu{position:absolute;top:100%;left:50%;transform:translateX(-50%);background:rgba(6,11,21,.98);backdrop-filter:blur(24px);border:1px solid var(--border);min-width:220px;opacity:0;pointer-events:none;transition:opacity .15s;z-index:500;padding-top:8px}
+.dropdown-menu::before{content:'';position:absolute;top:-8px;left:0;right:0;height:8px}
+.nav-dropdown:hover .dropdown-menu,.nav-dropdown.open .dropdown-menu{opacity:1;pointer-events:auto}
+.nav-dropdown:hover>a::after,.nav-dropdown.open>a::after{transform:rotate(180deg)}
+.dropdown-item{display:flex;align-items:center;gap:.7rem;padding:.65rem 1rem;color:var(--mist);font-size:.78rem;text-decoration:none;transition:all .15s;border-bottom:1px solid var(--border);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:400;letter-spacing:.02em;text-transform:none;white-space:nowrap}
+.dropdown-item:last-child{border-bottom:none}
+.dropdown-item:hover{color:var(--white);background:rgba(255,255,255,.04)}
+.dropdown-item .di-icon{font-size:1rem;width:22px;text-align:center;flex-shrink:0}
+.dropdown-item .di-name{flex:1}
+.dropdown-item .di-count{font-size:.62rem;color:var(--mist2);margin-left:auto}
+.dropdown-item.special{color:var(--accent)}
+.dropdown-item.special:hover{background:rgba(232,160,32,.06)}
+.dropdown-item.wanted{color:var(--mist2)}
+.curr-conv{overflow:hidden}
+.curr-hd{padding:.5rem .9rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.curr-hd-lbl{font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mist2);font-weight:600}
+.curr-live{font-size:.56rem;color:var(--green);display:flex;align-items:center;gap:.3rem}
+.curr-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:cvpulse 2s infinite;flex-shrink:0}
+@keyframes cvpulse{0%,100%{opacity:1}50%{opacity:.3}}
+.curr-bd{padding:.75rem .9rem}
+.curr-row{display:flex;gap:0;margin-bottom:.45rem}
+.cv-inp{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--white);padding:.65rem .75rem;font-family:'DM Sans',sans-serif;font-size:1.05rem;outline:none;min-width:0;transition:border-color .15s}
+.cv-inp:focus{border-color:var(--accent)}
+.cv-sel{background:rgba(255,255,255,.07);border:1px solid var(--border);border-left:none;color:var(--white);padding:.45rem .55rem;font-family:'DM Sans',sans-serif;font-size:.8rem;outline:none;cursor:pointer;min-width:76px;flex-shrink:0}
+.cv-sel:focus{border-color:var(--accent);outline:none}
+.cv-swap{text-align:center;padding:.25rem 0;cursor:pointer;color:var(--mist);font-size:1rem;user-select:none;transition:color .15s}
+.cv-swap:hover{color:var(--accent)}
+.cv-result{background:rgba(232,160,32,.07);border:1px solid rgba(232,160,32,.18);padding:.6rem .85rem;display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.cv-res-val{font-size:1.3rem;font-weight:600;color:var(--accent)}
+.cv-res-sub{font-size:.6rem;color:var(--mist2);margin-top:.1rem}
+.cv-rate{font-size:.63rem;color:var(--mist2);text-align:center;padding:.3rem 0 .15rem;border-top:1px solid var(--border)}
+.cv-rate span{color:var(--mist)}
+.cv-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:.55rem}
+.cv-qbtn{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--mist);padding:.3rem .25rem;font-size:.64rem;font-weight:600;cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .12s;font-family:'DM Sans',sans-serif}
+.cv-qbtn:hover,.cv-qbtn.cva{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.06)}
+@media(max-width:900px){.nav-links{display:none}.lb .lb-lbl{display:none}.footer-inner{grid-template-columns:1fr 1fr}.footer-brand{grid-column:1/-1}}
+.budget-wrap{overflow:hidden!important}
+.budget-inp{outline:none}
+.budget-inp:focus{border-color:var(--accent)}
+.budget-curr option{background:var(--card-bg,#0e1a2e);color:var(--white,#f0f4f8)}
+.logo span{color:var(--accent)}
+.nav-links a{color:var(--mist);text-decoration:none;transition:color .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
 :root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--white:#f0f4f8;--card:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.11);--green:#22c55e;--red:#ef4444;--orange:#f97316}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);min-height:100vh}
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(1px 1px at 20% 15%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 75% 60%,rgba(255,255,255,.3) 0%,transparent 100%)}
 
 /* NAV */50%{transform:rotate(-10deg) translateY(-3px)}}
-.nav-user{display:flex;align-items:center;gap:.8rem}
 .user-avatar{width:34px;height:34px;border-radius:50%;background:var(--horizon);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.9rem}
 .user-name{font-size:.83rem;font-weight:500;color:var(--white)}
 .user-plan{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
@@ -156,11 +201,10 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .prog-track{height:4px;background:rgba(255,255,255,.08);border-radius:2px}
 .prog-fill{height:100%;border-radius:2px}
 .nav-user{display:flex;align-items:center;gap:.5rem;cursor:pointer}
-.nav-avatar{width:32px;height:32px;border-radius:50%;background:rgba(232,160,32,.15);border:1px solid rgba(232,160,32,.4);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;color:var(--accent);flex-shrink:0;text-transform:uppercase}
+.nav-avatar{width:34px;height:34px;border-radius:50%;background:rgba(232,160,32,.15);border:1px solid rgba(232,160,32,.4);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:var(--accent);flex-shrink:0;text-transform:uppercase}
 .nav-user-info{display:flex;flex-direction:column;line-height:1.2}
-.nav-user-name{font-size:.78rem;font-weight:500;color:var(--white)}
-.nav-user-plan{font-size:.6rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
-</style>
+.nav-user-name{font-size:.8rem;font-weight:500;color:var(--white);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-user-plan{font-size:.58rem;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}</style>
 </head>
 <body>
 
@@ -168,8 +212,19 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;bac
   <a href="homepage.html" class="logo"><svg viewBox="0 0 64 64" style="width:1.4em;height:1.4em;display:inline-block;vertical-align:middle;fill:var(--accent);flex-shrink:0;animation:flt 4s ease-in-out infinite" xmlns="http://www.w3.org/2000/svg"><path d="M60 22c0-2-2-4-5-4l-12 1-16-14H18l8 14-14 1-5-6H2l3 10-3 10h5l5-6 14 1-8 14h9l16-14 12 1c3 0 5-2 5-4v-3z"/></svg>Aircraft2<span>Sell</span></a>
   <ul class="nav-links">
     <li><a href="homepage.html" data-i18n="nav_listings">Annonces</a></li>
-    <li><a href="search.html" data-i18n="nav_categories">Rechercher</a></li>
-    <li><a href="contact.html">Contact</a></li>
+    <li class="nav-dropdown" id="navCatLi">
+      <a href="search.html" data-i18n="nav_categories" onclick="toggleCatDropdown(event)">Catégories</a>
+      <div class="dropdown-menu" id="navCatDropdown"></div>
+    </li>
+    <li><a href="homepage.html#alert" data-i18n="nav_alerts">Alertes</a></li>
+    <li class="nav-dropdown" id="currencyDropdownLi">
+      <a href="#" onclick="toggleCurrencyDropdown(event)" style="display:flex;align-items:center;gap:.3rem">
+        <span id="currNavIcon" style="font-size:.75rem;font-weight:700;color:var(--accent)">€</span>
+        <span data-i18n="nav_currency">Devises</span>
+      </a>
+      <div class="dropdown-menu" id="currencyDropdownMenu" style="min-width:290px"></div>
+    </li>
+    <li><a href="contact.html" data-i18n="nav_contact">Contact</a></li>
   </ul>
   <div class="nav-right">
     <div class="lang-sw">
@@ -182,11 +237,11 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;bac
     <div class="nav-user" id="navUser" style="display:none">
       <div class="nav-avatar" id="navAvatar">U</div>
       <div class="nav-user-info">
-        <div class="nav-user-name" id="navUserName">Mon compte</div>
+        <div class="nav-user-name" id="navUserName"></div>
         <div class="nav-user-plan" id="navUserPlan">Essentiel</div>
       </div>
     </div>
-    <a href="login.html" class="btn-login" id="btnLogin"><span class="login-icon">👤</span><span id="btnLoginTxt">Connexion</span></a>
+    <a href="login.html" class="btn-login" id="btnLogin" style="display:none"><span class="login-icon">👤</span><span id="btnLoginTxt">Connexion</span></a>
     <a href="post-listing.html" class="btn-post" id="btnPost" data-i18n="btn_post">Déposer une annonce</a>
   </div>
 </nav>
@@ -372,35 +427,149 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;bac
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script>const BUDGET_SYMS={'EUR':'€','USD':'$','GBP':'£','CHF':'Fr','CAD':'CA$','AUD':'AU$','JPY':'¥','CNY':'¥','HKD':'HK$','SEK':'kr','NOK':'kr','DKK':'kr','PLN':'zł','CZK':'Kč','HUF':'Ft','TRY':'₺','BRL':'R$','AED':'د.إ','INR':'₹','SGD':'S$','NZD':'NZ$','ZAR':'R','MXN':'MX$'};;
+const CV_OPTS_FROM=`<option value="EUR">€ EUR</option><option value="USD">$ USD</option><option value="GBP">£ GBP</option><option value="CHF">Fr CHF</option><option value="CAD">CA$ CAD</option><option value="AUD">AU$ AUD</option><option value="JPY">¥ JPY</option><option value="CNY">¥ CNY</option><option value="HKD">HK$ HKD</option><option value="SEK">kr SEK</option><option value="NOK">kr NOK</option><option value="DKK">kr DKK</option><option value="PLN">zł PLN</option><option value="CZK">Kč CZK</option><option value="HUF">Ft HUF</option><option value="TRY">₺ TRY</option><option value="BRL">R$ BRL</option><option value="AED">د.إ AED</option><option value="INR">₹ INR</option><option value="SGD">S$ SGD</option><option value="NZD">NZ$ NZD</option><option value="ZAR">R ZAR</option><option value="MXN">MX$ MXN</option><option value="RUB">₽ RUB</option>`;
+const CV_OPTS_TO=`<option value="EUR">€ EUR</option><option value="USD" selected>$ USD</option><option value="GBP">£ GBP</option><option value="CHF">Fr CHF</option><option value="CAD">CA$ CAD</option><option value="AUD">AU$ AUD</option><option value="JPY">¥ JPY</option><option value="CNY">¥ CNY</option><option value="HKD">HK$ HKD</option><option value="SEK">kr SEK</option><option value="NOK">kr NOK</option><option value="DKK">kr DKK</option><option value="PLN">zł PLN</option><option value="CZK">Kč CZK</option><option value="HUF">Ft HUF</option><option value="TRY">₺ TRY</option><option value="BRL">R$ BRL</option><option value="AED">د.إ AED</option><option value="INR">₹ INR</option><option value="SGD">S$ SGD</option><option value="NZD">NZ$ NZD</option><option value="ZAR">R ZAR</option><option value="MXN">MX$ MXN</option><option value="RUB">₽ RUB</option>`;
+const CV_QUICK=`<button class="cv-qbtn" onclick="setCvTo('EUR')">EUR</button><button class="cv-qbtn" onclick="setCvTo('USD')">USD</button><button class="cv-qbtn" onclick="setCvTo('GBP')">GBP</button><button class="cv-qbtn" onclick="setCvTo('CHF')">CHF</button><button class="cv-qbtn" onclick="setCvTo('CAD')">CAD</button><button class="cv-qbtn" onclick="setCvTo('AUD')">AUD</button><button class="cv-qbtn" onclick="setCvTo('JPY')">JPY</button><button class="cv-qbtn" onclick="setCvTo('CNY')">CNY</button><button class="cv-qbtn" onclick="setCvTo('HKD')">HKD</button><button class="cv-qbtn" onclick="setCvTo('SEK')">SEK</button><button class="cv-qbtn" onclick="setCvTo('NOK')">NOK</button><button class="cv-qbtn" onclick="setCvTo('DKK')">DKK</button>`;
+let cvFrom='EUR',cvTo='USD',cvAmount=100000,cvRate=null,cvLastUpdate=null,cvBusy=false;
+
+async function cvFetch(){
+  if(cvBusy)return;
+  cvBusy=true;
+  try{
+    const r=await fetch('https://api.frankfurter.app/latest?base='+cvFrom+'&symbols='+cvTo);
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    cvRate=d.rates[cvTo]||1;
+    cvLastUpdate=new Date();
+  }catch(e){cvRate=null;}
+  cvBusy=false;
+  renderCurrencyPanel();
+};
+
+
+
+
+
+function renderNavDropdown(){
+  const menu = document.getElementById('navCatDropdown');
+  if(!menu) return;
+  const cats = t('cats');
+  if(!cats||!Array.isArray(cats)) return;
+  menu.innerHTML = cats.map(c=>{
+    const cls = c.special?' special':c.wanted?' wanted':'';
+    const href = c.url ? c.url : 'search.html?cat='+encodeURIComponent(c.name);
+    const extra = c.wanted ? 'onclick="event.preventDefault();openWantedForm()" href=\"#\"' : '';
+    return '<a class="dropdown-item'+cls+'" href="'+href+'" '+extra+'>'
+      +'<span class="di-icon">'+c.icon+'</span>'
+      +'<span class="di-name">'+c.name+'</span>'
+      +'<span class="di-count">'+c.count+'</span>'
+      +'</a>';
+  }).join('');
+}
+function toggleCurrencyDropdown(e){
+  e.preventDefault();
+  var li=document.getElementById('currencyDropdownLi');
+  li.classList.toggle('open');
+  if(li.classList.contains('open')){
+    renderCurrencyPanel();
+    if(!cvRate&&!cvBusy)cvFetch();
+    setTimeout(function(){
+      document.addEventListener('click',function close(ev){
+        if(!li.contains(ev.target)){li.classList.remove('open');document.removeEventListener('click',close);}
+      });
+    },0);
+  }
+}
+function renderCurrencyPanel(){
+  const menu=document.getElementById('currencyDropdownMenu');
+  if(!menu)return;
+  const fSym=CV_SYMS[cvFrom]||cvFrom;
+  const tSym=CV_SYMS[cvTo]||cvTo;
+  const res=cvCompute();
+  const resStr=res!=null?(tSym+(res>1?res.toLocaleString(undefined,{maximumFractionDigits:2}):res.toFixed(5))):'...';
+  const rateStr=cvRate?'1 '+cvFrom+' = '+(Math.round(cvRate*100000)/100000)+' '+cvTo:'...';
+  const ts=cvLastUpdate?cvLastUpdate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+  const live=lang==='fr'?'En direct':lang==='de'?'Aktuell':lang==='es'?'En vivo':lang==='zh'?'实时':'Live';
+  const title=lang==='fr'?'Convertisseur':lang==='de'?'Währungsrechner':lang==='es'?'Divisas':lang==='zh'?'货币换算':'Currency';
+  const swap=lang==='fr'?'Inverser':'Swap';
+
+  menu.innerHTML=
+    '<div class="curr-conv">'
+    +'<div class="curr-hd"><span class="curr-hd-lbl">'+title+'</span><span class="curr-live">'+live+(ts?' '+ts:'')+'</span></div>'
+    +'<div class="curr-bd">'
+    +'<div class="curr-row">'
+    +'<input class="cv-inp" type="number" value="'+cvAmount+'" min="0" oninput="cvSetAmt(this.value)">'
+    +'<select class="cv-sel" onchange="cvSetFrom(this.value)">'+CV_OPTS_FROM+'</select>'
+    +'</div>'
+    +'<div class="cv-swap" onclick="cvSwap()" title="'+swap+'">⇅</div>'
+    +'<div class="cv-result">'
+    +'<div><div class="cv-res-val">'+resStr+'</div><div class="cv-res-sub">BCE · Taux indicatif</div></div>'
+    +'<select class="cv-sel" style="border-left:1px solid var(--border);background:rgba(232,160,32,.08);color:var(--accent)" onchange="cvSetTo(this.value)">'+CV_OPTS_TO+'</select>'
+    +'</div>'
+    +'<div class="cv-rate"><span>'+rateStr+'</span></div>'
+    +'<div class="cv-quick">'+CV_QUICK+'</div>'
+    +'</div></div>';
+
+  const fs=menu.querySelector('.cv-sel');if(fs)fs.value=cvFrom;
+  menu.querySelectorAll('.cv-qbtn').forEach(b=>b.classList.toggle('cva',b.textContent===cvTo));
+  const icon=document.getElementById('currNavIcon');if(icon)icon.textContent=fSym;
+}
+function cvCompute(){
+  if(cvFrom===cvTo)return cvAmount;
+  return cvRate?Math.round(cvAmount*cvRate*100)/100:null;
+}
+function cvSetAmt(v){cvAmount=parseFloat(v)||0;renderCurrencyPanel();}
+function cvSetFrom(v){cvFrom=v;cvRate=null;renderCurrencyPanel();cvFetch();}
+function cvSetTo(v){cvTo=v;cvRate=null;renderCurrencyPanel();cvFetch();}
+function setCvTo(v){cvSetTo(v);}
+function cvSwap(){var t=cvFrom;cvFrom=cvTo;cvTo=t;cvRate=null;renderCurrencyPanel();cvFetch();}
+function updateBudgetCurr(){
+  const sel=document.getElementById('budgetCurr');
+  const inp=document.getElementById('budgetInput');
+  if(!sel||!inp)return;
+  const sym=BUDGET_SYMS[sel.value]||sel.value;
+  const baseLabel=t('budget_placeholder')||'Budget max';
+  inp.placeholder=baseLabel+' ('+sym+')';
+}
+
+
 
 function updateNavAuth(){
-  const isLogged = localStorage.getItem('a2s_logged_in') === 'true';
-  const userName = localStorage.getItem('a2s_user_name') || '';
+  const isLogged  = localStorage.getItem('a2s_logged_in') === 'true';
+  const userName  = localStorage.getItem('a2s_user_name')  || '';
   const userEmail = localStorage.getItem('a2s_user_email') || '';
+  const company   = localStorage.getItem('a2s_company')    || '';
 
-  const btnLogin = document.getElementById('btnLogin');
-  const navUser  = document.getElementById('navUser');
-  const navAvatar = document.getElementById('navAvatar');
-  const navUserName = document.getElementById('navUserName');
-  const navUserPlan = document.getElementById('navUserPlan');
+  const btnLogin   = document.getElementById('btnLogin');
+  const navUser    = document.getElementById('navUser');
+  const navAvatar  = document.getElementById('navAvatar');
+  const navUName   = document.getElementById('navUserName');
+  const navUPlan   = document.getElementById('navUserPlan');
 
-  if(isLogged){
-    // Masquer le bouton Connexion, afficher l'avatar
-    if(btnLogin)  btnLogin.style.display = 'none';
-    if(navUser)   navUser.style.display  = 'flex';
-    // Initiales de l'avatar
-    if(navAvatar){
-      const initials = userName
-        ? userName.trim().split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase()
-        : (userEmail ? userEmail[0].toUpperCase() : 'U');
-      navAvatar.textContent = initials;
-    }
-    if(navUserName) navUserName.textContent = userName || userEmail.split('@')[0] || 'Mon compte';
-    if(navUserPlan) navUserPlan.textContent = 'Essentiel';
-  } else {
-    // Non connecté — rediriger vers login
+  if(!isLogged){
     window.location.href = 'login.html?redirect=dashboard.html';
+    return;
+  }
+
+  // Afficher avatar + nom, masquer bouton connexion
+  if(btnLogin)  btnLogin.style.display  = 'none';
+  if(navUser)   navUser.style.display   = 'flex';
+
+  // Nom affiché : société > nom complet > partie email
+  const displayName = company || userName ||
+    (userEmail ? userEmail.split('@')[0].replace(/[._-]/g,' ')
+      .replace(/\b\w/g, c=>c.toUpperCase()) : 'Mon compte');
+
+  if(navUName)  navUName.textContent  = displayName;
+  if(navUPlan)  navUPlan.textContent  = 'Essentiel';
+
+  // Initiales avatar
+  if(navAvatar){
+    const words = displayName.trim().split(/\s+/);
+    navAvatar.textContent = words.length >= 2
+      ? (words[0][0] + words[words.length-1][0]).toUpperCase()
+      : displayName.substring(0,2).toUpperCase();
   }
 }
 function requireLogin(e, dest){
