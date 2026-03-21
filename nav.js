@@ -40,6 +40,9 @@
       if(btnLogin) btnLogin.style.display = 'none';
       if(navUser){
         navUser.style.display = 'flex';
+        navUser.style.cursor  = 'pointer';
+        navUser.title         = 'Mon tableau de bord';
+        navUser.onclick       = function(){ window.location.href = 'dashboard.html'; };
         if(navAvatar) navAvatar.textContent = getInitials(getUserName(), getUserEmail());
         if(navUName)  navUName.textContent  = getUserName() || getUserEmail().split('@')[0] || 'Mon compte';
         if(navUPlan)  navUPlan.textContent  = getUserPlan();
@@ -91,6 +94,17 @@
       }
     }
   };
+
+  /* -- Injecter le CSS hover nav-user ----------------------- */
+  (function injectNavCSS(){
+    if(document.getElementById('a2s-nav-css')) return;
+    var s = document.createElement('style');
+    s.id = 'a2s-nav-css';
+    s.textContent =
+      '.nav-user:hover .nav-avatar{background:rgba(232,160,32,.3)!important;border-color:#e8a020!important}' +
+      '.nav-user:hover .nav-user-name{color:#e8a020!important}';
+    document.head.appendChild(s);
+  })();
 
   /* -- Lancer dès que le DOM est prêt ----------------------- */
   if(document.readyState === 'loading'){
