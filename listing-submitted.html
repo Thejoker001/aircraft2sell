@@ -155,6 +155,29 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 
 <script>
 // Récupérer le nom et l'email depuis localStorage
+// S'assurer que l'annonce est bien dans localStorage (fallback)
+(function(){
+  try {
+    const raw = sessionStorage.getItem('a2s_last_listing');
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    if(!data || !data.submittedAt) return;
+    const LS_KEY = 'a2s_listings';
+    const existing = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+    if(!existing.some(l => l.submittedAt === data.submittedAt)){
+      existing.unshift({
+        id: Date.now(), make: data.make||'—', model: data.model||'—',
+        year: data.year||'—', price: data.price||'—', currency: data.currency||'EUR',
+        status: 'pending', submittedAt: data.submittedAt,
+        sellerName:  localStorage.getItem('a2s_user_name')||'',
+        sellerEmail: localStorage.getItem('a2s_user_email')||'',
+        views:0, enquiries:0, icon:'✈'
+      });
+      localStorage.setItem(LS_KEY, JSON.stringify(existing));
+    }
+  } catch(e){}
+})();
+
 const name  = localStorage.getItem('a2s_user_name') || '';
 const email = localStorage.getItem('a2s_user_email') || '';
 const firstName = name.split(' ')[0] || 'Pilote';

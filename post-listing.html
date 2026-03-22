@@ -614,7 +614,36 @@ async function submitListing(){
     currency: (document.getElementById('fPriceCurr')||{}).value || 'EUR',
     submittedAt: new Date().toISOString()
   };
+  // Sauvegarder dans sessionStorage (pour listing-submitted.html)
   sessionStorage.setItem('a2s_last_listing', JSON.stringify(listingInfo));
+  // Écrire IMMÉDIATEMENT dans localStorage pour que l'admin/modération le voie
+  (function(){
+    try {
+      const LS_KEY = 'a2s_listings';
+      const existing = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+      const alreadyExists = existing.some(l => l.submittedAt === listingInfo.submittedAt);
+      if(!alreadyExists){
+        const newListing = {
+          id: Date.now(),
+          make:     document.getElementById('fMake')  ? document.getElementById('fMake').value  : listingInfo.make  || '—',
+          model:    document.getElementById('fModel') ? document.getElementById('fModel').value : listingInfo.model || '—',
+          year:     document.getElementById('fYear')  ? document.getElementById('fYear').value  : listingInfo.year  || '—',
+          price:    document.getElementById('fPrice') ? document.getElementById('fPrice').value : listingInfo.price || '—',
+          currency: (document.getElementById('fPriceCurr') || {}).value || 'EUR',
+          category: document.getElementById('fCategory') ? document.getElementById('fCategory').value : '',
+          airport:  document.getElementById('fAirport')  ? document.getElementById('fAirport').value  : '',
+          desc:     document.getElementById('fDesc')     ? document.getElementById('fDesc').value.substring(0,200) : '',
+          status:   'pending',
+          submittedAt: listingInfo.submittedAt,
+          sellerName:  localStorage.getItem('a2s_user_name')  || '',
+          sellerEmail: localStorage.getItem('a2s_user_email') || '',
+          views: 0, enquiries: 0, icon: '✈'
+        };
+        existing.unshift(newListing);
+        localStorage.setItem(LS_KEY, JSON.stringify(existing));
+      }
+    } catch(e){ console.error('localStorage save failed', e); }
+  })();
   setTimeout(()=>window.location.href='listing-submitted.html',1500);
 }
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}

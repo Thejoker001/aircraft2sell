@@ -440,7 +440,17 @@ function goTab(id, el){
   }
 */
 
-let MOCK_LISTINGS = []; // Sera rempli par Supabase
+/* ── LISTINGS depuis localStorage (client dashboard) ──────────
+   En production: remplacer par supabase.from('listings').select(...)
+   ──────────────────────────────────────────────────────────── */
+function getLocalListings(){
+  try { return JSON.parse(localStorage.getItem('a2s_listings') || '[]'); }
+  catch(e){ return []; }
+}
+function saveLocalListings(arr){
+  localStorage.setItem('a2s_listings', JSON.stringify(arr));
+}
+let MOCK_LISTINGS = getLocalListings();
 
 function updateCounters(pending, approved, rejected, total){
   const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
@@ -456,14 +466,16 @@ function updateCounters(pending, approved, rejected, total){
 }
 
 function renderPending(){
+  // Rafraîchir depuis localStorage à chaque rendu
+  MOCK_LISTINGS = getLocalListings().filter(l => !l.status || l.status === 'pending');
   const list = document.getElementById('pendingList');
   if(!list) return;
   if(!MOCK_LISTINGS.length){
     list.innerHTML = '<div class="empty">'
       + '<div class="empty-icon">&#9992;</div>'
       + '<div class="empty-title">File d\'attente vide</div>'
-      + '<div class="empty-sub">Les annonces soumises par les vendeurs appara\u00eetront ici pour validation avant publication.'
-      + '<code>/* SUPABASE: supabase.from(\'listings\').select(\'*,profiles(full_name,email)\').eq(\'status\',\'pending\') */</code>'
+      + '<div class="empty-sub">Les annonces soumises par les clients apparaissent ici automatiquement.<br>'
+      + '<small style="color:var(--mist2)">En production: connecter Supabase pour les vraies données.</small>'
       + '</div></div>';
     return;
   }
@@ -501,20 +513,26 @@ function renderCard(l){
 }
 
 function approveCard(id){
-  MOCK_LISTINGS = MOCK_LISTINGS.filter(l => l.id !== id);
   /* SUPABASE: await supabase.from('listings').update({status:'approved'}).eq('id', id) */
+  const all = getLocalListings();
+  const idx = all.findIndex(l => String(l.id) === String(id));
+  if(idx > -1){ all[idx].status = 'live'; saveLocalListings(all); }
+  MOCK_LISTINGS = all.filter(l => l.status === 'pending');
   renderPending();
-  updateCounters(MOCK_LISTINGS.length, 0, 0, MOCK_LISTINGS.length);
+  updateCounters(MOCK_LISTINGS.length, all.filter(l=>l.status==='live').length, all.filter(l=>l.status==='rejected').length, all.length);
   showToast('\u2714 Annonce approuv\u00e9e et publi\u00e9e');
 }
 
 function rejectCard(id){
   const reason = prompt('Motif du rejet (optionnel):', 'Photos insuffisantes');
   if(reason === null) return;
-  MOCK_LISTINGS = MOCK_LISTINGS.filter(l => l.id !== id);
   /* SUPABASE: await supabase.from('listings').update({status:'rejected', rejection_reason: reason}).eq('id', id) */
+  const all = getLocalListings();
+  const idx = all.findIndex(l => String(l.id) === String(id));
+  if(idx > -1){ all[idx].status = 'rejected'; all[idx].rejectionReason = reason; saveLocalListings(all); }
+  MOCK_LISTINGS = all.filter(l => l.status === 'pending');
   renderPending();
-  updateCounters(MOCK_LISTINGS.length, 0, 0, MOCK_LISTINGS.length);
+  updateCounters(MOCK_LISTINGS.length, all.filter(l=>l.status==='live').length, all.filter(l=>l.status==='rejected').length, all.length);
   showToast('\u2716 Annonce rejet\u00e9e');
 }
 
@@ -522,9 +540,11 @@ function approveAll(){
   if(!MOCK_LISTINGS.length){ showToast('Aucune annonce en attente'); return; }
   if(!confirm('Approuver toutes les ' + MOCK_LISTINGS.length + ' annonces en attente ?')) return;
   const n = MOCK_LISTINGS.length;
+  const all = getLocalListings().map(l => l.status === 'pending' ? {...l, status:'live'} : l);
+  saveLocalListings(all);
   MOCK_LISTINGS = [];
   renderPending();
-  updateCounters(0, n, 0, n);
+  updateCounters(0, all.filter(l=>l.status==='live').length, all.filter(l=>l.status==='rejected').length, all.length);
   showToast('\u2714 ' + n + ' annonces approuv\u00e9es');
 }
 
@@ -535,7 +555,14 @@ function filterListings(q){
 /* -- INIT -------------------------------------------- */
 function initMod(){
   setGreeting();
-  updateCounters(0, 0, 0, 0);
+  // Recharger les annonces depuis localStorage à chaque ouverture
+  const all = getLocalListings();
+  updateCounters(
+    MOCK_LISTINGS.length,
+    all.filter(l=>l.status==='live').length,
+    all.filter(l=>l.status==='rejected').length,
+    all.length
+  );
   renderPending();
 }
 
