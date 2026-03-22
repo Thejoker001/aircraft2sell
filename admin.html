@@ -286,7 +286,8 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
       <div class="tb-title" id="pageTitle">Tableau de <em>bord</em></div>
       <div class="tb-right">
         <button class="tb-btn warn" id="btn-alert" style="display:none" onclick="showTab('mod',document.getElementById('sn-mod'))">&#9200; <span id="btn-alert-cnt">0</span> en attente</button>
-        <button class="tb-btn" onclick="injectTestListing()">+ Test annonce</button>
+        <button class="tb-btn primary" onclick="openImportModal()" title="Importer une annonce depuis un email">&#8659; Importer annonce</button>
+        <button class="tb-btn" onclick="injectTestListing()">+ Test</button>
         <button class="tb-btn" onclick="refreshAll()">&#8634; Actualiser</button>
         <a href="homepage.html" target="_blank" class="tb-btn">&#8599; Site</a>
       </div>
@@ -539,6 +540,35 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
       <button class="m-btn danger" onclick="delUserM()">Supprimer</button>
       <button class="m-btn" onclick="closeM('mUser')">Annuler</button>
       <button class="m-btn primary" onclick="saveUserM()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORT -->
+<div class="modal-back" id="mImport" onclick="if(event.target===this)closeM('mImport')">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-hd">
+      <div class="modal-ti">&#8659; Importer une <em>annonce</em></div>
+      <button class="modal-x" onclick="closeM('mImport')">&#10005;</button>
+    </div>
+    <div class="modal-bd">
+      <p style="font-size:.75rem;color:#8fa3b8;margin-bottom:1rem;line-height:1.6">
+        Copiez le contenu de l'email reçu (la ligne commençant par <strong style="color:#e8a020">A2S_LISTING_DATA:</strong>) et collez-le ci-dessous.
+      </p>
+      <div class="mfg">
+        <label>Contenu de l'email reçu</label>
+        <textarea id="import-raw" style="min-height:120px;font-size:.7rem;font-family:monospace" placeholder="Collez ici le contenu complet de l'email..."></textarea>
+      </div>
+      <div id="import-preview" style="display:none;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);padding:.75rem;font-size:.72rem;margin-top:.5rem">
+        <div style="color:#22c55e;font-weight:600;margin-bottom:.4rem">&#10003; Annonce détectée :</div>
+        <div id="import-preview-content" style="color:#8fa3b8;line-height:1.7"></div>
+      </div>
+      <div id="import-error" style="display:none;color:#ef4444;font-size:.72rem;margin-top:.5rem"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="m-btn" onclick="closeM('mImport')">Annuler</button>
+      <button class="m-btn" onclick="previewImport()">&#128269; Analyser</button>
+      <button class="m-btn primary" id="import-confirm-btn" style="display:none" onclick="confirmImport()">&#10003; Importer et mettre en attente</button>
     </div>
   </div>
 </div>
@@ -1052,6 +1082,78 @@ function closeM(id){ var m=sel(id); if(m) m.classList.remove('open'); }
 document.addEventListener('keydown', function(e){
   if(e.key==='Escape') document.querySelectorAll('.modal-back.open').forEach(function(m){ m.classList.remove('open'); });
 });
+
+/* IMPORT ANNONCE DEPUIS EMAIL */
+var _importedListing = null;
+
+function openImportModal(){
+  sel('import-raw').value = '';
+  sel('import-preview').style.display = 'none';
+  sel('import-error').style.display = 'none';
+  sel('import-confirm-btn').style.display = 'none';
+  _importedListing = null;
+  openM('mImport');
+}
+
+function previewImport(){
+  var raw = sel('import-raw').value.trim();
+  var errEl = sel('import-error');
+  var preEl = sel('import-preview');
+  var prevContent = sel('import-preview-content');
+  var confirmBtn = sel('import-confirm-btn');
+  
+  errEl.style.display = 'none';
+  preEl.style.display = 'none';
+  confirmBtn.style.display = 'none';
+  _importedListing = null;
+
+  if(!raw){ errEl.textContent = 'Collez le contenu de l'email.'; errEl.style.display = 'block'; return; }
+
+  // Try to extract A2S_LISTING_DATA:...:END_A2S
+  var match = raw.match(/A2S_LISTING_DATA:(\{.*?\}):END_A2S/s);
+    // Try without the END marker (user might have cut it)
+      errEl.textContent = 'Données non trouvées. Assurez-vous de copier la ligne "A2S_LISTING_DATA:..." complète.';
+      errEl.style.display = 'block';
+      return;
+
+  try {
+    var listing = JSON.parse(jsonStr);
+    if(!listing.make && !listing.model){ throw new Error('Données incomplètes'); }
+    listing.status = 'pending'; // Toujours remettre en pending
+    listing.id = listing.id || Date.now();
+    _importedListing = listing;
+    prevContent.innerHTML = 
+      '<strong style="color:#f0f4f8">' + (listing.make||'—') + ' ' + (listing.model||'—') + ' (' + (listing.year||'—') + ')</strong><br>'
+      + 'Vendeur : ' + (listing.sellerName||'—') + ' — ' + (listing.sellerEmail||'—') + '<br>'
+      + 'Prix : ' + (listing.price||'—') + ' ' + (listing.currency||'EUR') + '<br>'
+      + 'Aéroport : ' + (listing.airport||'—') + '<br>'
+      + 'Statut : <span style="color:#f97316">En attente (pending)</span>';
+    preEl.style.display = 'block';
+    confirmBtn.style.display = 'inline-flex';
+  } catch(e){
+    errEl.textContent = 'Erreur de lecture des données : ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+function confirmImport(){
+  if(!_importedListing){ showToast('Aucune annonce à importer'); return; }
+  var all = getListings();
+  // Éviter les doublons
+  if(all.some(function(l){ return String(l.id) === String(_importedListing.id); })){
+    showToast('Cette annonce est déjà dans la liste');
+    closeM('mImport');
+    return;
+  }
+  _importedListing.status = 'pending';
+  all.unshift(_importedListing);
+  saveListings(all);
+  closeM('mImport');
+  refreshAll();
+  showTab('mod', sel('sn-mod'));
+  showToast('Annonce importée — visible en Modération !');
+  _importedListing = null;
+}
 
 /* TOAST */
 var _tt;

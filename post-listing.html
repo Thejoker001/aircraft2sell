@@ -560,6 +560,40 @@ function submitListing(){
     }
   } catch(e){ console.error('Erreur sauvegarde listing:', e); }
 
+  /* ── NOTIFICATION EMAIL ADMIN ── */
+  try {
+    var newL = JSON.parse(localStorage.getItem('a2s_listings')||'[]')[0];
+    if(newL){
+      var adminEmail = 'contact.aircraft2sell'+'@'+'gmail.com';
+      var subject = encodeURIComponent('[A2S] Nouvelle annonce en attente : '+newL.make+' '+newL.model);
+      var dataStr = JSON.stringify(newL);
+      var body = encodeURIComponent(
+        'Nouvelle annonce soumise sur Aircraft2Sell.
+
+'
+        +'Vendeur : '+(newL.sellerName||'—')+' ('+( newL.sellerEmail||'—')+')
+'
+        +'Aéronef : '+newL.make+' '+newL.model+' ('+newL.year+')
+'
+        +'Prix : '+newL.price+' '+(newL.currency||'EUR')+'
+'
+        +'Aéroport : '+(newL.airport||'—')+'
+'
+        +'Soumis le : '+new Date(newL.submittedAt).toLocaleString('fr-FR')+'
+
+'
+        +'--- DONNÉES IMPORT ADMIN (ne pas modifier) ---
+'
+        +'A2S_LISTING_DATA:'+dataStr+':END_A2S
+
+'
+        +'Pour valider : allez sur aircraft2sell.eu/admin.html → Importer annonce'
+      );
+      // Ouvrir le client email avec les données pré-remplies
+      window.open('mailto:'+adminEmail+'?subject='+subject+'&body='+body, '_blank');
+    }
+  } catch(e){}
+
   /* Redirection après délai */
   setTimeout(function(){
     showToast(typeof t==='function' ? t('toast_success') : 'Annonce publiée !');
