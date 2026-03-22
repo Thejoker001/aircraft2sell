@@ -328,6 +328,7 @@ tbody tr:hover td{background:rgba(255,255,255,.012)}
       <div class="tb-right">
         <input type="text" class="tb-search" id="globalSearch" placeholder="Rechercher annonce, membre…" oninput="doGlobalSearch(this.value)">
         <button class="tb-btn" onclick="refreshAll()">↺ Actualiser</button>
+        <button class="tb-btn" onclick="injectTestListing()" style="color:var(--mist2);font-size:.62rem" title="Créer une annonce de test">+ Test</button>
         <button class="tb-btn" onclick="showDebug()" style="color:var(--mist2);font-size:.62rem">⚙ Debug</button>
         <a href="homepage.html" target="_blank" class="tb-btn">↗ Voir le site</a>
       </div>
@@ -438,7 +439,13 @@ tbody tr:hover td{background:rgba(255,255,255,.012)}
           <button class="tb-btn primary" onclick="approveAll()">✓ Tout approuver</button>
         </div>
         <div class="card">
-          <div class="card-head"><div class="card-title">Annonces en attente de validation</div><span style="font-size:.64rem;color:var(--orange)" id="mod-count">0 annonce(s)</span></div>
+          <div class="card-head">
+  <div class="card-title">Annonces en attente de validation</div>
+  <div style="display:flex;align-items:center;gap:.5rem">
+    <span style="font-size:.64rem;color:var(--orange)" id="mod-count">0 annonce(s)</span>
+    <button class="tb-btn" onclick="injectTestListing()" style="font-size:.6rem;padding:.25rem .6rem;color:var(--mist2)">+ Annonce test</button>
+  </div>
+</div>
           <div id="mod-list"></div>
         </div>
       </div>
@@ -1020,35 +1027,41 @@ function renderListings(){
 
 /* ── MODÉRATION ────────────────────────────────────────────── */
 function renderModeration(){
-  const pending=getListings().filter(l=>!l.status||l.status==='pending');
+  var all     = getListings();
+  var pending = all.filter(function(l){ return !l.status || l.status==='pending'; });
   setText('mod-count', pending.length+' annonce'+(pending.length>1?'s':''));
   setText('cnt-mod', pending.length);
-  const el=document.getElementById('mod-list');
-  if(!el)return;
+  var el = document.getElementById('mod-list');
+  if(!el) return;
   if(!pending.length){
-    el.innerHTML='<div class="empty-state"><div class="es-ic">✓</div><div class="es-t">File vide</div><div class="es-s">Aucune annonce en attente de validation.</div></div>';
+    el.innerHTML = '<div class="empty-state"><div class="es-ic">&#10003;</div><div class="es-t">File vide</div><div class="es-s">Cliquez "+ Annonce test" pour tester.</div></div>';
     return;
   }
-  const SYM={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
-  el.innerHTML='<div class="mini-list">'+pending.map(l=>{
-    const sym=SYM[l.currency||'EUR']||'€';
-    return '<div class="ml-item" style="align-items:flex-start;gap:.8rem">'
-      +'<div class="td-thumb" style="margin-top:.25rem">✈</div>'
-      +'<div class="ml-info">'
-      +'<div class="ml-name">'+listingTitle(l)+'</div>'
-      +'<div class="ml-sub">'+( l.sellerName||'—')+' · '+(l.sellerEmail||'—')+'</div>'
-      +'<div class="ml-sub" style="margin-top:2px">Soumis le '+fmtDateTime(l.submittedAt)+'</div>'
-      +'</div>'
-      +'<div class="ml-right" style="align-items:flex-end;gap:.4rem">'
-      +'<div class="ml-price">'+(l.price?sym+Number(l.price).toLocaleString():'—')+'</div>'
-      +'<div class="acts">'
-      +'<button class="act ap" onclick="quickApprove('+l.id+')">✓ Approuver</button>'
-      +'<button class="act rj" onclick="quickReject('+l.id+')">✗ Rejeter</button>'
-      +'<button class="act" onclick="openEditListing('+l.id+')">✎ Voir</button>'
-      +'</div>'
-      +'</div>'
-      +'</div>';
-  }).join('')+'</div>';
+  var SYM = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
+  var html = '<div class="mini-list">';
+  for(var pi=0; pi<pending.length; pi++){
+    var l     = pending[pi];
+    var sym   = SYM[l.currency||'EUR']||'€';
+    var date  = l.submittedAt ? new Date(l.submittedAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    var title = listingTitle(l);
+    var price = l.price ? sym+Number(l.price).toLocaleString() : '—';
+    html += '<div class="ml-item" style="align-items:flex-start;gap:.8rem;padding:.8rem 1rem">';
+    html += '<div style="font-size:1.2rem;margin-top:.2rem">&#9992;</div>';
+    html += '<div class="ml-info" style="flex:1;min-width:0">';
+    html += '<div class="ml-name" style="font-size:.82rem;margin-bottom:.2rem">'+title+'</div>';
+    html += '<div class="ml-sub">'+(l.sellerName||'—')+' · '+(l.sellerEmail||'—')+'</div>';
+    html += '<div class="ml-sub" style="margin-top:2px">Soumis le '+date+'</div>';
+    html += '</div>';
+    html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;flex-shrink:0">';
+    html += '<div class="ml-price">'+price+'</div>';
+    html += '<div class="acts">';
+    html += '<button class="act ap" data-id="'+l.id+'" onclick="quickApprove(this.dataset.id)">&#10003; Approuver</button>';
+    html += '<button class="act rj" data-id="'+l.id+'" onclick="quickReject(this.dataset.id)">&#10005; Rejeter</button>';
+    html += '<button class="act"     data-id="'+l.id+'" onclick="openEditListing(this.dataset.id)">&#9998; Voir</button>';
+    html += '</div></div></div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
 }
 
 /* ── UTILISATEURS ──────────────────────────────────────────── */
@@ -1281,6 +1294,34 @@ function exportCSV(type){
   showToast('Export CSV telecharge');
 }
 /* ── TOAST ─────────────────────────────────────────────────── */
+
+function injectTestListing(){
+  var listings = getListings();
+  var test = {
+    id:          Date.now(),
+    make:        'Cessna',
+    model:       '172 Skyhawk',
+    year:        '2018',
+    price:       '85000',
+    currency:    'EUR',
+    category:    'light',
+    airport:     'LFPG',
+    desc:        'Annonce de test injectée depuis le panneau admin.',
+    status:      'pending',
+    submittedAt: new Date().toISOString(),
+    sellerName:  'Client Test',
+    sellerEmail: 'test@aircraft2sell.eu',
+    views:       0,
+    enquiries:   0,
+    icon:        '✈'
+  };
+  listings.unshift(test);
+  saveListings(listings);
+  initAdmin();
+  renderModeration();
+  goSec('moderation', document.getElementById('sn-moderation'));
+  showToast('✓ Annonce test ajoutée — visible dans Modération');
+}
 function showDebug(){
   const listings = JSON.parse(localStorage.getItem('a2s_listings')||'[]');
   const users    = JSON.parse(localStorage.getItem('a2s_users')||'[]');
