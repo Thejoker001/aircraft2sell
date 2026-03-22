@@ -586,6 +586,8 @@ async function handleLogin(){
     localStorage.setItem('a2s_user_email', email);
     if(!localStorage.getItem('a2s_user_name')) localStorage.setItem('a2s_user_name', emailName);
   }
+  // Sync vers Supabase
+  syncUserToSupabase(localStorage.getItem('a2s_user_name') || emailName, email, 'Essentiel');
   // Enregistrer dans a2s_users pour l'admin (si pas déjà présent)
   try {
     const _users = JSON.parse(localStorage.getItem('a2s_users')||'[]');
@@ -632,6 +634,8 @@ async function handleRegister(){
     localStorage.setItem('a2s_user_name', fullName);
     localStorage.setItem('a2s_user_email', email);
   }
+  // Sync vers Supabase
+  syncUserToSupabase(fullName, email, 'Essentiel');
   // Enregistrer dans a2s_users pour l'espace admin
   try {
     const users = JSON.parse(localStorage.getItem('a2s_users')||'[]');
@@ -672,6 +676,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 </script>
-<script src="nav.js"></script>
+<script src="nav.js">
+/* ── SUPABASE USER SYNC ── */
+function syncUserToSupabase(name, email, plan) {
+  var SB_URL = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+  var user = {
+    id: Date.now(),
+    name: name || '',
+    email: email || '',
+    plan: plan || 'Essentiel',
+    status: 'active',
+    registered_at: new Date().toISOString()
+  };
+  fetch(SB_URL + '/rest/v1/users', {
+    method: 'POST',
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=ignore-duplicates,return=minimal'
+    },
+    body: JSON.stringify(user)
+  }).catch(function(e) { console.error('Supabase user sync error:', e); });
+}
+
+</script>
 </body>
 </html>

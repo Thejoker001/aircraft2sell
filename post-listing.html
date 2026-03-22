@@ -531,68 +531,52 @@ function submitListing(){
   /* Sauvegarder sessionStorage pour listing-submitted.html */
   try { sessionStorage.setItem('a2s_last_listing', JSON.stringify(listingInfo)); } catch(e){}
 
-  /* Sauvegarder dans localStorage pour admin/modération */
+  /* Sauvegarder dans Supabase ET localStorage (fallback) */
+  var newListing = {
+    id:           Date.now(),
+    make:         listingInfo.make || '',
+    model:        listingInfo.model || '',
+    year:         listingInfo.year  || '',
+    price:        listingInfo.price || '',
+    currency:     listingInfo.currency || 'EUR',
+    category:     listingInfo.category || '',
+    airport:      listingInfo.airport  || '',
+    description:  listingInfo.desc     || '',
+    status:       'pending',
+    submitted_at: now,
+    seller_name:  localStorage.getItem('a2s_user_name')  || '',
+    seller_email: localStorage.getItem('a2s_user_email') || '',
+    views:        0,
+    enquiries:    0,
+    icon:         '&#9992;'
+  };
+
+  /* Supabase */
+  var SB_URL = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+  fetch(SB_URL + '/rest/v1/listings', {
+    method: 'POST',
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify(newListing)
+  }).catch(function(e){ console.error('Supabase listing error:', e); });
+
+  /* localStorage fallback */
   try {
-    var LS_KEY   = 'a2s_listings';
-    var existing = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
-    var alreadyExists = existing.some(function(l){ return l.submittedAt === now; });
-    if(!alreadyExists){
-      var newListing = {
-        id:           Date.now(),
-        make:         listingInfo.make || '—',
-        model:        listingInfo.model || '—',
-        year:         listingInfo.year  || '—',
-        price:        listingInfo.price || '—',
-        currency:     listingInfo.currency,
-        category:     listingInfo.category,
-        airport:      listingInfo.airport,
-        desc:         listingInfo.desc,
-        status:       'pending',
-        submittedAt:  now,
-        sellerName:   localStorage.getItem('a2s_user_name')  || '',
-        sellerEmail:  localStorage.getItem('a2s_user_email') || '',
-        views:        0,
-        enquiries:    0,
-        icon:         '✈'
-      };
-      existing.unshift(newListing);
-      localStorage.setItem(LS_KEY, JSON.stringify(existing));
-    }
-  } catch(e){ console.error('Erreur sauvegarde listing:', e); }
-
-  /* ── NOTIFICATION EMAIL ADMIN ── */
-  try {
-    var newL = JSON.parse(localStorage.getItem('a2s_listings')||'[]')[0];
-    if(newL){
-      var adminEmail = 'contact.aircraft2sell'+'@'+'gmail.com';
-      var subject = encodeURIComponent('[A2S] Nouvelle annonce en attente : '+newL.make+' '+newL.model);
-      var dataStr = JSON.stringify(newL);
-      var body = encodeURIComponent(
-        'Nouvelle annonce soumise sur Aircraft2Sell.
-
-'
-        +'Vendeur : '+(newL.sellerName||'—')+' ('+( newL.sellerEmail||'—')+')
-'
-        +'Aéronef : '+newL.make+' '+newL.model+' ('+newL.year+')
-'
-        +'Prix : '+newL.price+' '+(newL.currency||'EUR')+'
-'
-        +'Aéroport : '+(newL.airport||'—')+'
-'
-        +'Soumis le : '+new Date(newL.submittedAt).toLocaleString('fr-FR')+'
-
-'
-        +'--- DONNÉES IMPORT ADMIN (ne pas modifier) ---
-'
-        +'A2S_LISTING_DATA:'+dataStr+':END_A2S
-
-'
-        +'Pour valider : allez sur aircraft2sell.eu/admin.html → Importer annonce'
-      );
-      // Ouvrir le client email avec les données pré-remplies
-      window.open('mailto:'+adminEmail+'?subject='+subject+'&body='+body, '_blank');
-    }
-  } catch(e){}
+    var existing = JSON.parse(localStorage.getItem('a2s_listings') || '[]');
+    var lsListing = Object.assign({}, newListing, {
+      desc: listingInfo.desc,
+      sellerName: newListing.seller_name,
+      sellerEmail: newListing.seller_email,
+      submittedAt: now
+    });
+    existing.unshift(lsListing);
+    localStorage.setItem('a2s_listings', JSON.stringify(existing));
+  } catch(e){ console.error('localStorage listing error:', e); }
 
   /* Redirection après délai */
   setTimeout(function(){
