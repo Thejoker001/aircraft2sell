@@ -406,7 +406,71 @@ textarea.form-input{resize:vertical;min-height:120px;line-height:1.6}
 
 <div class="toast" id="toast"></div>
 
+<script src="aircraft-db.js"></script>
 <script>
+/* ── AIRCRAFT DB CASCADE ── */
+function initAircraftCascade() {
+  if (!window.AIRCRAFT_DB) {
+    setTimeout(initAircraftCascade, 100);
+    return;
+  }
+  var makes = Object.keys(window.AIRCRAFT_DB).sort();
+  var makeSel = document.getElementById('fMakeSel');
+  if (!makeSel) return;
+  makeSel.innerHTML = '<option value="">-- Marque --</option>'
+    + makes.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('')
+    + '<option value="__other__">Autre...</option>';
+  
+  makeSel.onchange = function() {
+    var make = this.value;
+    var modelSel = document.getElementById('fModelSel');
+    var customWrap = document.getElementById('mmCustomWrap');
+    var fMake = document.getElementById('fMake');
+    var fModel = document.getElementById('fModel');
+    
+    if (make === '__other__') {
+      modelSel.innerHTML = '<option value="">--</option>';
+      modelSel.disabled = true;
+      if (customWrap) customWrap.style.display = 'flex';
+      if (fMake) fMake.value = '';
+      if (fModel) fModel.value = '';
+    } else if (make) {
+      var models = window.AIRCRAFT_DB[make] ? window.AIRCRAFT_DB[make].models : [];
+      modelSel.innerHTML = '<option value="">-- Modèle --</option>'
+        + models.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('')
+        + '<option value="__other__">Autre...</option>';
+      modelSel.disabled = false;
+      if (customWrap) customWrap.style.display = 'none';
+      if (fMake) fMake.value = make;
+      if (fModel) fModel.value = '';
+    } else {
+      modelSel.innerHTML = '<option value="">-- Sélectionner --</option>';
+      modelSel.disabled = true;
+      if (customWrap) customWrap.style.display = 'none';
+      if (fMake) fMake.value = '';
+    }
+    if (typeof updatePreview === 'function') updatePreview();
+  };
+  
+  var modelSel = document.getElementById('fModelSel');
+  if (modelSel) {
+    modelSel.onchange = function() {
+      var val = this.value;
+      var make = document.getElementById('fMakeSel').value;
+      var fModel = document.getElementById('fModel');
+      var customWrap = document.getElementById('mmCustomWrap');
+      if (val === '__other__') {
+        if (customWrap) customWrap.style.display = 'flex';
+        if (fModel) fModel.value = '';
+      } else {
+        if (customWrap) customWrap.style.display = 'none';
+        if (fModel) fModel.value = val;
+      }
+      if (typeof updatePreview === 'function') updatePreview();
+    };
+  }
+}
+
 function requireLogin(e, dest){
   e.preventDefault();
   const ok = localStorage.getItem('a2s_logged_in')==='true';
@@ -540,8 +604,14 @@ async function submitListing(){
 }
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
 setLang('fr');
+
+// Init aircraft cascade after DOM ready
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", initAircraftCascade);
+} else {
+  initAircraftCascade();
+}
 </script>
-<script src="aircraft-db.js"></script>
 <script src="nav.js"></script>
 </body>
 </html>

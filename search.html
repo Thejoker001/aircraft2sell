@@ -311,7 +311,58 @@ select.sf option{background:var(--card)}
 
 <div class="toast" id="toast"></div>
 
+<script src="aircraft-db.js"></script>
 <script>
+/* ── AIRCRAFT DB CASCADE SEARCH ── */
+function initSearchAircraft() {
+  if (!window.AIRCRAFT_DB) {
+    setTimeout(initSearchAircraft, 100);
+    return;
+  }
+  var makes = Object.keys(window.AIRCRAFT_DB).sort();
+  var opts = '<option value="">Toutes marques</option>'
+    + makes.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('');
+  
+  var topMake    = document.getElementById('searchMake');
+  var sbarMake   = document.getElementById('sidebarMake');
+  if (topMake)  topMake.innerHTML  = opts;
+  if (sbarMake) sbarMake.innerHTML = '<option value="">Toutes marques</option>'
+    + makes.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('');
+}
+
+function populateModelSelect(makeVal, modelSelId) {
+  var modelSel = document.getElementById(modelSelId);
+  if (!modelSel) return;
+  if (!makeVal || !window.AIRCRAFT_DB || !window.AIRCRAFT_DB[makeVal]) {
+    modelSel.innerHTML = '<option value="">Tous modèles</option>';
+    modelSel.disabled = true;
+    return;
+  }
+  var models = window.AIRCRAFT_DB[makeVal].models;
+  modelSel.innerHTML = '<option value="">Tous modèles</option>'
+    + models.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('');
+  modelSel.disabled = false;
+}
+
+function onSearchMakeChange() {
+  var make = (document.getElementById('searchMake') || {}).value || '';
+  populateModelSelect(make, 'searchModel');
+  // Sync sidebar
+  var sb = document.getElementById('sidebarMake');
+  if (sb && sb.value !== make) { sb.value = make; onSidebarMakeChange(true); }
+  renderCards();
+}
+
+function onSidebarMakeChange(fromTop) {
+  var make = (document.getElementById('sidebarMake') || {}).value || '';
+  populateModelSelect(make, 'sidebarModel');
+  // Sync top bar
+  if (!fromTop) {
+    var top = document.getElementById('searchMake');
+    if (top && top.value !== make) { top.value = make; populateModelSelect(make, 'searchModel'); }
+  }
+}
+
 const T={
   en:{btn_post:'Post an Ad',search_ph:'Brand, model, or type…',cat_all:'All categories',cat_light:'Light aircraft',cat_jet:'Business jets',cat_turbo:'Turboprops',cat_heli:'Helicopters',cat_ulm:'Ultralight / ULM',all_countries:'All countries',search_btn:'Search',filter_price:'Price range',filter_year:'Year',filter_hours:'Max hours (TT)',filter_country:'Country',filter_equipment:'Equipment',filter_apply:'Apply filters',filter_reset:'Reset all',range_to:'to',results_found:'listings found',sort_recent:'Most recent',sort_price_asc:'Price ↑',sort_price_desc:'Price ↓',sort_hours:'Fewest hours',sort_year:'Newest year',badge_new:'New',badge_urgent:'Urgent',badge_premium:'Premium',toast_filter:'Filters applied!',toast_reset:'Filters reset',toast_fav:'Added to favourites!',prev_page:'← Previous',next_page:'Next →'},
   fr:{btn_post:'Déposer une annonce',search_ph:'Marque, modèle ou type…',cat_all:'Toutes catégories',cat_light:'Avions légers',cat_jet:"Jets d'affaires",cat_turbo:'Turbopropulseurs',cat_heli:'Hélicoptères',cat_ulm:'ULM',all_countries:'Tous les pays',search_btn:'Rechercher',filter_price:'Fourchette de prix',filter_year:'Année',filter_hours:'Heures max (TT)',filter_country:'Pays',filter_equipment:'Équipements',filter_apply:'Appliquer',filter_reset:'Réinitialiser',range_to:'à',results_found:'annonces trouvées',sort_recent:'Plus récentes',sort_price_asc:'Prix ↑',sort_price_desc:'Prix ↓',sort_hours:"Moins d'heures",sort_year:'Année la plus récente',badge_new:'Nouveau',badge_urgent:'Urgent',badge_premium:'Premium',toast_filter:'Filtres appliqués !',toast_reset:'Filtres réinitialisés',toast_fav:'Ajouté aux favoris !',prev_page:'← Précédent',next_page:'Suivant →'},
@@ -324,6 +375,23 @@ const PER_PAGE=9;
 function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
 const MOCK=[];
 
+
+function toggleSearchFav(btn, id){
+  if(!window.A2SFavs) return;
+  // Build a minimal listing object from the card
+  const card = btn.closest('.result-card') || btn.closest('[class*="card"]');
+  const listing = {
+    id: String(id),
+    title: card ? (card.querySelector('.rc-title,h3,h4') || {}).textContent || '' : '',
+    price: card ? (card.querySelector('.rc-price') || {}).textContent || '' : '',
+    thumb: '✈'
+  };
+  const added = window.A2SFavs.toggle(listing);
+  btn.classList.toggle('liked', added);
+  const icon = btn.querySelector('.fav-icon');
+  if(icon) icon.textContent = added ? '♥' : '♡';
+  showToast(added ? (t('toast_fav')||'Ajouté aux favoris !') : 'Retiré des favoris');
+}
 function renderCards(){
   const g=document.getElementById('resultsGrid');
   if(!g) return;
@@ -342,7 +410,7 @@ function renderCards(){
       <div class="rc-img">
         <span style="font-size:3.5rem;opacity:.15">${c.icon}</span>
         ${c.badge?`<span class="rc-badge ${c.badge}">${t(c.badgeKey)}</span>`:''}
-        <button class="fav-mini" onclick="event.stopPropagation();this.classList.toggle('liked');this.textContent=this.classList.contains('liked')?'♥':'♡';showToast(t('toast_fav'))">♡</button>
+        <button class="fav-mini" onclick="event.stopPropagation();toggleSearchFav(this,'${c.id||i}')" data-fav-id="${c.id||i}"><span class="fav-icon">♡</span></button>
       </div>
       <div class="rc-body">
         <div class="rc-cat">${c.cat}</div>
@@ -521,6 +589,12 @@ renderCards();setLang('fr');initSearchMakeModel();
   }
 })();
 
+// Init aircraft search after DOM ready
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", initSearchAircraft);
+} else {
+  initSearchAircraft();
+}
 </script>
 
 <script>
@@ -552,7 +626,7 @@ function requireLogin(e, dest){
 })();
 </script>
 <style>@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
-<script src="aircraft-db.js"></script>
+<script src="favorites.js"></script>
 <script src="nav.js"></script>
 </body>
 </html>
