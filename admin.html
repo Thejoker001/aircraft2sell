@@ -638,6 +638,7 @@ function planPill(p){
 
 /* NAVIGATION — exact same pattern as moderate.html */
 var TABS = ['dash','mod','list','users','subs','set'];
+var CURRENT_TAB = 'dash';
 var TITLES = {dash:'Tableau de <em>bord</em>',mod:'<em>Moderation</em>',list:'Toutes les <em>annonces</em>',users:'Gestion des <em>membres</em>',subs:'<em>Abonnements</em>',set:'<em>Parametres</em>'};
 
 function showTab(id, navEl){
@@ -655,6 +656,8 @@ function showTab(id, navEl){
   // Update topbar title
   var pt = sel('pageTitle');
   if(pt && TITLES[id]) pt.innerHTML = TITLES[id];
+  // Track current tab
+  CURRENT_TAB = id;
   // Render content
   if(id==='mod')   renderMod();
   if(id==='list')  renderList();
@@ -740,19 +743,15 @@ function refreshAll(){
   }
 
   // Re-render active tab
-  var active = document.querySelector('.sec[style*="flex"]');
-  if(active){
-    var aid = active.id.replace('tab-','');
-    if(aid==='mod')   renderMod();
-    if(aid==='list')  renderList();
-    if(aid==='users') renderUsers();
-    if(aid==='subs')  renderSubs();
-  }
+  if(CURRENT_TAB==='mod')   renderMod();
+  if(CURRENT_TAB==='list')  renderList();
+  if(CURRENT_TAB==='users') renderUsers();
+  if(CURRENT_TAB==='subs')  renderSubs();
 }
 
 /* MODERATION */
 function renderMod(){
-  var listings = getListings();
+  var listings = get('a2s_listings'); // lecture directe localStorage
   var pending  = listings.filter(function(l){ return !l.status||l.status==='pending'; });
   setText('m-pend',  pending.length);
   setText('m-live',  listings.filter(function(l){ return l.status==='live'; }).length);
