@@ -1,3 +1,6 @@
+
+  buildMakeSelect('fMakeSel', '', null);
+  syncMakeModelInputs('fMakeSel','fModelSel','fMake','fModel','mmCustomWrap');
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -101,6 +104,20 @@ textarea.form-input{resize:vertical;min-height:120px;line-height:1.6}
 .nav-user-info{display:flex;flex-direction:column;line-height:1.2}
 .nav-user-name{font-size:.78rem;font-weight:500;color:var(--white)}
 .nav-user-plan{font-size:.58rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+
+.make-model-wrap{display:flex;flex-direction:column;gap:.5rem}
+.mm-selects{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.mm-select{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border,rgba(200,220,240,0.09));color:var(--white,#f0f4f8);padding:.65rem .9rem;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;transition:border-color .2s;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238fa3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;padding-right:2.2rem}
+.mm-select:focus{border-color:var(--accent,#e8a020)}
+.mm-select:disabled{opacity:.45;cursor:not-allowed}
+.mm-select option{background:#0c1826;color:#f0f4f8}
+.mm-custom{display:none;flex-direction:column;gap:.4rem}
+.mm-custom.show{display:flex}
+.mm-custom-note{font-size:.62rem;color:var(--mist,#8fa3b8);letter-spacing:.08em}
+.mm-custom input{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border,rgba(200,220,240,0.09));color:var(--white,#f0f4f8);padding:.65rem .9rem;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;transition:border-color .2s}
+.mm-custom input:focus{border-color:var(--accent,#e8a020)}
+.mm-custom input::placeholder{color:var(--mist2,#4a6278)}
+
 </style>
 </head>
 <body>
@@ -163,12 +180,28 @@ textarea.form-input{resize:vertical;min-height:120px;line-height:1.6}
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label"><span data-i18n="lbl_make">Make / Brand</span> <span class="req">*</span></label>
-          <input type="text" class="form-input" id="fMake" placeholder="Cessna" oninput="updatePreview()">
+          <label class="form-label"><span data-i18n="lbl_make">Marque</span> <span class="req">*</span></label>
+          <div class="make-model-wrap">
+            <div class="mm-selects">
+              <select class="mm-select" id="fMakeSel">
+                <option value="">— Sélectionner la marque —</option>
+              </select>
+              <select class="mm-select" id="fModelSel" disabled>
+                <option value="">— Sélectionner la marque d'abord —</option>
+              </select>
+            </div>
+            <div class="mm-custom" id="mmCustomWrap">
+              <div class="mm-custom-note">Marque et modèle non listés — saisir manuellement :</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+                <input type="text" id="fMakeCustom" placeholder="Marque" oninput="fMake.value=this.value;updatePreview()">
+                <input type="text" id="fModelCustom" placeholder="Modèle" oninput="fModel.value=this.value;updatePreview()">
+              </div>
+            </div>
+          </div>
+          <input type="hidden" id="fMake">
         </div>
         <div class="form-group">
-          <label class="form-label"><span data-i18n="lbl_model">Model</span> <span class="req">*</span></label>
-          <input type="text" class="form-input" id="fModel" placeholder="172 Skyhawk SP" oninput="updatePreview()">
+          <input type="hidden" id="fModel">
         </div>
 
         <div class="form-group">
@@ -508,6 +541,7 @@ async function submitListing(){
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
 setLang('fr');
 </script>
+<script src="aircraft-db.js"></script>
 <script src="nav.js"></script>
 </body>
 </html>

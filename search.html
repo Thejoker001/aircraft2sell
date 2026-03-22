@@ -108,6 +108,10 @@ select.sf option{background:var(--card)}
 .nav-user-info{display:flex;flex-direction:column;line-height:1.2}
 .nav-user-name{font-size:.78rem;font-weight:500;color:var(--white)}
 .nav-user-plan{font-size:.58rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+.mm-select{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(200,220,240,0.09);color:#f0f4f8;padding:.45rem .9rem;font-family:'DM Sans',sans-serif;font-size:.78rem;outline:none;transition:border-color .2s;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238fa3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .6rem center;padding-right:1.8rem;margin-bottom:.35rem}
+.mm-select:focus{border-color:#e8a020}
+.mm-select:disabled{opacity:.4;cursor:not-allowed}
+.mm-select option{background:#0c1826;color:#f0f4f8}
 </style>
 </head>
 <body>
@@ -149,6 +153,12 @@ select.sf option{background:var(--card)}
       <option value="heli" data-i18n="cat_heli">Helicopters</option>
       <option value="ulm" data-i18n="cat_ulm">Ultralight / ULM</option>
     </select>
+    <select class="mm-select sf" id="searchMake" style="flex:1" onchange="onSearchMakeChange()">
+      <option value="">Toutes marques</option>
+    </select>
+    <select class="mm-select sf" id="searchModel" style="flex:1" disabled>
+      <option value="">Tous modèles</option>
+    </select>
     <select class="sf" id="searchCountry">
       <option value="" data-i18n="all_countries">All countries</option>
       <option value="FR">🇫🇷 France</option>
@@ -165,6 +175,19 @@ select.sf option{background:var(--card)}
 <div class="results-wrap">
   <!-- FILTERS -->
   <div class="filters-sidebar">
+    <div class="filter-box">
+      <div class="filter-header" onclick="toggleFilter(this)">
+        <span>Marque &amp; Modèle</span><span class="filter-arrow">▼</span>
+      </div>
+      <div class="filter-body">
+        <select class="mm-select" id="sidebarMake" onchange="onSidebarMakeChange()">
+          <option value="">Toutes les marques</option>
+        </select>
+        <select class="mm-select" id="sidebarModel" disabled>
+          <option value="">Tous les modèles</option>
+        </select>
+      </div>
+    </div>
     <div class="filter-box">
       <div class="filter-header" onclick="toggleFilter(this)">
         <span data-i18n="filter_price">Price range</span> <span class="curr-badge" id="filterCurrBadge">€</span><span class="filter-arrow">▼</span>
@@ -384,6 +407,58 @@ function updateCurrencyLabel(){
   });
   fetchSearchRate('EUR', code).then(()=>renderCards());
 }
+
+/* ── MAKE/MODEL SEARCH LOGIC ── */
+function initSearchMakeModel() {
+  if(!window.AIRCRAFT_DB) return;
+  const makes = window.getAircraftMakes('');
+  const optsMake = '<option value="">Toutes marques</option>'
+    + makes.map(m => `<option value="${m}">${m}</option>`).join('');
+  const smake = document.getElementById('searchMake');
+  const sbmake = document.getElementById('sidebarMake');
+  if(smake) smake.innerHTML = optsMake;
+  if(sbmake) sbmake.innerHTML = '<option value="">Toutes les marques</option>'
+    + makes.map(m => `<option value="${m}">${m}</option>`).join('');
+}
+
+function onSearchMakeChange() {
+  const makeSel  = document.getElementById('searchMake');
+  const modelSel = document.getElementById('searchModel');
+  if(!makeSel || !modelSel) return;
+  const make = makeSel.value;
+  if(!make) {
+    modelSel.innerHTML = '<option value="">Tous modèles</option>';
+    modelSel.disabled = true;
+    return;
+  }
+  const models = window.getAircraftModels(make);
+  modelSel.innerHTML = '<option value="">Tous modèles</option>'
+    + models.map(m => `<option value="${m}">${m}</option>`).join('');
+  modelSel.disabled = false;
+  // Sync sidebar
+  const sbmake = document.getElementById('sidebarMake');
+  if(sbmake) { sbmake.value = make; onSidebarMakeChange(); }
+  renderCards();
+}
+
+function onSidebarMakeChange() {
+  const makeSel  = document.getElementById('sidebarMake');
+  const modelSel = document.getElementById('sidebarModel');
+  if(!makeSel || !modelSel) return;
+  const make = makeSel.value;
+  if(!make) {
+    modelSel.innerHTML = '<option value="">Tous les modèles</option>';
+    modelSel.disabled = true;
+    return;
+  }
+  const models = window.getAircraftModels(make);
+  modelSel.innerHTML = '<option value="">Tous les modèles</option>'
+    + models.map(m => `<option value="${m}">${m}</option>`).join('');
+  modelSel.disabled = false;
+  // Sync top bar
+  const smake = document.getElementById('searchMake');
+  if(smake) { smake.value = make; onSearchMakeChange(); }
+}
 function setLang(l){
   lang=l;
   document.querySelectorAll('.lb').forEach(b=>{b.classList.toggle('active',b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase()));});
@@ -397,7 +472,7 @@ function setLang(l){
   else document.title = 'Aircraft2Sell — '+t('search_btn');
 }
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
-renderCards();setLang('fr');
+renderCards();setLang('fr');initSearchMakeModel();
 // Read URL params and pre-fill search
 (function(){
   const params = new URLSearchParams(window.location.search);
@@ -477,6 +552,7 @@ function requireLogin(e, dest){
 })();
 </script>
 <style>@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
+<script src="aircraft-db.js"></script>
 <script src="nav.js"></script>
 </body>
 </html>
