@@ -623,6 +623,14 @@ async function handleRegister(){
     localStorage.setItem('a2s_user_name', fullName);
     localStorage.setItem('a2s_user_email', email);
   }
+  // Enregistrer dans a2s_users pour l'espace admin
+  try {
+    const users = JSON.parse(localStorage.getItem('a2s_users')||'[]');
+    if(!users.some(u => u.email === email)){
+      users.unshift({ id: Date.now(), name: fullName, email, plan:'Essentiel', status:'active', registeredAt: new Date().toISOString(), listings:0 });
+      localStorage.setItem('a2s_users', JSON.stringify(users));
+    }
+  } catch(e){}
   const s = document.getElementById('regSuccess');
   if(s){ s.style.display = 'flex'; }
   setTimeout(()=>{

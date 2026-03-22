@@ -534,6 +534,7 @@ function doLogin(){
     sessionStorage.setItem(SESSION_KEY, btoa(email+':'+Date.now()));
     document.getElementById('loginOverlay').classList.add('hidden');
     initAdmin();
+    registerCurrentUser();
     showToast('\u2728 Bienvenue, Romain \u2014 Administration');
   } else {
     err.textContent = 'Email ou mot de passe incorrect';
@@ -613,11 +614,219 @@ function setPeriodRev(p,btn){
   renderChart('ch-rev2',Array(n).fill(0),'var(--green)');
 }
 
+
+/* ── DATA HELPERS ──────────────────────────────────────────── */
+function getAdminListings(){
+  try{ return JSON.parse(localStorage.getItem('a2s_listings')||'[]'); }catch(e){ return []; }
+}
+function saveAdminListings(arr){
+  localStorage.setItem('a2s_listings', JSON.stringify(arr));
+}
+function getAdminUsers(){
+  /* Lit les inscriptions depuis localStorage (clé a2s_users).
+     En production : supabase.from('profiles').select('*') */
+  try{ return JSON.parse(localStorage.getItem('a2s_users')||'[]'); }catch(e){ return []; }
+}
+
+/* ── INIT ──────────────────────────────────────────────────── */
 function initAdmin(){
   setGreeting();
-  renderChart('ch-signups',Array(7).fill(0),'var(--blue)');
-  renderChart('ch-revenue',Array(7).fill(0),'var(--green)');
-  renderChart('ch-rev2',Array(12).fill(0),'var(--green)');
+  // Enregistrer l'utilisateur courant s'il est connecté (simulation inscription)
+  registerCurrentUser();
+  // Charger tout
+  renderAdminDashboard();
+  renderAdminListings();
+  renderAdminUsers();
+  // Graphiques
+  const listings = getAdminListings();
+  renderChart('ch-signups', Array(7).fill(0), 'var(--blue)');
+  renderChart('ch-revenue', Array(7).fill(0), 'var(--green)');
+  renderChart('ch-rev2',    Array(12).fill(0),'var(--green)');
+}
+
+/* ── ENREGISTRER L'UTILISATEUR COURANT ─────────────────────── */
+function registerCurrentUser(){
+  const name  = localStorage.getItem('a2s_user_name');
+  const email = localStorage.getItem('a2s_user_email');
+  const plan  = localStorage.getItem('a2s_user_plan') || 'Essentiel';
+  if(!email) return;
+  const users = getAdminUsers();
+  if(users.some(u => u.email === email)) return;
+  users.unshift({ id: Date.now(), name: name||'', email, plan, status:'active', registeredAt: new Date().toISOString(), listings: 0 });
+  localStorage.setItem('a2s_users', JSON.stringify(users));
+}
+
+/* ── DASHBOARD OVERVIEW ─────────────────────────────────────── */
+function renderAdminDashboard(){
+  const listings = getAdminListings();
+  const users    = getAdminUsers();
+  const pending  = listings.filter(l => !l.status || l.status === 'pending').length;
+  const live     = listings.filter(l => l.status === 'live').length;
+
+  // KPIs sidebar
+  setText('sk-listings', listings.length);
+  setText('sk-users',    users.length);
+  setText('sk-pending',  pending);
+  setText('sk-mrr',      '0 €');
+
+  // Badges nav
+  setText('cnt-listings', listings.length);
+  setText('cnt-users',    users.length);
+  setText('cnt-mod',      pending);
+
+  // KPIs dashboard section
+  setKv(0, live);
+  setKv(1, users.length);
+  setKv(2, pending);
+
+  // Tableau annonces récentes dans le dashboard
+  const recTbl = document.querySelector('#sec-dashboard .tbl-hd + table tbody, #sec-dashboard tbody');
+  if(recTbl){
+    if(!listings.length){
+      recTbl.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--mist);font-size:.78rem">Aucune annonce pour le moment</td></tr>';
+    } else {
+      recTbl.innerHTML = listings.slice(0,5).map(l => {
+        const date = l.submittedAt ? new Date(l.submittedAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : '—';
+        const title = l.title || [l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ') || 'Sans titre';
+        return '<tr>'
+          + '<td style="color:var(--white);font-weight:500">'+title+'</td>'
+          + '<td>'+l.sellerName||'—'+'</td>'
+          + '<td>'+(l.price?'€'+l.price:'—')+'</td>'
+          + '<td>'+statusBadge(l.status)+'</td>'
+          + '<td style="color:var(--mist2);font-size:.68rem">'+date+'</td>'
+          + '</tr>';
+      }).join('');
+    }
+  }
+
+  // Tableau nouveaux membres
+  const memTbl = document.querySelector('#sec-dashboard .tbl:last-child tbody, #sec-dashboard .tbl:nth-child(2) tbody');
+  renderMemberTable(memTbl, users.slice(0,5));
+}
+
+function setText(id, val){
+  const el = document.getElementById(id);
+  if(el) el.textContent = val;
+}
+function setKv(idx, val){
+  const els = document.querySelectorAll('#sec-dashboard .kv');
+  if(els[idx]) els[idx].textContent = val;
+}
+
+/* ── ANNONCES ─────────────────────────────────────────────── */
+function renderAdminListings(){
+  const listings = getAdminListings();
+  const pending  = listings.filter(l => !l.status || l.status === 'pending').length;
+  const live     = listings.filter(l => l.status === 'live').length;
+
+  // KPIs section annonces
+  const kvs = document.querySelectorAll('#sec-listings .kv');
+  if(kvs[0]) kvs[0].textContent = listings.length;
+  if(kvs[1]) kvs[1].textContent = live;
+  if(kvs[2]) kvs[2].textContent = pending;
+
+  // Table
+  const tbody = document.querySelector('#sec-listings tbody');
+  if(!tbody) return;
+  if(!listings.length){
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mist);font-size:.78rem">Aucune annonce — les annonces soumises apparaissent ici</td></tr>';
+    return;
+  }
+  const SYM = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
+  tbody.innerHTML = listings.map(l => {
+    const sym   = SYM[l.currency||'EUR'] || '€';
+    const date  = l.submittedAt ? new Date(l.submittedAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const title = l.title || [l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ') || 'Sans titre';
+    const price = l.price ? sym + Number(l.price).toLocaleString() : '—';
+    return '<tr>'
+      + '<td style="color:var(--mist2);font-size:.68rem">#'+String(l.id).slice(-5)+'</td>'
+      + '<td style="color:var(--white);font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+title+'</td>'
+      + '<td style="color:var(--mist);font-size:.74rem">'+(l.category||'—')+'</td>'
+      + '<td style="color:var(--mist);font-size:.74rem">'+(l.sellerName||'—')+'</td>'
+      + '<td style="color:var(--gold);font-family:Bebas Neue,sans-serif">'+price+'</td>'
+      + '<td style="color:var(--mist2)">'+(l.views||0)+'</td>'
+      + '<td>'+statusBadge(l.status)+'</td>'
+      + '<td style="color:var(--mist2);font-size:.68rem">'+date+'</td>'
+      + '<td style="display:flex;gap:.3rem;flex-wrap:wrap">'
+      + ((!l.status||l.status==='pending') ? '<button class="ba" style="font-size:.62rem;padding:.2rem .5rem;background:rgba(34,197,94,.15);color:#22c55e;border-color:rgba(34,197,94,.3)" onclick="adminApprove('+l.id+')">✓</button>' : '')
+      + ((!l.status||l.status==='pending') ? '<button class="ba" style="font-size:.62rem;padding:.2rem .5rem;background:rgba(239,68,68,.1);color:#ef4444;border-color:rgba(239,68,68,.25)" onclick="adminReject('+l.id+')">✗</button>' : '')
+      + '<button class="ba" style="font-size:.62rem;padding:.2rem .5rem" onclick="adminDeleteListing('+l.id+')">🗑</button>'
+      + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+/* ── UTILISATEURS ─────────────────────────────────────────── */
+function renderAdminUsers(){
+  const users = getAdminUsers();
+  const kvs = document.querySelectorAll('#sec-users .kv');
+  if(kvs[0]) kvs[0].textContent = users.length;
+  const tbody = document.querySelector('#sec-users tbody');
+  renderMemberTable(tbody, users);
+}
+
+function renderMemberTable(tbody, users){
+  if(!tbody) return;
+  if(!users || !users.length){
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mist);font-size:.78rem">Aucun membre — les inscriptions apparaissent ici</td></tr>';
+    return;
+  }
+  tbody.innerHTML = users.map((u,i) => {
+    const date = u.registeredAt ? new Date(u.registeredAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const planBadge = u.plan === 'Pro' ? '<span style="color:#a78bfa;font-size:.62rem;font-weight:700">PRO</span>'
+      : u.plan === 'Aviateur' ? '<span style="color:#e8a020;font-size:.62rem;font-weight:700">AVIATEUR</span>'
+      : '<span style="color:var(--mist2);font-size:.62rem">ESSENTIEL</span>';
+    const initials = u.name ? u.name.trim().split(/\s+/).map(w=>w[0]).join('').substring(0,2).toUpperCase() : (u.email?u.email[0].toUpperCase():'U');
+    return '<tr>'
+      + '<td style="color:var(--mist2);font-size:.68rem">#'+(i+1)+'</td>'
+      + '<td><div style="display:flex;align-items:center;gap:.5rem"><div style="width:28px;height:28px;border-radius:50%;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.3);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:#e8a020;flex-shrink:0">'+initials+'</div><span style="color:var(--white);font-size:.78rem">'+u.name+'</span></div></td>'
+      + '<td style="color:var(--mist);font-size:.74rem">'+u.email+'</td>'
+      + '<td>'+planBadge+'</td>'
+      + '<td style="color:var(--mist2);text-align:center">'+(u.listings||0)+'</td>'
+      + '<td style="color:var(--mist2);font-size:.68rem">'+date+'</td>'
+      + '<td style="color:var(--mist2);font-size:.68rem">'+date+'</td>'
+      + '<td><span style="font-size:.62rem;font-weight:700;color:#22c55e">ACTIF</span></td>'
+      + '<td><button class="ba" style="font-size:.62rem;padding:.2rem .5rem" onclick="showToast(\'Gestion avancée — Supabase requis\')">⚙</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+/* ── ACTIONS ANNONCES ─────────────────────────────────────── */
+function adminApprove(id){
+  if(!confirm('Approuver cette annonce ?')) return;
+  const all = getAdminListings();
+  const idx = all.findIndex(l => l.id === id);
+  if(idx > -1){ all[idx].status = 'live'; saveAdminListings(all); }
+  renderAdminDashboard(); renderAdminListings();
+  showToast('✓ Annonce approuvée et publiée');
+}
+
+function adminReject(id){
+  const reason = prompt('Motif du rejet (optionnel):', '');
+  if(reason === null) return;
+  const all = getAdminListings();
+  const idx = all.findIndex(l => l.id === id);
+  if(idx > -1){ all[idx].status = 'rejected'; all[idx].rejectionReason = reason; saveAdminListings(all); }
+  renderAdminDashboard(); renderAdminListings();
+  showToast('✗ Annonce rejetée');
+}
+
+function adminDeleteListing(id){
+  if(!confirm('Supprimer définitivement cette annonce ?')) return;
+  saveAdminListings(getAdminListings().filter(l => l.id !== id));
+  renderAdminDashboard(); renderAdminListings();
+  showToast('🗑 Annonce supprimée');
+}
+
+/* ── STATUS BADGE ─────────────────────────────────────────── */
+function statusBadge(status){
+  const map = {
+    pending:  '<span style="font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .52rem;background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.22)">⏳ EN ATTENTE</span>',
+    live:     '<span style="font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .52rem;background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)">✓ PUBLIÉE</span>',
+    rejected: '<span style="font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .52rem;background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)">✗ REJETÉE</span>',
+    draft:    '<span style="font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .52rem;background:rgba(255,255,255,.05);color:var(--mist2);border:1px solid var(--border)">BROUILLON</span>',
+  };
+  return map[status] || map.pending;
 }
 
 let tt;
