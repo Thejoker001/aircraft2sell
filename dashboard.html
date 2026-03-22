@@ -152,6 +152,44 @@ tbody tr:last-child td{border-bottom:none}
 .toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);padding:.85rem 1.3rem;color:var(--white);font-size:.84rem;z-index:9999;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none;max-width:320px}
 .toast.show{opacity:1;transform:translateY(0)}
 @media(max-width:768px){.nav-center{display:none}.kpi-strip{grid-template-columns:1fr 1fr}.ov-grid,.sub-grid,.set-grid,.plan-cards{grid-template-columns:1fr}.msg-layout{grid-template-columns:1fr}.msg-list{max-height:180px}}
+
+/* Pending listings */
+.listings-list{display:flex;flex-direction:column;gap:8px}
+.listing-item{background:var(--card);border:1px solid var(--border);display:grid;grid-template-columns:56px 1fr auto;overflow:hidden;transition:border-color .15s;animation:fadeIn .3s ease both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.listing-item:hover{border-color:rgba(232,160,32,.25)}
+.li-thumb{background:var(--horizon);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+.li-body{padding:.75rem .9rem;min-width:0}
+.li-title{font-size:.86rem;font-weight:600;color:var(--white);margin-bottom:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li-meta{font-size:.65rem;color:var(--mist2);display:flex;flex-wrap:wrap;gap:.4rem}
+.li-side{padding:.75rem .9rem;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;min-width:120px;border-left:1px solid var(--border);flex-shrink:0}
+.li-price{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--gold);letter-spacing:.04em}
+.li-acts{display:flex;gap:.3rem;flex-wrap:wrap;justify-content:flex-end}
+.li-act{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.25rem .55rem;font-size:.64rem;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center}
+.li-act:hover{border-color:var(--accent);color:var(--accent)}
+.li-act.del:hover{border-color:var(--red);color:var(--red)}
+/* pills */
+.pill{font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .52rem;display:inline-flex;align-items:center;gap:.28rem;white-space:nowrap;flex-shrink:0}
+.pill::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.p-pend{background:rgba(249,115,22,.1);color:var(--orange);border:1px solid rgba(249,115,22,.22)}.p-pend::before{background:var(--orange);animation:blink 1.5s infinite}
+.p-live{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}.p-live::before{background:var(--green)}
+.p-rejt{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}.p-rejt::before{background:var(--red)}
+.p-drft{background:rgba(96,165,250,.08);color:var(--blue);border:1px solid rgba(96,165,250,.18)}.p-drft::before{background:var(--blue)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+/* pending banner */
+.pending-notice{background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.2);border-left:3px solid var(--orange);padding:.75rem 1rem;display:flex;align-items:center;gap:.75rem;font-size:.76rem}
+.pn-icon{font-size:1.1rem;flex-shrink:0}
+.pn-text{flex:1;color:var(--mist);line-height:1.5}
+.pn-text strong{color:var(--white)}
+.pn-time{font-size:.64rem;color:var(--orange);white-space:nowrap;flex-shrink:0}
+/* overview pending mini-card */
+.ov-pending{background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.18);border-left:2px solid var(--orange);padding:.6rem .9rem;display:flex;align-items:center;gap:.7rem;margin-bottom:0;cursor:pointer;transition:background .15s}
+.ov-pending:hover{background:rgba(249,115,22,.1)}
+.ov-pending-ic{font-size:1rem;flex-shrink:0}
+.ov-pending-body{flex:1}
+.ov-pending-title{font-size:.76rem;font-weight:600;color:var(--white)}
+.ov-pending-sub{font-size:.64rem;color:var(--mist2);margin-top:.1rem}
+.ov-pending-arr{color:var(--orange);font-size:.8rem}
 </style>
 </head>
 <body>
@@ -213,7 +251,9 @@ tbody tr:last-child td{border-bottom:none}
     <div class="ov-grid">
       <div class="dash-card">
         <div class="dc-head"><div class="dc-title">Mes annonces</div><button class="dc-action" onclick="switchTab('listings')">Voir tout →</button></div>
-        <div class="dc-body"><div class="empty"><div class="empty-ic">✈</div><div class="empty-t">Aucune annonce publiée</div><div class="empty-s">Créez votre première annonce. Acheteurs directs, zéro commission.</div><a href="post-listing.html" class="empty-btn">+ Nouvelle annonce</a></div></div>
+        <div class="dc-body" id="ovListingsBody">
+          <div class="empty"><div class="empty-ic">✈</div><div class="empty-t">Aucune annonce publiée</div><div class="empty-s">Créez votre première annonce. Acheteurs directs, zéro commission.</div><a href="post-listing.html" class="empty-btn">+ Nouvelle annonce</a></div>
+        </div>
       </div>
       <div class="dash-card">
         <div class="dc-head"><div class="dc-title">Messages récents</div><button class="dc-action" onclick="switchTab('messages')">Voir tout →</button></div>
@@ -232,20 +272,20 @@ tbody tr:last-child td{border-bottom:none}
   <div class="panel-body">
     <div class="listings-toolbar">
       <div class="ls-title">Mes <em>annonces</em></div>
-      <a href="post-listing.html" class="nav-btn primary">+ Nouvelle annonce</a>
+      <a href="post-listing.html" class="nav-btn primary" id="btnNewListing">+ Nouvelle annonce</a>
     </div>
+
+    <!-- Slot bar -->
     <div class="slot-bar">
       <div class="slot-label">Slots utilisés</div>
-      <div class="slot-track"><div class="slot-fill" style="width:0%"></div></div>
-      <div class="slot-count">0 / 1</div>
+      <div class="slot-track"><div class="slot-fill" id="slotFill" style="width:0%"></div></div>
+      <div class="slot-count" id="slotCount">0 / 1</div>
     </div>
-    <div class="empty">
-      <div class="empty-ic">✈</div>
-      <div class="empty-t">Aucune annonce pour l'instant</div>
-      <div class="empty-s">Publiez votre premier avion en quelques minutes. Zéro commission, acheteurs directs.</div>
-      <a href="post-listing.html" class="empty-btn">+ Déposer une annonce</a>
-      <a href="search.html" class="empty-btn ghost" style="margin-top:.3rem">Voir les annonces du marché</a>
-    </div>
+
+    <!-- Listing list (rendered by JS) -->
+    <div id="listingsList"></div>
+
+    <!-- Stat chart -->
     <div class="stat-chart-wrap">
       <div class="sc-head">
         <div class="sc-title">Performances — vues par annonce</div>
@@ -548,6 +588,187 @@ function initGreeting(){
     );
   }
 }
+
+/* ═══ LISTINGS (localStorage) ═══════════════════════════════ */
+const LS_LISTINGS = 'a2s_listings';
+const PLAN_SLOTS  = { Essentiel:1, Aviateur:3, Pro:999 };
+
+function getListings(){
+  try{ return JSON.parse(localStorage.getItem(LS_LISTINGS)||'[]'); }
+  catch(e){ return []; }
+}
+
+function saveListings(arr){
+  localStorage.setItem(LS_LISTINGS, JSON.stringify(arr));
+}
+
+function addListingFromSession(){
+  /* Called after post-listing redirect — reads sessionStorage */
+  const raw = sessionStorage.getItem('a2s_last_listing');
+  if(!raw) return;
+  const data = JSON.parse(raw);
+  if(!data || !data.submittedAt) return;
+  const listings = getListings();
+  // Avoid duplicates
+  const alreadyExists = listings.some(l => l.submittedAt === data.submittedAt);
+  if(alreadyExists){ sessionStorage.removeItem('a2s_last_listing'); return; }
+  const listing = {
+    id: Date.now(),
+    make: data.make || '—',
+    model: data.model || '—',
+    year: data.year || '—',
+    price: data.price ? Number(data.price).toLocaleString() : '—',
+    currency: data.currency || 'EUR',
+    status: 'pending', /* pending | live | rejected | draft */
+    submittedAt: data.submittedAt,
+    views: 0, enquiries: 0,
+    icon: '✈'
+  };
+  listings.unshift(listing);
+  saveListings(listings);
+  sessionStorage.removeItem('a2s_last_listing');
+}
+
+function statusPill(status){
+  const map = {
+    pending: '<span class="pill p-pend">⏳ En attente</span>',
+    live:    '<span class="pill p-live">✓ Publiée</span>',
+    rejected:'<span class="pill p-rejt">✗ Rejetée</span>',
+    draft:   '<span class="pill p-drft">Brouillon</span>',
+  };
+  return map[status] || map.draft;
+}
+
+function renderListings(){
+  const listings = getListings();
+  const plan     = localStorage.getItem('a2s_user_plan') || 'Essentiel';
+  const maxSlots = PLAN_SLOTS[plan] || 1;
+
+  /* Slot bar */
+  const active = listings.filter(l => l.status === 'live').length;
+  const fill   = document.getElementById('slotFill');
+  const count  = document.getElementById('slotCount');
+  if(fill)  fill.style.width = Math.round((active/maxSlots)*100) + '%';
+  if(count) count.textContent = active + ' / ' + maxSlots;
+
+  /* Overview card */
+  const ovBody = document.getElementById('ovListingsBody');
+
+  /* Listings list */
+  const list = document.getElementById('listingsList');
+  if(!list && !ovBody) return;
+
+  if(listings.length === 0){
+    const emptyHtml = '<div class="empty">'
+      + '<div class="empty-ic">✈</div>'
+      + '<div class="empty-t">Aucune annonce disponible</div>'
+      + '<div class="empty-s">Publiez votre premier avion en quelques minutes. Zéro commission, acheteurs directs.</div>'
+      + '<a href="post-listing.html" class="empty-btn">+ Déposer une annonce</a>'
+      + '</div>';
+    if(list)   list.innerHTML = emptyHtml;
+    if(ovBody) ovBody.innerHTML = emptyHtml;
+    updateOvKpis(listings);
+    return;
+  }
+
+  /* Count pending */
+  const pendingCount = listings.filter(l => l.status === 'pending').length;
+
+  /* Overview card: show pending notice + up to 2 listings */
+  if(ovBody){
+    let ovHtml = '';
+    if(pendingCount > 0){
+      ovHtml += '<div class="ov-pending" onclick="switchTab(&quot;listings&quot;)">'
+        + '<div class="ov-pending-ic">⏳</div>'
+        + '<div class="ov-pending-body">'
+        + '<div class="ov-pending-title">' + pendingCount + ' annonce' + (pendingCount>1?'s':'') + ' en attente de validation</div>'
+        + '<div class="ov-pending-sub">Vérification sous 24–48h · Cliquer pour voir le détail</div>'
+        + '</div>'
+        + '<div class="ov-pending-arr">→</div>'
+        + '</div>';
+    }
+    ovHtml += '<div class="listings-list">' + listings.slice(0,2).map(l => renderListingCard(l, true)).join('') + '</div>';
+    if(listings.length > 2){
+      ovHtml += '<div style="text-align:center;padding:.5rem 0"><button class="dc-action" onclick="switchTab(&quot;listings&quot;)">'+(listings.length-2)+' autre'+(listings.length-2>1?'s':'')+' annonce'+(listings.length-2>1?'s':'')+' →</button></div>';
+    }
+    ovBody.innerHTML = ovHtml;
+  }
+
+  /* Full listings panel */
+  if(list){
+    let html = '';
+    if(pendingCount > 0){
+      const ps = pendingCount > 1 ? 's' : '';
+      html += `<div class="pending-notice"><div class="pn-icon">⏳</div><div class="pn-text"><strong>${pendingCount} annonce${ps} en cours de vérification</strong> — Notre équipe valide vos annonces sous 24 à 48 heures.</div><div class="pn-time">24–48h</div></div>`;
+    }
+    html += '<div class="listings-list">' + listings.map(l => renderListingCard(l, false)).join('') + '</div>';
+    list.innerHTML = html;
+  }
+
+  updateOvKpis(listings);
+}
+
+function renderListingCard(l, compact){
+  const sym = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$'}[l.currency||'EUR'] || '€';
+  const date = l.submittedAt ? new Date(l.submittedAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+  const price = l.price && l.price !== '—' ? sym + l.price : '—';
+  const title = [l.make||'—', l.model||'', l.year ? '('+l.year+')' : ''].filter(Boolean).join(' ');
+
+  let statusLine = '';
+  if(l.status === 'pending')  statusLine = '<div style="font-size:.62rem;color:var(--orange);margin-top:.3rem">&#9203; Vérification en cours — visible dès validation</div>';
+  if(l.status === 'rejected') statusLine = '<div style="font-size:.62rem;color:var(--red);margin-top:.3rem">Annonce rejetée — contactez le support</div>';
+
+  let actionsHtml = '';
+  if(!compact){
+    actionsHtml = '<div class="li-acts">'
+      + '<button class="li-act" onclick="editListing('+l.id+')">Modifier</button>'
+      + '<button class="li-act del" onclick="deleteListing('+l.id+')">Supprimer</button>'
+      + '</div>';
+  }
+
+  return '<div class="listing-item">'
+    + '<div class="li-thumb">' + (l.icon||'✈') + '</div>'
+    + '<div class="li-body">'
+    + '<div class="li-title">' + title + '</div>'
+    + '<div class="li-meta" style="margin-bottom:.4rem">' + statusPill(l.status) + '</div>'
+    + '<div class="li-meta">Soumis le ' + date + (l.status==='live' ? ' · '+l.views+' vues · '+l.enquiries+' demandes' : '') + '</div>'
+    + statusLine
+    + '</div>'
+    + '<div class="li-side">'
+    + '<div class="li-price">' + price + '</div>'
+    + actionsHtml
+    + '</div>'
+    + '</div>';
+}
+
+function updateOvKpis(listings){
+  const totalViews = listings.reduce((s,l) => s + (l.views||0), 0);
+  const totalEnq   = listings.reduce((s,l) => s + (l.enquiries||0), 0);
+  const active     = listings.filter(l => l.status === 'live').length;
+  const el = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  el('kpiViews', totalViews);
+  el('kpiEnq',   totalEnq);
+  el('kpiAds',   active + '/1');
+  /* Onglet badge */
+  const pending = listings.filter(l => l.status === 'pending').length;
+  const badge   = document.getElementById('badge-listings');
+  if(badge){
+    badge.textContent = listings.length;
+    badge.classList.toggle('show', listings.length > 0);
+  }
+}
+
+function deleteListing(id){
+  if(!confirm('Supprimer cette annonce ?')) return;
+  const listings = getListings().filter(l => l.id !== id);
+  saveListings(listings);
+  renderListings();
+  showToast('Annonce supprimée');
+}
+
+function editListing(id){
+  showToast('Modification — disponible avec Supabase');
+}
 function switchTab(tab){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
@@ -594,6 +815,8 @@ window.addEventListener('DOMContentLoaded',()=>{
   setLang('fr');
   updateNavAuth();
   initGreeting();
+  addListingFromSession();
+  renderListings();
   renderChart(7);
   prefillSettings();
 });
