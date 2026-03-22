@@ -387,6 +387,15 @@ const T={
   zh:{nav_listings:'列表',nav_pricing:'定价',btn_post:'发布广告',badge_new:'新发布',seller_verified:'认证卖家',urg_viewing:'人正在查看此广告',urg_saved:'次收藏',urg_listed:'1天前发布',sec_specs:'技术规格',sl_tt:'总飞行时间',sl_smoh:'SMOH',sl_engine:'发动机',sl_seats:'座位',sl_year:'年份',sl_reg:'注册号',sl_avionics:'航电设备',sl_range:'航程',sl_base:'基地机场',sl_docs:'文件',sec_equipment:'设备与选项',sec_description:'描述',sec_docs:'文件资料',doc_coa:'适航证 — 有效',doc_logs:'全套飞行日志',doc_ads:'所有适航指令已执行',doc_export:'出口证书可提供',doc_ferry:'调机许可按需提供',price_negotiable:'价格可议',no_commission:'成交零佣金',btn_contact:'联系卖家',btn_viewing:'申请参观',btn_save:'收藏广告',btn_saved:'已收藏 ♥',seller_title:'关于卖家',ss_listings:'广告',ss_sold:'已售',ss_rating:'评分',reply_time:'通常在2小时内回复',share_title:'分享此广告',btn_copy_link:'复制链接',similar_title:'相似',similar_title2:'广告',cat_light:'轻型飞机',cat_jet:'公务机',contact_title:'联系卖家',lbl_your_name:'您的姓名',lbl_email:'电子邮箱',lbl_phone:'电话（可选）',quick_msg:'快捷消息',lbl_message:'消息',btn_send:'发送消息',msg_placeholder:'我对这架飞机感兴趣…',qmsg1:'还有货吗？',qmsg2:'可以安排参观吗？',qmsg3:'价格可以商量吗？',toast_fav_add:'已添加到收藏！',toast_fav_remove:'已从收藏移除',toast_viewing:'参观申请已发送！',toast_sent:'消息已发送给卖家！',toast_copy:'链接已复制！'}
 };
 let lang='en', favd=false, curPhoto=0;
+// Restore fav state from storage on load
+function initFavState(){
+  const id = window.location.search || window.location.pathname || '';
+  if(window.A2SFavs && id) favd = window.A2SFavs.has(id);
+  const btn = document.getElementById('favBtn');
+  const txt = document.getElementById('favBtnText');
+  if(btn) btn.classList.toggle('liked', favd);
+  if(txt) txt.textContent = favd ? (typeof t==='function'?t('btn_saved'):'Sauvegardé ♥') : (typeof t==='function'?t('btn_save'):'Sauvegarder');
+}
 const PHOTOS=[{icon:'✈'},{icon:'✈'},{icon:'✈'},{icon:'✈'},{icon:'✈'}];
 function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
 function setLang(l){
@@ -407,12 +416,24 @@ function renderThumbs(){
 function changePhoto(dir){curPhoto=(curPhoto+dir+PHOTOS.length)%PHOTOS.length;renderThumbs();}
 function goPhoto(i){curPhoto=i;renderThumbs();}
 function toggleFav(){
-  favd=!favd;
-  const btn=document.getElementById('favBtn');
-  const txt=document.getElementById('favBtnText');
-  btn.classList.toggle('liked',favd);
-  txt.textContent=favd?t('btn_saved'):t('btn_save');
-  showToast(t(favd?'toast_fav_add':'toast_fav_remove'));
+  // Build a listing object from the current page
+  const listing = {
+    id: window.location.search || window.location.pathname || 'listing-' + Date.now(),
+    title: document.querySelector('.aircraft-title') ? document.querySelector('.aircraft-title').textContent : 'Annonce',
+    make:  document.querySelector('.spec-make')  ? document.querySelector('.spec-make').textContent  : '',
+    model: document.querySelector('.spec-model') ? document.querySelector('.spec-model').textContent : '',
+    year:  document.querySelector('.spec-year')  ? document.querySelector('.spec-year').textContent  : '',
+    price: document.querySelector('.price-main') ? document.querySelector('.price-main').textContent : '',
+    currency: 'EUR',
+    thumb: '✈'
+  };
+  const added = window.A2SFavs ? window.A2SFavs.toggle(listing) : !favd;
+  favd = added;
+  const btn = document.getElementById('favBtn');
+  const txt = document.getElementById('favBtnText');
+  btn.classList.toggle('liked', favd);
+  txt.textContent = favd ? t('btn_saved') : t('btn_save');
+  showToast(t(favd ? 'toast_fav_add' : 'toast_fav_remove'));
 }
 function openContact(){document.getElementById('contactModal').classList.add('open');document.body.style.overflow='hidden';}
 function closeContact(){document.getElementById('contactModal').classList.remove('open');document.body.style.overflow='';}
@@ -430,6 +451,7 @@ function copyLink(){navigator.clipboard.writeText(window.location.href).then(()=
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeContact();if(e.key==='ArrowLeft')changePhoto(-1);if(e.key==='ArrowRight')changePhoto(1);});
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
 renderThumbs();setLang('fr');
+initFavState();
 </script>
 <script>
 function requireLogin(e, dest){
@@ -449,6 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 </script>
+<script src="favorites.js"></script>
 <script src="nav.js"></script>
 </body>
 </html>

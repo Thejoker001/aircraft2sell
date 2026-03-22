@@ -190,6 +190,23 @@ tbody tr:last-child td{border-bottom:none}
 .ov-pending-title{font-size:.76rem;font-weight:600;color:var(--white)}
 .ov-pending-sub{font-size:.64rem;color:var(--mist2);margin-top:.1rem}
 .ov-pending-arr{color:var(--orange);font-size:.8rem}
+
+/* Favorites */
+.fav-card{background:var(--card);border:1px solid var(--border);display:grid;grid-template-columns:52px 1fr auto;overflow:hidden;transition:border-color .15s;animation:fadeIn .3s ease both}
+.fav-card:hover{border-color:rgba(232,160,32,.25)}
+.fav-thumb{background:var(--horizon);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
+.fav-body{padding:.7rem .9rem;min-width:0}
+.fav-title{font-size:.85rem;font-weight:600;color:var(--white);margin-bottom:.18rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fav-meta{font-size:.64rem;color:var(--mist2);display:flex;gap:.5rem;flex-wrap:wrap}
+.fav-side{padding:.7rem .8rem;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;min-width:110px;border-left:1px solid var(--border);flex-shrink:0}
+.fav-price{font-family:'Bebas Neue',sans-serif;font-size:1.15rem;color:var(--gold);letter-spacing:.04em}
+.fav-acts{display:flex;gap:.3rem}
+.fav-act{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.25rem .55rem;font-size:.63rem;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center}
+.fav-act:hover{border-color:var(--accent);color:var(--accent)}
+.fav-act.del:hover{border-color:var(--red);color:var(--red)}
+.fav-saved{font-size:.58rem;color:var(--mist2);margin-top:.2rem}
+.fav-empty{text-align:center;padding:3rem 1rem;display:flex;flex-direction:column;align-items:center;gap:.6rem}
+.fav-empty-ic{font-size:2.5rem;opacity:.1;margin-bottom:.3rem}
 </style>
 </head>
 <body>
@@ -206,7 +223,8 @@ tbody tr:last-child td{border-bottom:none}
       <div class="nav-tab" id="tab-messages" onclick="switchTab('messages')">Messages <span class="tab-badge" id="badge-messages">0</span></div>
       <div class="nav-tab" id="tab-subscription" onclick="switchTab('subscription')">Abonnement</div>
       <div class="nav-tab" id="tab-invoices" onclick="switchTab('invoices')">Factures</div>
-      <div class="nav-tab" id="tab-settings" onclick="switchTab('settings')">Paramètres</div>
+      <div class="nav-tab" id="tab-favs" onclick="switchTab('favs')">&#9829; Favoris <span class="tab-badge" id="badge-favs">0</span></div>
+      <div class="nav-tab" id="tab-settings" onclick="switchTab('settings')">Param&#232;tres</div>
     </div>
   </div>
   <div class="nav-right">
@@ -388,6 +406,20 @@ tbody tr:last-child td{border-bottom:none}
       <thead><tr><th>N°</th><th>Date</th><th>Description</th><th>Montant</th><th>Statut</th><th>Action</th></tr></thead>
       <tbody><tr><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--mist);font-size:.78rem">Aucune facture — vos achats apparaîtront ici</td></tr></tbody>
     </table>
+  </div>
+</div>
+
+<!-- FAVORIS -->
+<div class="panel" id="panel-favs">
+  <div class="panel-body">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem">
+      <div class="ls-title">Mes <em>favoris</em></div>
+      <div style="display:flex;gap:.4rem">
+        <span style="font-size:.72rem;color:var(--mist)" id="favsCount">0 annonce sauvegardée</span>
+        <button class="nav-btn" onclick="clearAllFavs()" style="font-size:.64rem;padding:.3rem .7rem">Tout effacer</button>
+      </div>
+    </div>
+    <div id="favsList"></div>
   </div>
 </div>
 
@@ -769,6 +801,64 @@ function deleteListing(id){
 function editListing(id){
   showToast('Modification — disponible avec Supabase');
 }
+
+/* ═══ FAVORITES RENDERING ════════════════════════════════════ */
+function renderFavs(){
+  const favs = window.A2SFavs ? window.A2SFavs.getAll() : [];
+  const count = favs.length;
+  const countEl = document.getElementById('favsCount');
+  if(countEl) countEl.textContent = count + ' annonce' + (count > 1 ? 's sauvegardées' : ' sauvegardée');
+  const badge = document.getElementById('badge-favs');
+  if(badge){ badge.textContent = count; badge.classList.toggle('show', count > 0); }
+  const list = document.getElementById('favsList');
+  if(!list) return;
+  if(count === 0){
+    list.innerHTML = '<div class="fav-empty"><div class="fav-empty-ic">&#9829;</div>'
+      + '<div class="empty-t">Aucun favori</div>'
+      + '<div class="empty-s">Parcourez les annonces et cliquez sur le coeur pour sauvegarder.</div>'
+      + '<a href="search.html" class="empty-btn">Parcourir les annonces</a></div>';
+    return;
+  }
+  const SYM = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$'};
+  const rows = favs.map(function(f){
+    const sym   = SYM[f.currency] || '€';
+    const date  = f.savedAt ? new Date(f.savedAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : '';
+    const price = f.price ? sym + f.price : '—';
+    const title = f.title || [f.make,f.model,f.year?'('+f.year+')':''].filter(Boolean).join(' ') || 'Annonce';
+    const fid   = String(f.id).replace(/['"<>]/g,'');
+    return '<div class="fav-card">'
+      + '<div class="fav-thumb">' + (f.thumb||'✈') + '</div>'
+      + '<div class="fav-body">'
+      + '<div class="fav-title">' + title + '</div>'
+      + '<div class="fav-meta">' + (f.year?f.year+' · ':'') + (f.location?f.location+' · ':'') + (date?'Sauvegardé le '+date:'') + '</div>'
+      + '</div>'
+      + '<div class="fav-side">'
+      + '<div class="fav-price">' + price + '</div>'
+      + '<div class="fav-acts">'
+      + '<a href="listing.html" class="fav-act">Voir</a>'
+      + '<button class="fav-act del" onclick="removeFav(decodeURIComponent(this.dataset.id))" data-id="' + encodeURIComponent(fid) + '">&#10005;</button>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  });
+  list.innerHTML = '<div class="listings-list">' + rows.join('') + '</div>';
+}
+
+function removeFav(id){
+  if(window.A2SFavs) window.A2SFavs.remove(id);
+  renderFavs();
+  showToast('Retiré des favoris');
+}
+
+function clearAllFavs(){
+  if(!confirm('Effacer tous vos favoris ?')) return;
+  if(window.A2SFavs) window.A2SFavs.clear();
+  renderFavs();
+  showToast('Favoris effacés');
+}
+
+// Listen for fav updates from other pages (same tab)
+document.addEventListener('a2s:favs-updated', renderFavs);
 function switchTab(tab){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
@@ -777,6 +867,7 @@ function switchTab(tab){
   if(panel)panel.classList.add('active');
   if(navTab)navTab.classList.add('active');
   if(tab==='listings')renderChart(currentPeriod);
+  if(tab==='favs')renderFavs();
 }
 let currentPeriod=7;
 function renderChart(days){
@@ -819,8 +910,10 @@ window.addEventListener('DOMContentLoaded',()=>{
   renderListings();
   renderChart(7);
   prefillSettings();
+  renderFavs();
 });
 </script>
+<script src="favorites.js"></script>
 <script src="nav.js"></script>
 </body>
 </html>
