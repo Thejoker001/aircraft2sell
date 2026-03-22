@@ -145,6 +145,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
 .ml-item{display:flex;align-items:center;gap:.7rem;padding:.65rem .9rem;border-bottom:1px solid rgba(200,220,240,.06);transition:background .12s}
 .ml-item:last-child{border-bottom:none}
 .ml-item:hover{background:rgba(255,255,255,.01)}
+.ml-clickable:hover{background:rgba(232,160,32,.04)!important;border-left:2px solid rgba(232,160,32,.3)}
 .ml-av{width:26px;height:26px;border-radius:50%;background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.2);display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:700;color:#e8a020;flex-shrink:0;text-transform:uppercase}
 .ml-info{flex:1;min-width:0}
 .ml-name{font-size:.78rem;font-weight:500;color:#f0f4f8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:.1rem}
@@ -573,7 +574,47 @@ function logout(){
 function get(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
 function store(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
 function getListings(){ return get('a2s_listings'); }
-function getUsers(){    return get('a2s_users'); }
+function getUsers(){
+  // Lire a2s_users (source principale)
+  var stored = get('a2s_users');
+  var byEmail = {};
+  stored.forEach(function(u){ byEmail[u.email] = u; });
+
+  // Source 2 : utilisateur actuellement connecté (a2s_user_email / a2s_user_name)
+  var curEmail = localStorage.getItem('a2s_user_email');
+  var curName  = localStorage.getItem('a2s_user_name')  || '';
+  var curPlan  = localStorage.getItem('a2s_user_plan')  || 'Essentiel';
+  if(curEmail && !byEmail[curEmail]){
+    byEmail[curEmail] = {
+      id: Date.now(), name: curName, email: curEmail,
+      plan: curPlan, status: 'active',
+      registeredAt: new Date().toISOString()
+    };
+  } else if(curEmail && byEmail[curEmail]){
+    // Mettre à jour le nom/plan si changé depuis le dashboard
+    if(curName) byEmail[curEmail].name = curName;
+    if(curPlan) byEmail[curEmail].plan = curPlan;
+  }
+
+  // Source 3 : vendeurs dans les annonces (ont forcément un compte)
+  var listings = get('a2s_listings');
+  listings.forEach(function(l){
+    if(l.sellerEmail && !byEmail[l.sellerEmail]){
+      byEmail[l.sellerEmail] = {
+        id: l.id * 10 + 1, name: l.sellerName || l.sellerEmail.split('@')[0],
+        email: l.sellerEmail, plan: 'Essentiel', status: 'active',
+        registeredAt: l.submittedAt || new Date().toISOString()
+      };
+    }
+  });
+
+  // Sauvegarder la liste enrichie pour les prochaines lectures
+  var merged = Object.values(byEmail);
+  if(merged.length > stored.length){
+    localStorage.setItem('a2s_users', JSON.stringify(merged));
+  }
+  return merged;
+}
 function saveListings(a){ store('a2s_listings', a); }
 function saveUsers(a){    store('a2s_users', a); }
 
@@ -664,13 +705,16 @@ function refreshAll(){
     if(!listings.length){
       dlEl.innerHTML = '<div class="empty-s"><div class="es-ic">&#9992;</div><div class="es-t">Aucune annonce</div><div class="es-s">Les annonces soumises par les membres apparaissent ici.</div></div>';
     } else {
-      dlEl.innerHTML = '<div class="mini-list">'+listings.slice(0,5).map(function(l){
-        return '<div class="ml-item">'
+      dlEl.innerHTML = '<div class="mini-list">'+listings.slice(0,6).map(function(l){
+        var lid=String(l.id);
+        return '<div class="ml-item ml-clickable" data-lid="'+lid+'" onclick="editListing(this.dataset.lid)" style="cursor:pointer" title="Modifier">'
           +'<div class="ml-info"><div class="ml-name">'+ltitle(l)+'</div>'
           +'<div class="ml-sub">'+(l.sellerName||'--')+' &middot; '+fmtDate(l.submittedAt)+'</div></div>'
-          +'<div class="ml-right">'+statusPill(l.status)+'</div>'
-          +'</div>';
-      }).join('')+'</div>';
+          +'<div class="ml-right" style="display:flex;align-items:center;gap:.4rem">'+statusPill(l.status)
+          +'<span style="font-size:.6rem;color:#4a6278;opacity:.6">&#9998;</span>'
+          +'</div></div>';
+      }).join('')+'</div>'
+      +'<div style="padding:.5rem .9rem;border-top:1px solid rgba(200,220,240,.06)"><button class="card-action" onclick="showTab(\'list\',sel(\'sn-list\'))">Voir toutes les annonces &rarr;</button></div>';
     }
   }
   var duEl = sel('d-users-list');
@@ -678,14 +722,20 @@ function refreshAll(){
     if(!users.length){
       duEl.innerHTML = '<div class="empty-s"><div class="es-ic">&#9711;</div><div class="es-t">Aucun membre</div><div class="es-s">Les membres inscrits via login.html apparaissent ici.</div></div>';
     } else {
-      duEl.innerHTML = '<div class="mini-list">'+users.slice(0,5).map(function(u){
-        return '<div class="ml-item">'
+      duEl.innerHTML = '<div class="mini-list">'+users.slice(0,6).map(function(u){
+        var uid = String(u.id);
+        return '<div class="ml-item ml-clickable" data-uid="'+uid+'" onclick="editUser(this.dataset.uid)" style="cursor:pointer" title="Cliquer pour modifier">'
           +'<div class="ml-av">'+ini(u.name,u.email)+'</div>'
           +'<div class="ml-info"><div class="ml-name">'+(u.name||u.email||'--')+'</div>'
-          +'<div class="ml-sub">'+u.email+'</div></div>'
-          +'<div class="ml-right">'+planPill(u.plan)+'</div>'
+          +'<div class="ml-sub">'+u.email+' &middot; '+(u.plan||'Essentiel')+'</div></div>'
+          +'<div class="ml-right" style="display:flex;align-items:center;gap:.4rem">'+planPill(u.plan)
+          +'<span style="font-size:.6rem;color:#4a6278;opacity:.6">&#9998;</span>'
+          +'</div>'
           +'</div>';
-      }).join('')+'</div>';
+      }).join('')+'</div>'
+      +'<div style="padding:.5rem .9rem;border-top:1px solid rgba(200,220,240,.06)">'
+      +'<button class="card-action" onclick="showTab('users',sel('sn-users'))">Voir tous les membres &rarr;</button>'
+      +'</div>';
     }
   }
 
