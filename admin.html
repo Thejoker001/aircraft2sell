@@ -485,6 +485,17 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
           <div class="stat-row"><span class="sr-lbl">Supabase</span><span class="sr-val" style="color:var(--red)">Non configuré</span></div>
         </div>
       </div>
+      <!-- DIAGNOSTIC localStorage -->
+      <div class="card" id="diag-card">
+        <div class="card-head">
+          <div class="card-title">🔍 Diagnostic localStorage</div>
+          <button class="card-action" onclick="runDiag()">↺ Analyser</button>
+        </div>
+        <div class="card-body" id="diag-body" style="font-size:.74rem;color:var(--mist);line-height:1.8">
+          Cliquez sur "Analyser" pour voir toutes les clés présentes. La clé <code style="color:var(--accent)">a2s_listings</code> contient les annonces membres ET démo. La clé <code style="color:var(--accent)">a2s_users</code> contient les membres.
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-head"><div class="card-title" style="color:var(--red)">Zone sensible</div></div>
         <div class="card-body">
@@ -493,7 +504,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
             <div style="display:flex;gap:.4rem;flex-wrap:wrap">
               <button class="m-btn danger" onclick="if(confirm('Effacer toutes les annonces ?')){localStorage.removeItem('a2s_listings');initAdmin();renderList();showToast('Annonces effacées')}">🗑 Effacer les annonces</button>
               <button class="m-btn danger" onclick="if(confirm('Effacer tous les membres ?')){localStorage.removeItem('a2s_users');initAdmin();renderUsers();showToast('Membres effacés')}">🗑 Effacer les membres</button>
-              <button class="m-btn danger" onclick="if(confirm('Réinitialiser toutes les données de démo ?')){localStorage.removeItem('a2s_listings');localStorage.removeItem('a2s_users');localStorage.removeItem('a2s_demo_seeded');injectDemoData();showToast('Données de démo réinitialisées')}">↺ Réinitialiser les données démo</button>
+              <button class="m-btn danger" onclick="if(confirm('Réinitialiser TOUTES les données (annonces membres incluses) ?')){localStorage.removeItem('a2s_listings');localStorage.removeItem('a2s_users');localStorage.removeItem('a2s_demo_seeded');injectDemoData();initAdmin();showToast('Données réinitialisées')}">↺ Réinitialiser tout</button>
             </div>
           </div>
         </div>
@@ -626,6 +637,7 @@ function checkAuth(){
 function getLs(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]'); }catch(e){ return []; } }
 function setLs(key,val){ localStorage.setItem(key,JSON.stringify(val)); }
 function getListings(){ return getLs('a2s_listings'); }
+function getListingsRaw(){ return getLs('a2s_listings'); }
 function getUsers(){    return getLs('a2s_users');    }
 function saveListings(a){ setLs('a2s_listings',a); }
 function saveUsers(a){    setLs('a2s_users',a);    }
@@ -660,9 +672,15 @@ function injectDemoData(){
     {id:20011, make:'Mooney',   model:'M20V Acclaim',   year:'2017', price:'320000', currency:'EUR', category:'light', airport:'LFPB', desc:'Annonce incomplète.', status:'rejected',                       submittedAt:daysAgo(15), sellerName:'Claire Martin',       sellerEmail:'claire.martin@ulm-club.fr', views:0,   enquiries:0,  icon:'✈'},
   ];
 
-  // Toujours injecter les membres (corrige d'éventuelles données incomplètes)
-  if(!getListings().length) saveListings(demoListings);
-  saveUsers(demoUsers);
+  // Fusionner les annonces démo UNIQUEMENT si aucune annonce réelle n'existe
+  var existingListings = getLs('a2s_listings');
+  if(!existingListings.length){
+    setLs('a2s_listings', demoListings);
+  }
+  // Toujours injecter les membres démo si la liste est vide
+  if(!getLs('a2s_users').length){
+    setLs('a2s_users', demoUsers);
+  }
   localStorage.setItem('a2s_demo_seeded','1');
 }
 
@@ -1184,6 +1202,84 @@ function exportCSV(type){
   a.download='a2s_'+type+'_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
   showToast('CSV téléchargé');
+}
+
+/* ── DIAGNOSTIC ── */
+function runDiag(){
+  var el = document.getElementById('diag-body');
+  if(!el) return;
+  var html = '';
+  var listingKeys = [];
+  var userKeys = [];
+  var allKeys = [];
+  for(var i=0; i<localStorage.length; i++){
+    allKeys.push(localStorage.key(i));
+  }
+  allKeys.sort();
+
+  if(!allKeys.length){
+    el.innerHTML = '<span style="color:var(--orange)">⚠ localStorage vide — aucune donnée trouvée.</span>';
+    return;
+  }
+
+  html += '<table style="width:100%;font-size:.7rem;border-collapse:collapse">';
+  html += '<thead><tr style="border-bottom:1px solid var(--border)">'
+        + '<th style="text-align:left;padding:.3rem .5rem;color:var(--mist2)">Clé</th>'
+        + '<th style="text-align:right;padding:.3rem .5rem;color:var(--mist2)">Entrées</th>'
+        + '<th style="padding:.3rem .5rem;color:var(--mist2)">Action</th>'
+        + '</tr></thead><tbody>';
+
+  allKeys.forEach(function(k){
+    var raw = localStorage.getItem(k);
+    var parsed;
+    try { parsed = JSON.parse(raw); } catch(e) { parsed = null; }
+    var count = Array.isArray(parsed) ? parsed.length : (parsed ? '(objet)' : raw ? '(texte)' : 0);
+    var isKnown = ['a2s_listings','a2s_users','a2s_admin_session','a2s_demo_seeded'].indexOf(k) > -1;
+    var isListings = Array.isArray(parsed) && parsed.length && parsed[0] && (parsed[0].make || parsed[0].model || parsed[0].aircraft || parsed[0].type);
+    var isUsers = Array.isArray(parsed) && parsed.length && parsed[0] && (parsed[0].email || parsed[0].name) && !parsed[0].make;
+    var rowColor = isKnown ? 'var(--mist)' : (isListings || isUsers) ? 'var(--accent)' : 'var(--mist2)';
+    var actionBtn = '';
+    if(isListings && k !== 'a2s_listings'){
+      actionBtn = '<button class="act ap" onclick="importFromKey(''+k+'','listings')">⬇ Importer annonces</button>';
+    } else if(isUsers && k !== 'a2s_users'){
+      actionBtn = '<button class="act ap" onclick="importFromKey(''+k+'','users')">⬇ Importer membres</button>';
+    }
+    html += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:.35rem .5rem;color:'+rowColor+';font-family:monospace">'+k+(isListings?' 📋':isUsers?' 👤':'')+'</td>'
+          + '<td style="text-align:right;padding:.35rem .5rem;color:var(--white);font-weight:600">'+count+'</td>'
+          + '<td style="padding:.35rem .5rem">'+actionBtn+'</td>'
+          + '</tr>';
+  });
+  html += '</tbody></table>';
+  html += '<div style="margin-top:.75rem;font-size:.64rem;color:var(--mist2)">📋 = données annonces détectées &nbsp; 👤 = données membres détectées &nbsp; <span style="color:var(--accent)">Surligné en or</span> = clé inconnue potentiellement utile</div>';
+  el.innerHTML = html;
+}
+
+function importFromKey(srcKey, type){
+  var data = [];
+  try { data = JSON.parse(localStorage.getItem(srcKey) || '[]'); } catch(e){}
+  if(!data.length){ showToast('Aucune donnée dans cette clé'); return; }
+  if(!confirm('Importer '+data.length+' entrée(s) depuis "'+srcKey+'" ? Les données existantes seront fusionnées.')) return;
+  if(type === 'listings'){
+    var existing = getListingsRaw();
+    var ids = existing.map(function(l){ return String(l.id); });
+    var added = 0;
+    data.forEach(function(l){
+      if(ids.indexOf(String(l.id)) === -1){ existing.push(l); added++; }
+    });
+    setLs('a2s_listings', existing);
+    showToast('✓ '+added+' annonce(s) importée(s)');
+  } else {
+    var existing = getUsers();
+    var ids = existing.map(function(u){ return String(u.id); });
+    var added = 0;
+    data.forEach(function(u){
+      if(ids.indexOf(String(u.id)) === -1){ existing.push(u); added++; }
+    });
+    saveUsers(existing);
+    showToast('✓ '+added+' membre(s) importé(s)');
+  }
+  initAdmin(); runDiag();
 }
 
 /* ── TOAST ── */
