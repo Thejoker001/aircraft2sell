@@ -847,6 +847,7 @@ function renderFavs(){
 function removeFav(id){
   if(window.A2SFavs) window.A2SFavs.remove(id);
   renderFavs();
+  updateFavBadge();
   showToast('Retiré des favoris');
 }
 
@@ -854,11 +855,19 @@ function clearAllFavs(){
   if(!confirm('Effacer tous vos favoris ?')) return;
   if(window.A2SFavs) window.A2SFavs.clear();
   renderFavs();
+  updateFavBadge();
   showToast('Favoris effacés');
 }
 
 // Listen for fav updates from other pages (same tab)
 document.addEventListener('a2s:favs-updated', renderFavs);
+
+function updateFavBadge(){
+  const n = window.A2SFavs ? window.A2SFavs.count() : 0;
+  const b = document.getElementById('badge-favs');
+  if(b){ b.textContent = n; b.classList.toggle('show', n > 0); }
+}
+document.addEventListener('a2s:favs-updated', updateFavBadge);
 function switchTab(tab){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
@@ -911,6 +920,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   renderChart(7);
   prefillSettings();
   renderFavs();
+  updateFavBadge();
 });
 </script>
 <script src="favorites.js"></script>

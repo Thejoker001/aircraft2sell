@@ -112,6 +112,11 @@ select.sf option{background:var(--card)}
 .mm-select:focus{border-color:#e8a020}
 .mm-select:disabled{opacity:.4;cursor:not-allowed}
 .mm-select option{background:#0c1826;color:#f0f4f8}
+
+.rc-img{position:relative}
+.rc-fav-btn{position:absolute;top:.5rem;right:.5rem;background:rgba(6,11,21,.7);border:1px solid rgba(255,255,255,.15);color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:2;line-height:1}
+.rc-fav-btn:hover,.rc-fav-btn.faved{background:rgba(239,68,68,.85);border-color:var(--red,#ef4444);color:#fff}
+.rc-fav-btn.faved{background:rgba(239,68,68,.85)}
 </style>
 </head>
 <body>
@@ -775,6 +780,7 @@ function renderCards(){
           <div class="rc-loc">📍 ${c.loc}</div>
         </div>
       </div>
+      <button class="rc-fav-btn" onclick="event.stopPropagation();toggleSearchFav(this,String(c.id||i),'${(c.make||'')}','${(c.model||'')}','${(c.year||'')}','${(c.price||'')}','${(c.loc||'')}')" title="Favoris">♡</button>
     </div>`).join('');
   renderPagination();
 }
@@ -875,6 +881,20 @@ function onSidebarMakeChange() {
   // Sync top bar
   const smake = document.getElementById('searchMake');
   if(smake) { smake.value = make; onSearchMakeChange(); }
+}
+
+function toggleSearchFav(btn, id, make, model, year, price, loc){
+  if(!window.A2SFavs){ showToast('Connectez-vous pour sauvegarder'); return; }
+  const listing = {
+    id: id, make: make, model: model, year: year,
+    price: price, location: loc, currency: searchCurrency || 'EUR',
+    title: [make, model, year ? '('+year+')' : ''].filter(Boolean).join(' '),
+    thumb: '✈'
+  };
+  const added = window.A2SFavs.toggle(listing);
+  btn.classList.toggle('faved', added);
+  btn.textContent = added ? '♥' : '♡';
+  showToast(added ? 'Ajouté aux favoris !' : 'Retiré des favoris');
 }
 function setLang(l){
   lang=l;

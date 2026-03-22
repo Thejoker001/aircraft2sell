@@ -1,3 +1,53 @@
+
+/* ============================================================
+   A2SFavs — Favoris partagés (localStorage)
+   Utilisé par listing.html, search.html, dashboard.html
+   ============================================================ */
+window.A2SFavs = (function(){
+  const KEY = 'a2s_favourites';
+
+  function load(){
+    try { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+
+  function save(arr){
+    localStorage.setItem(KEY, JSON.stringify(arr));
+    // Notify dashboard if open in same tab
+    document.dispatchEvent(new CustomEvent('a2s:favs-updated'));
+  }
+
+  function has(id){
+    return load().some(f => String(f.id) === String(id));
+  }
+
+  function toggle(listing){
+    const favs = load();
+    const idx  = favs.findIndex(f => String(f.id) === String(listing.id));
+    if(idx > -1){
+      favs.splice(idx, 1);
+      save(favs);
+      return false; // removed
+    } else {
+      favs.unshift({ ...listing, savedAt: new Date().toISOString() });
+      save(favs);
+      return true; // added
+    }
+  }
+
+  function remove(id){
+    save(load().filter(f => String(f.id) !== String(id)));
+  }
+
+  function getAll(){ return load(); }
+
+  function clear(){ save([]); }
+
+  function count(){ return load().length; }
+
+  return { has, toggle, remove, getAll, clear, count };
+})();
+
 /* ============================================================
    nav.js — Aircraft2Sell
    Auth persistante + nav unifiée sur toutes les pages
