@@ -587,10 +587,14 @@ function dragLeave(e){document.getElementById('dropZone').classList.remove('drag
 function dropFiles(e){e.preventDefault();dragLeave(e);handleFiles(e.dataTransfer.files);}
 function saveDraft(){showToast(t('toast_draft'));}
 async function submitListing(){
-  const required=['fCategory','fMake','fModel','fYear','fTT','fAirport','fPrice','fDesc'];
+  const required=['fCategory','fYear','fAirport','fPrice','fDesc'];
   let ok=true;
-  required.forEach(id=>{if(!document.getElementById(id).value.trim())ok=false;});
-  if(!ok){showToast('⚠ '+t('chk1')+' — '+t('chk2'));return;}
+  required.forEach(id=>{const el=document.getElementById(id);if(!el||!el.value.trim())ok=false;});
+  // Valider marque via sélecteur ou champ caché
+  const makeVal = (document.getElementById('fMake')||{}).value||'';
+  const makeSelVal = (document.getElementById('fMakeSel')||{}).value||'';
+  if(!makeVal && !makeSelVal){ showToast('⚠ Sélectionnez une marque'); return; }
+  if(!ok){showToast('⚠ Veuillez remplir tous les champs obligatoires');return;}
   const btn=document.getElementById('submitBtn');
   btn.classList.add('loading');btn.disabled=true;
   showToast(t('toast_submit'));
@@ -606,6 +610,16 @@ async function submitListing(){
   await new Promise(r=>setTimeout(r,2000));
   showToast(t('toast_success'));
   // Sauvegarder les infos de l'annonce pour la page de confirmation
+  // Synchroniser fMake/fModel depuis les sélecteurs si besoin
+  const makeSel  = document.getElementById('fMakeSel');
+  const modelSel = document.getElementById('fModelSel');
+  const fMakeEl  = document.getElementById('fMake');
+  const fModelEl = document.getElementById('fModel');
+  if(makeSel && makeSel.value && makeSel.value !== '__other__' && fMakeEl && !fMakeEl.value)
+    fMakeEl.value = makeSel.value;
+  if(modelSel && modelSel.value && modelSel.value !== '__other__' && fModelEl && !fModelEl.value)
+    fModelEl.value = modelSel.value;
+
   const listingInfo = {
     make: document.getElementById('fMake').value,
     model: document.getElementById('fModel').value,

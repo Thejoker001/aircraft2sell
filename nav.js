@@ -126,7 +126,16 @@ window.A2SFavs = (function(){
       if(email) localStorage.setItem(KEY_EMAIL, email);
       if(plan)  localStorage.setItem(KEY_PLAN,  plan || 'Essentiel');
       updateNav();
-    },
+    
+    // Enregistrer dans a2s_users pour l'espace admin
+    try {
+      var _u = JSON.parse(localStorage.getItem('a2s_users')||'[]');
+      if(!_u.some(function(u){return u.email===email;})){
+        _u.unshift({id:Date.now(),name:name||'',email:email||'',plan:plan||'Essentiel',status:'active',registeredAt:new Date().toISOString(),listings:0});
+        localStorage.setItem('a2s_users', JSON.stringify(_u));
+      }
+    } catch(e){}
+  },
     logout: function(){
       localStorage.removeItem(KEY_LOGGED);
       localStorage.removeItem(KEY_NAME);
