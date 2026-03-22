@@ -14,7 +14,7 @@ create table if not exists public.listings (
   category      text,
   airport       text,
   country       text,
-  desc          text,
+  description   text,
   status        text default 'pending',
   seller_name   text,
   seller_email  text,
