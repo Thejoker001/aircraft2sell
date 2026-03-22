@@ -566,7 +566,12 @@ desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
 negotiable:'价格可议',firm:'定价出售',offers:'欢迎出价',fixed:'固定价格',leasing:'可融资租赁',wanted_section_title:'求购<em>飞机</em>',wanted_sub:'正在寻找特定飞机？发布您的求购信息，让卖家主动联系您。',wanted_btn:'发布求购信息',wanted_form_title:'发布飞机求购信息',wanted_cat_label:'类别',wanted_make_label:'品牌/型号（如已知）',wanted_make_ph:'例如：赛斯纳172、派珀PA-28…',wanted_budget_label:'最高预算（€）',wanted_budget_ph:'例如：150000',wanted_year_label:'最大年份',wanted_hours_label:'最大飞行时间',wanted_loc_label:'首选地点',wanted_loc_ph:'例如：法国、欧洲…',wanted_desc_label:'其他要求',wanted_desc_ph:'描述您的需求 — 航电、状态、IFR、RVSM…',wanted_submit:'提交求购信息',wanted_cancel:'取消',wanted_count:'0条',wanted_toast:'求购信息已提交！卖家将收到通知。',badge_sold2:'已售'}
 };
 
-const LISTINGS = [];
+const LISTINGS = (function(){
+  try {
+    var all = JSON.parse(localStorage.getItem('a2s_listings')||'[]');
+    return all.filter(function(l){ return l.status==='live'; });
+  } catch(e){ return []; }
+})();
 
 let lang='fr';
 function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
@@ -582,30 +587,38 @@ function renderListings(){
   const g=document.getElementById('listingsGrid');
   if(!g) return;
   if(LISTINGS.length === 0){
-    // Show skeleton loaders while waiting for DB
-    g.innerHTML = Array(6).fill(0).map(()=>`
-      <div class="card" style="pointer-events:none">
-        <div class="card-img" style="background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite"></div>
-        <div class="card-body" style="gap:.6rem">
-          <div style="height:10px;width:60%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-          <div style="height:14px;width:85%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-          <div style="height:10px;width:50%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-          <div style="margin-top:auto;padding-top:.8rem;border-top:1px solid var(--border);display:flex;justify-content:space-between">
-            <div style="height:20px;width:35%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-            <div style="height:10px;width:20%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px;align-self:center"></div>
-          </div>
-        </div>
-      </div>`).join('');
-    /* SUPABASE: replace skeletons with real data:
-       const { data } = await supabase.from('listings').select('*').eq('status','approved').order('created_at',{ascending:false}).limit(6);
-       LISTINGS.push(...data); renderListings(); */
+    g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--mist)">'
+      + '<div style="font-size:3rem;opacity:.15;margin-bottom:1rem">✈</div>'
+      + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.4rem;letter-spacing:.06em;color:var(--white);margin-bottom:.5rem">Aucune annonce publiée</div>'
+      + '<p style="font-size:.82rem;line-height:1.6;max-width:300px;margin:0 auto;color:var(--mist)">Soyez le premier à <a href="post-listing.html" style="color:var(--accent)">déposer une annonce</a>.</p>'
+      + '</div>';
+    /*SKELETON_PLACEHOLDER*/
     return;
   }
   g.innerHTML='';
+  // Normaliser les données localStorage vers le format attendu
+  LISTINGS = LISTINGS.map(function(l){
+    if(!l.title && (l.make||l.model)){
+      l.title = [l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ');
+    }
+    if(!l.loc)   l.loc = l.airport || l.location || '—';
+    if(!l.hours) l.hours = l.tt ? l.tt+'h TT' : '—';
+    if(!l.price && l.priceRaw) l.price = l.priceRaw;
+    if(!l.catDisp) l.catDisp = l.category||'cat_light';
+    if(!l.price) l.price = '—';
+    // Format prix avec symbole
+    if(l.price && l.price!=='—' && !isNaN(Number(l.price))){
+      var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
+      l.priceDisplay = sym+Number(l.price).toLocaleString();
+    } else {
+      l.priceDisplay = l.price||'—';
+    }
+    return l;
+  });
   LISTINGS.forEach(l=>{
-    if(l.featured){ const d=document.createElement('div'); d.className='featured-banner'; d.onclick=()=>openModal(l.id); d.innerHTML=`<div class="feat-label">${t('feat_label')}</div><div class="feat-info"><div class="card-cat">${t(l.catDisp)}</div><div class="feat-title">${l.title}</div><div class="feat-specs"><span class="spec">📅 ${l.year} · ${l.hours}</span><span class="spec">🛫 ${l.loc}</span><span class="spec">🪑 ${t('feat_pax')}</span></div></div><div class="feat-price">${l.price}</div>`; g.appendChild(d); return; }
+    if(l.featured){ const d=document.createElement('div'); d.className='featured-banner'; d.onclick=()=>openModal(l.id); d.innerHTML=`<div class="feat-label">${t('feat_label')}</div><div class="feat-info"><div class="card-cat">${t(l.catDisp)}</div><div class="feat-title">${l.title}</div><div class="feat-specs"><span class="spec">📅 ${l.year} · ${l.hours}</span><span class="spec">🛫 ${l.loc}</span><span class="spec">🪑 ${t('feat_pax')}</span></div></div><div class="feat-price">${l.priceDisplay||l.price||"—"}</div>`; g.appendChild(d); return; }
     const c=document.createElement('div'); c.className='card'; c.onclick=()=>openModal(l.id);
-    c.innerHTML=`<div class="card-img"><div class="plane-bg">${l.icon}</div>${l.badge?`<span class="badge ${l.badge}">${t(l.badgeKey)}</span>`:''}<button class="fav${l.liked?' liked':''}" onclick="event.stopPropagation();toggleFav(this)">${l.liked?'♥':'♡'}</button><div class="urgency"><span class="urgency-dot"></span>${l.views}${t('urgency_views')} · ${l.favs}${t('urgency_fav')}</div></div><div class="card-body"><div class="card-cat">${t(l.catDisp)}</div><div class="card-title">${l.title}</div><div class="card-specs"><span class="spec">📅 ${l.year}</span><span class="spec">⏱ ${l.hours}</span></div><div class="trust-chip">✓ ${t('seller_verified')}</div><div class="card-ft"><div><div class="price">${l.price}</div><div class="price-sub">${t(l.priceSub)}</div></div><div class="loc">📍 ${l.loc}</div></div></div>`;
+    c.innerHTML=`<div class="card-img"><div class="plane-bg">${l.icon}</div>${l.badge?`<span class="badge ${l.badge}">${t(l.badgeKey)}</span>`:''}<button class="fav${l.liked?' liked':''}" onclick="event.stopPropagation();toggleFav(this)">${l.liked?'♥':'♡'}</button><div class="urgency"><span class="urgency-dot"></span>${l.views}${t('urgency_views')} · ${l.favs}${t('urgency_fav')}</div></div><div class="card-body"><div class="card-cat">${t(l.catDisp)}</div><div class="card-title">${l.title}</div><div class="card-specs"><span class="spec">📅 ${l.year}</span><span class="spec">⏱ ${l.hours}</span></div><div class="trust-chip">✓ ${t('seller_verified')}</div><div class="card-ft"><div><div class="price">${l.priceDisplay||l.price||"—"}</div><div class="price-sub">${t(l.priceSub)}</div></div><div class="loc">📍 ${l.loc}</div></div></div>`;
     g.appendChild(c);
   });
 }

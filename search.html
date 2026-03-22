@@ -749,7 +749,14 @@ const T={
 let lang='en', viewMode='grid', currentPage=1;
 const PER_PAGE=9;
 function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
-const MOCK=[];
+// Charger les annonces publiées depuis localStorage
+function loadLiveListings(){
+  try {
+    var all = JSON.parse(localStorage.getItem('a2s_listings')||'[]');
+    return all.filter(function(l){ return l.status==='live'; });
+  } catch(e){ return []; }
+}
+var MOCK = loadLiveListings();
 
 
 function toggleSearchFav(btn, id){
@@ -777,7 +784,7 @@ function toggleMobileFilters(){
 function renderCards(){
   const g=document.getElementById('resultsGrid');
   if(!g) return;
-  if(!LISTINGS||LISTINGS.length===0){
+  MOCK = MOCK||[]; if(!MOCK||MOCK.length===0){
     g.style.background='transparent';g.style.border='none';
     g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem 2rem;color:var(--mist)"><div style="font-size:3rem;opacity:.2;margin-bottom:1rem">🔍</div><div style="font-family:Bebas Neue,sans-serif;font-size:1.2rem;letter-spacing:.06em;color:var(--white);margin-bottom:.5rem">No listings match your search</div><p style="font-size:.82rem;line-height:1.6;max-width:280px;margin:0 auto">Try adjusting your filters or be the first to <a href="post-listing.html" style="color:var(--accent)">post a listing</a>.</p></div>';
     document.getElementById('resultCount').textContent='0 listings found';
@@ -786,29 +793,35 @@ function renderCards(){
 
   const grid=document.getElementById('cardsGrid');
   grid.className='cards-grid'+(viewMode==='list'?' list-view':'');
-  const start=(currentPage-1)*PER_PAGE, end=Math.min(start+PER_PAGE,MOCK.length);
-  grid.innerHTML=MOCK.slice(start,end).map(c=>`
-    <div class="result-card" onclick="window.location.href='listing.html'">
-      <div class="rc-img">
-        <span style="font-size:3.5rem;opacity:.15">${c.icon}</span>
-        ${c.badge?`<span class="rc-badge ${c.badge}">${t(c.badgeKey)}</span>`:''}
-        <button class="fav-mini" onclick="event.stopPropagation();toggleSearchFav(this,'${c.id||i}')" data-fav-id="${c.id||i}"><span class="fav-icon">♡</span></button>
-      </div>
-      <div class="rc-body">
-        <div class="rc-cat">${c.cat}</div>
-        <div class="rc-title">${c.title}</div>
-        <div class="rc-specs">
-          <span class="rc-spec">📅 ${c.year}</span>
-          <span class="rc-spec">⏱ ${c.hours}</span>
-        </div>
-        <div class="rc-trust">✓ Verified</div>
-        <div class="rc-ft">
-          <div class="rc-price" id="price_${c.id||i}">${displayPrice(c.price)}</div>
-          <div class="rc-loc">📍 ${c.loc}</div>
-        </div>
-      </div>
-      <button class="rc-fav-btn" onclick="event.stopPropagation();toggleSearchFav(this,String(c.id||i),'${(c.make||'')}','${(c.model||'')}','${(c.year||'')}','${(c.price||'')}','${(c.loc||'')}')" title="Favoris">♡</button>
-    </div>`).join('');
+  const start=(currentPage-1)*PER_PAGE, end=Math.min(start+PER_PAGE,MOCK.length); LISTINGS=MOCK;
+  var items = MOCK.slice(start, end);
+  grid.innerHTML = items.map(function(c,i){
+    var sym = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[c.currency||'EUR']||'€';
+    var price = c.price ? sym+Number(c.price).toLocaleString() : '—';
+    var title = c.title || [c.make,c.model,c.year?'('+c.year+')':''].filter(Boolean).join(' ') || 'Annonce';
+    var cat   = c.category || c.cat || '—';
+    var loc   = c.airport || c.loc || c.location || '—';
+    var cid   = String(c.id||i);
+    return '<div class="result-card" onclick="window.location.href=\'listing.html?id='+cid+'\'">'
+      +'<div class="rc-img">'
+      +'<span style="font-size:3.5rem;opacity:.2">'+(c.icon||'✈')+'</span>'
+      +'<button class="rc-fav-btn" data-id="'+cid+'" onclick="event.stopPropagation();toggleSearchFav(this,\''+cid+'\',\''+encodeURIComponent(c.make||'')+'\',\''+encodeURIComponent(c.model||'')+'\',\''+encodeURIComponent(c.year||'')+'\',\''+encodeURIComponent(c.price||'')+'\',\''+encodeURIComponent(loc)+'\')">♡</button>'
+      +'</div>'
+      +'<div class="rc-body">'
+      +'<div class="rc-cat">'+cat+'</div>'
+      +'<div class="rc-title">'+title+'</div>'
+      +'<div class="rc-specs">'
+      +(c.year?'<span class="rc-spec">📅 '+c.year+'</span>':'')
+      +(c.views!==undefined?'<span class="rc-spec">👁 '+c.views+' vues</span>':'')
+      +'</div>'
+      +(c.sellerName?'<div class="rc-trust">✓ '+c.sellerName+'</div>':'')
+      +'<div class="rc-ft">'
+      +'<div class="rc-price">'+price+'</div>'
+      +'<div class="rc-loc">📍 '+loc+'</div>'
+      +'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
   renderPagination();
 }
 function renderPagination(){
@@ -823,7 +836,28 @@ function goPage(p){currentPage=p;renderCards();window.scrollTo({top:200,behavior
 function setView(v){viewMode=v;document.getElementById('gridBtn').classList.toggle('active',v==='grid');document.getElementById('listBtn').classList.toggle('active',v==='list');renderCards();}
 function toggleFilter(header){header.querySelector('.filter-arrow').style.transform=header.querySelector('.filter-arrow').style.transform==='rotate(180deg)'?'':'rotate(180deg)';}
 function removeFilter(el){el.parentElement.remove();}
-function doSearch(){showToast(t('toast_filter'));}
+function doSearch(){
+  MOCK = loadLiveListings();
+  var q     = (document.getElementById('searchQ')||{}).value||'';
+  var cat   = (document.getElementById('searchCat')||{}).value||'';
+  var make  = (document.getElementById('searchMake')||{}).value||'';
+  var model = (document.getElementById('searchModel')||{}).value||'';
+  var country=(document.getElementById('searchCountry')||{}).value||'';
+  MOCK = MOCK.filter(function(l){
+    if(cat   && l.category!==cat)   return false;
+    if(make  && l.make!==make)      return false;
+    if(model && l.model!==model)    return false;
+    if(country && l.country!==country) return false;
+    if(q){
+      var t2 = [l.make,l.model,l.title,l.year,l.airport,l.category].join(' ').toLowerCase();
+      if(!t2.includes(q.toLowerCase())) return false;
+    }
+    return true;
+  });
+  currentPage=1;
+  renderCards();
+  showToast(MOCK.length+' annonce'+(MOCK.length>1?'s':'')+' trouvée'+(MOCK.length>1?'s':''));
+}
 const CURR_SYMBOLS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',JPY:'¥',CNY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',PLN:'zł',CZK:'Kč',HUF:'Ft',TRY:'₺',BRL:'R$',AED:'د.إ',SAR:'﷼',INR:'₹',SGD:'S$',NZD:'NZ$',HKD:'HK$',ZAR:'R'};
 let searchCurrency = 'EUR';
 let searchExRate = 1;
@@ -936,7 +970,7 @@ function setLang(l){
   else document.title = 'Aircraft2Sell — '+t('search_btn');
 }
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
-renderCards();setLang('fr');initSearchMakeModel();
+MOCK=loadLiveListings();renderCards();setLang('fr');initSearchMakeModel();
 // Read URL params and pre-fill search
 (function(){
   const params = new URLSearchParams(window.location.search);
