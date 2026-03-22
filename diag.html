@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aircraft2Sell — Diagnostic</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'DM Sans',system-ui,sans-serif}
+body{background:#060b15;color:#f0f4f8;padding:1.5rem;line-height:1.6}
+h1{font-family:'Bebas Neue',system-ui;font-size:1.8rem;letter-spacing:.1em;color:#e8a020;margin-bottom:1.5rem}
+.card{background:#0c1826;border:1px solid rgba(200,220,240,.1);padding:1.2rem;margin-bottom:1rem}
+.card-title{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8fa3b8;margin-bottom:.8rem}
+.row{display:flex;align-items:center;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid rgba(200,220,240,.06);font-size:.82rem}
+.row:last-child{border-bottom:none}
+.lbl{color:#4a6278}
+.val{font-weight:500}
+.ok{color:#22c55e}.warn{color:#f97316}.err{color:#ef4444}
+.btn{background:#e8a020;color:#060b15;border:none;padding:.6rem 1.2rem;font-weight:700;font-size:.8rem;cursor:pointer;margin:.3rem .3rem 0 0;transition:background .2s}
+.btn:hover{background:#f5c842}
+.btn.ghost{background:rgba(255,255,255,.06);color:#8fa3b8}
+.btn.danger{background:rgba(239,68,68,.15);color:#ef4444}
+.code{background:rgba(255,255,255,.05);padding:.8rem 1rem;font-size:.75rem;font-family:monospace;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;margin-top:.5rem}
+.badge{font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.15rem .45rem;border-radius:3px}
+.b-ok{background:rgba(34,197,94,.15);color:#22c55e}
+.b-err{background:rgba(239,68,68,.15);color:#ef4444}
+.b-warn{background:rgba(249,115,22,.15);color:#f97316}
+hr{border:none;border-top:1px solid rgba(200,220,240,.08);margin:1rem 0}
+</style>
+</head>
+<body>
+<h1>🔧 Diagnostic Aircraft2Sell</h1>
+
+<div class="card">
+  <div class="card-title">1. État du localStorage</div>
+  <div id="ls-status"></div>
+</div>
+
+<div class="card">
+  <div class="card-title">2. Contenu a2s_listings</div>
+  <div id="ls-listings"></div>
+</div>
+
+<div class="card">
+  <div class="card-title">3. Contenu a2s_users</div>
+  <div id="ls-users"></div>
+</div>
+
+<div class="card">
+  <div class="card-title">4. Session</div>
+  <div id="session-info"></div>
+</div>
+
+<div class="card">
+  <div class="card-title">5. Actions</div>
+  <button class="btn" onclick="injectListing()">+ Injecter annonce test (pending)</button>
+  <button class="btn" onclick="injectUser()">+ Injecter membre test</button>
+  <button class="btn ghost" onclick="refresh()">↺ Rafraîchir</button>
+  <hr>
+  <button class="btn danger" onclick="clearAll()">🗑 Tout effacer (reset)</button>
+  <button class="btn danger" onclick="clearListings()">🗑 Effacer annonces</button>
+  <button class="btn danger" onclick="clearUsers()">🗑 Effacer membres</button>
+</div>
+
+<div class="card">
+  <div class="card-title">6. Test flux complet</div>
+  <button class="btn" onclick="testFullFlow()">▶ Tester le flux complet</button>
+  <div id="flow-result" style="margin-top:.8rem"></div>
+</div>
+
+<div class="card">
+  <div class="card-title">7. Données brutes (localStorage)</div>
+  <button class="btn ghost" onclick="showRaw()">Afficher JSON brut</button>
+  <div id="raw-data"></div>
+</div>
+
+<script>
+function getLS(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
+function setLS(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
+
+function badge(ok, textOk, textErr){
+  return ok
+    ? '<span class="badge b-ok">'+textOk+'</span>'
+    : '<span class="badge b-err">'+textErr+'</span>';
+}
+
+function refresh(){
+  // 1. Status général
+  var listings = getLS('a2s_listings');
+  var users    = getLS('a2s_users');
+  var loggedIn = localStorage.getItem('a2s_logged_in') === 'true';
+  var userName = localStorage.getItem('a2s_user_name') || '—';
+  var userEmail= localStorage.getItem('a2s_user_email') || '—';
+  var pending  = listings.filter(function(l){ return !l.status || l.status === 'pending'; });
+  var live     = listings.filter(function(l){ return l.status === 'live'; });
+
+  document.getElementById('ls-status').innerHTML =
+    '<div class="row"><span class="lbl">localStorage disponible</span><span class="val">' + badge(typeof localStorage !== 'undefined', '✓ OK', '✗ Absent') + '</span></div>' +
+    '<div class="row"><span class="lbl">a2s_listings</span><span class="val ' + (listings.length ? 'ok' : 'warn') + '">' + listings.length + ' annonce(s) ' + badge(listings.length > 0, 'données présentes', 'vide') + '</span></div>' +
+    '<div class="row"><span class="lbl">└ En attente (pending)</span><span class="val ' + (pending.length ? 'ok' : 'warn') + '">' + pending.length + '</span></div>' +
+    '<div class="row"><span class="lbl">└ Publiées (live)</span><span class="val">' + live.length + '</span></div>' +
+    '<div class="row"><span class="lbl">a2s_users</span><span class="val ' + (users.length ? 'ok' : 'warn') + '">' + users.length + ' membre(s) ' + badge(users.length > 0, 'données présentes', 'vide') + '</span></div>' +
+    '<div class="row"><span class="lbl">Utilisateur connecté</span><span class="val">' + badge(loggedIn, '✓ Oui', '✗ Non') + ' ' + userName + ' (' + userEmail + ')</span></div>';
+
+  // 2. Listings
+  var llEl = document.getElementById('ls-listings');
+  if(!listings.length){
+    llEl.innerHTML = '<div class="row"><span class="warn">Aucune annonce dans localStorage</span></div>' +
+      '<div style="margin-top:.5rem;font-size:.75rem;color:#4a6278">→ Allez sur <a href="post-listing.html" style="color:#e8a020">post-listing.html</a> et soumettez une annonce, ou cliquez "+ Injecter annonce test" ci-dessous.</div>';
+  } else {
+    var html = '';
+    listings.forEach(function(l, i){
+      var statusColor = l.status === 'live' ? 'ok' : (l.status === 'rejected' ? 'err' : 'warn');
+      html += '<div class="row">'
+        + '<span class="lbl">#'+(i+1)+' — '+(l.make||'?')+' '+(l.model||'')+(l.year?' ('+l.year+')':'')+'</span>'
+        + '<span class="val"><span class="' + statusColor + '">'+(l.status||'pending')+'</span> · ID:'+String(l.id).slice(-6)+'</span>'
+        + '</div>';
+    });
+    llEl.innerHTML = html;
+  }
+
+  // 3. Users
+  var usEl = document.getElementById('ls-users');
+  if(!users.length){
+    usEl.innerHTML = '<div class="row"><span class="warn">Aucun membre dans localStorage</span></div>' +
+      '<div style="margin-top:.5rem;font-size:.75rem;color:#4a6278">→ Connectez-vous sur <a href="login.html" style="color:#e8a020">login.html</a> ou cliquez "+ Injecter membre test".</div>';
+  } else {
+    var html2 = '';
+    users.forEach(function(u, i){
+      html2 += '<div class="row">'
+        + '<span class="lbl">#'+(i+1)+' — '+(u.name||'?')+' ('+u.email+')</span>'
+        + '<span class="val">'+(u.plan||'Essentiel')+'</span>'
+        + '</div>';
+    });
+    usEl.innerHTML = html2;
+  }
+
+  // 4. Session
+  var adminSess = sessionStorage.getItem('a2s_admin_session');
+  document.getElementById('session-info').innerHTML =
+    '<div class="row"><span class="lbl">Session admin (sessionStorage)</span><span class="val">' + badge(!!adminSess, '✓ Connecté', '✗ Non connecté — ouvrez admin.html et connectez-vous') + '</span></div>' +
+    '<div class="row"><span class="lbl">a2s_last_listing (sessionStorage)</span><span class="val">' + badge(!!sessionStorage.getItem('a2s_last_listing'), '✓ Données présentes', '—') + '</span></div>';
+}
+
+function injectListing(){
+  var listings = getLS('a2s_listings');
+  listings.unshift({
+    id: Date.now(),
+    make: 'Cessna', model: '172 Skyhawk', year: '2019',
+    price: '85000', currency: 'EUR', category: 'light',
+    airport: 'LFPG', desc: 'Annonce injectée depuis diag.html',
+    status: 'pending',
+    submittedAt: new Date().toISOString(),
+    sellerName: 'Client Test', sellerEmail: 'test@aircraft2sell.eu',
+    views: 0, enquiries: 0, icon: '✈'
+  });
+  setLS('a2s_listings', listings);
+  refresh();
+  alert('✓ Annonce Cessna 172 injectée (statut: pending)\n\nOuvrez maintenant admin.html → Modération pour la voir.');
+}
+
+function injectUser(){
+  var users = getLS('a2s_users');
+  var email = 'test'+Date.now().toString().slice(-4)+'@aircraft2sell.eu';
+  users.unshift({
+    id: Date.now(), name: 'Jean Dupont', email: email,
+    plan: 'Essentiel', status: 'active',
+    registeredAt: new Date().toISOString(), listings: 0
+  });
+  setLS('a2s_users', users);
+  refresh();
+  alert('✓ Membre Jean Dupont injecté\n\nOuvrez admin.html → Membres pour le voir.');
+}
+
+function clearAll(){
+  if(!confirm('Effacer TOUTES les données Aircraft2Sell du localStorage ?')) return;
+  ['a2s_listings','a2s_users','a2s_logged_in','a2s_user_name','a2s_user_email','a2s_user_plan'].forEach(function(k){ localStorage.removeItem(k); });
+  refresh();
+}
+function clearListings(){ if(confirm('Effacer toutes les annonces ?')){ localStorage.removeItem('a2s_listings'); refresh(); } }
+function clearUsers(){    if(confirm('Effacer tous les membres ?')){ localStorage.removeItem('a2s_users'); refresh(); } }
+
+function testFullFlow(){
+  var el = document.getElementById('flow-result');
+  var steps = [];
+  var ok = true;
+
+  // Step 1: localStorage
+  if(typeof localStorage !== 'undefined') steps.push({ok:true, msg:'localStorage disponible'});
+  else { steps.push({ok:false, msg:'localStorage non disponible — impossible de fonctionner'}); ok=false; }
+
+  // Step 2: Injecter
+  var ts = Date.now();
+  var test = {id:ts, make:'Test', model:'Diag', year:'2024', price:'50000', currency:'EUR',
+    status:'pending', submittedAt:new Date().toISOString(),
+    sellerName:'Test User', sellerEmail:'diag@test.eu', views:0, enquiries:0};
+  var listings = getLS('a2s_listings');
+  listings.unshift(test);
+  setLS('a2s_listings', listings);
+  steps.push({ok:true, msg:'Annonce injectée dans a2s_listings (id: '+ts+')'});
+
+  // Step 3: Relire
+  var readback = getLS('a2s_listings');
+  var found = readback.find(function(l){ return String(l.id) === String(ts); });
+  if(found) steps.push({ok:true, msg:'Relecture OK — annonce trouvée avec status: '+found.status});
+  else { steps.push({ok:false, msg:'ERREUR: annonce non retrouvée après injection'}); ok=false; }
+
+  // Step 4: Filtrer pending
+  var pending = readback.filter(function(l){ return !l.status || l.status === 'pending'; });
+  steps.push({ok:pending.length>0, msg:'Filtre pending: '+pending.length+' annonce(s)'});
+
+  // Step 5: Modifier status
+  var idx = readback.findIndex(function(l){ return String(l.id) === String(ts); });
+  if(idx > -1){
+    readback[idx].status = 'live';
+    setLS('a2s_listings', readback);
+    var check = getLS('a2s_listings').find(function(l){ return String(l.id) === String(ts); });
+    if(check && check.status === 'live') steps.push({ok:true, msg:'Modification status: pending → live OK'});
+    else { steps.push({ok:false, msg:'ERREUR: status non modifié'}); ok=false; }
+  }
+
+  // Step 6: Nettoyer
+  setLS('a2s_listings', getLS('a2s_listings').filter(function(l){ return String(l.id) !== String(ts); }));
+  steps.push({ok:true, msg:'Nettoyage OK'});
+
+  var html = '<div style="font-size:.78rem">';
+  steps.forEach(function(s){
+    html += '<div style="padding:.3rem 0;display:flex;gap:.5rem;align-items:flex-start">'
+      + '<span style="color:'+(s.ok?'#22c55e':'#ef4444');html+=';flex-shrink:0">'+(s.ok?'✓':'✗')+'</span>'
+      + '<span style="color:'+(s.ok?'#f0f4f8':'#ef4444')+'">' + s.msg + '</span>'
+      + '</div>';
+  });
+  html += '<div style="margin-top:.8rem;font-weight:600;color:' + (ok?'#22c55e':'#ef4444') + '">'
+    + (ok ? '✅ Tout fonctionne — le problème vient du fichier admin.html. Utilisez le bouton + Test dans admin.'
+          : '❌ Problème détecté — voir les erreurs ci-dessus')
+    + '</div></div>';
+  el.innerHTML = html;
+  refresh();
+}
+
+function showRaw(){
+  var data = {};
+  ['a2s_listings','a2s_users','a2s_logged_in','a2s_user_name','a2s_user_email','a2s_user_plan'].forEach(function(k){
+    var v = localStorage.getItem(k);
+    try{ data[k] = JSON.parse(v); } catch(e){ data[k] = v; }
+  });
+  document.getElementById('raw-data').innerHTML = '<div class="code">' + JSON.stringify(data, null, 2) + '</div>';
+}
+
+// Auto-run
+refresh();
+</script>
+</body>
+</html>
