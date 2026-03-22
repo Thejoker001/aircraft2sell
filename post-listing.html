@@ -487,79 +487,86 @@ function dragOver(e){e.preventDefault();document.getElementById('dropZone').clas
 function dragLeave(e){document.getElementById('dropZone').classList.remove('dragging');}
 function dropFiles(e){e.preventDefault();dragLeave(e);handleFiles(e.dataTransfer.files);}
 function saveDraft(){showToast(t('toast_draft'));}
-async function submitListing(){
-  const required=['fCategory','fYear','fAirport','fPrice','fDesc'];
-  let ok=true;
-  required.forEach(id=>{const el=document.getElementById(id);if(!el||!el.value.trim())ok=false;});
-  // Valider marque via sélecteur ou champ caché
-  const makeVal = (document.getElementById('fMake')||{}).value||'';
-  const makeSelVal = (document.getElementById('fMakeSel')||{}).value||'';
-  if(!makeVal && !makeSelVal){ showToast('⚠ Sélectionnez une marque'); return; }
-  if(!ok){showToast('⚠ Veuillez remplir tous les champs obligatoires');return;}
-  const btn=document.getElementById('submitBtn');
-  btn.classList.add('loading');btn.disabled=true;
-  showToast(t('toast_submit'));
-  /* SUPABASE:
-     const {data,error} = await supabase.from('listings').insert({
-       seller_id: (await supabase.auth.getUser()).data.user.id,
-       make:document.getElementById('fMake').value, model:document.getElementById('fModel').value,
-       year:+document.getElementById('fYear').value, total_hours:+document.getElementById('fTT').value,
-       price:+document.getElementById('fPrice').value, location:document.getElementById('fAirport').value,
-       description:document.getElementById('fDesc').value, status:'pending'
-     });
-     // Then upload photos to Supabase Storage */
-  await new Promise(r=>setTimeout(r,2000));
-  showToast(t('toast_success'));
-  // Sauvegarder les infos de l'annonce pour la page de confirmation
-  // Synchroniser fMake/fModel depuis les sélecteurs si besoin
-  const makeSel  = document.getElementById('fMakeSel');
-  const modelSel = document.getElementById('fModelSel');
-  const fMakeEl  = document.getElementById('fMake');
-  const fModelEl = document.getElementById('fModel');
-  if(makeSel && makeSel.value && makeSel.value !== '__other__' && fMakeEl && !fMakeEl.value)
-    fMakeEl.value = makeSel.value;
-  if(modelSel && modelSel.value && modelSel.value !== '__other__' && fModelEl && !fModelEl.value)
-    fModelEl.value = modelSel.value;
+function submitListing(){
+  /* Validation */
+  var required = ['fCategory','fYear','fAirport','fPrice','fDesc'];
+  var ok = true;
+  for(var ri=0; ri<required.length; ri++){
+    var rel = document.getElementById(required[ri]);
+    if(!rel || !rel.value.trim()){ ok=false; break; }
+  }
 
-  const listingInfo = {
-    make: document.getElementById('fMake').value,
-    model: document.getElementById('fModel').value,
-    year: document.getElementById('fYear').value,
-    price: document.getElementById('fPrice').value,
+  var makeVal    = (document.getElementById('fMake')    || {}).value || '';
+  var makeSelVal = (document.getElementById('fMakeSel') || {}).value || '';
+  if(!makeVal && !makeSelVal){ showToast('⚠ Sélectionnez une marque'); return; }
+  if(!ok){ showToast('⚠ Remplissez tous les champs obligatoires'); return; }
+
+  /* Synchroniser fMake/fModel depuis sélecteurs */
+  var makeSel  = document.getElementById('fMakeSel');
+  var modelSel = document.getElementById('fModelSel');
+  var fMakeEl  = document.getElementById('fMake');
+  var fModelEl = document.getElementById('fModel');
+  if(makeSel  && makeSel.value  !== '__other__' && fMakeEl  && !fMakeEl.value)  fMakeEl.value  = makeSel.value;
+  if(modelSel && modelSel.value !== '__other__' && fModelEl && !fModelEl.value) fModelEl.value = modelSel.value;
+
+  /* UI loading */
+  var btn = document.getElementById('submitBtn');
+  if(btn){ btn.classList.add('loading'); btn.disabled = true; }
+  showToast(typeof t==='function' ? t('toast_submit') : "Publication en cours…");
+
+  /* Construire l'objet annonce */
+  var now = new Date().toISOString();
+  var listingInfo = {
+    make:     (document.getElementById('fMake')     ||{}).value || makeSelVal,
+    model:    (document.getElementById('fModel')    ||{}).value || ((modelSel&&modelSel.value!=='__other__')?modelSel.value:''),
+    year:     (document.getElementById('fYear')     ||{}).value || '',
+    price:    (document.getElementById('fPrice')    ||{}).value || '',
     currency: (document.getElementById('fPriceCurr')||{}).value || 'EUR',
-    submittedAt: new Date().toISOString()
+    category: (document.getElementById('fCategory') ||{}).value || '',
+    airport:  (document.getElementById('fAirport')  ||{}).value || '',
+    desc:     (document.getElementById('fDesc')     ||{}).value || '',
+    submittedAt: now
   };
-  // Sauvegarder dans sessionStorage (pour listing-submitted.html)
-  sessionStorage.setItem('a2s_last_listing', JSON.stringify(listingInfo));
-  // Écrire IMMÉDIATEMENT dans localStorage pour que l'admin/modération le voie
-  (function(){
-    try {
-      const LS_KEY = 'a2s_listings';
-      const existing = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
-      const alreadyExists = existing.some(l => l.submittedAt === listingInfo.submittedAt);
-      if(!alreadyExists){
-        const newListing = {
-          id: Date.now(),
-          make:     document.getElementById('fMake')  ? document.getElementById('fMake').value  : listingInfo.make  || '—',
-          model:    document.getElementById('fModel') ? document.getElementById('fModel').value : listingInfo.model || '—',
-          year:     document.getElementById('fYear')  ? document.getElementById('fYear').value  : listingInfo.year  || '—',
-          price:    document.getElementById('fPrice') ? document.getElementById('fPrice').value : listingInfo.price || '—',
-          currency: (document.getElementById('fPriceCurr') || {}).value || 'EUR',
-          category: document.getElementById('fCategory') ? document.getElementById('fCategory').value : '',
-          airport:  document.getElementById('fAirport')  ? document.getElementById('fAirport').value  : '',
-          desc:     document.getElementById('fDesc')     ? document.getElementById('fDesc').value.substring(0,200) : '',
-          status:   'pending',
-          submittedAt: listingInfo.submittedAt,
-          sellerName:  localStorage.getItem('a2s_user_name')  || '',
-          sellerEmail: localStorage.getItem('a2s_user_email') || '',
-          views: 0, enquiries: 0, icon: '✈'
-        };
-        existing.unshift(newListing);
-        localStorage.setItem(LS_KEY, JSON.stringify(existing));
-      }
-    } catch(e){ console.error('localStorage save failed', e); }
-  })();
-  setTimeout(()=>window.location.href='listing-submitted.html',1500);
+
+  /* Sauvegarder sessionStorage pour listing-submitted.html */
+  try { sessionStorage.setItem('a2s_last_listing', JSON.stringify(listingInfo)); } catch(e){}
+
+  /* Sauvegarder dans localStorage pour admin/modération */
+  try {
+    var LS_KEY   = 'a2s_listings';
+    var existing = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+    var alreadyExists = existing.some(function(l){ return l.submittedAt === now; });
+    if(!alreadyExists){
+      var newListing = {
+        id:           Date.now(),
+        make:         listingInfo.make || '—',
+        model:        listingInfo.model || '—',
+        year:         listingInfo.year  || '—',
+        price:        listingInfo.price || '—',
+        currency:     listingInfo.currency,
+        category:     listingInfo.category,
+        airport:      listingInfo.airport,
+        desc:         listingInfo.desc,
+        status:       'pending',
+        submittedAt:  now,
+        sellerName:   localStorage.getItem('a2s_user_name')  || '',
+        sellerEmail:  localStorage.getItem('a2s_user_email') || '',
+        views:        0,
+        enquiries:    0,
+        icon:         '✈'
+      };
+      existing.unshift(newListing);
+      localStorage.setItem(LS_KEY, JSON.stringify(existing));
+    }
+  } catch(e){ console.error('Erreur sauvegarde listing:', e); }
+
+  /* Redirection après délai */
+  setTimeout(function(){
+    showToast(typeof t==='function' ? t('toast_success') : 'Annonce publiée !');
+    setTimeout(function(){
+      window.location.href = 'listing-submitted.html';
+    }, 800);
+  }, 1200);
 }
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
 setLang('fr');
