@@ -2,525 +2,713 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aircraft2Sell \u2014 Administration</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aircraft2Sell — Administration</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--sky:#060b15;--deep:#04080f;--horizon:#0a1e3a;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#4a6278;--white:#f0f4f8;--card:#0a1525;--card2:#0d1c30;--border:rgba(200,212,224,0.1);--green:#22c55e;--red:#ef4444;--orange:#f97316;--blue:#60a5fa;--purple:#a78bfa;--teal:#2dd4bf}
+:root{
+  --sky:#060b15;--deep:#04080f;--horizon:#0a1e3a;
+  --accent:#e8a020;--gold:#f5c842;
+  --mist:#8fa3b8;--mist2:#4a6278;--white:#f0f4f8;
+  --card:#0c1826;--card2:#0f2038;
+  --border:rgba(200,220,240,0.09);--border2:rgba(200,220,240,0.15);
+  --green:#22c55e;--red:#ef4444;--orange:#f97316;--blue:#60a5fa;--purple:#a78bfa
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);display:flex;flex-direction:column;min-height:100vh}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);display:flex;flex-direction:column}
 
-/* OVERLAY */
-.overlay{position:fixed;inset:0;background:rgba(4,8,15,.98);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
-.overlay.hidden{display:none}
-.lb{background:var(--card);border:1px solid var(--border);width:100%;max-width:420px;overflow:hidden}
-.lb-hd{background:linear-gradient(135deg,#0a1e3a,#0d2847);padding:2rem;text-align:center;border-bottom:1px solid var(--border)}
-.lb-icon{font-size:2.4rem;margin-bottom:.7rem}
-.lb-title{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em;color:var(--white)}
-.lb-sub{font-size:.72rem;color:var(--mist);margin-top:.3rem}
-.lb-body{padding:1.8rem}
-.fg{margin-bottom:1.1rem}
-.fg label{display:block;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);margin-bottom:.4rem}
-.fg input{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);padding:.8rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s}
-.fg input:focus{border-color:var(--accent)}
-.fg input::placeholder{color:var(--mist2)}
-.btn-login{width:100%;background:var(--accent);color:var(--deep);border:none;padding:1rem;font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.1em;cursor:pointer;transition:background .2s}
-.btn-login:hover{background:var(--gold)}
-.lb-err{font-size:.74rem;color:var(--red);margin-top:.7rem;text-align:center;min-height:1.2em}
-.lb-note{margin-top:1rem;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);padding:.7rem 1rem;font-size:.7rem;color:var(--red);text-align:center;line-height:1.6}
+/* ── LOGIN OVERLAY ─────────────────────────────────────────── */
+.login-overlay{position:fixed;inset:0;background:var(--deep);z-index:999;display:flex;align-items:center;justify-content:center}
+.login-overlay.hidden{display:none}
+.login-box{width:100%;max-width:400px;padding:2rem}
+.lb-logo{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.1em;color:var(--white);margin-bottom:.3rem}
+.lb-logo span{color:var(--accent)}
+.lb-sub{font-size:.74rem;color:var(--mist);margin-bottom:2rem}
+.lb-lbl{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);margin-bottom:.35rem;display:block}
+.lb-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.85rem;outline:none;margin-bottom:.8rem;transition:border-color .2s}
+.lb-inp:focus{border-color:var(--accent)}
+.lb-btn{width:100%;background:var(--accent);color:var(--deep);border:none;padding:.85rem;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.12em;cursor:pointer;transition:background .2s}
+.lb-btn:hover{background:var(--gold)}
+.lb-err{font-size:.72rem;color:var(--red);min-height:1.2rem;margin-top:.4rem;text-align:center}
+.login-stars{position:fixed;inset:0;pointer-events:none;
+  background-image:radial-gradient(1px 1px at 10% 15%,rgba(255,255,255,.6) 0%,transparent 100%),
+    radial-gradient(1px 1px at 30% 70%,rgba(255,255,255,.4) 0%,transparent 100%),
+    radial-gradient(1px 1px at 55% 20%,rgba(255,255,255,.5) 0%,transparent 100%),
+    radial-gradient(1px 1px at 75% 60%,rgba(255,255,255,.3) 0%,transparent 100%),
+    radial-gradient(1px 1px at 90% 40%,rgba(255,255,255,.5) 0%,transparent 100%)}
 
-/* NAV */
-nav{background:rgba(4,8,15,.97);border-bottom:1px solid var(--border);height:62px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-shrink:0;position:sticky;top:0;z-index:100}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:.1em;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:.45rem}
-.logo span{color:var(--accent)}
-.logo svg{fill:var(--accent);width:1.3em;height:1.3em}
-@keyframes flt{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-3px)}}
-.nav-badge{background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.35);color:var(--red);font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:.22rem .7rem}
-.nav-mid{display:flex;align-items:center;gap:.6rem}
-.nav-greet{font-size:.8rem;color:var(--mist)}
-.nav-greet b{color:var(--white)}
-.nav-right{display:flex;align-items:center;gap:.6rem}
-.nbtn{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.42rem 1rem;font-family:'DM Sans',sans-serif;font-size:.76rem;cursor:pointer;transition:all .2s;letter-spacing:.04em;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center}
-.nbtn:hover{border-color:var(--accent);color:var(--accent)}
-.nbtn.red:hover{border-color:var(--red);color:var(--red)}
-.nbtn.go{background:rgba(232,160,32,.1);border-color:var(--accent);color:var(--accent)}
+/* ── APP LAYOUT ────────────────────────────────────────────── */
+.app{display:grid;grid-template-columns:220px 1fr;height:100vh;overflow:hidden}
 
-/* LAYOUT */
-.wrap{flex:1;display:grid;grid-template-columns:230px 1fr;min-height:0}
+/* ── SIDEBAR ───────────────────────────────────────────────── */
+.sb{background:var(--deep);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sb::-webkit-scrollbar{width:3px}
+.sb::-webkit-scrollbar-thumb{background:var(--border2)}
+.sb-logo{padding:1rem 1.1rem .8rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.sb-logo-txt{font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.1em;color:var(--white)}
+.sb-logo-txt span{color:var(--accent)}
+.sb-logo-sub{font-size:.56rem;letter-spacing:.2em;text-transform:uppercase;color:var(--mist2);margin-top:1px}
+.sb-user{padding:.7rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.6rem;flex-shrink:0}
+.sb-av{width:30px;height:30px;border-radius:50%;background:rgba(232,160,32,.12);border:1.5px solid rgba(232,160,32,.35);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem;color:var(--accent);flex-shrink:0;text-transform:uppercase}
+.sb-uname{font-size:.75rem;font-weight:600;color:var(--white)}
+.sb-urole{font-size:.56rem;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
+.sb-greet{font-size:.58rem;color:var(--mist);margin-top:1px;line-height:1.3}
+.sb-kpis{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-shrink:0}
+.sb-k{background:var(--deep);padding:.6rem .7rem;text-align:center}
+.sb-kv{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;line-height:1}
+.sb-kv.ka{color:var(--accent)}.sb-kv.kg{color:var(--green)}.sb-kv.kr{color:var(--red)}.sb-kv.kb{color:var(--blue)}
+.sb-kl{font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist2);margin-top:1px}
+.sb-section{padding:.6rem 0 .2rem}
+.sb-sec-lbl{font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--mist2);padding:.2rem 1.1rem .3rem;font-weight:600}
+.sn{display:flex;align-items:center;gap:.55rem;padding:.55rem 1.1rem;font-size:.73rem;color:var(--mist);cursor:pointer;transition:all .15s;border-left:2px solid transparent;user-select:none}
+.sn:hover{color:var(--white);background:rgba(255,255,255,.02)}
+.sn.active{color:var(--white);background:rgba(232,160,32,.05);border-left-color:var(--accent)}
+.sn-ico{font-size:12px;width:16px;text-align:center;flex-shrink:0;opacity:.75}
+.sn.active .sn-ico{opacity:1}
+.sn-cnt{margin-left:auto;font-size:.52rem;font-weight:700;padding:.12rem .38rem;border-radius:6px}
+.sn-cnt.cna{background:rgba(249,115,22,.15);color:var(--orange)}
+.sn-cnt.cng{background:rgba(34,197,94,.12);color:var(--green)}
+.sn-cnt.cnb{background:rgba(96,165,250,.12);color:var(--blue)}
+.sb-footer{margin-top:auto;border-top:1px solid var(--border);padding:.8rem 1.1rem;flex-shrink:0}
+.sb-logout{display:flex;align-items:center;gap:.5rem;font-size:.72rem;color:var(--mist2);cursor:pointer;transition:color .15s;background:none;border:none;width:100%;padding:0}
+.sb-logout:hover{color:var(--red)}
 
-/* SIDEBAR */
-.sidebar{background:var(--deep);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
-.sb-profile{padding:1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.8rem}
-.sb-av{width:40px;height:40px;border-radius:50%;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;color:var(--red);flex-shrink:0}
-.sb-nm{font-size:.84rem;font-weight:600;color:var(--white)}
-.sb-role{font-size:.6rem;color:var(--red);letter-spacing:.1em;text-transform:uppercase;margin-top:.1rem}
-.sb-kpis{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
-.sb-k{background:var(--card);padding:.65rem .9rem}
-.sb-kv{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;line-height:1;color:var(--white)}
-.sb-kl{font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist2);margin-top:.1rem}
-.ko{color:var(--orange)!important}
-.kg{color:var(--green)!important}
-.kr{color:var(--red)!important}
-.kb{color:var(--blue)!important}
-.ka{color:var(--accent)!important}
-.sb-nav{padding:.5rem 0;flex:1}
-.sb-sep{font-size:.56rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mist2);padding:.8rem 1.2rem .3rem;font-weight:600}
-.sn{display:flex;align-items:center;gap:.6rem;padding:.68rem 1.2rem;color:var(--mist);font-size:.82rem;cursor:pointer;transition:all .18s;border-left:2px solid transparent;user-select:none}
-.sn:hover{color:var(--white);background:rgba(255,255,255,.025)}
-.sn.active{color:var(--accent);border-left-color:var(--accent);background:rgba(232,160,32,.05)}
-.sn .ico{font-size:.88rem;width:18px;text-align:center;flex-shrink:0}
-.sn-cnt{margin-left:auto;font-size:.58rem;font-weight:700;padding:.1rem .42rem;border-radius:7px;min-width:19px;text-align:center}
-.cno{background:var(--orange);color:#fff}
-.cng{background:var(--green);color:var(--deep)}
-.cnr{background:var(--red);color:#fff}
-.cna{background:var(--accent);color:var(--deep)}
+/* ── MAIN CONTENT ──────────────────────────────────────────── */
+.main{display:flex;flex-direction:column;overflow:hidden;height:100vh}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:.65rem 1.3rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.tb-title{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.06em}
+.tb-title em{font-style:normal;color:var(--accent)}
+.tb-right{display:flex;align-items:center;gap:.5rem}
+.tb-search{background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);padding:.42rem .75rem;font-family:'DM Sans',sans-serif;font-size:.76rem;outline:none;transition:border-color .2s;width:200px}
+.tb-search:focus{border-color:var(--accent)}
+.tb-search::placeholder{color:var(--mist2)}
+.tb-btn{background:transparent;border:1px solid var(--border2);color:var(--mist);padding:.38rem .8rem;font-family:'DM Sans',sans-serif;font-size:.7rem;cursor:pointer;transition:all .15s;letter-spacing:.04em;text-transform:uppercase}
+.tb-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tb-btn.primary{background:var(--accent);color:var(--deep);border-color:var(--accent);font-weight:600}
+.tb-btn.primary:hover{background:var(--gold)}
 
-/* MAIN */
-.main{overflow-y:auto;padding:1.5rem;display:flex;flex-direction:column;gap:1rem}
-.sec{display:none;flex-direction:column;gap:1rem}
-.sec.on{display:flex}
+/* ── SECTIONS ──────────────────────────────────────────────── */
+.sec{display:none;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden;padding:1.2rem}
+.sec.on{display:flex;flex-direction:column}
+.sec::-webkit-scrollbar{width:4px}
+.sec::-webkit-scrollbar-thumb{background:var(--border2)}
+.sec-gap{display:flex;flex-direction:column;gap:1rem}
 
-/* HEADER */
-.ph{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem}
-.pt{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.06em}
-.pt em{font-style:normal;color:var(--accent)}
+/* ── KPI STRIP ─────────────────────────────────────────────── */
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
+.kc{background:var(--card);padding:.85rem 1rem;position:relative;overflow:hidden}
+.kc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kc.a::after{background:var(--accent)}.kc.g::after{background:var(--green)}.kc.r::after{background:var(--red)}.kc.b::after{background:var(--blue)}.kc.p::after{background:var(--purple)}
+.kl{font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mist2);margin-bottom:.3rem}
+.kv{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--white);line-height:1;letter-spacing:.04em}
+.ks{font-size:.58rem;color:var(--mist);margin-top:.15rem}
 
-/* KPI GRID */
-.krow{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)}
-.kc{background:var(--card);padding:1rem;position:relative}
-.kc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--border)}
-.kc.a::before{background:var(--accent)}
-.kc.g::before{background:var(--green)}
-.kc.r::before{background:var(--red)}
-.kc.b::before{background:var(--blue)}
-.kc.p::before{background:var(--purple)}
-.kc.t::before{background:var(--teal)}
-.kl{font-size:.58rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mist2);margin-bottom:.45rem}
-.kv{font-family:'Bebas Neue',sans-serif;font-size:2.1rem;color:var(--white);line-height:1;letter-spacing:.04em}
-.ks{font-size:.63rem;color:var(--mist);margin-top:.2rem}
-
-/* CHART */
-.chart{background:var(--card);border:1px solid var(--border);padding:1rem}
-.chart-ttl{font-size:.75rem;font-weight:600;color:var(--white);margin-bottom:.9rem;display:flex;justify-content:space-between;align-items:center}
-.chart-bars{display:flex;gap:4px;align-items:flex-end;height:90px;border-bottom:1px solid var(--border);padding-bottom:2px}
-.cbar-g{flex:1;display:flex;flex-direction:column;align-items:center;position:relative}
-.cbar{width:100%;border-radius:1px 1px 0 0;min-height:2px;cursor:pointer;transition:opacity .15s}
-.cbar:hover{opacity:.7}
-.cbar-l{font-size:.5rem;color:var(--mist2);margin-top:4px;white-space:nowrap}
-.chart-leg{display:flex;gap:14px;margin-top:.6rem;flex-wrap:wrap}
-.cleg{display:flex;align-items:center;gap:.3rem;font-size:.65rem;color:var(--mist)}
-.cleg-dot{width:8px;height:8px;border-radius:1px;flex-shrink:0}
-
-/* TABLE */
-.tbl{background:var(--card);border:1px solid var(--border);overflow-x:auto}
-.tbl-hd{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:.6rem}
-.tbl-ttl{font-size:.78rem;font-weight:600;color:var(--white)}
-.tbl-acts{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
-.tsrch{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);padding:.35rem .75rem;font-family:'DM Sans',sans-serif;font-size:.76rem;outline:none;width:190px}
-.tsrch:focus{border-color:var(--accent)}
-.tsrch::placeholder{color:var(--mist2)}
-.tsel{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--mist);padding:.35rem .6rem;font-family:'DM Sans',sans-serif;font-size:.74rem;outline:none;cursor:pointer}
-table{width:100%;border-collapse:collapse;font-size:.78rem}
-thead th{background:var(--horizon);padding:.62rem 1rem;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);font-weight:500;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
-tbody td{padding:.65rem 1rem;border-bottom:1px solid var(--border);color:var(--mist);vertical-align:middle}
-tbody tr:hover td{background:rgba(255,255,255,.018)}
-tbody tr:last-child td{border-bottom:none}
-.tb{color:var(--white);font-weight:500}
-
-/* PILLS */
-.pill{font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .55rem;display:inline-flex;align-items:center;white-space:nowrap}
-.p-pend{background:rgba(249,115,22,.12);color:var(--orange);border:1px solid rgba(249,115,22,.25)}
-.p-appr{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}
-.p-reje{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
-.p-actv{background:rgba(96,165,250,.1);color:var(--blue);border:1px solid rgba(96,165,250,.2)}
-.p-susp{background:rgba(100,116,139,.1);color:#64748b;border:1px solid rgba(100,116,139,.2)}
-.p-free{background:rgba(139,92,246,.1);color:var(--purple);border:1px solid rgba(139,92,246,.2)}
-.p-avia{background:rgba(232,160,32,.12);color:var(--accent);border:1px solid rgba(232,160,32,.25)}
-.p-pro{background:rgba(45,212,191,.1);color:var(--teal);border:1px solid rgba(45,212,191,.2)}
-
-/* BTNS */
-.ba{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.27rem .6rem;font-size:.68rem;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap}
-.ba:hover{border-color:var(--accent);color:var(--accent)}
-.ba.d:hover{border-color:var(--red);color:var(--red)}
-.ba.g:hover{border-color:var(--green);color:var(--green)}
-.ba.r{background:var(--red);color:#fff;border-color:var(--red)}
-.ba.ok{background:rgba(34,197,94,.1);color:var(--green);border-color:rgba(34,197,94,.3)}
-.brow{display:flex;gap:.3rem;flex-wrap:nowrap}
-
-/* PERIOD BTNS */
-.period-btn{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.32rem .7rem;font-family:'DM Sans',sans-serif;font-size:.7rem;cursor:pointer;transition:all .15s}
-.period-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.07)}
-
-/* EMPTY */
-.empty{text-align:center;padding:3rem 1rem;background:var(--card);border:1px solid var(--border)}
-.empty-ic{font-size:2.8rem;opacity:.1;margin-bottom:.8rem}
-.empty-ti{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.06em;color:var(--white);margin-bottom:.4rem}
-.empty-su{font-size:.76rem;color:var(--mist);line-height:1.7;max-width:400px;margin:0 auto}
-
-/* 2-COL GRID */
+/* ── GRID 2 COL ────────────────────────────────────────────── */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+.g13{display:grid;grid-template-columns:1.4fr 1fr;gap:1rem}
 
-/* TOAST */
-.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);padding:.85rem 1.3rem;color:var(--white);font-size:.84rem;z-index:9998;opacity:0;transform:translateY(20px);transition:all .3s;pointer-events:none;max-width:320px}
+/* ── CARD ──────────────────────────────────────────────────── */
+.card{background:var(--card);border:1px solid var(--border)}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;border-bottom:1px solid var(--border)}
+.card-title{font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--white)}
+.card-action{font-size:.62rem;color:var(--accent);cursor:pointer;background:none;border:none;transition:opacity .15s}
+.card-action:hover{opacity:.7}
+.card-body{padding:.8rem 1rem}
+
+/* ── TABLE ─────────────────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.76rem}
+thead th{background:var(--horizon);padding:.55rem .85rem;font-size:.57rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);font-weight:500;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:.6rem .85rem;border-bottom:1px solid var(--border);color:var(--mist);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.012)}
+.td-w{color:var(--white)!important;font-weight:500}
+.td-price{font-family:'Bebas Neue',sans-serif;color:var(--gold)!important;font-size:.95rem}
+.td-id{color:var(--mist2)!important;font-size:.64rem;font-family:'DM Sans',monospace}
+.td-thumb{width:28px;height:28px;background:var(--horizon);display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+.td-with-thumb{display:flex;align-items:center;gap:.55rem}
+
+/* ── PILLS ─────────────────────────────────────────────────── */
+.pill{font-size:.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.17rem .5rem;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;flex-shrink:0}
+.pill::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.p-pend{background:rgba(249,115,22,.1);color:var(--orange);border:1px solid rgba(249,115,22,.2)}.p-pend::before{background:var(--orange);animation:blink 1.5s infinite}
+.p-live{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}.p-live::before{background:var(--green)}
+.p-rejt{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}.p-rejt::before{background:var(--red)}
+.p-ess{background:rgba(255,255,255,.05);color:var(--mist2);border:1px solid var(--border)}.p-ess::before{background:var(--mist2)}
+.p-avi{background:rgba(232,160,32,.1);color:var(--accent);border:1px solid rgba(232,160,32,.2)}.p-avi::before{background:var(--accent)}
+.p-pro{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.2)}.p-pro::before{background:var(--purple)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── ACTION BUTTONS ────────────────────────────────────────── */
+.acts{display:flex;gap:.3rem;flex-wrap:nowrap}
+.act{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.22rem .52rem;font-size:.62rem;cursor:pointer;transition:all .13s;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.act:hover{border-color:var(--accent);color:var(--accent)}
+.act.ap:hover{border-color:var(--green);color:var(--green)}
+.act.rj:hover{border-color:var(--red);color:var(--red)}
+.act.dl:hover{border-color:var(--red);color:var(--red)}
+
+/* ── CHART BARS ────────────────────────────────────────────── */
+.chart-wrap{padding:.8rem 1rem}
+.chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;flex-wrap:wrap;gap:.4rem}
+.chart-lbl{font-size:.65rem;font-weight:500;color:var(--white)}
+.chart-legend{display:flex;gap:.8rem}
+.chart-leg-item{display:flex;align-items:center;gap:.3rem;font-size:.58rem;color:var(--mist2)}
+.chart-leg-dot{width:8px;height:2px;flex-shrink:0}
+.chart-bars{display:flex;gap:3px;align-items:flex-end;height:90px;border-bottom:1px solid var(--border);margin-bottom:.3rem}
+.cbar-g{flex:1;display:flex;flex-direction:column;align-items:center;gap:0}
+.cbar{width:100%;border-radius:1px 1px 0 0;min-height:2px;cursor:pointer;transition:opacity .15s}
+.cbar:hover{opacity:.75}
+.cbar-l{font-size:.48rem;color:var(--mist2);margin-top:3px}
+.chart-period{display:flex;gap:.25rem}
+.cp-btn{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.2rem .5rem;font-size:.6rem;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.cp-btn.on{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.07)}
+
+/* ── MINI LIST ─────────────────────────────────────────────── */
+.mini-list{display:flex;flex-direction:column}
+.ml-item{display:flex;align-items:center;gap:.6rem;padding:.55rem .85rem;border-bottom:1px solid var(--border);transition:background .13s;cursor:default}
+.ml-item:last-child{border-bottom:none}
+.ml-item:hover{background:rgba(255,255,255,.015)}
+.ml-av{width:28px;height:28px;border-radius:50%;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.25);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:var(--accent);flex-shrink:0;text-transform:uppercase}
+.ml-info{flex:1;min-width:0}
+.ml-name{font-size:.76rem;font-weight:500;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ml-sub{font-size:.62rem;color:var(--mist2)}
+.ml-right{display:flex;flex-direction:column;align-items:flex-end;gap:.15rem}
+.ml-price{font-family:'Bebas Neue',sans-serif;font-size:.95rem;color:var(--gold)}
+.ml-date{font-size:.58rem;color:var(--mist2)}
+
+/* ── STAT ROW ──────────────────────────────────────────────── */
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.76rem}
+.stat-row:last-child{border-bottom:none}
+.stat-lbl{color:var(--mist2)}
+.stat-val{color:var(--white);font-weight:500}
+.stat-val.acc{color:var(--accent)}.stat-val.g{color:var(--green)}.stat-val.r{color:var(--red)}
+
+/* ── TOOLBAR ───────────────────────────────────────────────── */
+.sec-toolbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:0}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;flex:1}
+.sec-title em{font-style:normal;color:var(--accent)}
+.filter-inp{background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);padding:.38rem .7rem;font-family:'DM Sans',sans-serif;font-size:.74rem;outline:none;transition:border-color .2s}
+.filter-inp:focus{border-color:var(--accent)}
+.filter-inp::placeholder{color:var(--mist2)}
+.filter-sel{background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);padding:.38rem .7rem;font-family:'DM Sans',sans-serif;font-size:.74rem;outline:none;cursor:pointer}
+.filter-sel option{background:#0c1826}
+
+/* ── MODAL ─────────────────────────────────────────────────── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:none;align-items:center;justify-content:center}
+.modal-backdrop.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border2);width:100%;max-width:540px;max-height:90vh;overflow-y:auto;animation:modalIn .2s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:.85rem 1.1rem;border-bottom:1px solid var(--border)}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.06em}
+.modal-title em{font-style:normal;color:var(--accent)}
+.modal-close{background:none;border:none;color:var(--mist);font-size:1.1rem;cursor:pointer;padding:.2rem;transition:color .15s}
+.modal-close:hover{color:var(--red)}
+.modal-body{padding:1.1rem}
+.mfg{margin-bottom:.85rem}
+.mfg label{display:block;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);margin-bottom:.32rem}
+.mfg input,.mfg select,.mfg textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);padding:.6rem .85rem;font-family:'DM Sans',sans-serif;font-size:.82rem;outline:none;transition:border-color .2s}
+.mfg input:focus,.mfg select:focus,.mfg textarea:focus{border-color:var(--accent)}
+.mfg select option{background:#0c1826}
+.mfg textarea{resize:vertical;min-height:80px}
+.mfg2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.modal-footer{display:flex;gap:.5rem;justify-content:flex-end;padding:.85rem 1.1rem;border-top:1px solid var(--border)}
+.m-btn{background:transparent;border:1px solid var(--border2);color:var(--mist);padding:.55rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.76rem;cursor:pointer;transition:all .2s}
+.m-btn:hover{border-color:var(--accent);color:var(--accent)}
+.m-btn.primary{background:var(--accent);color:var(--deep);border-color:var(--accent);font-weight:600}
+.m-btn.primary:hover{background:var(--gold)}
+.m-btn.danger{background:transparent;border-color:rgba(239,68,68,.35);color:var(--red)}
+.m-btn.danger:hover{background:rgba(239,68,68,.08)}
+
+/* ── EMPTY STATE ───────────────────────────────────────────── */
+.empty-state{text-align:center;padding:3rem 1rem;display:flex;flex-direction:column;align-items:center;gap:.5rem}
+.es-ic{font-size:2rem;opacity:.1;margin-bottom:.3rem}
+.es-t{font-size:.82rem;font-weight:500;color:var(--white)}
+.es-s{font-size:.7rem;color:var(--mist);line-height:1.6}
+
+/* ── TOAST ─────────────────────────────────────────────────── */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--card);border:1px solid var(--accent);padding:.75rem 1.2rem;color:var(--white);font-size:.8rem;z-index:9999;opacity:0;transform:translateY(16px);transition:all .25s;pointer-events:none;max-width:300px}
 .toast.show{opacity:1;transform:translateY(0)}
 
-/* SETTINGS */
-.settings-card{background:var(--card);border:1px solid var(--border);padding:1.2rem}
-.settings-lbl{font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:.9rem;display:flex;align-items:center;gap:.5rem}
-.settings-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
-.sfg{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.9rem}
-.sfg label{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mist)}
-.sfg input,.sfg select,.sfg textarea{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);padding:.65rem .9rem;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;transition:border-color .2s;width:100%}
-.sfg input:focus,.sfg select:focus,.sfg textarea:focus{border-color:var(--accent)}
-.sfg textarea{resize:vertical;min-height:80px}
-.btn-save{background:var(--accent);color:var(--deep);border:none;padding:.6rem 1.3rem;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.1em;cursor:pointer;transition:background .2s}
-.btn-save:hover{background:var(--gold)}
-.btn-danger{background:transparent;border:1px solid rgba(239,68,68,.4);color:var(--red);padding:.55rem 1.2rem;font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;transition:all .2s}
-.btn-danger:hover{background:rgba(239,68,68,.1)}
-.danger-zone{background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);padding:1rem}
+/* ── REVENUE ───────────────────────────────────────────────── */
+.plan-row{display:flex;align-items:center;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid var(--border);font-size:.76rem}
+.plan-row:last-child{border-bottom:none}
+.plan-name-badge{display:flex;align-items:center;gap:.5rem}
+.rev-bar-wrap{flex:1;margin:0 1rem;height:4px;background:rgba(255,255,255,.06)}
+.rev-bar{height:100%;background:var(--accent);transition:width .5s}
+
+/* ── SETTINGS ──────────────────────────────────────────────── */
+.set-section{background:var(--card);border:1px solid var(--border);margin-bottom:1rem}
+.set-sec-hd{padding:.7rem 1rem;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:.5rem}
+.set-sec-hd::after{content:'';flex:1;height:1px;background:var(--border)}
+.set-body{padding:.85rem 1rem}
+.set-row{display:flex;align-items:center;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.76rem}
+.set-row:last-child{border-bottom:none}
+.set-lbl{color:var(--mist2);flex:1}
+.set-val{color:var(--white);text-align:right}
+.danger-zone{background:rgba(239,68,68,.04);border:1px solid rgba(239,68,68,.18);padding:.85rem 1rem}
+.dz-desc{font-size:.74rem;color:var(--mist);margin-bottom:.8rem;line-height:1.6}
+.dz-actions{display:flex;gap:.5rem;flex-wrap:wrap}
 </style>
 </head>
 <body>
 
 <!-- LOGIN OVERLAY -->
-<div class="overlay" id="loginOverlay">
-  <div class="lb">
-    <div class="lb-hd">
-      <div class="lb-icon">&#128736;</div>
-      <div class="lb-title">Administration</div>
-      <div class="lb-sub">Aircraft2Sell &mdash; Acc&egrave;s administrateur</div>
-    </div>
-    <div class="lb-body">
-      <div class="fg">
-        <label>Email administrateur</label>
-        <input type="email" id="aEmail" placeholder="contact.aircraft2sell@gmail.com" autocomplete="username">
-      </div>
-      <div class="fg">
-        <label>Mot de passe</label>
-        <input type="password" id="aPw" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-      </div>
-      <button class="btn-login" onclick="doLogin()">Acc&eacute;der au panneau admin</button>
-      <div class="lb-err" id="loginErr"></div>
-      <div class="lb-note">
-        &#9888; Acc&egrave;s r&eacute;serv&eacute; aux administrateurs.<br>
-        Mod&eacute;rateurs : <a href="moderation.html" style="color:var(--orange);text-decoration:none">espace mod&eacute;ration &rarr;</a>
-      </div>
-    </div>
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-stars"></div>
+  <div class="login-box">
+    <div class="lb-logo">Aircraft2<span>Sell</span></div>
+    <div class="lb-sub">Panneau d'administration</div>
+    <label class="lb-lbl">Email administrateur</label>
+    <input type="email" class="lb-inp" id="aEmail" placeholder="contact.aircraft2sell@gmail.com" onkeydown="if(event.key==='Enter')doLogin()">
+    <label class="lb-lbl">Mot de passe</label>
+    <input type="password" class="lb-inp" id="aPw" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="lb-btn" onclick="doLogin()">Accéder à l'administration</button>
+    <div class="lb-err" id="loginErr"></div>
   </div>
 </div>
 
-<!-- NAV -->
-<nav>
-  <a href="homepage.html" class="logo">
-    <svg viewBox="0 0 64 64" style="animation:flt 4s ease-in-out infinite" xmlns="http://www.w3.org/2000/svg"><path d="M60 22c0-2-2-4-5-4l-12 1-16-14H18l8 14-14 1-5-6H2l3 10-3 10h5l5-6 14 1-8 14h9l16-14 12 1c3 0 5-2 5-4v-3z"/></svg>
-    Aircraft2<span>Sell</span>
-  </a>
-  <div class="nav-mid">
-    <div class="nav-badge">ADMIN</div>
-    <div class="nav-greet" id="navGreet"></div>
-  </div>
-  <div class="nav-right">
-    <a href="moderation.html" class="nbtn go">Mod&eacute;ration &#8594;</a>
-    <a href="homepage.html" class="nbtn">&#8592; Site public</a>
-    <button class="nbtn red" onclick="doLogout()">D&eacute;connexion</button>
-  </div>
-</nav>
-
-<!-- WRAP -->
-<div class="wrap">
+<!-- APP -->
+<div class="app">
 
   <!-- SIDEBAR -->
-  <div class="sidebar">
-    <div class="sb-profile">
+  <aside class="sb">
+    <div class="sb-logo">
+      <div class="sb-logo-txt">Aircraft2<span>Sell</span></div>
+      <div class="sb-logo-sub">Admin Panel</div>
+    </div>
+    <div class="sb-user">
       <div class="sb-av">R</div>
       <div>
-        <div class="sb-nm">Romain</div>
-        <div class="sb-role">&#9888; Administrateur</div>
+        <div class="sb-uname">Romain</div>
+        <div class="sb-urole">Super Admin</div>
+        <div class="sb-greet" id="navGreet">Bonjour</div>
       </div>
     </div>
     <div class="sb-kpis">
       <div class="sb-k"><div class="sb-kv ka" id="sk-listings">0</div><div class="sb-kl">Annonces</div></div>
-      <div class="sb-k"><div class="sb-kv" id="sk-users">0</div><div class="sb-kl">Membres</div></div>
-      <div class="sb-k"><div class="sb-kv kg" id="sk-mrr">0&euro;</div><div class="sb-kl">MRR</div></div>
-      <div class="sb-k"><div class="sb-kv ko" id="sk-pending">0</div><div class="sb-kl">En attente</div></div>
+      <div class="sb-k"><div class="sb-kv kg" id="sk-users">0</div><div class="sb-kl">Membres</div></div>
+      <div class="sb-k"><div class="sb-kv kr" id="sk-pending">0</div><div class="sb-kl">En attente</div></div>
+      <div class="sb-k"><div class="sb-kv kb" id="sk-mrr">0€</div><div class="sb-kl">MRR</div></div>
     </div>
-    <nav class="sb-nav">
-      <div class="sb-sep">Principal</div>
-      <div class="sn active" id="sn-dashboard" onclick="goSec('dashboard',this)"><span class="ico">&#128202;</span>Tableau de bord</div>
-      <div class="sn" id="sn-listings" onclick="goSec('listings',this)"><span class="ico">&#9992;</span>Annonces<span class="sn-cnt cna" id="cnt-listings">0</span></div>
-      <div class="sn" id="sn-users" onclick="goSec('users',this)"><span class="ico">&#128101;</span>Utilisateurs<span class="sn-cnt cng" id="cnt-users">0</span></div>
-      <div class="sn" id="sn-subscriptions" onclick="goSec('subscriptions',this)"><span class="ico">&#128179;</span>Abonnements<span class="sn-cnt cna" id="cnt-subs">0</span></div>
-      <div class="sb-sep">Finance</div>
-      <div class="sn" id="sn-revenue" onclick="goSec('revenue',this)"><span class="ico">&#128200;</span>Revenus</div>
-      <div class="sn" id="sn-invoices" onclick="goSec('invoices',this)"><span class="ico">&#129534;</span>Factures</div>
-      <div class="sb-sep">Op&eacute;rations</div>
-      <div class="sn" id="sn-moderation" onclick="window.location.href='moderation.html'"><span class="ico">&#9203;</span>Mod&eacute;ration<span class="sn-cnt cno" id="cnt-mod">0</span></div>
-      <div class="sn" id="sn-reports" onclick="goSec('reports',this)"><span class="ico">&#128681;</span>Signalements<span class="sn-cnt cnr" id="cnt-rep">0</span></div>
-      <div class="sn" id="sn-settings" onclick="goSec('settings',this)"><span class="ico">&#9881;</span>Param&egrave;tres</div>
-    </nav>
-  </div>
+    <div class="sb-section">
+      <div class="sb-sec-lbl">Vue d'ensemble</div>
+      <div class="sn active" id="sn-dashboard" onclick="goSec('dashboard',this)"><span class="sn-ico">◼</span>Dashboard</div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-sec-lbl">Contenu</div>
+      <div class="sn" id="sn-listings" onclick="goSec('listings',this)"><span class="sn-ico">✈</span>Annonces<span class="sn-cnt cna" id="cnt-listings">0</span></div>
+      <div class="sn" id="sn-moderation" onclick="goSec('moderation',this)"><span class="sn-ico">⏳</span>Modération<span class="sn-cnt cna" id="cnt-mod">0</span></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-sec-lbl">Membres</div>
+      <div class="sn" id="sn-users" onclick="goSec('users',this)"><span class="sn-ico">◉</span>Utilisateurs<span class="sn-cnt cng" id="cnt-users">0</span></div>
+      <div class="sn" id="sn-subscriptions" onclick="goSec('subscriptions',this)"><span class="sn-ico">◈</span>Abonnements<span class="sn-cnt cnb" id="cnt-subs">0</span></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-sec-lbl">Finance</div>
+      <div class="sn" id="sn-revenue" onclick="goSec('revenue',this)"><span class="sn-ico">€</span>Revenus</div>
+      <div class="sn" id="sn-invoices" onclick="goSec('invoices',this)"><span class="sn-ico">▤</span>Factures</div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-sec-lbl">Système</div>
+      <div class="sn" id="sn-reports" onclick="goSec('reports',this)"><span class="sn-ico">⚑</span>Signalements<span class="sn-cnt cna" id="cnt-rep">0</span></div>
+      <div class="sn" id="sn-settings" onclick="goSec('settings',this)"><span class="sn-ico">⚙</span>Paramètres</div>
+    </div>
+    <div class="sb-footer">
+      <button class="sb-logout" onclick="doLogout()"><span style="font-size:11px">←</span> Déconnexion</button>
+    </div>
+  </aside>
 
   <!-- MAIN -->
   <div class="main">
+    <div class="topbar">
+      <div class="tb-title" id="pageTitle">Tableau de <em>bord</em></div>
+      <div class="tb-right">
+        <input type="text" class="tb-search" id="globalSearch" placeholder="Rechercher annonce, membre…" oninput="doGlobalSearch(this.value)">
+        <button class="tb-btn" onclick="refreshAll()">↺ Actualiser</button>
+        <a href="homepage.html" target="_blank" class="tb-btn">↗ Voir le site</a>
+      </div>
+    </div>
 
-    <!-- DASHBOARD -->
+    <!-- ── DASHBOARD ───────────────────────────────────────── -->
     <div class="sec on" id="sec-dashboard">
-      <div class="ph">
-        <div class="pt">Tableau de <em>bord</em></div>
-        <div style="display:flex;gap:.3rem">
-          <button class="period-btn on" onclick="setPeriod(7,this)">7j</button>
-          <button class="period-btn" onclick="setPeriod(30,this)">30j</button>
-          <button class="period-btn" onclick="setPeriod(90,this)">90j</button>
+      <div class="sec-gap">
+        <div class="krow">
+          <div class="kc a"><div class="kl">Annonces actives</div><div class="kv" id="dkv-live">0</div><div class="ks">Publiées</div></div>
+          <div class="kc g"><div class="kl">Membres</div><div class="kv" id="dkv-users">0</div><div class="ks">Inscrits</div></div>
+          <div class="kc r"><div class="kl">À modérer</div><div class="kv" id="dkv-pending">0</div><div class="ks">En attente</div></div>
+          <div class="kc b"><div class="kl">MRR estimé</div><div class="kv" id="dkv-mrr">0€</div><div class="ks">Ce mois</div></div>
         </div>
-      </div>
-      <div class="krow">
-        <div class="kc a"><div class="kl">Annonces actives</div><div class="kv">0</div><div class="ks">Publi&eacute;es</div></div>
-        <div class="kc g"><div class="kl">Membres</div><div class="kv">0</div><div class="ks">Inscrits</div></div>
-        <div class="kc r"><div class="kl">En attente</div><div class="kv">0</div><div class="ks">&Agrave; mod&eacute;rer</div></div>
-        <div class="kc b"><div class="kl">Abonn&eacute;s payants</div><div class="kv">0</div><div class="ks">Aviateur + Pro</div></div>
-        <div class="kc p"><div class="kl">MRR</div><div class="kv">0&euro;</div><div class="ks">Revenus mensuels</div></div>
-        <div class="kc t"><div class="kl">Nouveaux ce mois</div><div class="kv">0</div><div class="ks">Inscriptions</div></div>
-      </div>
-      <div class="g2">
-        <div class="chart"><div class="chart-ttl">Inscriptions<span style="font-size:.62rem;color:var(--mist2)">7 derniers jours</span></div><div class="chart-bars" id="ch-signups"></div><div class="chart-leg"><div class="cleg"><div class="cleg-dot" style="background:var(--blue)"></div>Inscrits</div></div></div>
-        <div class="chart"><div class="chart-ttl">Revenus (&euro;)<span style="font-size:.62rem;color:var(--mist2)">7 derniers jours</span></div><div class="chart-bars" id="ch-revenue"></div><div class="chart-leg"><div class="cleg"><div class="cleg-dot" style="background:var(--green)"></div>MRR</div></div></div>
-      </div>
-      <div class="g2">
-        <div class="tbl">
-          <div class="tbl-hd"><div class="tbl-ttl">Derni&egrave;res annonces soumises</div><button class="ba" onclick="goSec('listings',document.getElementById('sn-listings'))">Voir tout &rarr;</button></div>
-          <div class="empty"><div class="empty-ic">&#128203;</div><div class="empty-ti">Aucune ann&eacute;e</div><div class="empty-su">Connectez Supabase pour voir les donn&eacute;es.</div></div>
+        <div class="g13">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Activité — vues et inscriptions</div>
+              <div class="chart-period">
+                <button class="cp-btn on" onclick="setChartPeriod(7,this)">7j</button>
+                <button class="cp-btn" onclick="setChartPeriod(30,this)">30j</button>
+                <button class="cp-btn" onclick="setChartPeriod(90,this)">90j</button>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <div class="chart-legend">
+                <div class="chart-leg-item"><div class="chart-leg-dot" style="background:var(--accent)"></div>Annonces soumises</div>
+                <div class="chart-leg-item"><div class="chart-leg-dot" style="background:var(--blue)"></div>Inscriptions</div>
+              </div>
+              <div class="chart-bars" id="ch-main"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">Répartition par plan</div></div>
+            <div class="card-body" id="plan-stats">
+              <div class="plan-row"><div class="plan-name-badge"><span class="pill p-ess">Essentiel</span></div><div class="rev-bar-wrap"><div class="rev-bar" id="bar-ess" style="width:0%"></div></div><span style="font-size:.72rem;color:var(--white);font-weight:500" id="cnt-ess">0</span></div>
+              <div class="plan-row"><div class="plan-name-badge"><span class="pill p-avi">Aviateur</span></div><div class="rev-bar-wrap"><div class="rev-bar" id="bar-avi" style="width:0%;background:var(--accent)"></div></div><span style="font-size:.72rem;color:var(--white);font-weight:500" id="cnt-avi">0</span></div>
+              <div class="plan-row"><div class="plan-name-badge"><span class="pill p-pro">Pro</span></div><div class="rev-bar-wrap"><div class="rev-bar" id="bar-pro" style="width:0%;background:var(--purple)"></div></div><span style="font-size:.72rem;color:var(--white);font-weight:500" id="cnt-pro">0</span></div>
+            </div>
+          </div>
         </div>
-        <div class="tbl">
-          <div class="tbl-hd"><div class="tbl-ttl">Nouveaux membres</div><button class="ba" onclick="goSec('users',document.getElementById('sn-users'))">Voir tout &rarr;</button></div>
-          <div class="empty"><div class="empty-ic">&#128101;</div><div class="empty-ti">Aucun membre</div><div class="empty-su">Connectez Supabase.</div></div>
+        <div class="g2">
+          <div class="card">
+            <div class="card-head"><div class="card-title">Annonces récentes</div><button class="card-action" onclick="goSec('listings',document.getElementById('sn-listings'))">Voir tout →</button></div>
+            <div id="dash-listings-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">Nouveaux membres</div><button class="card-action" onclick="goSec('users',document.getElementById('sn-users'))">Voir tout →</button></div>
+            <div id="dash-users-list"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Annonces les plus vues</div></div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>#</th><th>Annonce</th><th>Catégorie</th><th>Prix</th><th>Vues</th><th>Demandes</th><th>Statut</th></tr></thead>
+            <tbody id="top-listings-body"></tbody>
+          </table></div>
         </div>
       </div>
     </div>
 
-    <!-- ANNONCES -->
+    <!-- ── ANNONCES ────────────────────────────────────────── -->
     <div class="sec" id="sec-listings">
-      <div class="ph">
-        <div class="pt">Toutes les <em>annonces</em></div>
-        <div class="tbl-acts">
-          <input class="tsrch" type="text" placeholder="Chercher une annonce&#8230;">
-          <select class="tsel"><option>Tous statuts</option><option>Publi&eacute;es</option><option>En attente</option><option>Rejet&eacute;es</option><option>Expir&eacute;es</option></select>
-          <select class="tsel"><option>Toutes cat&eacute;gories</option><option>Avions l&eacute;gers</option><option>Jets</option><option>H&eacute;licopt&egrave;res</option><option>Turboprops</option><option>ULM</option></select>
-          <button class="ba" onclick="showToast('Export CSV \u2014 disponible avec Supabase')">&#8595; Export</button>
+      <div class="sec-gap">
+        <div class="sec-toolbar">
+          <div class="sec-title">Toutes les <em>annonces</em></div>
+          <input type="text" class="filter-inp" id="ls-search" placeholder="Titre, marque, vendeur…" oninput="renderListings()">
+          <select class="filter-sel" id="ls-status" onchange="renderListings()">
+            <option value="">Tous statuts</option>
+            <option value="pending">En attente</option>
+            <option value="live">Publiées</option>
+            <option value="rejected">Rejetées</option>
+          </select>
+          <select class="filter-sel" id="ls-cat" onchange="renderListings()">
+            <option value="">Toutes catégories</option>
+            <option value="light">Avions légers</option>
+            <option value="jet">Jets</option>
+            <option value="turbo">Turboprops</option>
+            <option value="heli">Hélicoptères</option>
+            <option value="ulm">ULM</option>
+            <option value="airliner">Avion de ligne</option>
+          </select>
+          <button class="tb-btn primary" onclick="openNewListingModal()">+ Ajouter</button>
+          <button class="tb-btn" onclick="exportCSV('listings')">↓ Export CSV</button>
         </div>
-      </div>
-      <div class="krow">
-        <div class="kc a"><div class="kl">Totales</div><div class="kv">0</div></div>
-        <div class="kc g"><div class="kl">Publi&eacute;es</div><div class="kv">0</div></div>
-        <div class="kc r"><div class="kl">En attente</div><div class="kv">0</div></div>
-        <div class="kc b"><div class="kl">Expir&eacute;es</div><div class="kv">0</div></div>
-      </div>
-      <div class="tbl">
-        <div class="tbl-hd"><div class="tbl-ttl">Liste compl&egrave;te des annonces</div></div>
-        <table><thead><tr><th>ID</th><th>Titre</th><th>Cat&eacute;gorie</th><th>Vendeur</th><th>Prix</th><th>Vues</th><th>Statut</th><th>Soumis</th><th>Actions</th></tr></thead>
-        <tbody><tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mist);font-size:.78rem">Aucune annonce &mdash; connectez Supabase</td></tr></tbody></table>
-      </div>
-    </div>
-
-    <!-- UTILISATEURS -->
-    <div class="sec" id="sec-users">
-      <div class="ph">
-        <div class="pt">Gestion des <em>utilisateurs</em></div>
-        <div class="tbl-acts">
-          <input class="tsrch" type="text" placeholder="Nom, email&#8230;">
-          <select class="tsel"><option>Tous plans</option><option>Pro</option><option>Aviateur</option><option>Essentiel</option></select>
-          <select class="tsel"><option>Tous statuts</option><option>Actifs</option><option>Suspendus</option></select>
-          <button class="ba" onclick="showToast('Export CSV \u2014 disponible avec Supabase')">&#8595; Export</button>
+        <div class="krow" style="grid-template-columns:repeat(4,1fr)">
+          <div class="kc a"><div class="kl">Total</div><div class="kv" id="ls-kv-total">0</div></div>
+          <div class="kc g"><div class="kl">Publiées</div><div class="kv" id="ls-kv-live">0</div></div>
+          <div class="kc r"><div class="kl">En attente</div><div class="kv" id="ls-kv-pending">0</div></div>
+          <div class="kc b"><div class="kl">Rejetées</div><div class="kv" id="ls-kv-rejected">0</div></div>
         </div>
-      </div>
-      <div class="krow">
-        <div class="kc g"><div class="kl">Total membres</div><div class="kv">0</div></div>
-        <div class="kc a"><div class="kl">Abonn&eacute;s payants</div><div class="kv">0</div></div>
-        <div class="kc b"><div class="kl">Actifs ce mois</div><div class="kv">0</div></div>
-        <div class="kc r"><div class="kl">Suspendus</div><div class="kv">0</div></div>
-      </div>
-      <div class="tbl">
-        <div class="tbl-hd"><div class="tbl-ttl">Liste des membres</div></div>
-        <table><thead><tr><th>#</th><th>Nom</th><th>Email</th><th>Plan</th><th>Annonces</th><th>Inscription</th><th>Derni&egrave;re connexion</th><th>Statut</th><th>Actions</th></tr></thead>
-        <tbody><tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mist);font-size:.78rem">Aucun utilisateur &mdash; connectez Supabase</td></tr></tbody></table>
-      </div>
-    </div>
-
-    <!-- ABONNEMENTS -->
-    <div class="sec" id="sec-subscriptions">
-      <div class="ph"><div class="pt"><em>Abonnements</em> actifs</div></div>
-      <div class="krow">
-        <div class="kc t"><div class="kl">Pro actifs</div><div class="kv">0</div><div class="ks">79&euro;/mois</div></div>
-        <div class="kc a"><div class="kl">Aviateur actifs</div><div class="kv">0</div><div class="ks">29&euro;/mois</div></div>
-        <div class="kc g"><div class="kl">Essentiels</div><div class="kv">0</div><div class="ks">Gratuit</div></div>
-        <div class="kc p"><div class="kl">MRR Total</div><div class="kv">0&euro;</div><div class="ks">Mensuel</div></div>
-        <div class="kc b"><div class="kl">Churn ce mois</div><div class="kv">0</div><div class="ks">R&eacute;siliations</div></div>
-      </div>
-      <div class="g2">
-        <div class="tbl">
-          <div class="tbl-hd"><div class="tbl-ttl">Abonnements actifs</div></div>
-          <table><thead><tr><th>Membre</th><th>Plan</th><th>Montant</th><th>Prochain paiement</th><th>Statut</th><th>Action</th></tr></thead>
-          <tbody><tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--mist);font-size:.78rem">Aucun abonnement &mdash; connectez Stripe + Supabase</td></tr></tbody></table>
-        </div>
-        <div class="tbl">
-          <div class="tbl-hd"><div class="tbl-ttl">R&eacute;centes r&eacute;siliations</div></div>
-          <table><thead><tr><th>Membre</th><th>Plan</th><th>Motif</th><th>Date</th></tr></thead>
-          <tbody><tr><td colspan="4" style="text-align:center;padding:1.5rem;color:var(--mist);font-size:.78rem">Aucune</td></tr></tbody></table>
-        </div>
-      </div>
-    </div>
-
-    <!-- REVENUS -->
-    <div class="sec" id="sec-revenue">
-      <div class="ph">
-        <div class="pt"><em>Revenus</em> &amp; finances</div>
-        <div style="display:flex;gap:.3rem">
-          <button class="period-btn on" onclick="setPeriodRev(7,this)">7j</button>
-          <button class="period-btn" onclick="setPeriodRev(30,this)">30j</button>
-          <button class="period-btn" onclick="setPeriodRev(365,this)">12 mois</button>
-        </div>
-      </div>
-      <div class="krow">
-        <div class="kc g"><div class="kl">MRR</div><div class="kv">0&euro;</div></div>
-        <div class="kc a"><div class="kl">Ce mois</div><div class="kv">0&euro;</div></div>
-        <div class="kc b"><div class="kl">ARR (estim.)</div><div class="kv">0&euro;</div></div>
-        <div class="kc t"><div class="kl">ARPU</div><div class="kv">0&euro;</div><div class="ks">Par utilisateur payant</div></div>
-        <div class="kc r"><div class="kl">Remboursements</div><div class="kv">0&euro;</div></div>
-      </div>
-      <div class="chart">
-        <div class="chart-ttl">Revenus mensuels</div>
-        <div class="chart-bars" id="ch-rev2"></div>
-        <div class="chart-leg"><div class="cleg"><div class="cleg-dot" style="background:var(--green)"></div>Pro</div><div class="cleg"><div class="cleg-dot" style="background:var(--accent)"></div>Aviateur</div></div>
-      </div>
-      <div class="g3">
-        <div class="tbl">
-          <div class="tbl-hd"><div class="tbl-ttl">R&eacute;partition plans</div></div>
-          <table><thead><tr><th>Plan</th><th>Membres</th><th>MRR</th><th>%</th></tr></thead>
-          <tbody>
-            <tr><td><span class="pill p-pro">Pro</span></td><td>0</td><td>0&euro;</td><td>&mdash;</td></tr>
-            <tr><td><span class="pill p-avia">Aviateur</span></td><td>0</td><td>0&euro;</td><td>&mdash;</td></tr>
-            <tr><td><span class="pill p-free">Essentiel</span></td><td>0</td><td>0&euro;</td><td>&mdash;</td></tr>
-          </tbody></table>
-        </div>
-        <div class="tbl">
-          <div class="tbl-hd"><div class="tbl-ttl">Top pays (revenus)</div></div>
-          <table><thead><tr><th>Pays</th><th>Membres</th><th>MRR</th></tr></thead>
-          <tbody>
-            <tr><td>&#127467;&#127479; France</td><td>0</td><td>0&euro;</td></tr>
-            <tr><td>&#127465;&#127466; Allemagne</td><td>0</td><td>0&euro;</td></tr>
-            <tr><td>&#127474;&#127464; Autres</td><td>0</td><td>0&euro;</td></tr>
-          </tbody></table>
-        </div>
-        <div class="tbl">
-          <div class="tbl-hd"><div class="tbl-ttl">M&eacute;triques cl&eacute;s</div></div>
-          <table><thead><tr><th>M&eacute;trique</th><th>Valeur</th></tr></thead>
-          <tbody>
-            <tr><td class="tb">LTV estim&eacute;</td><td>0&euro;</td></tr>
-            <tr><td class="tb">CAC</td><td>&mdash;</td></tr>
-            <tr><td class="tb">Churn rate</td><td>&mdash;</td></tr>
-            <tr><td class="tb">Net Revenue</td><td>0&euro;</td></tr>
-          </tbody></table>
-        </div>
-      </div>
-    </div>
-
-    <!-- FACTURES -->
-    <div class="sec" id="sec-invoices">
-      <div class="ph">
-        <div class="pt"><em>Factures</em></div>
-        <div class="tbl-acts">
-          <input class="tsrch" type="text" placeholder="Chercher une facture&#8230;">
-          <select class="tsel"><option>Tous statuts</option><option>Pay&eacute;es</option><option>En attente</option><option>Rembours&eacute;es</option></select>
-          <button class="ba" onclick="showToast('Export Stripe \u2014 disponible avec int\u00e9gration Stripe')">&#8595; Export Stripe</button>
-        </div>
-      </div>
-      <div class="tbl">
-        <div class="tbl-hd"><div class="tbl-ttl">Historique des factures</div></div>
-        <table><thead><tr><th>N&deg;</th><th>Client</th><th>Plan</th><th>Montant</th><th>TVA</th><th>Date</th><th>Statut</th><th>Action</th></tr></thead>
-        <tbody><tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mist);font-size:.78rem">Aucune facture &mdash; connectez Stripe</td></tr></tbody></table>
-      </div>
-    </div>
-
-    <!-- SIGNALEMENTS -->
-    <div class="sec" id="sec-reports">
-      <div class="ph">
-        <div class="pt"><em>Signalements</em></div>
-        <select class="tsel"><option>Tous</option><option>Annonces</option><option>Utilisateurs</option><option>Messages contact</option></select>
-      </div>
-      <div class="krow">
-        <div class="kc r"><div class="kl">Ouverts</div><div class="kv">0</div></div>
-        <div class="kc g"><div class="kl">R&eacute;solus</div><div class="kv">0</div></div>
-        <div class="kc b"><div class="kl">Messages contact</div><div class="kv">0</div></div>
-      </div>
-      <div class="empty"><div class="empty-ic">&#128681;</div><div class="empty-ti">Aucun signalement</div><div class="empty-su">Les signalements et messages du formulaire contact appara&icirc;tront ici.</div></div>
-    </div>
-
-    <!-- PARAMÈTRES -->
-    <div class="sec" id="sec-settings">
-      <div class="ph"><div class="pt">Param&egrave;tres du <em>site</em></div></div>
-      <div class="g2">
-        <div class="settings-card">
-          <div class="settings-lbl">Informations du site</div>
-          <div class="sfg"><label>Nom du site</label><input value="Aircraft2Sell" type="text"></div>
-          <div class="sfg"><label>Email de contact</label><input value="contact.aircraft2sell@gmail.com" type="email"></div>
-          <div class="sfg"><label>Description (SEO)</label><textarea>La marketplace europ&eacute;enne de r&eacute;f&eacute;rence pour l'achat et la vente d'a&eacute;ronefs.</textarea></div>
-          <button class="btn-save" onclick="showToast('Param\u00e8tres sauvegard\u00e9s !')">Enregistrer</button>
-        </div>
-        <div class="settings-card">
-          <div class="settings-lbl">Plans &amp; tarifs</div>
-          <div class="sfg"><label>Prix Aviateur (€/mois)</label><input value="29" type="number"></div>
-          <div class="sfg"><label>Prix Pro (€/mois)</label><input value="79" type="number"></div>
-          <div class="sfg"><label>Code promo actif</label><input value="WELCOME10" type="text"></div>
-          <div class="sfg"><label>Remise code promo (%)</label><input value="10" type="number"></div>
-          <button class="btn-save" onclick="showToast('Tarifs mis \u00e0 jour !')">Enregistrer</button>
-        </div>
-      </div>
-      <div class="settings-card">
-        <div class="settings-lbl">Acc&egrave;s mod&eacute;rateurs</div>
-        <div class="tbl">
-          <div class="tbl-hd"><div class="tbl-ttl">Comptes mod&eacute;rateurs</div><button class="ba" onclick="showToast('Cr\u00e9ation compte mod\u00e9rateur \u2014 disponible avec Supabase')">+ Ajouter</button></div>
-          <table><thead><tr><th>Email</th><th>R&ocirc;le</th><th>Ajout&eacute; le</th><th>Statut</th><th>Action</th></tr></thead>
-          <tbody>
-            <tr>
-              <td class="tb"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3a57555e5f485b4e5f4f487a5b534859485b5c4e08495f565614595557">[email&#160;protected]</a></td>
-              <td><span class="pill p-appr">Mod&eacute;rateur</span></td>
-              <td>20/03/2026</td>
-              <td><span class="pill p-actv">Actif</span></td>
-              <td><div class="brow"><button class="ba d" onclick="showToast('Compte d\u00e9sactiv\u00e9')">Suspendre</button></div></td>
-            </tr>
-          </tbody></table>
-        </div>
-      </div>
-      <div class="settings-card">
-        <div class="settings-lbl" style="color:var(--red)">Zone dangereuse</div>
-        <div class="danger-zone">
-          <p style="font-size:.78rem;color:var(--mist);margin-bottom:.8rem">Ces actions sont irr&eacute;versibles. Proc&eacute;dez avec pr&eacute;caution.</p>
-          <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-            <button class="btn-danger" onclick="if(confirm('Vider le cache ?'))showToast('Cache vid\u00e9 !')">Vider le cache</button>
-            <button class="btn-danger" onclick="showToast('Maintenance \u2014 disponible en production')">Mode maintenance</button>
-            <button class="btn-danger" onclick="showToast('Export complet \u2014 disponible avec Supabase')">Export base de donn\u00e9es</button>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Annonce</th><th>Catégorie</th><th>Vendeur</th><th>Prix</th><th>Vues</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody id="listings-body"></tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- ── MODÉRATION ─────────────────────────────────────── -->
+    <div class="sec" id="sec-moderation">
+      <div class="sec-gap">
+        <div class="sec-toolbar">
+          <div class="sec-title">File de <em>modération</em></div>
+          <button class="tb-btn primary" onclick="approveAll()">✓ Tout approuver</button>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Annonces en attente de validation</div><span style="font-size:.64rem;color:var(--orange)" id="mod-count">0 annonce(s)</span></div>
+          <div id="mod-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── UTILISATEURS ───────────────────────────────────── -->
+    <div class="sec" id="sec-users">
+      <div class="sec-gap">
+        <div class="sec-toolbar">
+          <div class="sec-title">Gestion des <em>membres</em></div>
+          <input type="text" class="filter-inp" id="us-search" placeholder="Nom, email…" oninput="renderUsers()">
+          <select class="filter-sel" id="us-plan" onchange="renderUsers()">
+            <option value="">Tous plans</option>
+            <option value="Essentiel">Essentiel</option>
+            <option value="Aviateur">Aviateur</option>
+            <option value="Pro">Pro</option>
+          </select>
+          <button class="tb-btn" onclick="exportCSV('users')">↓ Export CSV</button>
+        </div>
+        <div class="krow" style="grid-template-columns:repeat(4,1fr)">
+          <div class="kc g"><div class="kl">Total membres</div><div class="kv" id="us-kv-total">0</div></div>
+          <div class="kc a"><div class="kl">Payants</div><div class="kv" id="us-kv-paid">0</div></div>
+          <div class="kc b"><div class="kl">Essentiel</div><div class="kv" id="us-kv-ess">0</div></div>
+          <div class="kc p"><div class="kl">Pro/Aviateur</div><div class="kv" id="us-kv-premium">0</div></div>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Membre</th><th>Email</th><th>Plan</th><th>Annonces</th><th>Inscrit le</th><th>Statut</th><th>Actions</th></tr></thead>
+              <tbody id="users-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ABONNEMENTS ────────────────────────────────────── -->
+    <div class="sec" id="sec-subscriptions">
+      <div class="sec-gap">
+        <div class="sec-title">Gestion des <em>abonnements</em></div>
+        <div class="krow" style="grid-template-columns:repeat(3,1fr)">
+          <div class="kc a"><div class="kl">MRR total</div><div class="kv" id="sub-mrr">0€</div><div class="ks">Mensuel récurrent</div></div>
+          <div class="kc g"><div class="kl">Abonnés actifs</div><div class="kv" id="sub-active">0</div><div class="ks">Aviateur + Pro</div></div>
+          <div class="kc b"><div class="kl">ARR estimé</div><div class="kv" id="sub-arr">0€</div><div class="ks">Annuel</div></div>
+        </div>
+        <div class="g2">
+          <div class="card">
+            <div class="card-head"><div class="card-title">Aviateur — 29€/mois</div></div>
+            <div class="card-body">
+              <div class="stat-row"><span class="stat-lbl">Abonnés actifs</span><span class="stat-val acc" id="sub-avi-count">0</span></div>
+              <div class="stat-row"><span class="stat-lbl">MRR Aviateur</span><span class="stat-val acc" id="sub-avi-mrr">0€</span></div>
+              <div class="stat-row"><span class="stat-lbl">Prix mensuel</span><span class="stat-val">29€</span></div>
+              <div class="stat-row"><span class="stat-lbl">Stripe Product</span><span class="stat-val" style="font-size:.65rem;color:var(--mist2)">PRICE_AVIATEUR — à configurer</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">Pro — 79€/mois</div></div>
+            <div class="card-body">
+              <div class="stat-row"><span class="stat-lbl">Abonnés actifs</span><span class="stat-val acc" id="sub-pro-count">0</span></div>
+              <div class="stat-row"><span class="stat-lbl">MRR Pro</span><span class="stat-val acc" id="sub-pro-mrr">0€</span></div>
+              <div class="stat-row"><span class="stat-lbl">Prix mensuel</span><span class="stat-val">79€</span></div>
+              <div class="stat-row"><span class="stat-lbl">Stripe Product</span><span class="stat-val" style="font-size:.65rem;color:var(--mist2)">PRICE_PRO — à configurer</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Membres avec abonnement payant</div></div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Membre</th><th>Email</th><th>Plan</th><th>Depuis</th><th>MRR</th></tr></thead>
+            <tbody id="sub-body"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REVENUS ─────────────────────────────────────────── -->
+    <div class="sec" id="sec-revenue">
+      <div class="sec-gap">
+        <div class="sec-title">Revenus & <em>finances</em></div>
+        <div class="krow" style="grid-template-columns:repeat(4,1fr)">
+          <div class="kc a"><div class="kl">MRR</div><div class="kv" id="rev-mrr">0€</div><div class="ks">Ce mois</div></div>
+          <div class="kc g"><div class="kl">ARR</div><div class="kv" id="rev-arr">0€</div><div class="ks">Annualisé</div></div>
+          <div class="kc b"><div class="kl">Abonnés</div><div class="kv" id="rev-subs">0</div><div class="ks">Actifs</div></div>
+          <div class="kc p"><div class="kl">ARPU</div><div class="kv" id="rev-arpu">0€</div><div class="ks">Par abonné</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Évolution des revenus</div>
+            <div class="chart-period">
+              <button class="cp-btn on" onclick="setRevPeriod(7,this)">7j</button>
+              <button class="cp-btn" onclick="setRevPeriod(30,this)">30j</button>
+              <button class="cp-btn" onclick="setRevPeriod(12,this)">12m</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><div class="chart-bars" id="ch-rev"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Note</div></div>
+          <div class="card-body" style="font-size:.76rem;color:var(--mist);line-height:1.7">
+            Les données de revenus réelles seront disponibles une fois <strong style="color:var(--white)">Stripe</strong> connecté. 
+            Connectez votre compte Stripe et configurez le webhook pour voir les transactions, MRR et ARR en temps réel.
+            <br><br>Variables d'environnement requises : <code style="font-size:.7rem;background:rgba(255,255,255,.05);padding:.1rem .35rem">STRIPE_SECRET_KEY</code>, <code style="font-size:.7rem;background:rgba(255,255,255,.05);padding:.1rem .35rem">STRIPE_WEBHOOK_SECRET</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FACTURES ───────────────────────────────────────── -->
+    <div class="sec" id="sec-invoices">
+      <div class="sec-gap">
+        <div class="sec-title">Factures & <em>transactions</em></div>
+        <div class="card">
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>N° Facture</th><th>Membre</th><th>Plan</th><th>Montant</th><th>Date</th><th>Statut</th></tr></thead>
+            <tbody id="invoices-body"><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--mist);font-size:.76rem">Aucune facture — connectez Stripe pour voir les transactions</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SIGNALEMENTS ───────────────────────────────────── -->
+    <div class="sec" id="sec-reports">
+      <div class="sec-gap">
+        <div class="sec-title"><em>Signalements</em></div>
+        <div class="card">
+          <div class="empty-state">
+            <div class="es-ic">⚑</div>
+            <div class="es-t">Aucun signalement</div>
+            <div class="es-s">Les signalements soumis par les utilisateurs apparaîtront ici.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PARAMÈTRES ─────────────────────────────────────── -->
+    <div class="sec" id="sec-settings">
+      <div class="sec-gap">
+        <div class="sec-title"><em>Paramètres</em> du site</div>
+        <div class="set-section">
+          <div class="set-sec-hd">Général</div>
+          <div class="set-body">
+            <div class="set-row"><span class="set-lbl">Nom du site</span><span class="set-val">Aircraft2Sell</span></div>
+            <div class="set-row"><span class="set-lbl">Email contact</span><span class="set-val">contact.aircraft2sell@gmail.com</span></div>
+            <div class="set-row"><span class="set-lbl">Domaine</span><span class="set-val">www.aircraft2sell.eu</span></div>
+            <div class="set-row"><span class="set-lbl">Langue par défaut</span><span class="set-val">Français</span></div>
+          </div>
+        </div>
+        <div class="set-section">
+          <div class="set-sec-hd">Tarifs</div>
+          <div class="set-body">
+            <div class="set-row"><span class="set-lbl">Formule Essentiel</span><span class="set-val">Gratuit — 1 annonce</span></div>
+            <div class="set-row"><span class="set-lbl">Formule Aviateur</span><span class="set-val">29€/mois — 3 annonces</span></div>
+            <div class="set-row"><span class="set-lbl">Formule Pro</span><span class="set-val">79€/mois — illimité</span></div>
+            <div class="set-row"><span class="set-lbl">Code promo actif</span><span class="set-val" style="color:var(--accent)">WELCOME10 (-10%)</span></div>
+          </div>
+        </div>
+        <div class="set-section">
+          <div class="set-sec-hd">Intégrations</div>
+          <div class="set-body">
+            <div class="set-row"><span class="set-lbl">Stripe</span><span class="set-val" style="color:var(--red)">Non configuré</span></div>
+            <div class="set-row"><span class="set-lbl">Supabase</span><span class="set-val" style="color:var(--red)">Non configuré</span></div>
+            <div class="set-row"><span class="set-lbl">Mode modération</span><span class="set-val" style="color:var(--green)">Manuelle (actif)</span></div>
+          </div>
+        </div>
+        <div class="set-section">
+          <div class="set-sec-hd" style="color:var(--red)">Zone sensible</div>
+          <div class="set-body">
+            <div class="danger-zone">
+              <p class="dz-desc">Ces actions sont irréversibles et effacent les données du localStorage. En production, elles seront gérées par Supabase.</p>
+              <div class="dz-actions">
+                <button class="m-btn danger" onclick="if(confirm('Effacer toutes les annonces de démo ?')){localStorage.removeItem('a2s_listings');refreshAll();showToast('Annonces effacées')}">Effacer annonces</button>
+                <button class="m-btn danger" onclick="if(confirm('Effacer tous les membres de démo ?')){localStorage.removeItem('a2s_users');refreshAll();showToast('Membres effacés')}">Effacer membres</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL ÉDITION ANNONCE -->
+<div class="modal-backdrop" id="modalListing" onclick="if(event.target===this)closeModal('modalListing')">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modalListingTitle">Modifier l'<em>annonce</em></div>
+      <button class="modal-close" onclick="closeModal('modalListing')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ml-id">
+      <div class="mfg2">
+        <div class="mfg"><label>Marque</label><input type="text" id="ml-make" placeholder="Cessna"></div>
+        <div class="mfg"><label>Modèle</label><input type="text" id="ml-model" placeholder="172 Skyhawk"></div>
+      </div>
+      <div class="mfg2">
+        <div class="mfg"><label>Année</label><input type="number" id="ml-year" placeholder="2015"></div>
+        <div class="mfg"><label>Prix (€)</label><input type="number" id="ml-price" placeholder="45000"></div>
+      </div>
+      <div class="mfg2">
+        <div class="mfg"><label>Catégorie</label>
+          <select id="ml-cat">
+            <option value="light">Avion léger</option>
+            <option value="jet">Jet d'affaires</option>
+            <option value="turbo">Turboprop</option>
+            <option value="heli">Hélicoptère</option>
+            <option value="ulm">ULM</option>
+            <option value="airliner">Avion de ligne</option>
+          </select>
+        </div>
+        <div class="mfg"><label>Statut</label>
+          <select id="ml-status">
+            <option value="pending">En attente</option>
+            <option value="live">Publiée</option>
+            <option value="rejected">Rejetée</option>
+          </select>
+        </div>
+      </div>
+      <div class="mfg"><label>Aéroport de base (ICAO)</label><input type="text" id="ml-airport" placeholder="LFPG"></div>
+      <div class="mfg"><label>Description</label><textarea id="ml-desc" placeholder="Description de l'annonce…"></textarea></div>
+      <div class="mfg"><label>Vendeur (email)</label><input type="text" id="ml-seller" placeholder="vendeur@email.com" readonly style="opacity:.6"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="m-btn danger" id="ml-delete-btn" onclick="deleteListingFromModal()">🗑 Supprimer</button>
+      <button class="m-btn" onclick="closeModal('modalListing')">Annuler</button>
+      <button class="m-btn primary" onclick="saveListingModal()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ÉDITION MEMBRE -->
+<div class="modal-backdrop" id="modalUser" onclick="if(event.target===this)closeModal('modalUser')">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Modifier le <em>membre</em></div>
+      <button class="modal-close" onclick="closeModal('modalUser')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mu-id">
+      <div class="mfg2">
+        <div class="mfg"><label>Prénom / Nom</label><input type="text" id="mu-name" placeholder="Jean Dupont"></div>
+        <div class="mfg"><label>Email</label><input type="email" id="mu-email" placeholder="jean@email.com" readonly style="opacity:.6"></div>
+      </div>
+      <div class="mfg2">
+        <div class="mfg"><label>Plan</label>
+          <select id="mu-plan">
+            <option value="Essentiel">Essentiel</option>
+            <option value="Aviateur">Aviateur</option>
+            <option value="Pro">Pro</option>
+          </select>
+        </div>
+        <div class="mfg"><label>Statut</label>
+          <select id="mu-status">
+            <option value="active">Actif</option>
+            <option value="suspended">Suspendu</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="m-btn danger" onclick="deleteUserFromModal()">🗑 Supprimer</button>
+      <button class="m-btn" onclick="closeModal('modalUser')">Annuler</button>
+      <button class="m-btn primary" onclick="saveUserModal()">Enregistrer</button>
+    </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-/*
-  IDENTIFIANTS ADMINISTRATEUR
-  Email    : contact.aircraft2sell@gmail.com
-  Password : A2S@Admin2026!
-
-  PRODUCTION: remplacer par Supabase auth + vérification is_admin:
-  const { data:{user} } = await supabase.auth.getUser()
-  const { data:profile } = await supabase.from('profiles').select('is_admin').eq('id',user.id).single()
-  if(!profile?.is_admin) { doLogout(); return; }
-*/
+<script>
+/* ── AUTH ──────────────────────────────────────────────────── */
 const ADMIN_EMAIL    = 'contact.aircraft2sell@gmail.com';
 const ADMIN_PASSWORD = 'A2S@Admin2026!';
 const SESSION_KEY    = 'a2s_admin_session';
@@ -530,26 +718,23 @@ function doLogin(){
   const pw    = document.getElementById('aPw').value;
   const err   = document.getElementById('loginErr');
   err.textContent = '';
-  if(email === ADMIN_EMAIL && pw === ADMIN_PASSWORD){
+  if(email===ADMIN_EMAIL && pw===ADMIN_PASSWORD){
     sessionStorage.setItem(SESSION_KEY, btoa(email+':'+Date.now()));
     document.getElementById('loginOverlay').classList.add('hidden');
     initAdmin();
-    registerCurrentUser();
-    showToast('\u2728 Bienvenue, Romain \u2014 Administration');
+    showToast('Bienvenue, Romain — Administration');
   } else {
     err.textContent = 'Email ou mot de passe incorrect';
-    document.getElementById('aPw').value = '';
+    document.getElementById('aPw').value='';
     setTimeout(()=>err.textContent='',3500);
   }
 }
-
 function doLogout(){
   sessionStorage.removeItem(SESSION_KEY);
   document.getElementById('loginOverlay').classList.remove('hidden');
   document.getElementById('aEmail').value='';
   document.getElementById('aPw').value='';
 }
-
 function checkAuth(){
   if(!sessionStorage.getItem(SESSION_KEY)){
     document.getElementById('loginOverlay').classList.remove('hidden');
@@ -559,6 +744,13 @@ function checkAuth(){
   }
 }
 
+/* ── DATA ──────────────────────────────────────────────────── */
+function getListings(){ try{return JSON.parse(localStorage.getItem('a2s_listings')||'[]');}catch(e){return[];} }
+function getUsers(){    try{return JSON.parse(localStorage.getItem('a2s_users')||'[]');}   catch(e){return[];} }
+function saveListings(a){ localStorage.setItem('a2s_listings',JSON.stringify(a)); }
+function saveUsers(a){    localStorage.setItem('a2s_users',   JSON.stringify(a)); }
+
+/* ── GREETING ──────────────────────────────────────────────── */
 function setGreeting(){
   const now=new Date(),hh=now.getHours()+now.getMinutes()/60;
   const lat=49.19,lon=2.45,tz=-now.getTimezoneOffset()/60;
@@ -580,14 +772,50 @@ function setGreeting(){
   if(el)el.innerHTML=icon+' <b>'+word+', Romain</b>';
 }
 
+/* ── HELPERS ───────────────────────────────────────────────── */
+function setText(id,v){ const e=document.getElementById(id); if(e)e.textContent=v; }
 function goSec(id,el){
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
   document.querySelectorAll('.sn').forEach(n=>n.classList.remove('active'));
   const sec=document.getElementById('sec-'+id);
   if(sec)sec.classList.add('on');
   if(el)el.classList.add('active');
+  const titles={dashboard:'Tableau de <em>bord</em>',listings:'Toutes les <em>annonces</em>',moderation:'File de <em>modération</em>',users:'Gestion des <em>membres</em>',subscriptions:'Gestion des <em>abonnements</em>',revenue:'Revenus & <em>finances</em>',invoices:'Factures & <em>transactions</em>',reports:'<em>Signalements</em>',settings:'<em>Paramètres</em> du site'};
+  const pt=document.getElementById('pageTitle');
+  if(pt&&titles[id])pt.innerHTML=titles[id];
+  if(id==='listings')renderListings();
+  if(id==='moderation')renderModeration();
+  if(id==='users')renderUsers();
+  if(id==='subscriptions')renderSubscriptions();
+  if(id==='revenue')renderRevenue();
+}
+function planBadge(plan){
+  if(plan==='Pro')    return '<span class="pill p-pro">Pro</span>';
+  if(plan==='Aviateur') return '<span class="pill p-avi">Aviateur</span>';
+  return '<span class="pill p-ess">Essentiel</span>';
+}
+function statusBadge(status){
+  if(status==='live')     return '<span class="pill p-live">Publiée</span>';
+  if(status==='rejected') return '<span class="pill p-rejt">Rejetée</span>';
+  return '<span class="pill p-pend">En attente</span>';
+}
+function fmtDate(iso){
+  if(!iso)return '—';
+  return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+}
+function fmtDateTime(iso){
+  if(!iso)return '—';
+  return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+function initials(name,email){
+  if(name) return name.trim().split(/\s+/).map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  return email?email[0].toUpperCase():'U';
+}
+function listingTitle(l){
+  return l.title || [l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ') || 'Sans titre';
 }
 
+/* ── CHART ─────────────────────────────────────────────────── */
 function renderChart(id,data,color){
   const el=document.getElementById(id);
   if(!el)return;
@@ -599,238 +827,464 @@ function renderChart(id,data,color){
   }).join('');
 }
 
-function setPeriod(p,btn){
-  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('on'));
+let chartPeriod=7;
+function setChartPeriod(p,btn){
+  chartPeriod=p;
+  document.querySelectorAll('.cp-btn').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
-  const n=p===7?7:p===30?30:12;
-  renderChart('ch-signups',Array(n).fill(0),'var(--blue)');
-  renderChart('ch-revenue',Array(n).fill(0),'var(--green)');
+  const listings=getListings();
+  renderChart('ch-main',Array(p===7?7:p===30?30:12).fill(0),'var(--accent)');
 }
-
-function setPeriodRev(p,btn){
-  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('on'));
+function setRevPeriod(p,btn){
+  document.querySelectorAll('.cp-btn').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
-  const n=p===7?7:p===30?30:12;
-  renderChart('ch-rev2',Array(n).fill(0),'var(--green)');
+  renderChart('ch-rev',Array(p===7?7:p===30?30:12).fill(0),'var(--green)');
 }
 
-
-/* ── DATA HELPERS ──────────────────────────────────────────── */
-function getAdminListings(){
-  try{ return JSON.parse(localStorage.getItem('a2s_listings')||'[]'); }catch(e){ return []; }
-}
-function saveAdminListings(arr){
-  localStorage.setItem('a2s_listings', JSON.stringify(arr));
-}
-function getAdminUsers(){
-  /* Lit les inscriptions depuis localStorage (clé a2s_users).
-     En production : supabase.from('profiles').select('*') */
-  try{ return JSON.parse(localStorage.getItem('a2s_users')||'[]'); }catch(e){ return []; }
+/* ── GLOBAL SEARCH ─────────────────────────────────────────── */
+function doGlobalSearch(q){
+  if(!q.trim()) return;
+  const listings=getListings();
+  const users=getUsers();
+  const lMatch=listings.filter(l=>listingTitle(l).toLowerCase().includes(q.toLowerCase())||((l.sellerName||'').toLowerCase().includes(q.toLowerCase())));
+  const uMatch=users.filter(u=>(u.name||'').toLowerCase().includes(q.toLowerCase())||(u.email||'').toLowerCase().includes(q.toLowerCase()));
+  if(lMatch.length>0) { goSec('listings',document.getElementById('sn-listings')); document.getElementById('ls-search').value=q; renderListings(); }
+  else if(uMatch.length>0) { goSec('users',document.getElementById('sn-users')); document.getElementById('us-search').value=q; renderUsers(); }
 }
 
 /* ── INIT ──────────────────────────────────────────────────── */
+function refreshAll(){ initAdmin(); showToast('Données actualisées'); }
+
 function initAdmin(){
   setGreeting();
-  // Enregistrer l'utilisateur courant s'il est connecté (simulation inscription)
   registerCurrentUser();
-  // Charger tout
-  renderAdminDashboard();
-  renderAdminListings();
-  renderAdminUsers();
-  // Graphiques
-  const listings = getAdminListings();
-  renderChart('ch-signups', Array(7).fill(0), 'var(--blue)');
-  renderChart('ch-revenue', Array(7).fill(0), 'var(--green)');
-  renderChart('ch-rev2',    Array(12).fill(0),'var(--green)');
-}
+  const listings = getListings();
+  const users    = getUsers();
+  const pending  = listings.filter(l=>!l.status||l.status==='pending').length;
+  const live     = listings.filter(l=>l.status==='live').length;
+  const paid     = users.filter(u=>u.plan==='Aviateur'||u.plan==='Pro');
+  const aviCount = users.filter(u=>u.plan==='Aviateur').length;
+  const proCount = users.filter(u=>u.plan==='Pro').length;
+  const essCount = users.filter(u=>!u.plan||u.plan==='Essentiel').length;
+  const mrr      = aviCount*29 + proCount*79;
 
-/* ── ENREGISTRER L'UTILISATEUR COURANT ─────────────────────── */
-function registerCurrentUser(){
-  const name  = localStorage.getItem('a2s_user_name');
-  const email = localStorage.getItem('a2s_user_email');
-  const plan  = localStorage.getItem('a2s_user_plan') || 'Essentiel';
-  if(!email) return;
-  const users = getAdminUsers();
-  if(users.some(u => u.email === email)) return;
-  users.unshift({ id: Date.now(), name: name||'', email, plan, status:'active', registeredAt: new Date().toISOString(), listings: 0 });
-  localStorage.setItem('a2s_users', JSON.stringify(users));
-}
-
-/* ── DASHBOARD OVERVIEW ─────────────────────────────────────── */
-function renderAdminDashboard(){
-  const listings = getAdminListings();
-  const users    = getAdminUsers();
-  const pending  = listings.filter(l => !l.status || l.status === 'pending').length;
-  const live     = listings.filter(l => l.status === 'live').length;
-
-  // KPIs sidebar
+  // Sidebar KPIs
   setText('sk-listings', listings.length);
   setText('sk-users',    users.length);
   setText('sk-pending',  pending);
-  setText('sk-mrr',      '0 €');
+  setText('sk-mrr',      mrr+'€');
 
-  // Badges nav
+  // Nav badges
   setText('cnt-listings', listings.length);
   setText('cnt-users',    users.length);
   setText('cnt-mod',      pending);
+  setText('cnt-subs',     paid.length);
 
-  // KPIs dashboard section
-  setKv(0, live);
-  setKv(1, users.length);
-  setKv(2, pending);
+  // Dashboard KPIs
+  setText('dkv-live',    live);
+  setText('dkv-users',   users.length);
+  setText('dkv-pending', pending);
+  setText('dkv-mrr',     mrr+'€');
 
-  // Tableau annonces récentes dans le dashboard
-  const recTbl = document.querySelector('#sec-dashboard .tbl-hd + table tbody, #sec-dashboard tbody');
-  if(recTbl){
-    if(!listings.length){
-      recTbl.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--mist);font-size:.78rem">Aucune annonce pour le moment</td></tr>';
-    } else {
-      recTbl.innerHTML = listings.slice(0,5).map(l => {
-        const date = l.submittedAt ? new Date(l.submittedAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}) : '—';
-        const title = l.title || [l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ') || 'Sans titre';
-        return '<tr>'
-          + '<td style="color:var(--white);font-weight:500">'+title+'</td>'
-          + '<td>'+l.sellerName||'—'+'</td>'
-          + '<td>'+(l.price?'€'+l.price:'—')+'</td>'
-          + '<td>'+statusBadge(l.status)+'</td>'
-          + '<td style="color:var(--mist2);font-size:.68rem">'+date+'</td>'
-          + '</tr>';
-      }).join('');
-    }
+  // Plan bars
+  const total = Math.max(users.length,1);
+  setText('cnt-ess', essCount);
+  setText('cnt-avi', aviCount);
+  setText('cnt-pro', proCount);
+  const be=document.getElementById('bar-ess'); if(be)be.style.width=Math.round(essCount/total*100)+'%';
+  const ba=document.getElementById('bar-avi'); if(ba)ba.style.width=Math.round(aviCount/total*100)+'%';
+  const bp=document.getElementById('bar-pro'); if(bp)bp.style.width=Math.round(proCount/total*100)+'%';
+
+  // Charts
+  renderChart('ch-main', Array(7).fill(0), 'var(--accent)');
+  renderChart('ch-rev',  Array(12).fill(0),'var(--green)');
+
+  // Dashboard mini-lists
+  renderDashListings();
+  renderDashUsers();
+  renderTopListings();
+}
+
+function registerCurrentUser(){
+  const name=localStorage.getItem('a2s_user_name');
+  const email=localStorage.getItem('a2s_user_email');
+  const plan=localStorage.getItem('a2s_user_plan')||'Essentiel';
+  if(!email)return;
+  const users=getUsers();
+  if(!users.some(u=>u.email===email)){
+    users.unshift({id:Date.now(),name:name||'',email,plan,status:'active',registeredAt:new Date().toISOString(),listings:0});
+    saveUsers(users);
   }
-
-  // Tableau nouveaux membres
-  const memTbl = document.querySelector('#sec-dashboard .tbl:last-child tbody, #sec-dashboard .tbl:nth-child(2) tbody');
-  renderMemberTable(memTbl, users.slice(0,5));
 }
 
-function setText(id, val){
-  const el = document.getElementById(id);
-  if(el) el.textContent = val;
+/* ── DASHBOARD MINI LISTS ──────────────────────────────────── */
+function renderDashListings(){
+  const el=document.getElementById('dash-listings-list');
+  if(!el)return;
+  const listings=getListings();
+  if(!listings.length){ el.innerHTML='<div class="empty-state"><div class="es-ic">✈</div><div class="es-t">Aucune annonce</div></div>'; return; }
+  el.innerHTML='<div class="mini-list">'+listings.slice(0,5).map(l=>{
+    const sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
+    return '<div class="ml-item">'
+      +'<div class="td-thumb">✈</div>'
+      +'<div class="ml-info"><div class="ml-name">'+listingTitle(l)+'</div><div class="ml-sub">'+(l.sellerName||'—')+'</div></div>'
+      +'<div class="ml-right"><div>'+statusBadge(l.status)+'</div><div class="ml-date">'+fmtDate(l.submittedAt)+'</div></div>'
+      +'</div>';
+  }).join('')+'</div>';
 }
-function setKv(idx, val){
-  const els = document.querySelectorAll('#sec-dashboard .kv');
-  if(els[idx]) els[idx].textContent = val;
+
+function renderDashUsers(){
+  const el=document.getElementById('dash-users-list');
+  if(!el)return;
+  const users=getUsers();
+  if(!users.length){ el.innerHTML='<div class="empty-state"><div class="es-ic">◉</div><div class="es-t">Aucun membre</div></div>'; return; }
+  el.innerHTML='<div class="mini-list">'+users.slice(0,5).map(u=>{
+    const ini=initials(u.name,u.email);
+    return '<div class="ml-item">'
+      +'<div class="ml-av">'+ini+'</div>'
+      +'<div class="ml-info"><div class="ml-name">'+(u.name||u.email.split('@')[0])+'</div><div class="ml-sub">'+u.email+'</div></div>'
+      +'<div class="ml-right"><div>'+planBadge(u.plan)+'</div><div class="ml-date">'+fmtDate(u.registeredAt)+'</div></div>'
+      +'</div>';
+  }).join('')+'</div>';
 }
 
-/* ── ANNONCES ─────────────────────────────────────────────── */
-function renderAdminListings(){
-  const listings = getAdminListings();
-  const pending  = listings.filter(l => !l.status || l.status === 'pending').length;
-  const live     = listings.filter(l => l.status === 'live').length;
-
-  // KPIs section annonces
-  const kvs = document.querySelectorAll('#sec-listings .kv');
-  if(kvs[0]) kvs[0].textContent = listings.length;
-  if(kvs[1]) kvs[1].textContent = live;
-  if(kvs[2]) kvs[2].textContent = pending;
-
-  // Table
-  const tbody = document.querySelector('#sec-listings tbody');
-  if(!tbody) return;
-  if(!listings.length){
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mist);font-size:.78rem">Aucune annonce — les annonces soumises apparaissent ici</td></tr>';
-    return;
-  }
-  const SYM = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
-  tbody.innerHTML = listings.map(l => {
-    const sym   = SYM[l.currency||'EUR'] || '€';
-    const date  = l.submittedAt ? new Date(l.submittedAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
-    const title = l.title || [l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ') || 'Sans titre';
-    const price = l.price ? sym + Number(l.price).toLocaleString() : '—';
+function renderTopListings(){
+  const tbody=document.getElementById('top-listings-body');
+  if(!tbody)return;
+  const listings=getListings();
+  if(!listings.length){ tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--mist);font-size:.76rem">Aucune annonce pour le moment</td></tr>'; return; }
+  const sorted=[...listings].sort((a,b)=>(b.views||0)-(a.views||0));
+  tbody.innerHTML=sorted.slice(0,8).map((l,i)=>{
+    const sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
     return '<tr>'
-      + '<td style="color:var(--mist2);font-size:.68rem">#'+String(l.id).slice(-5)+'</td>'
-      + '<td style="color:var(--white);font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+title+'</td>'
-      + '<td style="color:var(--mist);font-size:.74rem">'+(l.category||'—')+'</td>'
-      + '<td style="color:var(--mist);font-size:.74rem">'+(l.sellerName||'—')+'</td>'
-      + '<td style="color:var(--gold);font-family:Bebas Neue,sans-serif">'+price+'</td>'
-      + '<td style="color:var(--mist2)">'+(l.views||0)+'</td>'
-      + '<td>'+statusBadge(l.status)+'</td>'
-      + '<td style="color:var(--mist2);font-size:.68rem">'+date+'</td>'
-      + '<td style="display:flex;gap:.3rem;flex-wrap:wrap">'
-      + ((!l.status||l.status==='pending') ? '<button class="ba" style="font-size:.62rem;padding:.2rem .5rem;background:rgba(34,197,94,.15);color:#22c55e;border-color:rgba(34,197,94,.3)" onclick="adminApprove('+l.id+')">✓</button>' : '')
-      + ((!l.status||l.status==='pending') ? '<button class="ba" style="font-size:.62rem;padding:.2rem .5rem;background:rgba(239,68,68,.1);color:#ef4444;border-color:rgba(239,68,68,.25)" onclick="adminReject('+l.id+')">✗</button>' : '')
-      + '<button class="ba" style="font-size:.62rem;padding:.2rem .5rem" onclick="adminDeleteListing('+l.id+')">🗑</button>'
-      + '</td>'
-      + '</tr>';
+      +'<td class="td-id">#'+(i+1)+'</td>'
+      +'<td><div class="td-with-thumb"><div class="td-thumb">✈</div><span class="td-w">'+listingTitle(l)+'</span></div></td>'
+      +'<td>'+(l.category||'—')+'</td>'
+      +'<td class="td-price">'+( l.price?sym+Number(l.price).toLocaleString():'—')+'</td>'
+      +'<td class="td-w">'+(l.views||0)+'</td>'
+      +'<td>'+(l.enquiries||0)+'</td>'
+      +'<td>'+statusBadge(l.status)+'</td>'
+      +'</tr>';
   }).join('');
 }
 
-/* ── UTILISATEURS ─────────────────────────────────────────── */
-function renderAdminUsers(){
-  const users = getAdminUsers();
-  const kvs = document.querySelectorAll('#sec-users .kv');
-  if(kvs[0]) kvs[0].textContent = users.length;
-  const tbody = document.querySelector('#sec-users tbody');
-  renderMemberTable(tbody, users);
-}
+/* ── ANNONCES ──────────────────────────────────────────────── */
+function renderListings(){
+  const q      = (document.getElementById('ls-search')||{}).value||'';
+  const status = (document.getElementById('ls-status')||{}).value||'';
+  const cat    = (document.getElementById('ls-cat')||{}).value||'';
+  const all    = getListings();
+  const filtered = all.filter(l=>{
+    if(status && (l.status||'pending')!==status) return false;
+    if(cat && l.category!==cat) return false;
+    if(q){const t=listingTitle(l)+' '+(l.sellerName||'')+' '+(l.make||'')+' '+(l.model||'');if(!t.toLowerCase().includes(q.toLowerCase()))return false;}
+    return true;
+  });
+  const total   = all.length;
+  const live    = all.filter(l=>l.status==='live').length;
+  const pending = all.filter(l=>!l.status||l.status==='pending').length;
+  const rejected= all.filter(l=>l.status==='rejected').length;
+  setText('ls-kv-total',   total);
+  setText('ls-kv-live',    live);
+  setText('ls-kv-pending', pending);
+  setText('ls-kv-rejected',rejected);
 
-function renderMemberTable(tbody, users){
-  if(!tbody) return;
-  if(!users || !users.length){
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--mist);font-size:.78rem">Aucun membre — les inscriptions apparaissent ici</td></tr>';
+  const tbody=document.getElementById('listings-body');
+  if(!tbody)return;
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--mist);font-size:.76rem">'+(all.length?'Aucun résultat pour ces filtres':'Aucune annonce — les clients soumettent leurs annonces via post-listing.html')+'</td></tr>';
     return;
   }
-  tbody.innerHTML = users.map((u,i) => {
-    const date = u.registeredAt ? new Date(u.registeredAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
-    const planBadge = u.plan === 'Pro' ? '<span style="color:#a78bfa;font-size:.62rem;font-weight:700">PRO</span>'
-      : u.plan === 'Aviateur' ? '<span style="color:#e8a020;font-size:.62rem;font-weight:700">AVIATEUR</span>'
-      : '<span style="color:var(--mist2);font-size:.62rem">ESSENTIEL</span>';
-    const initials = u.name ? u.name.trim().split(/\s+/).map(w=>w[0]).join('').substring(0,2).toUpperCase() : (u.email?u.email[0].toUpperCase():'U');
+  const SYM={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
+  tbody.innerHTML=filtered.map(l=>{
+    const sym=SYM[l.currency||'EUR']||'€';
     return '<tr>'
-      + '<td style="color:var(--mist2);font-size:.68rem">#'+(i+1)+'</td>'
-      + '<td><div style="display:flex;align-items:center;gap:.5rem"><div style="width:28px;height:28px;border-radius:50%;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.3);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:#e8a020;flex-shrink:0">'+initials+'</div><span style="color:var(--white);font-size:.78rem">'+u.name+'</span></div></td>'
-      + '<td style="color:var(--mist);font-size:.74rem">'+u.email+'</td>'
-      + '<td>'+planBadge+'</td>'
-      + '<td style="color:var(--mist2);text-align:center">'+(u.listings||0)+'</td>'
-      + '<td style="color:var(--mist2);font-size:.68rem">'+date+'</td>'
-      + '<td style="color:var(--mist2);font-size:.68rem">'+date+'</td>'
-      + '<td><span style="font-size:.62rem;font-weight:700;color:#22c55e">ACTIF</span></td>'
-      + '<td><button class="ba" style="font-size:.62rem;padding:.2rem .5rem" onclick="showToast(\'Gestion avancée — Supabase requis\')">⚙</button></td>'
-      + '</tr>';
+      +'<td class="td-id">#'+String(l.id).slice(-5)+'</td>'
+      +'<td><div class="td-with-thumb"><div class="td-thumb">✈</div><span class="td-w">'+listingTitle(l)+'</span></div></td>'
+      +'<td>'+(l.category||'—')+'</td>'
+      +'<td>'+(l.sellerName||l.sellerEmail||'—')+'</td>'
+      +'<td class="td-price">'+(l.price?sym+Number(l.price).toLocaleString():'—')+'</td>'
+      +'<td>'+(l.views||0)+'</td>'
+      +'<td>'+statusBadge(l.status)+'</td>'
+      +'<td style="font-size:.64rem;color:var(--mist2)">'+fmtDate(l.submittedAt)+'</td>'
+      +'<td><div class="acts">'
+      +((!l.status||l.status==='pending')?'<button class="act ap" onclick="quickApprove('+l.id+')">✓</button>':'')
+      +(l.status==='live'?'<button class="act rj" onclick="quickReject('+l.id+')">⊘</button>':'')
+      +'<button class="act" onclick="openEditListing('+l.id+')">✎</button>'
+      +'<button class="act dl" onclick="deleteListing('+l.id+')">✗</button>'
+      +'</div></td>'
+      +'</tr>';
   }).join('');
 }
 
-/* ── ACTIONS ANNONCES ─────────────────────────────────────── */
-function adminApprove(id){
-  if(!confirm('Approuver cette annonce ?')) return;
-  const all = getAdminListings();
-  const idx = all.findIndex(l => l.id === id);
-  if(idx > -1){ all[idx].status = 'live'; saveAdminListings(all); }
-  renderAdminDashboard(); renderAdminListings();
+/* ── MODÉRATION ────────────────────────────────────────────── */
+function renderModeration(){
+  const pending=getListings().filter(l=>!l.status||l.status==='pending');
+  setText('mod-count', pending.length+' annonce'+(pending.length>1?'s':''));
+  setText('cnt-mod', pending.length);
+  const el=document.getElementById('mod-list');
+  if(!el)return;
+  if(!pending.length){
+    el.innerHTML='<div class="empty-state"><div class="es-ic">✓</div><div class="es-t">File vide</div><div class="es-s">Aucune annonce en attente de validation.</div></div>';
+    return;
+  }
+  const SYM={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
+  el.innerHTML='<div class="mini-list">'+pending.map(l=>{
+    const sym=SYM[l.currency||'EUR']||'€';
+    return '<div class="ml-item" style="align-items:flex-start;gap:.8rem">'
+      +'<div class="td-thumb" style="margin-top:.25rem">✈</div>'
+      +'<div class="ml-info">'
+      +'<div class="ml-name">'+listingTitle(l)+'</div>'
+      +'<div class="ml-sub">'+( l.sellerName||'—')+' · '+(l.sellerEmail||'—')+'</div>'
+      +'<div class="ml-sub" style="margin-top:2px">Soumis le '+fmtDateTime(l.submittedAt)+'</div>'
+      +'</div>'
+      +'<div class="ml-right" style="align-items:flex-end;gap:.4rem">'
+      +'<div class="ml-price">'+(l.price?sym+Number(l.price).toLocaleString():'—')+'</div>'
+      +'<div class="acts">'
+      +'<button class="act ap" onclick="quickApprove('+l.id+')">✓ Approuver</button>'
+      +'<button class="act rj" onclick="quickReject('+l.id+')">✗ Rejeter</button>'
+      +'<button class="act" onclick="openEditListing('+l.id+')">✎ Voir</button>'
+      +'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('')+'</div>';
+}
+
+/* ── UTILISATEURS ──────────────────────────────────────────── */
+function renderUsers(){
+  const q    =(document.getElementById('us-search')||{}).value||'';
+  const plan =(document.getElementById('us-plan')||{}).value||'';
+  const all  =getUsers();
+  const filtered=all.filter(u=>{
+    if(plan && u.plan!==plan) return false;
+    if(q){const t=(u.name||'')+' '+(u.email||'');if(!t.toLowerCase().includes(q.toLowerCase()))return false;}
+    return true;
+  });
+  const paid=all.filter(u=>u.plan==='Aviateur'||u.plan==='Pro');
+  setText('us-kv-total',   all.length);
+  setText('us-kv-paid',    paid.length);
+  setText('us-kv-ess',     all.filter(u=>!u.plan||u.plan==='Essentiel').length);
+  setText('us-kv-premium', paid.length);
+  const tbody=document.getElementById('users-body');
+  if(!tbody)return;
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--mist);font-size:.76rem">'+(all.length?'Aucun résultat':'Aucun membre — les inscriptions apparaissent ici après connexion')+'</td></tr>';
+    return;
+  }
+  tbody.innerHTML=filtered.map((u,i)=>{
+    const ini=initials(u.name,u.email);
+    const listingCount=getListings().filter(l=>l.sellerEmail===u.email).length;
+    return '<tr>'
+      +'<td class="td-id">#'+(i+1)+'</td>'
+      +'<td><div class="td-with-thumb"><div style="width:28px;height:28px;border-radius:50%;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.25);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:var(--accent);flex-shrink:0">'+ini+'</div><span class="td-w">'+(u.name||u.email.split('@')[0])+'</span></div></td>'
+      +'<td style="font-size:.72rem">'+(u.email||'—')+'</td>'
+      +'<td>'+planBadge(u.plan)+'</td>'
+      +'<td style="text-align:center">'+listingCount+'</td>'
+      +'<td style="font-size:.66rem;color:var(--mist2)">'+fmtDate(u.registeredAt)+'</td>'
+      +'<td><span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--green)">Actif</span></td>'
+      +'<td><div class="acts"><button class="act" onclick="openEditUser(this.dataset.id)" data-id="'+String(u.id)+'">✎</button><button class="act dl" onclick="deleteUser(this.dataset.id)" data-id="'+String(u.id)+'">✗</button></div></td>'
+      +'</tr>';
+  }).join('');
+}
+
+/* ── ABONNEMENTS ───────────────────────────────────────────── */
+function renderSubscriptions(){
+  const users=getUsers();
+  const avi=users.filter(u=>u.plan==='Aviateur');
+  const pro=users.filter(u=>u.plan==='Pro');
+  const mrr=avi.length*29+pro.length*79;
+  setText('sub-mrr',       mrr+'€');
+  setText('sub-active',    avi.length+pro.length);
+  setText('sub-arr',       (mrr*12)+'€');
+  setText('sub-avi-count', avi.length);
+  setText('sub-avi-mrr',   (avi.length*29)+'€');
+  setText('sub-pro-count', pro.length);
+  setText('sub-pro-mrr',   (pro.length*79)+'€');
+  const tbody=document.getElementById('sub-body');
+  if(!tbody)return;
+  const paid=users.filter(u=>u.plan==='Aviateur'||u.plan==='Pro');
+  if(!paid.length){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--mist);font-size:.76rem">Aucun abonné payant</td></tr>';
+    return;
+  }
+  tbody.innerHTML=paid.map(u=>{
+    const monthlyRev=u.plan==='Pro'?79:29;
+    return '<tr>'
+      +'<td class="td-w">'+(u.name||'—')+'</td>'
+      +'<td style="font-size:.72rem">'+(u.email||'—')+'</td>'
+      +'<td>'+planBadge(u.plan)+'</td>'
+      +'<td style="font-size:.66rem;color:var(--mist2)">'+fmtDate(u.registeredAt)+'</td>'
+      +'<td class="td-price">'+monthlyRev+'€/mois</td>'
+      +'</tr>';
+  }).join('');
+}
+
+/* ── REVENUS ───────────────────────────────────────────────── */
+function renderRevenue(){
+  const users=getUsers();
+  const avi=users.filter(u=>u.plan==='Aviateur').length;
+  const pro=users.filter(u=>u.plan==='Pro').length;
+  const mrr=avi*29+pro*79;
+  const subs=avi+pro;
+  setText('rev-mrr',  mrr+'€');
+  setText('rev-arr',  (mrr*12)+'€');
+  setText('rev-subs', subs);
+  setText('rev-arpu', subs?(Math.round(mrr/subs))+'€':'0€');
+  renderChart('ch-rev',Array(12).fill(0),'var(--green)');
+}
+
+/* ── ACTIONS ANNONCES ──────────────────────────────────────── */
+function quickApprove(id){
+  const all=getListings(); const idx=all.findIndex(l=>l.id===id);
+  if(idx>-1){all[idx].status='live';saveListings(all);}
+  initAdmin(); renderListings(); renderModeration();
   showToast('✓ Annonce approuvée et publiée');
 }
-
-function adminReject(id){
-  const reason = prompt('Motif du rejet (optionnel):', '');
-  if(reason === null) return;
-  const all = getAdminListings();
-  const idx = all.findIndex(l => l.id === id);
-  if(idx > -1){ all[idx].status = 'rejected'; all[idx].rejectionReason = reason; saveAdminListings(all); }
-  renderAdminDashboard(); renderAdminListings();
-  showToast('✗ Annonce rejetée');
+function quickReject(id){
+  const reason=prompt('Motif du rejet (optionnel):','');
+  if(reason===null)return;
+  const all=getListings(); const idx=all.findIndex(l=>l.id===id);
+  if(idx>-1){all[idx].status='rejected';all[idx].rejectionReason=reason;saveListings(all);}
+  initAdmin(); renderListings(); renderModeration();
+  showToast('Annonce rejetée');
+}
+function deleteListing(id){
+  if(!confirm('Supprimer définitivement cette annonce ?'))return;
+  saveListings(getListings().filter(l=>l.id!==id));
+  initAdmin(); renderListings();
+  showToast('Annonce supprimée');
+}
+function approveAll(){
+  const all=getListings();
+  const n=all.filter(l=>!l.status||l.status==='pending').length;
+  if(!n){showToast('Aucune annonce en attente');return;}
+  if(!confirm('Approuver les '+n+' annonces en attente ?'))return;
+  const updated=all.map(l=>(!l.status||l.status==='pending')?{...l,status:'live'}:l);
+  saveListings(updated);
+  initAdmin(); renderModeration(); renderListings();
+  showToast('✓ '+n+' annonces approuvées');
 }
 
-function adminDeleteListing(id){
-  if(!confirm('Supprimer définitivement cette annonce ?')) return;
-  saveAdminListings(getAdminListings().filter(l => l.id !== id));
-  renderAdminDashboard(); renderAdminListings();
-  showToast('🗑 Annonce supprimée');
+/* ── ACTIONS MEMBRES ───────────────────────────────────────── */
+function deleteUser(id){
+  if(!confirm('Supprimer ce membre ?'))return;
+  saveUsers(getUsers().filter(u=>String(u.id)!==String(id)));
+  initAdmin(); renderUsers();
+  showToast('Membre supprimé');
 }
 
-/* ── STATUS BADGE ─────────────────────────────────────────── */
-function statusBadge(status){
-  const map = {
-    pending:  '<span style="font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .52rem;background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.22)">⏳ EN ATTENTE</span>',
-    live:     '<span style="font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .52rem;background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)">✓ PUBLIÉE</span>',
-    rejected: '<span style="font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .52rem;background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)">✗ REJETÉE</span>',
-    draft:    '<span style="font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .52rem;background:rgba(255,255,255,.05);color:var(--mist2);border:1px solid var(--border)">BROUILLON</span>',
-  };
-  return map[status] || map.pending;
+/* ── MODAL ANNONCE ─────────────────────────────────────────── */
+function openEditListing(id){
+  const l=getListings().find(l=>l.id===id);
+  if(!l)return;
+  document.getElementById('ml-id').value    = l.id;
+  document.getElementById('ml-make').value  = l.make||'';
+  document.getElementById('ml-model').value = l.model||'';
+  document.getElementById('ml-year').value  = l.year||'';
+  document.getElementById('ml-price').value = l.price||'';
+  document.getElementById('ml-cat').value   = l.category||'light';
+  document.getElementById('ml-status').value= l.status||'pending';
+  document.getElementById('ml-airport').value= l.airport||'';
+  document.getElementById('ml-desc').value  = l.desc||'';
+  document.getElementById('ml-seller').value= l.sellerEmail||'';
+  document.getElementById("modalListingTitle").innerHTML="Modifier l'<em>annonce</em>";
+  openModal('modalListing');
+}
+function openNewListingModal(){
+  ['ml-id','ml-make','ml-model','ml-year','ml-price','ml-airport','ml-desc','ml-seller'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('ml-status').value='pending';
+  document.getElementById("modalListingTitle").innerHTML="Ajouter une <em>annonce</em>";
+  openModal('modalListing');
+}
+function saveListingModal(){
+  const id    = document.getElementById('ml-id').value;
+  const make  = document.getElementById('ml-make').value.trim();
+  const model = document.getElementById('ml-model').value.trim();
+  const year  = document.getElementById('ml-year').value.trim();
+  const price = document.getElementById('ml-price').value.trim();
+  const cat   = document.getElementById('ml-cat').value;
+  const status= document.getElementById('ml-status').value;
+  const airport=document.getElementById('ml-airport').value.trim();
+  const desc  = document.getElementById('ml-desc').value.trim();
+  if(!make){showToast('⚠ Marque requise');return;}
+  const all=getListings();
+  if(id){
+    const idx=all.findIndex(l=>String(l.id)===String(id));
+    if(idx>-1){ all[idx]={...all[idx],make,model,year,price,category:cat,status,airport,desc}; }
+  } else {
+    all.unshift({id:Date.now(),make,model,year,price,currency:'EUR',category:cat,status,airport,desc,submittedAt:new Date().toISOString(),views:0,enquiries:0,icon:'✈'});
+  }
+  saveListings(all);
+  closeModal('modalListing');
+  initAdmin(); renderListings(); renderModeration();
+  showToast('Annonce enregistrée');
+}
+function deleteListingFromModal(){
+  const id=document.getElementById('ml-id').value;
+  if(!id){closeModal('modalListing');return;}
+  if(!confirm('Supprimer définitivement cette annonce ?'))return;
+  saveListings(getListings().filter(l=>String(l.id)!==String(id)));
+  closeModal('modalListing'); initAdmin(); renderListings();
+  showToast('Annonce supprimée');
 }
 
+/* ── MODAL MEMBRE ──────────────────────────────────────────── */
+function openEditUser(id){
+  const u=getUsers().find(u=>String(u.id)===String(id));
+  if(!u)return;
+  document.getElementById('mu-id').value    = u.id;
+  document.getElementById('mu-name').value  = u.name||'';
+  document.getElementById('mu-email').value = u.email||'';
+  document.getElementById('mu-plan').value  = u.plan||'Essentiel';
+  document.getElementById('mu-status').value= u.status||'active';
+  openModal('modalUser');
+}
+function saveUserModal(){
+  const id    = document.getElementById('mu-id').value;
+  const name  = document.getElementById('mu-name').value.trim();
+  const plan  = document.getElementById('mu-plan').value;
+  const status= document.getElementById('mu-status').value;
+  const all=getUsers(); const idx=all.findIndex(u=>String(u.id)===String(id));
+  if(idx>-1){all[idx]={...all[idx],name,plan,status};}
+  saveUsers(all); closeModal('modalUser'); initAdmin(); renderUsers();
+  showToast('Membre mis à jour');
+}
+function deleteUserFromModal(){
+  const id=document.getElementById('mu-id').value;
+  if(!id)return;
+  if(!confirm('Supprimer ce membre ?'))return;
+  saveUsers(getUsers().filter(u=>String(u.id)!==String(id)));
+  closeModal('modalUser'); initAdmin(); renderUsers();
+  showToast('Membre supprimé');
+}
+
+/* ── MODALS ────────────────────────────────────────────────── */
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-backdrop.open').forEach(m=>m.classList.remove('open')); });
+
+/* ── EXPORT CSV ────────────────────────────────────────────── */
+function exportCSV(type){
+  var rows=[], headers=[];
+  if(type==='listings'){
+    headers=['ID','Marque','Modele','Annee','Prix','Devise','Categorie','Statut','Vendeur','Email Vendeur','Soumis le'];
+    rows=getListings().map(function(l){return [l.id,l.make,l.model,l.year,l.price,l.currency||'EUR',l.category,l.status||'pending',l.sellerName,l.sellerEmail,fmtDate(l.submittedAt)];});
+  } else {
+    headers=['ID','Nom','Email','Plan','Annonces','Inscrit le'];
+    var ls=getListings();
+    rows=getUsers().map(function(u){return [u.id,u.name,u.email,u.plan,ls.filter(function(l){return l.sellerEmail===u.email;}).length,fmtDate(u.registeredAt)];});
+  }
+  var csv=[headers].concat(rows).map(function(r){return r.map(function(v){var s=String(v==null?'':v);return '"'+s.split('"').join('""')+'"';}).join(',');}).join('\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='a2s_'+type+'_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  showToast('Export CSV telecharge');
+}
+/* ── TOAST ─────────────────────────────────────────────────── */
 let tt;
 function showToast(msg){ const el=document.getElementById('toast'); if(!el)return; el.textContent=msg; el.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('show'),3000); }
+
+/* ── START ─────────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', checkAuth);
 </script>
 </body>
 </html>
