@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aircraft2Sell — Annonce soumise</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--sky:#060b15;--deep:#04080f;--horizon:#0a1e3a;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#4a6278;--white:#f0f4f8;--card:#0c1826;--border:rgba(200,220,240,0.09);--green:#22c55e}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+
+/* Stars background */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%,rgba(255,255,255,.7) 0%,transparent 100%),
+    radial-gradient(1px 1px at 28% 70%,rgba(255,255,255,.5) 0%,transparent 100%),
+    radial-gradient(1px 1px at 45% 10%,rgba(255,255,255,.6) 0%,transparent 100%),
+    radial-gradient(1px 1px at 62% 50%,rgba(255,255,255,.4) 0%,transparent 100%),
+    radial-gradient(1px 1px at 78% 85%,rgba(255,255,255,.5) 0%,transparent 100%),
+    radial-gradient(2px 2px at 20% 90%,rgba(255,255,255,.4) 0%,transparent 100%),
+    radial-gradient(2px 2px at 55% 35%,rgba(255,255,255,.6) 0%,transparent 100%),
+    radial-gradient(1px 1px at 88% 22%,rgba(255,255,255,.3) 0%,transparent 100%),
+    radial-gradient(1px 1px at 5% 55%,rgba(255,255,255,.5) 0%,transparent 100%),
+    radial-gradient(1px 1px at 95% 75%,rgba(255,255,255,.4) 0%,transparent 100%)}
+
+/* Animated plane */
+.plane-wrap{position:relative;width:80px;height:80px;margin:0 auto 2rem}
+.plane-circle{width:80px;height:80px;border-radius:50%;background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.25);display:flex;align-items:center;justify-content:center}
+.plane-svg{fill:var(--accent);width:40px;height:40px;animation:planeFly 3s ease-in-out infinite}
+@keyframes planeFly{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-5px)}}
+.plane-ring{position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(232,160,32,.15);animation:ringPulse 2s ease-in-out infinite}
+@keyframes ringPulse{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.08);opacity:.15}}
+
+/* Main card */
+.confirm-card{background:var(--card);border:1px solid var(--border);width:100%;max-width:560px;overflow:hidden;animation:cardIn .6s ease both}
+@keyframes cardIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+
+.card-head{background:var(--horizon);padding:2rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.card-head::before{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:2px;height:40%;background:linear-gradient(0deg,transparent,rgba(232,160,32,.4),transparent)}
+.confirm-badge{display:inline-flex;align-items:center;gap:.5rem;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);padding:.3rem .9rem;font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:1rem}
+.confirm-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green)}
+.confirm-title{font-family:'Bebas Neue',sans-serif;font-size:2.4rem;letter-spacing:.06em;color:var(--white);line-height:1;margin-bottom:.5rem}
+.confirm-title em{font-style:normal;color:var(--accent)}
+.confirm-sub{font-size:.82rem;color:var(--mist);line-height:1.6;max-width:380px;margin:0 auto}
+
+.card-body{padding:1.8rem 2rem}
+
+/* Steps */
+.steps{display:flex;flex-direction:column;gap:0;margin-bottom:1.8rem;position:relative}
+.steps::before{content:'';position:absolute;left:17px;top:20px;bottom:20px;width:1px;background:var(--border)}
+.step{display:flex;align-items:flex-start;gap:1rem;padding:.6rem 0}
+.step-num{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:.06em;flex-shrink:0;position:relative;z-index:1}
+.step-num.done{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:var(--green)}
+.step-num.pending{background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.25);color:var(--accent)}
+.step-num.waiting{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--mist2)}
+.step-content{padding-top:.35rem}
+.step-title{font-size:.82rem;font-weight:600;color:var(--white);margin-bottom:.15rem}
+.step-desc{font-size:.72rem;color:var(--mist);line-height:1.5}
+
+/* Info box */
+.info-box{background:rgba(232,160,32,.05);border:1px solid rgba(232,160,32,.15);padding:1rem 1.2rem;margin-bottom:1.5rem}
+.info-box-title{font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:.6rem}
+.info-row{display:flex;justify-content:space-between;align-items:center;font-size:.76rem;padding:.28rem 0;border-bottom:1px solid rgba(232,160,32,.08)}
+.info-row:last-child{border-bottom:none}
+.info-label{color:var(--mist2)}
+.info-val{color:var(--white);font-weight:500}
+
+/* Actions */
+.actions{display:flex;gap:.6rem;flex-wrap:wrap}
+.btn-primary{background:var(--accent);color:var(--deep);border:none;padding:.75rem 1.6rem;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.1em;cursor:pointer;transition:background .2s;text-decoration:none;display:inline-flex;align-items:center;flex:1;justify-content:center}
+.btn-primary:hover{background:var(--gold)}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.72rem 1.4rem;font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;flex:1}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Logo */
+.logo-top{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.1em;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:.4rem;margin-bottom:2rem}
+.logo-top span{color:var(--accent)}
+.logo-top svg{fill:var(--accent);width:1.2em;height:1.2em}
+
+/* Countdown */
+.redirect-note{text-align:center;margin-top:1.2rem;font-size:.68rem;color:var(--mist2)}
+.redirect-note strong{color:var(--mist)}
+</style>
+</head>
+<body>
+
+<a href="homepage.html" class="logo-top">
+  <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M60 22c0-2-2-4-5-4l-12 1-16-14H18l8 14-14 1-5-6H2l3 10-3 10h5l5-6 14 1-8 14h9l16-14 12 1c3 0 5-2 5-4v-3z"/></svg>
+  Aircraft2<span>Sell</span>
+</a>
+
+<div class="plane-wrap">
+  <div class="plane-ring"></div>
+  <div class="plane-circle">
+    <svg class="plane-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M60 22c0-2-2-4-5-4l-12 1-16-14H18l8 14-14 1-5-6H2l3 10-3 10h5l5-6 14 1-8 14h9l16-14 12 1c3 0 5-2 5-4v-3z"/></svg>
+  </div>
+</div>
+
+<div class="confirm-card">
+  <div class="card-head">
+    <div class="confirm-badge">Annonce soumise</div>
+    <div class="confirm-title">Merci, <em id="userName">...</em> !</div>
+    <div class="confirm-sub">Votre annonce a bien été reçue et est en cours de vérification par notre équipe.</div>
+  </div>
+
+  <div class="card-body">
+
+    <!-- Étapes -->
+    <div class="steps">
+      <div class="step">
+        <div class="step-num done">✓</div>
+        <div class="step-content">
+          <div class="step-title">Annonce soumise</div>
+          <div class="step-desc">Votre annonce a été enregistrée avec succès dans notre système.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num pending">2</div>
+        <div class="step-content">
+          <div class="step-title">Vérification en cours</div>
+          <div class="step-desc">Notre équipe vérifie les informations et les photos sous <strong style="color:var(--white)">24–48h</strong>.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num waiting">3</div>
+        <div class="step-content">
+          <div class="step-title">Publication</div>
+          <div class="step-desc">Une fois validée, votre annonce sera visible par tous les acheteurs européens.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Infos récap -->
+    <div class="info-box">
+      <div class="info-box-title">Récapitulatif</div>
+      <div class="info-row"><span class="info-label">Statut</span><span class="info-val" style="color:var(--accent)">En attente de modération</span></div>
+      <div class="info-row"><span class="info-label">Délai de vérification</span><span class="info-val">24 à 48 heures</span></div>
+      <div class="info-row"><span class="info-label">Notification</span><span class="info-val" id="notifEmail">—</span></div>
+      <div class="info-row"><span class="info-label">Votre espace</span><span class="info-val"><a href="dashboard.html" style="color:var(--accent);text-decoration:none">Tableau de bord →</a></span></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <a href="dashboard.html" class="btn-primary">Voir mon tableau de bord</a>
+      <a href="post-listing.html" class="btn-ghost">Déposer une autre annonce</a>
+    </div>
+
+    <div class="redirect-note">
+      Redirection automatique vers votre tableau de bord dans <strong id="countdown">10</strong> secondes
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Récupérer le nom et l'email depuis localStorage
+const name  = localStorage.getItem('a2s_user_name') || '';
+const email = localStorage.getItem('a2s_user_email') || '';
+const firstName = name.split(' ')[0] || 'Pilote';
+
+document.getElementById('userName').textContent   = firstName;
+document.getElementById('notifEmail').textContent = email || 'Non renseigné';
+
+// Récupérer les infos de l'annonce depuis sessionStorage (passées par post-listing)
+const listingData = JSON.parse(sessionStorage.getItem('a2s_last_listing') || '{}');
+
+// Countdown et redirection auto
+let count = 10;
+const countEl = document.getElementById('countdown');
+const timer = setInterval(() => {
+  count--;
+  if(countEl) countEl.textContent = count;
+  if(count <= 0){
+    clearInterval(timer);
+    window.location.href = 'dashboard.html';
+  }
+}, 1000);
+</script>
+
+</body>
+</html>
