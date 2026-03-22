@@ -422,110 +422,10 @@ textarea.form-input{resize:vertical;min-height:120px;line-height:1.6}
 
 <div class="toast" id="toast"></div>
 
-<script src="aircraft-db.js"></script>
 <script>
 
 
 
-/* ── AIRCRAFT DB CASCADE ── */
-function initAircraftCascade() {
-  if (!window.AIRCRAFT_DB) { console.error("AIRCRAFT_DB not found"); return; }
-  var makes = Object.keys(window.AIRCRAFT_DB).sort();
-  var makeSel = document.getElementById('fMakeSel');
-  if (!makeSel) return;
-  makeSel.innerHTML = '<option value="">-- Marque --</option>'
-    + makes.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('')
-    + '<option value="__other__">Autre...</option>';
-  
-  makeSel.onchange = function() {
-    var make = this.value;
-    var modelSel = document.getElementById('fModelSel');
-    var customWrap = document.getElementById('mmCustomWrap');
-    var fMake = document.getElementById('fMake');
-    var fModel = document.getElementById('fModel');
-    
-    if (make === '__other__') {
-      modelSel.innerHTML = '<option value="">--</option>';
-      modelSel.disabled = true;
-      if (customWrap) customWrap.style.display = 'flex';
-      if (fMake) fMake.value = '';
-      if (fModel) fModel.value = '';
-    } else if (make) {
-      var models = window.AIRCRAFT_DB[make] ? window.AIRCRAFT_DB[make].models : [];
-      modelSel.innerHTML = '<option value="">-- Modèle --</option>'
-        + models.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('')
-        + '<option value="__other__">Autre...</option>';
-      modelSel.disabled = false;
-      if (customWrap) customWrap.style.display = 'none';
-      if (fMake) fMake.value = make;
-      if (fModel) fModel.value = '';
-    } else {
-      modelSel.innerHTML = '<option value="">-- Sélectionner --</option>';
-      modelSel.disabled = true;
-      if (customWrap) customWrap.style.display = 'none';
-      if (fMake) fMake.value = '';
-    }
-    if (typeof updatePreview === 'function') updatePreview();
-  };
-  
-  var modelSel = document.getElementById('fModelSel');
-  if (modelSel) {
-    modelSel.onchange = function() {
-      var val = this.value;
-      var make = document.getElementById('fMakeSel').value;
-      var fModel = document.getElementById('fModel');
-      var customWrap = document.getElementById('mmCustomWrap');
-      if (val === '__other__') {
-        if (customWrap) customWrap.style.display = 'flex';
-        if (fModel) fModel.value = '';
-      } else {
-        if (customWrap) customWrap.style.display = 'none';
-        if (fModel) fModel.value = val;
-      }
-      if (typeof updatePreview === 'function') updatePreview();
-    };
-  }
-}
-
-function requireLogin(e, dest){
-  e.preventDefault();
-  const ok = localStorage.getItem('a2s_logged_in')==='true';
-  window.location.href = ok ? dest : 'login.html?redirect='+encodeURIComponent(dest);
-}
-
-
-/* ─── PAGE AUTH GUARD ───────────────────────────────────────
-   This runs on load. If user is not logged in, redirect to login.
-   Replace with real Supabase check when ready:
-   const { data:{user} } = await supabase.auth.getUser();
-   if(!user) window.location.href='login.html?redirect=post-listing.html';
-   ─────────────────────────────────────────────────────────── */
-(function(){
-  const isLoggedIn = localStorage.getItem('a2s_logged_in') === 'true';
-  if(!isLoggedIn){
-    window.location.href = 'login.html?redirect=' + encodeURIComponent('post-listing.html');
-  }
-})();
-
-const T={
-  en:{back_dash:'Dashboard',sec1_title:'Aircraft identity',sec1_sub:'Basic identification details about your aircraft.',sec2_title:'Technical specifications',sec2_sub:'Airframe, engine and avionics details.',sec3_title:'Location & price',sec3_sub:'Where is the aircraft based and what is your asking price?',sec4_title:'Description',sec4_sub:'Describe your aircraft. Be specific about recent maintenance and why you are selling.',sec5_title:'Photos',lbl_category:'Category',lbl_make:'Make / Brand',lbl_model:'Model',lbl_year:'Year',lbl_serial:'Serial number',lbl_tt:'Total time (h TT)',lbl_smoh:'SMOH (h)',lbl_prop:'Propeller hours',lbl_engines:'Engine(s)',lbl_seats:'Seats',lbl_range:'Range (nm)',lbl_avionics:'Avionics',lbl_equipment:'Equipment / Options',chk_ifr:'IFR certified',chk_rvsm:'RVSM approved',chk_adsb:'ADS-B out',chk_logs:'All logbooks available',lbl_country:'Country',lbl_airport:'Base airport (ICAO)',lbl_price:'Asking price',lbl_price_type:'Price type',pt_negotiable:'Negotiable',pt_firm:'Firm price',pt_leasing:'Leasing available',pt_offers:'Offers welcome',lbl_desc:'Description',desc_placeholder:'Describe the condition, recent maintenance, avionics upgrades, reason for selling…',lbl_docs:'Documents available',plan_reminder_title:'Essential plan:',plan_reminder_text:' 5 photos max. Upgrade to Boost for 20 photos.',upload_text:'Click to upload or drag & drop photos',upload_hint:'JPG, PNG — Max 10 MB per photo',btn_draft:'Save draft',btn_submit:'Publish listing',submit_note:'Your listing will be reviewed and published within a few minutes.',preview_title:'Live preview',cat_light:'Light aircraft',cat_jet:'Business jet',cat_turbo:'Turboprop',cat_heli:'Helicopter',cat_ulm:'Ultralight / ULM',cat_airliner:'Airliner',toast_draft:'Draft saved!',toast_submit:'Publishing your listing…',toast_success:'Listing published! Redirecting…',chk1:'Category',chk2:'Make & model',chk4:'Year',chk5:'Total hours',chk6:'Location & price',chk7:'Description',chk8:'At least 1 photo'},
-  fr:{back_dash:'Tableau de bord',sec1_title:"Identité de l'aéronef",sec1_sub:"Informations d'identification de base.",sec2_title:'Caractéristiques techniques',sec2_sub:'Détails cellule, moteur et avionique.',sec3_title:'Localisation & prix',sec3_sub:"Où est basé l'avion et quel est votre prix de vente ?",sec4_title:'Description',sec4_sub:"Décrivez votre avion. Soyez précis sur l'entretien récent et la raison de la vente.",sec5_title:'Photos',lbl_category:'Catégorie',lbl_make:'Marque',lbl_model:'Modèle',lbl_year:'Année',lbl_serial:'Numéro de série',lbl_tt:'Heures totales (h TT)',lbl_smoh:'SMOH (h)',lbl_prop:'Heures hélice',lbl_engines:'Moteur(s)',lbl_seats:'Places',lbl_range:'Autonomie (nm)',lbl_avionics:'Avionique',lbl_equipment:'Équipements / Options',chk_ifr:'Certifié IFR',chk_rvsm:'Approuvé RVSM',chk_adsb:'ADS-B out',chk_logs:'Carnets de route disponibles',lbl_country:'Pays',lbl_airport:"Aéroport de base (ICAO)",lbl_price:'Prix demandé',lbl_price_type:'Type de prix',pt_negotiable:'Prix négociable',pt_firm:'Prix ferme',pt_leasing:'Leasing possible',pt_offers:'Offres bienvenues',lbl_desc:'Description',desc_placeholder:"Décrivez l'état, la maintenance récente, les améliorations avioniques, la raison de la vente…",lbl_docs:'Documents disponibles',plan_reminder_title:'Formule Essentiel :',plan_reminder_text:' 5 photos max. Passez à Boost pour 20 photos.',upload_text:'Cliquez ou glissez-déposez vos photos',upload_hint:'JPG, PNG — 10 Mo max par photo',btn_draft:'Enregistrer le brouillon',btn_submit:"Publier l'annonce",submit_note:"Votre annonce sera vérifiée et publiée en quelques minutes.",preview_title:'Aperçu en direct',cat_light:'Avion léger',cat_jet:"Jet d'affaires",cat_turbo:'Turbopropulseur',cat_heli:'Hélicoptère',cat_ulm:'ULM',cat_airliner:'Avion de ligne',toast_draft:'Brouillon sauvegardé !',toast_submit:"Publication de l'annonce en cours…",toast_success:'Annonce publiée ! Redirection…',chk1:'Catégorie',chk2:'Marque & modèle',chk4:'Année',chk5:'Heures totales',chk6:'Localisation & prix',chk7:'Description',chk8:'Au moins 1 photo'},
-  de:{back_dash:'Dashboard',sec1_title:'Flugzeugidentität',sec1_sub:'Grundlegende Identifikationsdaten.',sec2_title:'Technische Daten',sec2_sub:'Zelle, Motor und Avionik.',sec3_title:'Standort & Preis',sec3_sub:'Wo ist das Flugzeug stationiert und was ist Ihr Angebotspreis?',sec4_title:'Beschreibung',sec4_sub:'Beschreiben Sie Ihr Flugzeug. Details zu Wartung und Verkaufsgrund.',sec5_title:'Fotos',lbl_category:'Kategorie',lbl_make:'Marke',lbl_model:'Modell',lbl_year:'Jahr',lbl_serial:'Seriennummer',lbl_tt:'Gesamtstunden (h TT)',lbl_smoh:'SMOH (h)',lbl_prop:'Propellerstunden',lbl_engines:'Motor(en)',lbl_seats:'Sitze',lbl_range:'Reichweite (nm)',lbl_avionics:'Avionik',lbl_equipment:'Ausrüstung / Optionen',chk_ifr:'IFR-zertifiziert',chk_rvsm:'RVSM genehmigt',chk_adsb:'ADS-B out',chk_logs:'Bordbücher verfügbar',lbl_country:'Land',lbl_airport:'Heimatflughafen (ICAO)',lbl_price:'Angebotspreis',lbl_price_type:'Preistyp',pt_negotiable:'Verhandelbar',pt_firm:'Festpreis',pt_leasing:'Leasing möglich',pt_offers:'Angebote willkommen',lbl_desc:'Beschreibung',desc_placeholder:'Zustand, Wartungshistorie, Avionik-Upgrades, Verkaufsgrund…',lbl_docs:'Verfügbare Dokumente',plan_reminder_title:'Basis-Plan:',plan_reminder_text:' Max. 5 Fotos. Upgrade auf Boost für 20 Fotos.',upload_text:'Klicken oder Fotos hierher ziehen',upload_hint:'JPG, PNG — Max. 10 MB pro Foto',btn_draft:'Entwurf speichern',btn_submit:'Inserat veröffentlichen',submit_note:'Ihr Inserat wird geprüft und in wenigen Minuten veröffentlicht.',preview_title:'Live-Vorschau',cat_light:'Leichtflugzeug',cat_jet:'Geschäftsreisejet',cat_turbo:'Turboprop',cat_heli:'Hubschrauber',cat_ulm:'Ultraleicht',cat_airliner:'Verkehrsflugzeug',toast_draft:'Entwurf gespeichert!',toast_submit:'Inserat wird veröffentlicht…',toast_success:'Veröffentlicht! Weiterleitung…',chk1:'Kategorie',chk2:'Marke & Modell',chk4:'Jahr',chk5:'Gesamtstunden',chk6:'Standort & Preis',chk7:'Beschreibung',chk8:'Mind. 1 Foto'},
-  es:{back_dash:'Panel',sec1_title:'Identidad de la aeronave',sec1_sub:'Datos básicos de identificación.',sec2_title:'Especificaciones técnicas',sec2_sub:'Célula, motor y aviónica.',sec3_title:'Ubicación y precio',sec3_sub:'¿Dónde está basada la aeronave y cuál es tu precio?',sec4_title:'Descripción',sec4_sub:'Describe tu aeronave. Detalla el mantenimiento reciente y el motivo de venta.',sec5_title:'Fotos',lbl_category:'Categoría',lbl_make:'Marca',lbl_model:'Modelo',lbl_year:'Año',lbl_serial:'Número de serie',lbl_tt:'Horas totales (h TT)',lbl_smoh:'SMOH (h)',lbl_prop:'Horas hélice',lbl_engines:'Motor(es)',lbl_seats:'Plazas',lbl_range:'Autonomía (nm)',lbl_avionics:'Aviónica',lbl_equipment:'Equipamiento / Opciones',chk_ifr:'Certificado IFR',chk_rvsm:'Aprobado RVSM',chk_adsb:'ADS-B out',chk_logs:'Libros de vuelo disponibles',lbl_country:'País',lbl_airport:'Aeropuerto base (ICAO)',lbl_price:'Precio pedido',lbl_price_type:'Tipo de precio',pt_negotiable:'Negociable',pt_firm:'Precio fijo',pt_leasing:'Leasing disponible',pt_offers:'Se aceptan ofertas',lbl_desc:'Descripción',desc_placeholder:'Estado, mantenimiento reciente, mejoras de aviónica, motivo de venta…',lbl_docs:'Documentos disponibles',plan_reminder_title:'Plan Esencial:',plan_reminder_text:' Máx. 5 fotos. Actualiza a Boost para 20 fotos.',upload_text:'Haz clic o arrastra fotos aquí',upload_hint:'JPG, PNG — Máx. 10 MB por foto',btn_draft:'Guardar borrador',btn_submit:'Publicar anuncio',submit_note:'Tu anuncio será revisado y publicado en pocos minutos.',preview_title:'Vista previa en vivo',cat_light:'Avión ligero',cat_jet:'Jet ejecutivo',cat_turbo:'Turbohélice',cat_heli:'Helicóptero',cat_ulm:'Ultraligero',cat_airliner:'Aeronave comercial',toast_draft:'¡Borrador guardado!',toast_submit:'Publicando tu anuncio…',toast_success:'¡Publicado! Redirigiendo…',chk1:'Categoría',chk2:'Marca y modelo',chk4:'Año',chk5:'Horas totales',chk6:'Ubicación y precio',chk7:'Descripción',chk8:'Al menos 1 foto'},
-  zh:{back_dash:'控制台',sec1_title:'飞机身份信息',sec1_sub:'飞机基本识别信息。',sec2_title:'技术规格',sec2_sub:'机身、发动机和航电设备详情。',sec3_title:'位置与价格',sec3_sub:'飞机驻场地点及要价。',sec4_title:'描述',sec4_sub:'描述您的飞机，详述近期维护情况和出售原因。',sec5_title:'照片',lbl_category:'类别',lbl_make:'品牌',lbl_model:'型号',lbl_year:'年份',lbl_serial:'序列号',lbl_tt:'总飞行时间（h TT）',lbl_smoh:'SMOH（h）',lbl_prop:'螺旋桨时间',lbl_engines:'发动机',lbl_seats:'座位数',lbl_range:'航程（海里）',lbl_avionics:'航电设备',lbl_equipment:'设备/选项',chk_ifr:'IFR认证',chk_rvsm:'RVSM认证',chk_adsb:'ADS-B输出',chk_logs:'飞行日志齐全',lbl_country:'国家',lbl_airport:'基地机场（ICAO）',lbl_price:'要价',lbl_price_type:'价格类型',pt_negotiable:'价格可议',pt_firm:'定价出售',pt_leasing:'可融资租赁',pt_offers:'欢迎出价',lbl_desc:'描述',desc_placeholder:'描述状态、近期维护、航电升级、出售原因…',lbl_docs:'可提供文件',plan_reminder_title:'基础版：',plan_reminder_text:'最多5张照片。升级至加速版可上传20张。',upload_text:'点击上传或拖放照片',upload_hint:'JPG、PNG — 每张最大10MB',btn_draft:'保存草稿',btn_submit:'发布广告',submit_note:'您的广告将在几分钟内审核并发布。',preview_title:'实时预览',cat_light:'轻型飞机',cat_jet:'公务机',cat_turbo:'涡桨飞机',cat_heli:'直升机',cat_ulm:'超轻型飞机',cat_airliner:'客机',toast_draft:'草稿已保存！',toast_submit:'正在发布广告…',toast_success:'广告已发布！正在跳转…',chk1:'类别',chk2:'品牌和型号',chk4:'年份',chk5:'总飞行时间',chk6:'位置和价格',chk7:'描述',chk8:'至少1张照片'}
-};
-let lang='en';
-function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
-let photos=[];
-const MAX_PHOTOS=5;
-function setLang(l){
-  lang=l;
-  document.querySelectorAll('.lb').forEach(b=>{b.classList.toggle('active',b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase()));});
-  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'));});
-  document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{el.placeholder=t(el.getAttribute('data-i18n-placeholder'));});
-  updateChecklist(); updatePreview();
-}
-const CURR_SYMBOLS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',JPY:'¥',CNY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',PLN:'zł',CZK:'Kč',HUF:'Ft',TRY:'₺',BRL:'R$',AED:'د.إ',SAR:'﷼',INR:'₹',SGD:'S$',NZD:'NZ$',HKD:'HK$',ZAR:'R'};
 function updatePreview(){
   const make=document.getElementById('fMake').value.trim();
   const model=document.getElementById('fModel').value.trim();
@@ -665,15 +565,76 @@ let tt2;function showToast(msg){const el=document.getElementById('toast');el.tex
 setLang('fr');
 </script>
 <script src="nav.js"></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function(){
-  // aircraft-db.js et nav.js sont chargés — initialiser la cascade
-  if(typeof initAircraftCascade === 'function'){
-    initAircraftCascade();
-  } else {
-    console.error('initAircraftCascade non trouvé');
+/* ═══ AIRCRAFT CASCADE — données intégrées ══════════════════ */
+(function() {
+  var DB = {"Cessna": {"cat": "light", "models": ["150", "152", "162 Skycatcher", "172 Skyhawk", "172 Skyhawk SP", "172 Skyhawk G1000", "177 Cardinal", "180", "182 Skylane", "182 Skylane G1000", "185 Skywagon", "206 Stationair", "207 Skywagon", "208 Caravan", "208B Grand Caravan", "210 Centurion", "310", "336 Skymaster", "337 Skymaster", "340", "402", "414", "421", "TTx (T240)", "Citation CJ1", "Citation CJ2", "Citation CJ3", "Citation CJ4", "Citation Mustang", "Citation M2", "Citation XLS", "Citation Sovereign", "Citation X", "Citation Latitude", "Citation Longitude", "Citation Ascend"]}, "Piper": {"cat": "light", "models": ["PA-18 Super Cub", "PA-22 Tri-Pacer", "PA-24 Comanche", "PA-28 Cherokee", "PA-28-140", "PA-28-151 Warrior", "PA-28-161 Warrior II", "PA-28-181 Archer", "PA-28-181 Archer III", "PA-28R Arrow", "PA-28R-200 Arrow II", "PA-28RT-201 Arrow IV", "PA-32 Cherokee Six", "PA-32-300 Six", "PA-32R Lance", "PA-34 Seneca", "PA-34-200T Seneca II", "PA-34-220T Seneca V", "PA-38 Tomahawk", "PA-44 Seminole", "PA-46 Malibu", "PA-46-350P Malibu Mirage", "PA-46-500TP Meridian", "PA-46R Matrix", "M350", "M500", "M600", "M600/SLS"]}, "Beechcraft": {"cat": "light", "models": ["A23 Musketeer", "B23 Musketeer", "B19 Sport", "B36TC Bonanza", "B55 Baron", "B58 Baron", "D17 Staggerwing", "E33 Debonair", "F33A Bonanza", "G36 Bonanza", "V35 Bonanza", "V35B Bonanza", "B36TC Bonanza", "58P Baron Pressurized", "60 Duke", "65 Queen Air", "70 Queen Air", "80 Queen Air", "90 King Air", "A90 King Air", "C90 King Air", "C90GTx King Air", "E90 King Air", "F90 King Air", "100 King Air", "200 King Air", "B200 King Air", "B200GT King Air", "300 King Air", "B300 King Air", "350 King Air", "350i King Air", "350ER King Air", "1900 Airliner", "1900D"]}, "Mooney": {"cat": "light", "models": ["M20A", "M20B Mark 21", "M20C Ranger", "M20D Master", "M20E Super 21", "M20F Executive", "M20G Statesman", "M20J 201", "M20K 231", "M20K 252 TSE", "M20L PFM", "M20M Bravo", "M20R Ovation", "M20S Eagle", "M20TN Acclaim Type S", "M20V Acclaim Ultra", "M20U Ovation 3"]}, "Robin": {"cat": "light", "models": ["DR 200", "DR 253 Regent", "DR 300", "DR 315", "DR 340", "DR 360", "DR 400", "DR 400/120", "DR 400/140B", "DR 400/160", "DR 400/180", "DR 400/200R", "DR 401", "DR 500", "R 1180 TD", "R 2100 A", "R 2112", "R 2160 Alpha", "ATL", "Alpha 160A", "Alpha 160D"]}, "Diamond": {"cat": "light", "models": ["DA20 Katana", "DA20-C1 Eclipse", "DA40 Diamond Star", "DA40 NG", "DA40 XLS", "DA40 TDI", "DA42 Twin Star", "DA42 NG", "DA42-VI", "DA50 RG", "DA62", "HK36 Super Dimona", "DV20 Katana"]}, "Cirrus": {"cat": "light", "models": ["SR20", "SR20 G2", "SR20 G3", "SR22", "SR22 G2", "SR22 G3", "SR22 G5", "SR22 G6", "SR22T", "SR22T G6", "SR22 GTS", "SR22T GTS", "Vision Jet SF50"]}, "Socata / TBM": {"cat": "light", "models": ["Rallye 100", "Rallye 150", "Rallye 235", "MS 880", "MS 893 Rallye 180", "TB 9 Tampico", "TB 10 Tobago", "TB 20 Trinidad", "TB 21 Trinidad TC", "TBM 700", "TBM 850", "TBM 900", "TBM 910", "TBM 930", "TBM 940", "TBM 960"]}, "Tecnam": {"cat": "light", "models": ["P92 Echo", "P92 Eaglet", "P92 RG", "P96 Golf", "P2002 JF", "P2002 Sierra", "P2004 Bravo", "P2006T", "P2010", "P2012 Traveller", "P-Mentor"]}, "Grumman": {"cat": "light", "models": ["AA-1 Yankee", "AA-1B Trainer", "AA-1C T-Cat", "AA-5 Traveler", "AA-5A Cheetah", "AA-5B Tiger", "GA-7 Cougar", "Ag Cat"]}, "Mudry": {"cat": "light", "models": ["CAP 10", "CAP 10B", "CAP 20", "CAP 21", "CAP 230", "CAP 231", "CAP 232", "CAP 222", "CAP 330", "CAP 332"]}, "Extra": {"cat": "light", "models": ["EA-300", "EA-300/L", "EA-300/S", "EA-300/SC", "EA-200", "EA-230", "EA-330LX", "EA-330SC", "EA-500", "EA-400"]}, "Aquila": {"cat": "light", "models": ["AT01", "AT01-100", "AT01-A210"]}, "BRM Aero": {"cat": "light", "models": ["Bristell", "Bristell UL", "Bristell NG5"]}, "Pipistrel": {"cat": "light", "models": ["Sinus", "Sinus 912", "Virus", "Virus SW 121", "Virus SW 128", "Alpha Trainer", "Panthera", "Velis Electro", "Taurus"]}, "Ultravia": {"cat": "light", "models": ["Pelican Club", "Pelican PL"]}, "Pilatus": {"cat": "turbo", "models": ["PC-6 Porter", "PC-6/B2-H4 Turbo Porter", "PC-7 Turbotrainer", "PC-9", "PC-12", "PC-12/45", "PC-12/47", "PC-12/47E", "PC-12 NGX", "PC-21", "PC-24"]}, "Daher (TBM)": {"cat": "turbo", "models": ["TBM 700", "TBM 700C2", "TBM 850", "TBM 900", "TBM 910", "TBM 930", "TBM 940", "TBM 960"]}, "Piper (Turbine)": {"cat": "turbo", "models": ["PA-46-500TP Meridian", "PA-46-600TP M600", "PA-46-M600/SLS"]}, "Cessna (Turbine)": {"cat": "turbo", "models": ["208 Caravan", "208B Grand Caravan", "208B EX", "208B Grand Caravan EX"]}, "Beechcraft (Turbine)": {"cat": "turbo", "models": ["90 King Air", "C90 King Air", "C90GTx", "E90", "100", "200", "B200", "B200GT", "300", "B300", "350", "350i", "350ER", "1900", "1900C", "1900D"]}, "Daher Kodiak": {"cat": "turbo", "models": ["100", "Quest Kodiak 100", "Kodiak 900"]}, "Vulcanair": {"cat": "turbo", "models": ["P.68 Observer", "P.68C", "P.68TC", "V1.0", "Viator"]}, "Partenavia": {"cat": "turbo", "models": ["P.68 Victor", "P.68B", "P.68C", "P.68R"]}, "Cessna Citation": {"cat": "jet", "models": ["Citation I", "Citation II", "Citation S/II", "Citation III", "Citation V", "Citation VI", "Citation VII", "CJ1", "CJ1+", "CJ2", "CJ2+", "CJ3", "CJ3+", "CJ4", "Citation Mustang", "Citation M2", "Citation M2+", "Citation XLS", "Citation XLS+", "Citation Sovereign", "Citation Sovereign+", "Citation X", "Citation X+", "Citation Latitude", "Citation Longitude", "Citation Ascend"]}, "Bombardier Learjet": {"cat": "jet", "models": ["23", "24", "25", "28", "29", "31", "35", "35A", "36", "40", "45", "45XR", "55", "60", "60XR", "70", "75", "75 Liberty", "85"]}, "Bombardier Challenger": {"cat": "jet", "models": ["300", "350", "600", "601", "601-3A", "604", "605", "650", "3500"]}, "Bombardier Global": {"cat": "jet", "models": ["Express", "5000", "6000", "7500", "8000", "Global XRS"]}, "Gulfstream": {"cat": "jet", "models": ["G100", "G150", "G200", "G280", "G300", "G350", "G400", "G450", "G500", "G550", "G600", "G650", "G650ER", "G700", "G800", "GIII", "GIV", "GIV-SP", "GV", "GV-SP"]}, "Dassault Falcon": {"cat": "jet", "models": ["10", "20", "50", "900", "900B", "900C", "900DX", "900EX", "900EX EASy", "900LX", "2000", "2000EX", "2000EX EASy", "2000LX", "2000LXS", "2000S", "7X", "8X", "6X", "10X"]}, "Embraer Phenom": {"cat": "jet", "models": ["100", "100E", "100EV", "300", "300E", "300F"]}, "Embraer Legacy": {"cat": "jet", "models": ["450", "500", "600", "650", "650E"]}, "Embraer Praetor": {"cat": "jet", "models": ["500", "600"]}, "HondaJet": {"cat": "jet", "models": ["HA-420", "Elite", "Elite II", "Elite S"]}, "Pilatus PC-24": {"cat": "jet", "models": ["PC-24"]}, "Daher Kodiak (Jet)": {"cat": "jet", "models": ["Kodiak 100 Jet"]}, "Textron Aviation": {"cat": "jet", "models": ["Citation Ascend", "Citation CJ4 Gen2", "Citation Longitude"]}, "IAI (Astra/Galaxy)": {"cat": "jet", "models": ["Astra SPX", "Gulfstream G100", "Galaxy", "Gulfstream G200", "Gulfstream G280"]}, "Nextant Aerospace": {"cat": "jet", "models": ["G90XT", "604XT"]}, "Eclipse Aerospace": {"cat": "jet", "models": ["Eclipse 500", "Eclipse 550"]}, "Aerion": {"cat": "jet", "models": ["AS2"]}, "Robinson": {"cat": "heli", "models": ["R22 Alpha", "R22 Beta", "R22 Beta II", "R22 Mariner", "R44 Astro", "R44 Raven I", "R44 Raven II", "R44 Clipper", "R44 Cadet", "R66", "R66 Turbine"]}, "Bell": {"cat": "heli", "models": ["47", "206 JetRanger", "206B JetRanger III", "206L LongRanger", "206L-3", "206L-4", "212", "214", "222", "230", "407", "407GX", "407GXi", "412", "412EP", "412HP", "429", "430", "505 Jet Ranger X", "525 Relentless"]}, "Airbus Helicopters (Eurocopter)": {"cat": "heli", "models": ["AS350 B2 Écureuil", "AS350 B3 Écureuil", "AS355 Twin Écureuil", "AS355F2", "AS355N", "AS355NP", "EC120 Colibri", "EC130 B4", "EC130 T2", "EC135 P2", "EC135 P2+", "EC135 T2", "EC135 T2+", "EC135 P3", "EC135 T3", "EC145", "EC145 T2", "EC155", "EC155 B1", "H125", "H130", "H135", "H145", "H145M", "H155", "H160", "H175", "H225", "BK117 B-2", "BK117 C-1", "BK117 C-2 (EC145)", "BK117 D-2 (H145)"]}, "Leonardo (AgustaWestland)": {"cat": "heli", "models": ["A109A", "A109A II", "A109C", "A109E Power", "A109K2", "A109S Grand", "A119 Koala", "AW109 Grand New", "AW109 SP Grand New", "AW119 Koala Mk II", "AW139", "AW169", "AW189", "A119", "A139"]}, "Sikorsky": {"cat": "heli", "models": ["S-58T", "S-61", "S-70 Black Hawk", "S-76 A", "S-76 B", "S-76 C", "S-76 C++", "S-76 C+", "S-76 D", "S-92", "S-300C", "S-300Cbi"]}, "MD Helicopters": {"cat": "heli", "models": ["MD 500", "MD 500C", "MD 500D", "MD 500E", "MD 520N", "MD 530F", "MD 600N", "MD 900 Explorer", "MD 902 Explorer"]}, "Guimbal": {"cat": "heli", "models": ["Cabri G2"]}, "Enstrom": {"cat": "heli", "models": ["280 Shark", "280FX", "F-28A", "F-28C", "F-28F", "480", "480B"]}, "Schweizer": {"cat": "heli", "models": ["300C", "300CB", "300CBi", "333"]}, "Rans": {"cat": "ulm", "models": ["S-6ES", "S-7", "S-9 Chaos", "S-12 Airaile", "S-20", "S-21"]}, "Zenith": {"cat": "ulm", "models": ["CH 601", "CH 650", "CH 750", "CH 750 Cruzer", "STOL CH 801"]}, "Flight Design": {"cat": "ulm", "models": ["CT2K", "CTSW", "CTLS", "CTLS-ELA", "CTLSi", "F2", "F4"]}, "Ikarus": {"cat": "ulm", "models": ["C42", "C42B", "C42C", "C42D"]}, "AutoGyro": {"cat": "ulm", "models": ["Calidus", "MTOsport", "MTO Sport 2017", "Cavalon", "Cavalon Pro"]}, "DynAero": {"cat": "ulm", "models": ["MCR-01", "MCR-4S", "MCR Club", "MCR ULC", "CR 100"]}, "Fantasy Air": {"cat": "ulm", "models": ["Cora 02", "Allegro 2000", "Allegro SW"]}, "TL Ultralight": {"cat": "ulm", "models": ["TL-2000 Sting", "TL-3000 Sirius", "TL-96 Star"]}, "Aeroprakt": {"cat": "ulm", "models": ["A-22 Fox", "A-22LS", "A-22L2", "A-32", "A-36"]}, "P&M Aviation": {"cat": "ulm", "models": ["Quik GT450", "Quik R", "Quik S", "PulsR", "Pegasus"]}, "Kolb": {"cat": "ulm", "models": ["Twinstar", "Firestar", "FireFly", "Mark III", "UltraStar"]}, "Comco Ikarus": {"cat": "ulm", "models": ["Fox", "C22", "C42"]}, "Dova": {"cat": "ulm", "models": ["DV-1 Skylark"]}, "EuroFox": {"cat": "ulm", "models": ["EuroFox 912", "EuroFox 915"]}, "Savannah": {"cat": "ulm", "models": ["S", "VG", "XL", "Jabiru"]}, "ATR": {"cat": "airliner", "models": ["ATR 42-300", "ATR 42-500", "ATR 42-600", "ATR 42-600S", "ATR 72-200", "ATR 72-500", "ATR 72-600"]}, "Bombardier Q (Dash 8)": {"cat": "airliner", "models": ["DHC-8-100", "DHC-8-200", "DHC-8-300", "DHC-8-400 (Q400)", "Q100", "Q200", "Q300", "Q400", "Q400 NextGen"]}, "Embraer ERJ": {"cat": "airliner", "models": ["ERJ-135", "ERJ-140", "ERJ-145", "ERJ-145XR"]}, "Embraer E-Jet": {"cat": "airliner", "models": ["E170", "E175", "E190", "E190-E2", "E195", "E195-E2"]}, "Boeing": {"cat": "airliner", "models": ["737-300", "737-400", "737-500", "737-600", "737-700", "737-800", "737-900", "737 MAX 7", "737 MAX 8", "737 MAX 9", "737 MAX 10", "747-400", "747-8", "757-200", "767-200", "767-300", "777-200", "777-300", "777X", "787-8", "787-9", "787-10"]}, "Airbus": {"cat": "airliner", "models": ["A318", "A319", "A319neo", "A320", "A320neo", "A321", "A321neo", "A321XLR", "A220-100", "A220-300", "A330-200", "A330-300", "A330-800neo", "A330-900neo", "A340-200", "A340-300", "A340-500", "A340-600", "A350-900", "A350-1000", "A380-800"]}, "De Havilland Canada": {"cat": "airliner", "models": ["DHC-1 Chipmunk", "DHC-2 Beaver", "DHC-3 Otter", "DHC-4 Caribou", "DHC-6 Twin Otter", "DHC-6-300", "DHC-6-400", "DHC-7", "Dash 8 Q100", "Dash 8 Q200", "Dash 8 Q300", "Dash 8 Q400"]}, "Fokker": {"cat": "airliner", "models": ["F27 Friendship", "F28 Fellowship", "F50", "F70", "F100"]}, "BAe / British Aerospace": {"cat": "airliner", "models": ["ATP", "Jetstream 31", "Jetstream 41", "BAe 146-100", "BAe 146-200", "BAe 146-300", "Avro RJ70", "Avro RJ85", "Avro RJ100"]}, "North American": {"cat": "light", "models": ["T-6 Texan", "T-6G", "T-28 Trojan", "P-51 Mustang", "B-25 Mitchell"]}, "Yakovlev": {"cat": "light", "models": ["Yak-11", "Yak-18T", "Yak-52", "Yak-55"]}, "Aero Vodochody": {"cat": "light", "models": ["L-39 Albatros", "L-39C", "L-39ZA", "L-159 ALCA"]}, "Zlin": {"cat": "light", "models": ["Z-42", "Z-43", "Z-126", "Z-226", "Z-242", "Z-526", "Z-726"]}, "Autre / Other": {"cat": "light", "models": ["Modèle personnalisé"]}};
+
+  function initCascade() {
+    var makeSel  = document.getElementById('fMakeSel');
+    var modelSel = document.getElementById('fModelSel');
+    var fMake    = document.getElementById('fMake');
+    var fModel   = document.getElementById('fModel');
+    var customWrap = document.getElementById('mmCustomWrap');
+
+    if (!makeSel) return;
+
+    // Peupler les marques triées
+    var makes = Object.keys(DB).sort();
+    var opts = '<option value="">— Sélectionner la marque —</option>';
+    for (var i = 0; i < makes.length; i++) {
+      opts += '<option value="' + makes[i] + '">' + makes[i] + '</option>';
+    }
+    opts += '<option value="__other__">Autre (saisir manuellement)</option>';
+    makeSel.innerHTML = opts;
+
+    // Changement de marque → peupler les modèles
+    makeSel.addEventListener('change', function() {
+      var make = this.value;
+      if (fMake) fMake.value = (make && make !== '__other__') ? make : '';
+
+      if (!make || make === '__other__') {
+        if (modelSel) { modelSel.innerHTML = '<option value="">—</option>'; modelSel.disabled = true; }
+        if (customWrap) customWrap.classList.toggle('show', make === '__other__');
+        return;
+      }
+      if (customWrap) customWrap.classList.remove('show');
+
+      var entry   = DB[make];
+      var models  = entry ? entry.models : [];
+      var mopts   = '<option value="">— Sélectionner le modèle —</option>';
+      for (var j = 0; j < models.length; j++) {
+        mopts += '<option value="' + models[j] + '">' + models[j] + '</option>';
+      }
+      mopts += '<option value="__other__">Autre (saisir manuellement)</option>';
+      if (modelSel) { modelSel.innerHTML = mopts; modelSel.disabled = false; }
+      if (typeof updatePreview === 'function') updatePreview();
+    });
+
+    // Changement de modèle
+    if (modelSel) {
+      modelSel.addEventListener('change', function() {
+        var val = this.value;
+        if (val === '__other__') {
+          if (customWrap) customWrap.classList.add('show');
+          if (fModel) fModel.value = '';
+        } else {
+          if (customWrap) customWrap.classList.remove('show');
+          if (fModel) fModel.value = val;
+        }
+        if (typeof updatePreview === 'function') updatePreview();
+      });
+    }
   }
-});
+
+  // Lancer quand le DOM est prêt
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCascade);
+  } else {
+    initCascade();
+  }
+})();
 </script>
 </body>
 </html>
