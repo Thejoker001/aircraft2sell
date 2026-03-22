@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aircraft2Sell — Modération</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}
+body{background:#07101f;color:#f0f4f8;min-height:100vh;padding:0}
+/* LOGIN */
+#loginWrap{position:fixed;inset:0;background:#04080f;display:flex;align-items:center;justify-content:center;z-index:99}
+#loginWrap.hidden{display:none}
+.lb{width:100%;max-width:360px;padding:2rem}
+.lb h1{font-size:1.6rem;font-weight:700;color:#e8a020;margin-bottom:.25rem}
+.lb p{font-size:.8rem;color:#8fa3b8;margin-bottom:1.5rem}
+.lb label{display:block;font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:#8fa3b8;margin-bottom:.3rem}
+.lb input{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(200,220,240,.15);color:#f0f4f8;padding:.7rem 1rem;font-size:.9rem;outline:none;margin-bottom:.75rem}
+.lb input:focus{border-color:#e8a020}
+.lb button{width:100%;background:#e8a020;color:#07101f;border:none;padding:.8rem;font-size:1rem;font-weight:700;cursor:pointer}
+.lb-err{color:#ef4444;font-size:.75rem;margin-top:.4rem;text-align:center;min-height:1rem}
+/* APP */
+#app{display:none;flex-direction:column;min-height:100vh}
+#app.visible{display:flex}
+/* HEADER */
+.hd{background:#04080f;border-bottom:1px solid rgba(200,220,240,.09);padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between}
+.hd-logo{font-size:1.3rem;font-weight:700;color:#e8a020;letter-spacing:.05em}
+.hd-right{display:flex;gap:.5rem;align-items:center}
+.btn{background:transparent;border:1px solid rgba(200,220,240,.2);color:#8fa3b8;padding:.38rem .85rem;font-size:.75rem;cursor:pointer;transition:all .15s}
+.btn:hover{border-color:#e8a020;color:#e8a020}
+.btn.primary{background:#e8a020;color:#07101f;border-color:#e8a020;font-weight:700}
+.btn.primary:hover{background:#f5c842}
+.btn.green{border-color:rgba(34,197,94,.4);color:#22c55e}
+.btn.green:hover{background:rgba(34,197,94,.1)}
+.btn.red{border-color:rgba(239,68,68,.4);color:#ef4444}
+.btn.red:hover{background:rgba(239,68,68,.1)}
+/* TABS */
+.tabs{background:#0c1826;border-bottom:1px solid rgba(200,220,240,.09);padding:0 1.5rem;display:flex;gap:0}
+.tab{padding:.7rem 1rem;font-size:.78rem;color:#8fa3b8;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab.active{color:#e8a020;border-bottom-color:#e8a020}
+/* CONTENT */
+.content{flex:1;padding:1.5rem;display:flex;flex-direction:column;gap:1rem}
+/* KPI ROW */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem}
+.kpi{background:#0c1826;border:1px solid rgba(200,220,240,.09);padding:.85rem 1rem;border-top:2px solid transparent}
+.kpi.orange{border-top-color:#f97316}.kpi.green{border-top-color:#22c55e}.kpi.blue{border-top-color:#60a5fa}.kpi.red{border-top-color:#ef4444}
+.kpi-label{font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;color:#4a6278;margin-bottom:.35rem}
+.kpi-val{font-size:2rem;font-weight:700;color:#f0f4f8;line-height:1}
+/* PANEL */
+.panel{background:#0c1826;border:1px solid rgba(200,220,240,.09)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;border-bottom:1px solid rgba(200,220,240,.09)}
+.panel-title{font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#f0f4f8}
+.panel-count{font-size:.65rem;color:#f97316;font-weight:600}
+/* LISTING CARD */
+.listing-card{display:flex;align-items:flex-start;gap:.85rem;padding:.85rem 1rem;border-bottom:1px solid rgba(200,220,240,.06);transition:background .12s}
+.listing-card:last-child{border-bottom:none}
+.listing-card:hover{background:rgba(255,255,255,.015)}
+.lc-icon{font-size:1.4rem;flex-shrink:0;margin-top:.1rem}
+.lc-body{flex:1;min-width:0}
+.lc-title{font-size:.88rem;font-weight:600;color:#f0f4f8;margin-bottom:.25rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lc-meta{font-size:.7rem;color:#4a6278;line-height:1.6}
+.lc-meta span{margin-right:.6rem}
+.lc-right{display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;flex-shrink:0;min-width:140px}
+.lc-price{font-size:1.1rem;font-weight:700;color:#f5c842}
+.lc-actions{display:flex;gap:.3rem}
+/* PILL */
+.pill{display:inline-flex;align-items:center;gap:.25rem;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.15rem .45rem}
+.pill::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.p-pend{background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.25)}.p-pend::before{background:#f97316;animation:blink 1.5s infinite}
+.p-live{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)}.p-live::before{background:#22c55e}
+.p-rejt{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}.p-rejt::before{background:#ef4444}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+thead th{background:rgba(10,30,58,.8);padding:.55rem .85rem;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:#8fa3b8;font-weight:500;text-align:left;border-bottom:1px solid rgba(200,220,240,.09)}
+tbody td{padding:.6rem .85rem;border-bottom:1px solid rgba(200,220,240,.06);color:#8fa3b8;vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.01)}
+.td-w{color:#f0f4f8!important;font-weight:500}
+.td-gold{font-weight:700;color:#f5c842!important}
+/* EMPTY */
+.empty{text-align:center;padding:3rem 1rem;display:flex;flex-direction:column;align-items:center;gap:.5rem}
+.empty-ic{font-size:2.5rem;opacity:.1;margin-bottom:.3rem}
+.empty-t{font-size:.85rem;font-weight:600;color:#f0f4f8}
+.empty-s{font-size:.75rem;color:#8fa3b8;line-height:1.6;max-width:340px}
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.filter-inp{background:rgba(255,255,255,.04);border:1px solid rgba(200,220,240,.15);color:#f0f4f8;padding:.38rem .7rem;font-size:.78rem;outline:none;transition:border-color .15s}
+.filter-inp:focus{border-color:#e8a020}
+.filter-inp::placeholder{color:#4a6278}
+.filter-sel{background:rgba(255,255,255,.04);border:1px solid rgba(200,220,240,.15);color:#f0f4f8;padding:.38rem .7rem;font-size:.78rem;outline:none;cursor:pointer}
+.filter-sel option{background:#0c1826}
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#0c1826;border:1px solid #e8a020;padding:.7rem 1.2rem;color:#f0f4f8;font-size:.82rem;z-index:9999;opacity:0;transform:translateY(12px);transition:all .25s;pointer-events:none;max-width:300px;border-radius:2px}
+.toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:700px){.kpis{grid-template-columns:1fr 1fr}.lc-right{min-width:100px}.hd{padding:.6rem 1rem}.content{padding:1rem}}
+@media(max-width:480px){.kpis{grid-template-columns:1fr 1fr}.lc-right{display:none}.tabs{overflow-x:auto;scrollbar-width:none}.tab{font-size:.7rem;padding:.6rem .75rem}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginWrap">
+  <div class="lb">
+    <h1>Aircraft2Sell</h1>
+    <p>Panneau de modération</p>
+    <label>Email</label>
+    <input type="email" id="lEmail" placeholder="contact.aircraft2sell@gmail.com" onkeydown="if(event.key==='Enter')login()">
+    <label>Mot de passe</label>
+    <input type="password" id="lPw" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">Accéder</button>
+    <div class="lb-err" id="lErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="hd">
+    <div class="hd-logo">✈ Aircraft2Sell Admin</div>
+    <div class="hd-right">
+      <button class="btn primary" onclick="injectTest()">+ Annonce test</button>
+      <button class="btn" onclick="reload()">↺ Actualiser</button>
+      <a href="homepage.html" class="btn" target="_blank">↗ Site</a>
+      <button class="btn" onclick="logout()" style="color:#ef4444;border-color:rgba(239,68,68,.3)">Déconnexion</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" id="tab-mod"   onclick="showTab('mod')">⏳ Modération <span id="tab-mod-cnt"  style="margin-left:.3rem"></span></div>
+    <div class="tab"        id="tab-list"  onclick="showTab('list')">✈ Annonces</div>
+    <div class="tab"        id="tab-users" onclick="showTab('users')">◉ Membres</div>
+  </div>
+  <div class="content">
+
+    <!-- SECTION MOD -->
+    <div id="sec-mod">
+      <div class="kpis">
+        <div class="kpi orange"><div class="kpi-label">En attente</div><div class="kpi-val" id="kpi-pend">0</div></div>
+        <div class="kpi green"><div class="kpi-label">Publiées</div><div class="kpi-val" id="kpi-live">0</div></div>
+        <div class="kpi blue"><div class="kpi-label">Total annonces</div><div class="kpi-val" id="kpi-total">0</div></div>
+        <div class="kpi red"><div class="kpi-label">Rejetées</div><div class="kpi-val" id="kpi-rejt">0</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Annonces en attente de validation</div>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span class="panel-count" id="mod-count">0 annonce</span>
+            <button class="btn green" onclick="approveAll()">✓ Tout approuver</button>
+          </div>
+        </div>
+        <div id="mod-list"></div>
+      </div>
+    </div>
+
+    <!-- SECTION ANNONCES -->
+    <div id="sec-list" style="display:none">
+      <div class="toolbar" style="margin-bottom:.75rem">
+        <input type="text" class="filter-inp" id="ls-q" placeholder="Rechercher…" oninput="renderList()">
+        <select class="filter-sel" id="ls-st" onchange="renderList()">
+          <option value="">Tous statuts</option>
+          <option value="pending">En attente</option>
+          <option value="live">Publiées</option>
+          <option value="rejected">Rejetées</option>
+        </select>
+        <button class="btn" onclick="exportCSV('list')" style="margin-left:auto">↓ CSV</button>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Annonce</th><th>Vendeur</th><th>Prix</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody id="list-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION MEMBRES -->
+    <div id="sec-users" style="display:none">
+      <div class="toolbar" style="margin-bottom:.75rem">
+        <input type="text" class="filter-inp" id="us-q" placeholder="Nom, email…" oninput="renderUsers()">
+        <select class="filter-sel" id="us-plan" onchange="renderUsers()">
+          <option value="">Tous plans</option>
+          <option value="Essentiel">Essentiel</option>
+          <option value="Aviateur">Aviateur</option>
+          <option value="Pro">Pro</option>
+        </select>
+        <button class="btn" onclick="exportCSV('users')" style="margin-left:auto">↓ CSV</button>
+      </div>
+      <div class="kpis">
+        <div class="kpi green"><div class="kpi-label">Total membres</div><div class="kpi-val" id="us-total">0</div></div>
+        <div class="kpi orange"><div class="kpi-label">Aviateur</div><div class="kpi-val" id="us-avi">0</div></div>
+        <div class="kpi blue"><div class="kpi-label">Pro</div><div class="kpi-val" id="us-pro">0</div></div>
+        <div class="kpi red"><div class="kpi-label">Essentiel</div><div class="kpi-val" id="us-ess">0</div></div>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Nom</th><th>Email</th><th>Plan</th><th>Inscrit le</th><th>Actions</th></tr></thead>
+            <tbody id="users-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var PASS = 'A2S@Admin2026!';
+var MAIL = 'contact.aircraft2sell@gmail.com';
+var SK   = 'a2s_mod_session';
+
+/* ── AUTH ── */
+function login(){
+  var em = document.getElementById('lEmail').value.trim();
+  var pw = document.getElementById('lPw').value;
+  if(em===MAIL && pw===PASS){
+    sessionStorage.setItem(SK,'1');
+    document.getElementById('loginWrap').classList.add('hidden');
+    document.getElementById('app').classList.add('visible');
+    renderAll();
+  } else {
+    document.getElementById('lErr').textContent='Identifiants incorrects';
+    document.getElementById('lPw').value='';
+  }
+}
+function logout(){
+  sessionStorage.removeItem(SK);
+  location.reload();
+}
+
+/* ── DATA ── */
+function get(k){ try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(e){return[];} }
+function save(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
+function getListings(){ return get('a2s_listings'); }
+function getUsers(){    return get('a2s_users');    }
+function saveListings(a){ save('a2s_listings',a); }
+function saveUsers(a){    save('a2s_users',a);    }
+
+/* ── HELPERS ── */
+function fmtDate(iso){ if(!iso)return'—'; try{return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return'—';} }
+function ltitle(l){ return l.title||[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Sans titre'; }
+function sym(c){ return {EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[c||'EUR']||'€'; }
+function statusPill(s){
+  if(s==='live')     return '<span class="pill p-live">Publiée</span>';
+  if(s==='rejected') return '<span class="pill p-rejt">Rejetée</span>';
+  return '<span class="pill p-pend">En attente</span>';
+}
+function planColor(p){
+  if(p==='Pro')      return 'color:#a78bfa';
+  if(p==='Aviateur') return 'color:#e8a020';
+  return 'color:#4a6278';
+}
+
+/* ── TABS ── */
+function showTab(id){
+  ['mod','list','users'].forEach(function(t){
+    document.getElementById('sec-'+t).style.display = t===id?'':'none';
+    document.getElementById('tab-'+t).classList.toggle('active',t===id);
+  });
+  if(id==='list')  renderList();
+  if(id==='users') renderUsers();
+  if(id==='mod')   renderMod();
+}
+
+/* ── RENDER ALL ── */
+function reload(){ renderAll(); showToast('Actualisé'); }
+function renderAll(){
+  renderMod();
+  updateKpis();
+}
+
+function updateKpis(){
+  var ls  = getListings();
+  var pend = ls.filter(function(l){return !l.status||l.status==='pending';}).length;
+  var live = ls.filter(function(l){return l.status==='live';}).length;
+  var rejt = ls.filter(function(l){return l.status==='rejected';}).length;
+  document.getElementById('kpi-pend').textContent  = pend;
+  document.getElementById('kpi-live').textContent  = live;
+  document.getElementById('kpi-total').textContent = ls.length;
+  document.getElementById('kpi-rejt').textContent  = rejt;
+  var cntEl = document.getElementById('tab-mod-cnt');
+  if(cntEl) cntEl.innerHTML = pend ? '<span style="background:#f97316;color:#fff;font-size:.55rem;font-weight:700;padding:.08rem .32rem;border-radius:4px">'+pend+'</span>' : '';
+}
+
+/* ── MODÉRATION ── */
+function renderMod(){
+  updateKpis();
+  var pending = getListings().filter(function(l){return !l.status||l.status==='pending';});
+  var cnt = document.getElementById('mod-count');
+  if(cnt) cnt.textContent = pending.length+' annonce'+(pending.length>1?'s':'');
+  var el = document.getElementById('mod-list');
+  if(!el) return;
+  if(!pending.length){
+    el.innerHTML = '<div class="empty">'
+      +'<div class="empty-ic">✓</div>'
+      +'<div class="empty-t">Aucune annonce en attente</div>'
+      +'<div class="empty-s">Cliquez "+ Annonce test" pour créer une annonce de test et vérifier que la modération fonctionne.</div>'
+      +'</div>';
+    return;
+  }
+  var html = '';
+  for(var i=0;i<pending.length;i++){
+    var l   = pending[i];
+    var lid = String(l.id);
+    var pr  = l.price ? sym(l.currency)+Number(l.price).toLocaleString() : '—';
+    html += '<div class="listing-card">'
+      +'<div class="lc-icon">✈</div>'
+      +'<div class="lc-body">'
+      +'<div class="lc-title">'+ltitle(l)+'</div>'
+      +'<div class="lc-meta">'
+      +'<span>👤 '+(l.sellerName||'—')+'</span>'
+      +'<span>✉ '+(l.sellerEmail||'—')+'</span>'
+      +'<span>📅 Soumis le '+fmtDate(l.submittedAt)+'</span>'
+      +(l.category?'<span>🏷 '+l.category+'</span>':'')
+      +'</div>'
+      +'</div>'
+      +'<div class="lc-right">'
+      +'<div class="lc-price">'+pr+'</div>'
+      +'<div class="lc-actions">'
+      +'<button class="btn green" data-lid="'+lid+'" onclick="approve(this.dataset.lid)">✓ Approuver</button>'
+      +'<button class="btn red"   data-lid="'+lid+'" onclick="reject(this.dataset.lid)">✗ Rejeter</button>'
+      +'</div>'
+      +'</div>'
+      +'</div>';
+  }
+  el.innerHTML = html;
+}
+
+/* ── ACTIONS ── */
+function approve(lid){
+  var all = getListings();
+  var idx = all.findIndex(function(l){return String(l.id)===String(lid);});
+  if(idx>-1){ all[idx].status='live'; saveListings(all); }
+  renderMod(); renderList(); updateKpis();
+  showToast('✓ Annonce approuvée et publiée');
+}
+function reject(lid){
+  var r = prompt('Motif du rejet (optionnel):','');
+  if(r===null) return;
+  var all = getListings();
+  var idx = all.findIndex(function(l){return String(l.id)===String(lid);});
+  if(idx>-1){ all[idx].status='rejected'; all[idx].rejectionReason=r; saveListings(all); }
+  renderMod(); renderList(); updateKpis();
+  showToast('Annonce rejetée');
+}
+function approveAll(){
+  var all = getListings();
+  var n = all.filter(function(l){return !l.status||l.status==='pending';}).length;
+  if(!n){ showToast('Aucune annonce en attente'); return; }
+  if(!confirm('Approuver les '+n+' annonces en attente ?')) return;
+  saveListings(all.map(function(l){return (!l.status||l.status==='pending')?Object.assign({},l,{status:'live'}):l;}));
+  renderMod(); renderList(); updateKpis();
+  showToast('✓ '+n+' annonces approuvées');
+}
+
+/* ── ANNONCES TABLE ── */
+function renderList(){
+  var q  = (document.getElementById('ls-q') ||{}).value||'';
+  var st = (document.getElementById('ls-st')||{}).value||'';
+  var all = getListings().filter(function(l){
+    if(st && (l.status||'pending')!==st) return false;
+    if(q){ var t=ltitle(l)+' '+(l.sellerName||''); if(!t.toLowerCase().includes(q.toLowerCase())) return false; }
+    return true;
+  });
+  var tb = document.getElementById('list-body');
+  if(!tb) return;
+  if(!all.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:2rem;color:#4a6278">Aucune annonce</td></tr>'; return; }
+  tb.innerHTML = all.map(function(l){
+    var lid = String(l.id);
+    return '<tr>'
+      +'<td class="td-w">'+ltitle(l)+'</td>'
+      +'<td>'+(l.sellerName||'—')+'</td>'
+      +'<td class="td-gold">'+(l.price?sym(l.currency)+Number(l.price).toLocaleString():'—')+'</td>'
+      +'<td>'+statusPill(l.status)+'</td>'
+      +'<td style="font-size:.68rem">'+fmtDate(l.submittedAt)+'</td>'
+      +'<td><div style="display:flex;gap:.25rem">'
+      +((!l.status||l.status==='pending')?'<button class="btn green" style="padding:.18rem .5rem;font-size:.62rem" data-lid="'+lid+'" onclick="approve(this.dataset.lid)">✓</button>':'')
+      +(l.status==='live'?'<button class="btn red" style="padding:.18rem .5rem;font-size:.62rem" data-lid="'+lid+'" onclick="reject(this.dataset.lid)">⊘</button>':'')
+      +'<button class="btn red" style="padding:.18rem .5rem;font-size:.62rem" data-lid="'+lid+'" onclick="delListing(this.dataset.lid)">✗</button>'
+      +'</div></td>'
+      +'</tr>';
+  }).join('');
+}
+function delListing(lid){
+  if(!confirm('Supprimer ?')) return;
+  saveListings(getListings().filter(function(l){return String(l.id)!==String(lid);}));
+  renderList(); renderMod(); updateKpis();
+  showToast('Supprimée');
+}
+
+/* ── MEMBRES TABLE ── */
+function renderUsers(){
+  var q    = (document.getElementById('us-q')   ||{}).value||'';
+  var plan = (document.getElementById('us-plan') ||{}).value||'';
+  var all  = getUsers().filter(function(u){
+    if(plan && u.plan!==plan) return false;
+    if(q){ var t=(u.name||'')+' '+(u.email||''); if(!t.toLowerCase().includes(q.toLowerCase())) return false; }
+    return true;
+  });
+  var orig = getUsers();
+  document.getElementById('us-total').textContent = orig.length;
+  document.getElementById('us-avi').textContent   = orig.filter(function(u){return u.plan==='Aviateur';}).length;
+  document.getElementById('us-pro').textContent   = orig.filter(function(u){return u.plan==='Pro';}).length;
+  document.getElementById('us-ess').textContent   = orig.filter(function(u){return !u.plan||u.plan==='Essentiel';}).length;
+  var tb = document.getElementById('users-body');
+  if(!tb) return;
+  if(!all.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:2rem;color:#4a6278">Aucun membre — connectez-vous sur login.html</td></tr>'; return; }
+  var ls = getListings();
+  tb.innerHTML = all.map(function(u,i){
+    var n = ls.filter(function(l){return l.sellerEmail===u.email;}).length;
+    return '<tr>'
+      +'<td style="color:#4a6278;font-size:.66rem">#'+(i+1)+'</td>'
+      +'<td class="td-w">'+(u.name||'—')+'</td>'
+      +'<td style="font-size:.72rem">'+(u.email||'—')+'</td>'
+      +'<td style="font-size:.72rem;'+planColor(u.plan)+'">'+(u.plan||'Essentiel')+'</td>'
+      +'<td style="font-size:.68rem">'+fmtDate(u.registeredAt)+'</td>'
+      +'<td><button class="btn red" style="padding:.18rem .5rem;font-size:.62rem" data-uid="'+u.id+'" onclick="delUser(this.dataset.uid)">✗</button></td>'
+      +'</tr>';
+  }).join('');
+}
+function delUser(uid){
+  if(!confirm('Supprimer ce membre ?')) return;
+  saveUsers(getUsers().filter(function(u){return String(u.id)!==String(uid);}));
+  renderUsers();
+  showToast('Membre supprimé');
+}
+
+/* ── TEST ── */
+function injectTest(){
+  var ls = getListings();
+  ls.unshift({
+    id:Date.now(), make:'Cessna', model:'172 Skyhawk', year:'2019',
+    price:'85000', currency:'EUR', category:'light', airport:'LFPG',
+    desc:'Annonce test.', status:'pending',
+    submittedAt:new Date().toISOString(),
+    sellerName:'Client Test', sellerEmail:'test@aircraft2sell.eu',
+    views:0, enquiries:0
+  });
+  saveListings(ls);
+  renderMod(); updateKpis();
+  showToast('Annonce test créée');
+}
+
+/* ── EXPORT CSV ── */
+function exportCSV(t){
+  var rows=[], h=[];
+  if(t==='list'){
+    h=['Titre','Vendeur','Email','Prix','Statut','Date'];
+    rows=getListings().map(function(l){return[ltitle(l),l.sellerName,l.sellerEmail,l.price,l.status||'pending',fmtDate(l.submittedAt)];});
+  } else {
+    h=['Nom','Email','Plan','Date'];
+    rows=getUsers().map(function(u){return[u.name,u.email,u.plan,fmtDate(u.registeredAt)];});
+  }
+  var csv=[h].concat(rows).map(function(r){return r.map(function(v){return'"'+String(v==null?'':v).split('"').join('""')+'"';}).join(',');}).join('\n');
+  var b=new Blob([csv],{type:'text/csv'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='a2s_'+t+'_'+Date.now()+'.csv';a.click();
+  showToast('CSV téléchargé');
+}
+
+/* ── TOAST ── */
+var _tt;
+function showToast(msg){
+  var el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(function(){el.classList.remove('show');},3000);
+}
+
+/* ── INIT ── */
+window.addEventListener('DOMContentLoaded',function(){
+  if(sessionStorage.getItem(SK)){
+    document.getElementById('loginWrap').classList.add('hidden');
+    document.getElementById('app').classList.add('visible');
+    renderAll();
+  }
+  document.getElementById('lEmail').value=MAIL;
+});
+</script>
+</body>
+</html>
