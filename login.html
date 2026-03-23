@@ -671,20 +671,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.location.href = dest ? decodeURIComponent(dest) : 'dashboard.html';
   }
 });
-</script>
-<script src="nav.js">
+
 /* ── SUPABASE USER SYNC ── */
 function syncUserToSupabase(name, email, plan) {
   var SB_URL = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
   var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-  var user = {
-    id: Date.now(),
-    name: name || '',
-    email: email || '',
-    plan: plan || 'Essentiel',
-    status: 'active',
-    registered_at: new Date().toISOString()
-  };
   fetch(SB_URL + '/rest/v1/users', {
     method: 'POST',
     headers: {
@@ -693,10 +684,17 @@ function syncUserToSupabase(name, email, plan) {
       'Content-Type': 'application/json',
       'Prefer': 'resolution=ignore-duplicates,return=minimal'
     },
-    body: JSON.stringify(user)
-  }).catch(function(e) { console.error('Supabase user sync error:', e); });
+    body: JSON.stringify({
+      id: Date.now(),
+      name: name || '',
+      email: email || '',
+      plan: plan || 'Essentiel',
+      status: 'active',
+      registered_at: new Date().toISOString()
+    })
+  }).catch(function(e) { console.error('Supabase sync error:', e); });
 }
-
 </script>
+<script src="nav.js"></script>
 </body>
 </html>
