@@ -784,6 +784,21 @@ function toggleMobileFilters(){
   if(!sb) return;
   sb.style.display = sb.style.display === 'block' ? '' : 'block';
 }
+
+function normalizeMock(){
+  MOCK = MOCK.map(function(l){
+    if(!l.title) l.title = [l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Sans titre';
+    if(!l.loc)   l.loc   = l.airport || l.location || '—';
+    if(!l.catDisp) l.catDisp = l.category || 'light';
+    if(l.price && l.price !== '—' && !isNaN(Number(l.price))){
+      var sym = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
+      l.priceDisplay = sym + Number(l.price).toLocaleString();
+    } else {
+      l.priceDisplay = l.price || '—';
+    }
+    return l;
+  });
+}
 function renderCards(){
   const g=document.getElementById('resultsGrid');
   if(!g) return;
@@ -841,6 +856,7 @@ function toggleFilter(header){header.querySelector('.filter-arrow').style.transf
 function removeFilter(el){el.parentElement.remove();}
 async function doSearch(){
   MOCK = await loadLiveListings();
+  normalizeMock();
   var q     = (document.getElementById('searchQ')||{}).value||'';
   var cat   = (document.getElementById('searchCat')||{}).value||'';
   var make  = (document.getElementById('searchMake')||{}).value||'';
@@ -973,7 +989,27 @@ function setLang(l){
   else document.title = 'Aircraft2Sell — '+t('search_btn');
 }
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
-setLang('fr');initSearchMakeModel();loadLiveListings().then(function(r){MOCK=r;renderCards();});
+setLang('fr');initSearchMakeModel();loadLiveListings().then(function(r){
+  MOCK=r;
+  normalizeMock();
+  // Apply URL category filter if present
+  var params = new URLSearchParams(window.location.search);
+  var catParam = params.get('cat');
+  if(catParam){
+    var catSel = document.getElementById('searchCat');
+    var catMap = {
+      'light':'light','heli':'heli','jet':'jet','turbo':'turbo','ulm':'ulm','airliner':'airliner',
+      'Light aircraft':'light','Helicopters':'heli','Business jets':'jet',
+      'Turboprops':'turbo','Ultralight / ULM':'ulm','Airliners':'airliner',
+      'Avion leger':'light','Helicoptere':'heli','ULM':'ulm'
+    };
+    var mapped = catMap[decodeURIComponent(catParam)] || decodeURIComponent(catParam);
+    if(catSel) catSel.value = mapped;
+    doSearch();
+  } else {
+    renderCards();
+  }
+});
 // Read URL params and pre-fill search
 (function(){
   const params = new URLSearchParams(window.location.search);
