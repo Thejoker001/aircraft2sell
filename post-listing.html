@@ -427,9 +427,19 @@ textarea.form-input{resize:vertical;min-height:120px;line-height:1.6}
 if(typeof t==='undefined'){window.t=function(k){return k;};}
 if(typeof setLang==='undefined'){window.setLang=function(){};}
 
+// Currency symbols (used in preview)
+var CURR_SYMBOLS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',JPY:'¥',CNY:'¥',SEK:'kr',NOK:'kr',DKK:'kr'};
+
 // Photo upload state
 var photos = [];
 var MAX_PHOTOS = 5;
+
+// Supabase helpers (available before nav.js)
+var _SB_PL='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK_PL='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+function sbPost_pl(table,body){return fetch(_SB_PL+'/rest/v1/'+table,{method:'POST',headers:{'apikey':_SK_PL,'Authorization':'Bearer '+_SK_PL,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)});}
+function sbGet_pl(table,params){return fetch(_SB_PL+'/rest/v1/'+table+(params?'?'+params:''),{headers:{'apikey':_SK_PL,'Authorization':'Bearer '+_SK_PL}}).then(function(r){return r.json();});}
+function sbPatch_pl(table,params,body){return fetch(_SB_PL+'/rest/v1/'+table+'?'+params,{method:'PATCH',headers:{'apikey':_SK_PL,'Authorization':'Bearer '+_SK_PL,'Content-Type':'application/json'},body:JSON.stringify(body)});}
+function sbEnsureUser(name,email,plan){if(!email)return;sbGet_pl('users','email=eq.'+encodeURIComponent(email)+'&limit=1').then(function(ex){if(ex&&ex.length){if(name&&ex[0].name!==name)sbPatch_pl('users','email=eq.'+encodeURIComponent(email),{name:name});}else{sbPost_pl('users',{id:Date.now(),name:name||email.split('@')[0],email:email,plan:plan||'Essentiel',status:'active',registered_at:new Date().toISOString()});}}).catch(function(){});}
 
 function updatePreview(){
   const make=document.getElementById('fMake').value.trim();
