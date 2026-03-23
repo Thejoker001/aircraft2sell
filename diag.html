@@ -31,6 +31,12 @@ hr{border:none;border-top:1px solid rgba(200,220,240,.08);margin:1rem 0}
 <h1>🔧 Diagnostic Aircraft2Sell</h1>
 
 <div class="card">
+  <div class="card-title">0. Supabase</div>
+  <div id="sb-status"><div class="row"><span class="lbl">Chargement...</span></div></div>
+  <button class="btn" onclick="checkSB()" style="margin-top:.5rem">Tester Supabase</button>
+</div>
+
+<div class="card">
   <div class="card-title">1. État du localStorage</div>
   <div id="ls-status"></div>
 </div>
@@ -73,7 +79,7 @@ hr{border:none;border-top:1px solid rgba(200,220,240,.08);margin:1rem 0}
   <div id="raw-data"></div>
 </div>
 
-<script>
+<script data-cfasync="false">>
 function getLS(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
 function setLS(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
 
@@ -246,8 +252,21 @@ function showRaw(){
   document.getElementById('raw-data').innerHTML = '<div class="code">' + JSON.stringify(data, null, 2) + '</div>';
 }
 
+
+async function checkSB(){
+  var el=document.getElementById('sb-status');
+  try{
+    var l=await sbGet('listings','limit=3&order=submitted_at.desc');
+    var u=await sbGet('users','limit=3');
+    el.innerHTML='<div class="row"><span class="lbl">Supabase listings</span><span class="val ok">'+l.length+' recents trouvés</span></div>'
+      +'<div class="row"><span class="lbl">Supabase users</span><span class="val ok">'+u.length+' recents trouvés</span></div>'
+      +'<div class="row"><span class="lbl">Connexion</span><span class="val ok">✓ OK</span></div>';
+  }catch(e){el.innerHTML='<div class="row"><span class="lbl">Supabase</span><span class="val err">Erreur: '+e.message+'</span></div>';}
+}
+
 // Auto-run
 refresh();
+checkSB();
 </script>
 </body>
 </html>

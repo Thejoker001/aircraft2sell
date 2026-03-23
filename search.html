@@ -337,7 +337,7 @@ select.sf option{background:var(--card)}
 
 <div class="toast" id="toast"></div>
 
-<script>/* ============================================================
+<script data-cfasync="false">>/* ============================================================
    aircraft-db.js — Aircraft2Sell
    Base de données complète des marques et modèles d'aéronefs
    Usage: window.AIRCRAFT_DB
@@ -750,13 +750,16 @@ let lang='en', viewMode='grid', currentPage=1;
 const PER_PAGE=9;
 function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
 // Charger les annonces publiées depuis localStorage
-function loadLiveListings(){
+async function loadLiveListings(){
   try {
-    var all = JSON.parse(localStorage.getItem('a2s_listings')||'[]');
-    return all.filter(function(l){ return l.status==='live'; });
-  } catch(e){ return []; }
+    var rows = await sbGet('listings','status=eq.live&order=submitted_at.desc');
+    return rows.map(sbRow);
+  } catch(e){
+    try { return JSON.parse(localStorage.getItem('a2s_listings')||'[]').filter(function(l){return l.status==='live';}); }
+    catch(e2){ return []; }
+  }
 }
-var MOCK = loadLiveListings();
+var MOCK = [];
 
 
 function toggleSearchFav(btn, id){
@@ -836,8 +839,8 @@ function goPage(p){currentPage=p;renderCards();window.scrollTo({top:200,behavior
 function setView(v){viewMode=v;document.getElementById('gridBtn').classList.toggle('active',v==='grid');document.getElementById('listBtn').classList.toggle('active',v==='list');renderCards();}
 function toggleFilter(header){header.querySelector('.filter-arrow').style.transform=header.querySelector('.filter-arrow').style.transform==='rotate(180deg)'?'':'rotate(180deg)';}
 function removeFilter(el){el.parentElement.remove();}
-function doSearch(){
-  MOCK = loadLiveListings();
+async function doSearch(){
+  MOCK = await loadLiveListings();
   var q     = (document.getElementById('searchQ')||{}).value||'';
   var cat   = (document.getElementById('searchCat')||{}).value||'';
   var make  = (document.getElementById('searchMake')||{}).value||'';
@@ -970,7 +973,7 @@ function setLang(l){
   else document.title = 'Aircraft2Sell — '+t('search_btn');
 }
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
-MOCK=loadLiveListings();renderCards();setLang('fr');initSearchMakeModel();
+setLang('fr');initSearchMakeModel();loadLiveListings().then(function(r){MOCK=r;renderCards();});
 // Read URL params and pre-fill search
 (function(){
   const params = new URLSearchParams(window.location.search);
@@ -1028,6 +1031,13 @@ if(document.readyState === "loading"){
 </script>
 
 <script>
+/* ── SUPABASE CLIENT ── */
+var _SB='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+async function sbGet(t,p){var r=await fetch(_SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':_SK,'Authorization':'Bearer '+_SK}});return r.ok?(await r.json()):[]}
+async function sbPost(t,b){return(await fetch(_SB+'/rest/v1/'+t,{method:'POST',headers:{'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(b)})).ok}
+async function sbPatch(t,p,b){return(await fetch(_SB+'/rest/v1/'+t+'?'+p,{method:'PATCH',headers:{'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json'},body:JSON.stringify(b)})).ok}
+async function sbDelete(t,p){return(await fetch(_SB+'/rest/v1/'+t+'?'+p,{method:'DELETE',headers:{'apikey':_SK,'Authorization':'Bearer '+_SK}})).ok}
+function sbRow(r){return{id:r.id,make:r.make,model:r.model,year:r.year,price:r.price,currency:r.currency||'EUR',category:r.category,airport:r.airport,country:r.country,desc:r.description,status:r.status||'pending',sellerName:r.seller_name,sellerEmail:r.seller_email,views:r.views||0,enquiries:r.enquiries||0,icon:r.icon||'✈',submittedAt:r.submitted_at,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')}}
 function requireLogin(e, dest){
   e.preventDefault();
   const ok = localStorage.getItem('a2s_logged_in')==='true';

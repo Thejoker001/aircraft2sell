@@ -206,7 +206,7 @@ tbody tr:hover td{background:rgba(255,255,255,.01)}
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script data-cfasync="false">>
 var PASS = 'A2S@Admin2026!';
 var MAIL = 'contact.aircraft2sell@gmail.com';
 var SK   = 'a2s_mod_session';
@@ -234,6 +234,17 @@ function logout(){
 function get(k){ try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(e){return[];} }
 function save(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
 function getListings(){ return get('a2s_listings'); }
+// Load all data from Supabase at boot
+async function syncFromSupabase(){
+  try{
+    var listings = await sbGet('listings','order=submitted_at.desc');
+    var users = await sbGet('users','order=registered_at.desc');
+    save('a2s_listings', listings.map(sbRow));
+    save('a2s_users', users);
+    renderAll(); updateKpis();
+    showToast('Donnees Supabase chargees');
+  } catch(e){ console.error('Supabase sync error:',e); renderAll(); }
+}
 function getUsers(){    return get('a2s_users');    }
 function saveListings(a){ save('a2s_listings',a); }
 function saveUsers(a){    save('a2s_users',a);    }
@@ -329,14 +340,17 @@ function renderMod(){
 }
 
 /* ── ACTIONS ── */
-function approve(lid){
+async function approve(lid){
+  await sbPatch('listings','id=eq.'+lid,{status:'live'}).catch(function(){});
   var all = getListings();
   var idx = all.findIndex(function(l){return String(l.id)===String(lid);});
   if(idx>-1){ all[idx].status='live'; saveListings(all); }
   renderMod(); renderList(); updateKpis();
   showToast('✓ Annonce approuvée et publiée');
 }
-function reject(lid){
+async function reject(lid){
+  var r=prompt('Motif (optionnel):','');if(r===null)return;
+  await sbPatch('listings','id=eq.'+lid,{status:'rejected',rejection_reason:r}).catch(function(){});
   var r = prompt('Motif du rejet (optionnel):','');
   if(r===null) return;
   var all = getListings();
@@ -470,6 +484,7 @@ function showToast(msg){
 /* ── INIT ── */
 window.addEventListener('DOMContentLoaded',function(){
   if(sessionStorage.getItem(SK)){
+    syncFromSupabase();
     document.getElementById('loginWrap').classList.add('hidden');
     document.getElementById('app').classList.add('visible');
     renderAll();

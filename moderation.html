@@ -328,7 +328,7 @@ tbody tr:last-child td{border-bottom:none}
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script data-cfasync="false">>
 /* -- AUTH -------------------------------------------- */
 /*
    IDENTIFIANTS MODÉRATEUR
@@ -443,9 +443,15 @@ function goTab(id, el){
 /* ── LISTINGS depuis localStorage (client dashboard) ──────────
    En production: remplacer par supabase.from('listings').select(...)
    ──────────────────────────────────────────────────────────── */
-function getLocalListings(){
-  try { return JSON.parse(localStorage.getItem('a2s_listings') || '[]'); }
-  catch(e){ return []; }
+async function getLocalListings(){
+  try {
+    var rows = await sbGet('listings','order=submitted_at.desc');
+    localStorage.setItem('a2s_listings', JSON.stringify(rows.map(sbRow)));
+    return rows.map(sbRow);
+  } catch(e){
+    try { return JSON.parse(localStorage.getItem('a2s_listings')||'[]'); }
+    catch(e2){ return []; }
+  }
 }
 function saveLocalListings(arr){
   localStorage.setItem('a2s_listings', JSON.stringify(arr));

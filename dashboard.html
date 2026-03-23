@@ -492,7 +492,7 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 
 <div class="toast" id="toast"></div>
-<script>
+<script data-cfasync="false">>
 const T={
   en:{
     sbPlanBadge:'ACTIVE', sbStatus:'Active subscription', sbUpgrade:'Upgrade to Pro', sbBilling:'Update payment method', sbCancel:'Cancel subscription',
@@ -643,7 +643,16 @@ function initGreeting(){
 const LS_LISTINGS = 'a2s_listings';
 const PLAN_SLOTS  = { Essentiel:1, Aviateur:3, Pro:999 };
 
-function getListings(){
+async function getListings(){
+  const email = localStorage.getItem('a2s_user_email')||'';
+  if(email){
+    try {
+      const rows = await sbGet('listings','seller_email=eq.'+encodeURIComponent(email)+'&order=submitted_at.desc');
+      // Also sync to localStorage as fallback
+      localStorage.setItem(LS_LISTINGS, JSON.stringify(rows.map(sbRow)));
+      return rows.map(sbRow);
+    } catch(e){}
+  }
   try{ return JSON.parse(localStorage.getItem(LS_LISTINGS)||'[]'); }
   catch(e){ return []; }
 }
@@ -913,6 +922,10 @@ function saveProfile(){
   if(first||last){const fn=(first+' '+last).trim();localStorage.setItem('a2s_user_name',fn);updateNavAuth();}
   if(email)localStorage.setItem('a2s_user_email',email);
   showToast('Profil mis à jour !');
+  // Sync profile to Supabase
+  const _e = localStorage.getItem('a2s_user_email')||'';
+  const _n = localStorage.getItem('a2s_user_name')||'';
+  if(_e){ sbPatch('users','email=eq.'+encodeURIComponent(_e),{name:_n,email:_e}).catch(function(){}); }
 }
 function prefillSettings(){
   const name=localStorage.getItem('a2s_user_name')||''
