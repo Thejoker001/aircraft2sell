@@ -365,6 +365,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
             <option value="Aviateur">Aviateur</option>
             <option value="Pro">Pro</option>
           </select>
+          <button class="tb-btn" onclick="syncSellersAsMembers()" title="Importer les vendeurs d annonces comme membres">&#8635; Sync vendeurs</button>
           <button class="tb-btn" onclick="exportCSV('users')">&#8595; CSV</button>
         </div>
         <div class="krow">
@@ -1235,6 +1236,61 @@ function editFromView(){
   if(!_viewListingId) return;
   closeM('mViewListing');
   editListing(_viewListingId);
+}
+
+/* ── SYNC VENDEURS -> MEMBRES ── */
+async function syncSellersAsMembers(){
+  // Trouver tous les vendeurs dans les annonces qui ne sont pas dans users
+  var existingEmails = _allUsers.map(function(u){ return (u.email||'').toLowerCase(); });
+  var toAdd = [];
+  var seen  = {};
+
+  _allListings.forEach(function(l){
+    var email = (l.sellerEmail || '').toLowerCase().trim();
+    if(!email) return;
+    if(existingEmails.indexOf(email) === -1 && !seen[email]){
+      seen[email] = true;
+      toAdd.push({
+        id:           Date.now() + Math.floor(Math.random()*10000),
+        name:         l.sellerName || email.split('@')[0],
+        email:        l.sellerEmail.trim(),
+        plan:         'Essentiel',
+        status:       'active',
+        registered_at: l.submittedAt || new Date().toISOString()
+      });
+    }
+  });
+
+  if(!toAdd.length){
+    showToast('Tous les vendeurs sont deja membres');
+    return;
+  }
+
+  if(!confirm('Ajouter ' + toAdd.length + ' vendeur(s) comme membre(s) ?
+
+' +
+    toAdd.map(function(u){ return '- ' + u.name + ' (' + u.email + ')'; }).join('
+')
+  )) return;
+
+  var added = 0;
+  var errors = 0;
+  for(var i = 0; i < toAdd.length; i++){
+    try {
+      await sb('POST', 'users', null, toAdd[i]);
+      added++;
+    } catch(e){
+      // Ignore duplicate email errors
+      if(e.message.indexOf('duplicate') === -1 && e.message.indexOf('unique') === -1){
+        errors++;
+      } else {
+        added++; // Already exists, count as success
+      }
+    }
+  }
+
+  await refreshAll();
+  showToast(added + ' membre(s) ajoute(s) !' + (errors ? ' ' + errors + ' erreur(s).' : ''));
 }
 
 /* ── TOAST ── */
