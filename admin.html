@@ -647,6 +647,25 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
           <select id="mu-status"><option value="active">Actif</option><option value="suspended">Suspendu</option></select>
         </div>
       </div>
+      <div class="mfg2">
+        <div class="mfg">
+          <label>Note vendeur</label>
+          <div id="mu-stars" style="display:flex;gap:6px;margin-top:.3rem">
+            <span onclick="muSetRating(1)" data-star="1" style="cursor:pointer;font-size:1.4rem;color:rgba(200,220,240,.2)">★</span>
+            <span onclick="muSetRating(2)" data-star="2" style="cursor:pointer;font-size:1.4rem;color:rgba(200,220,240,.2)">★</span>
+            <span onclick="muSetRating(3)" data-star="3" style="cursor:pointer;font-size:1.4rem;color:rgba(200,220,240,.2)">★</span>
+            <span onclick="muSetRating(4)" data-star="4" style="cursor:pointer;font-size:1.4rem;color:rgba(200,220,240,.2)">★</span>
+            <span onclick="muSetRating(5)" data-star="5" style="cursor:pointer;font-size:1.4rem;color:rgba(200,220,240,.2)">★</span>
+          </div>
+          <input type="hidden" id="mu-rating" value="0">
+        </div>
+        <div class="mfg" style="display:flex;align-items:flex-end;padding-bottom:.3rem">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.78rem">
+            <input type="checkbox" id="mu-certified" style="accent-color:#22c55e;width:15px;height:15px">
+            ✓ Vendeur certifié
+          </label>
+        </div>
+      </div>
     </div>
     <div class="modal-ft">
       <button class="m-btn danger" onclick="delUserM()">Supprimer</button>
@@ -1106,13 +1125,26 @@ function editUser(id) {
   sel('mu-email').value  = u.email || '';
   sel('mu-plan').value   = u.plan || 'Essentiel';
   sel('mu-status').value = u.status || 'active';
+  sel('mu-rating').value = u.rating || 0;
+  sel('mu-certified').checked = u.certified || false;
+  // Update stars display
+  var r = parseInt(u.rating) || 0;
+  document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){
+    s.style.color = parseInt(s.dataset.star) <= r ? '#f5c842' : 'rgba(200,220,240,.2)';
+  });
   openM('mUser');
 }
 async function saveUserM() {
   var id = sel('mu-id').value;
-  var body = { name: sel('mu-name').value, plan: sel('mu-plan').value, status: sel('mu-status').value };
+  var _r = parseInt(sel('mu-rating').value) || null;
+  var body = { name: sel('mu-name').value, plan: sel('mu-plan').value, status: sel('mu-status').value, rating: _r, certified: sel('mu-certified').checked };
   try {
     await sb('PATCH', 'users', 'id=eq.' + id, body);
+    // Sync rating/certified to all listings of this user
+    var uEmail = sel('mu-email').value;
+    if(uEmail){
+      await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked});
+    }
     closeM('mUser'); await refreshAll(); showToast('Membre mis a jour');
   } catch(e) { showToast('Erreur : ' + e.message); }
 }
@@ -1540,6 +1572,13 @@ async function renderStats(){
 }
 
 
+
+function muSetRating(n){
+  sel('mu-rating').value = n;
+  document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){
+    s.style.color = parseInt(s.dataset.star) <= n ? '#f5c842' : 'rgba(200,220,240,.2)';
+  });
+}
 function setRating(n){
   if(!_viewListingId) return;
   // Update stars UI
