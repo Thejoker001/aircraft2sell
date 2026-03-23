@@ -37,11 +37,11 @@ select.sf option{background:var(--card)}
 .sbtn:hover{background:var(--gold)}
 /* LAYOUT */
 .results-wrap{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:1.5rem 2rem;display:grid;grid-template-columns:260px 1fr;gap:1.5rem;align-items:start}
-@media(max-width:800px){.results-wrap{grid-template-columns:1fr}.filters-sidebar{display:none}}
+@media(max-width:800px){.results-wrap{grid-template-columns:1fr}}
 /* FILTERS SIDEBAR */
 .filters-sidebar{position:sticky;top:70px}
 .filter-box{background:var(--card);border:1px solid var(--border);margin-bottom:1.5px;overflow:hidden}
-.filter-header{padding:.9rem 1.1rem;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.1em;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.filter-header{padding:.6rem .9rem;font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:.1em;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
 .filter-arrow{color:var(--mist);transition:transform .2s;font-size:.8rem}
 .filter-body{padding:.9rem 1.1rem}
 .filter-option{display:flex;align-items:center;gap:.6rem;padding:.35rem 0;font-size:.82rem;color:var(--mist);cursor:pointer;transition:color .2s}
@@ -186,7 +186,34 @@ select.sf option{background:var(--card)}
 <div class="results-wrap">
   <!-- FILTERS -->
   <div class="filters-sidebar">
+    <div class="filter-box">
+      <div class="filter-header" onclick="toggleFilter(this)">
+        <span>Catégorie</span><span class="filter-arrow">▼</span>
+      </div>
+      <div class="filter-body">
+        <select class="sort-select" id="sidebarCat" style="width:100%;font-size:.75rem" onchange="onSidebarCatChange()">
+          <option value="">Toutes catégories</option>
+          <option value="light">✈ Avions légers</option>
+          <option value="jet">✦ Jets d'affaires</option>
+          <option value="turbo">🌀 Turboprops</option>
+          <option value="heli">🚁 Hélicoptères</option>
+          <option value="ulm">⚡ ULM</option>
+          <option value="airliner">🛫 Avions de ligne</option>
+        </select>
+      </div>
     </div>
+    <div class="filter-box">
+      <div class="filter-header" onclick="toggleFilter(this)">
+        <span>Marque &amp; Modèle</span><span class="filter-arrow">▼</span>
+      </div>
+      <div class="filter-body">
+        <select class="mm-select" id="sidebarMake" style="font-size:.75rem" onchange="onSidebarMakeChange()">
+          <option value="">Toutes les marques</option>
+        </select>
+        <select class="mm-select" id="sidebarModel" style="font-size:.75rem" disabled>
+          <option value="">Tous les modèles</option>
+        </select>
+      </div>
     </div>
     <div class="filter-box">
       <div class="filter-header" onclick="toggleFilter(this)">
@@ -194,11 +221,30 @@ select.sf option{background:var(--card)}
       </div>
       <div class="filter-body">
         <div style="margin-bottom:.5rem">
-          <select class="sort-select" id="searchCurr" style="width:100%" onchange="updateCurrencyLabel()">
-            <option value="EUR">€ EUR</option>
-            <option value="USD">$ USD</option>
-            <option value="GBP">£ GBP</option>
-            <option value="CHF">Fr CHF</option>
+          <select class="sort-select" id="searchCurr" style="width:100%;font-size:.75rem" onchange="updateCurrencyLabel()">
+            <option value="EUR">€ EUR — Euro</option>
+            <option value="USD">$ USD — Dollar US</option>
+            <option value="GBP">£ GBP — Livre sterling</option>
+            <option value="CHF">Fr CHF — Franc suisse</option>
+            <option value="CAD">CA$ CAD — Dollar canadien</option>
+            <option value="AUD">AU$ AUD — Dollar australien</option>
+            <option value="NOK">kr NOK — Couronne norvégienne</option>
+            <option value="SEK">kr SEK — Couronne suédoise</option>
+            <option value="DKK">kr DKK — Couronne danoise</option>
+            <option value="JPY">¥ JPY — Yen japonais</option>
+            <option value="CNY">¥ CNY — Yuan chinois</option>
+            <option value="AED">د.إ AED — Dirham EAU</option>
+            <option value="SAR">﷼ SAR — Riyal saoudien</option>
+            <option value="SGD">S$ SGD — Dollar Singapour</option>
+            <option value="HKD">HK$ HKD — Dollar Hong Kong</option>
+            <option value="INR">₹ INR — Roupie indienne</option>
+            <option value="BRL">R$ BRL — Real brésilien</option>
+            <option value="ZAR">R ZAR — Rand sud-africain</option>
+            <option value="TRY">₺ TRY — Livre turque</option>
+            <option value="PLN">zł PLN — Zloty polonais</option>
+            <option value="CZK">Kč CZK — Couronne tchèque</option>
+            <option value="HUF">Ft HUF — Forint hongrois</option>
+            <option value="NZD">NZ$ NZD — Dollar néo-zélandais</option>
           </select>        </div>
         <div class="range-wrap">
           <input type="number" class="range-input" id="priceMin" placeholder="0">
@@ -904,6 +950,12 @@ function onSearchMakeChange() {
   renderCards();
 }
 
+function onSidebarCatChange(){
+  _activeCat = document.getElementById('sidebarCat').value || '';
+  // Sync pills
+  document.querySelectorAll('.sp').forEach(function(b){ b.classList.toggle('active', b.dataset.cat === _activeCat); });
+  doSearch();
+}
 function onSidebarMakeChange() {
   const makeSel  = document.getElementById('sidebarMake');
   const modelSel = document.getElementById('sidebarModel');
