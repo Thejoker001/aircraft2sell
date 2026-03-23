@@ -217,6 +217,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
       <div class="sb-sec-lbl">Contenu</div>
       <div class="sn" id="sn-mod" onclick="showTab('mod',this)"><span class="sn-ico">&#9200;</span> Moderation<span class="sn-badge" id="badge-mod" style="display:none"></span></div>
       <div class="sn" id="sn-list" onclick="showTab('list',this)"><span class="sn-ico">&#9992;</span> Annonces<span class="sn-badge blu" id="badge-list" style="display:none"></span></div>
+      <div class="sn" id="sn-new" onclick="showTab('new',this)"><span class="sn-ico">&#43;</span> Creer une annonce</div>
     </div>
     <div class="sb-sec">
       <div class="sb-sec-lbl">Membres</div>
@@ -382,6 +383,83 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
         </div>
       </div>
 
+      <!-- CREER ANNONCE -->
+      <div class="sec" id="tab-new">
+        <div class="toolbar">
+          <div class="sec-title">Creer une <em>annonce</em></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Informations de l annonce</div></div>
+          <div class="card-body">
+            <div class="mfg2">
+              <div class="mfg"><label>Marque *</label><input type="text" id="new-make" placeholder="ex: Cessna"></div>
+              <div class="mfg"><label>Modele *</label><input type="text" id="new-model" placeholder="ex: 172 Skyhawk"></div>
+            </div>
+            <div class="mfg2">
+              <div class="mfg"><label>Annee *</label><input type="number" id="new-year" placeholder="ex: 2019"></div>
+              <div class="mfg"><label>Prix *</label><input type="number" id="new-price" placeholder="ex: 85000"></div>
+            </div>
+            <div class="mfg2">
+              <div class="mfg"><label>Devise</label>
+                <select id="new-currency">
+                  <option value="EUR">EUR - Euro</option>
+                  <option value="USD">USD - Dollar</option>
+                  <option value="GBP">GBP - Livre</option>
+                  <option value="CHF">CHF - Franc suisse</option>
+                </select>
+              </div>
+              <div class="mfg"><label>Categorie *</label>
+                <select id="new-category">
+                  <option value="light">Avion leger</option>
+                  <option value="jet">Jet d affaires</option>
+                  <option value="turbo">Turbopropulseur</option>
+                  <option value="heli">Helicoptere</option>
+                  <option value="ulm">ULM</option>
+                  <option value="airliner">Avion de ligne</option>
+                </select>
+              </div>
+            </div>
+            <div class="mfg2">
+              <div class="mfg"><label>Aeroport OACI *</label><input type="text" id="new-airport" placeholder="ex: LFPG"></div>
+              <div class="mfg"><label>Pays</label><input type="text" id="new-country" placeholder="ex: France"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div class="card-title">Vendeur</div></div>
+          <div class="card-body">
+            <div class="mfg2">
+              <div class="mfg"><label>Nom du vendeur</label><input type="text" id="new-seller-name" placeholder="ex: Jean Martin"></div>
+              <div class="mfg"><label>Email du vendeur</label><input type="email" id="new-seller-email" placeholder="ex: jean@example.com"></div>
+            </div>
+            <div class="mfg2">
+              <div class="mfg"><label>Statut de l annonce</label>
+                <select id="new-status">
+                  <option value="live">Publiee directement</option>
+                  <option value="pending">En attente de validation</option>
+                </select>
+              </div>
+              <div class="mfg"><label>Heures totales (TT)</label><input type="text" id="new-hours" placeholder="ex: 1200h TT"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div class="card-title">Description</div></div>
+          <div class="card-body">
+            <div class="mfg"><label>Description complete *</label>
+              <textarea id="new-desc" style="min-height:120px" placeholder="Decrivez l aeronef : etat, equipements, historique, documents..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:.6rem;justify-content:flex-end">
+          <button class="m-btn" onclick="clearNewListing()">Effacer</button>
+          <button class="m-btn primary" style="padding:.6rem 2rem;font-size:.85rem" onclick="submitNewListing()">&#10003; Publier l annonce</button>
+        </div>
+      </div>
+
       <!-- ABONNEMENTS -->
       <div class="sec" id="tab-subs">
         <div class="sec-title">Gestion des <em>abonnements</em></div>
@@ -431,6 +509,23 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETAIL ANNONCE -->
+<div class="modal-back" id="mViewListing" onclick="if(event.target===this)closeM('mViewListing')">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-hd">
+      <div class="modal-ti" id="mViewTitle">Detail annonce</div>
+      <button class="modal-x" onclick="closeM('mViewListing')">&#10005;</button>
+    </div>
+    <div class="modal-bd" id="mViewBody" style="padding:1rem"></div>
+    <div class="modal-ft">
+      <button class="m-btn" onclick="closeM('mViewListing')">Fermer</button>
+      <button class="m-btn primary" id="mViewApproveBtn" style="display:none" onclick="approveFromView()">&#10003; Approuver</button>
+      <button class="m-btn danger" id="mViewRejectBtn" style="display:none" onclick="rejectFromView()">&#10005; Rejeter</button>
+      <button class="m-btn" id="mViewEditBtn" onclick="editFromView()">&#9998; Modifier</button>
     </div>
   </div>
 </div>
@@ -601,7 +696,7 @@ function planPill(p) {
 }
 
 /* ── STATE ── */
-var TABS = ['dash', 'mod', 'list', 'users', 'subs', 'set'];
+var TABS = ['dash', 'mod', 'list', 'new', 'users', 'subs', 'set'];
 var CURRENT_TAB = 'dash';
 var _allListings = [];
 var _allUsers    = [];
@@ -609,7 +704,7 @@ var _allUsers    = [];
 /* ── NAVIGATION ── */
 var TITLES = {
   dash: 'Tableau de <em>bord</em>', mod: 'File de <em>moderation</em>',
-  list: 'Toutes les <em>annonces</em>', users: 'Gestion des <em>membres</em>',
+  list: 'Toutes les <em>annonces</em>', new: 'Creer une <em>annonce</em>', users: 'Gestion des <em>membres</em>',
   subs: '<em>Abonnements</em>', set: '<em>Parametres</em>'
 };
 function showTab(id, navEl) {
@@ -698,7 +793,7 @@ function updateDashboard() {
       dlEl.innerHTML = '<div class="empty-s"><div class="es-ic">&#9992;</div><div class="es-t">Aucune annonce</div></div>';
     } else {
       dlEl.innerHTML = '<div class="mini-list">' + _allListings.slice(0, 5).map(function(l) {
-        return '<div class="ml-item" onclick="editListing(' + l.id + ')" title="Modifier">'
+        return '<div class="ml-item" onclick="viewListing(' + l.id + ')" title="Modifier">'
           + '<div class="ml-info"><div class="ml-name">' + ltitle(l) + '</div>'
           + '<div class="ml-sub">' + (l.sellerName || '--') + ' &middot; ' + fmtDate(l.submittedAt) + '</div></div>'
           + '<div class="ml-right">' + statusPill(l.status) + '</div></div>';
@@ -756,7 +851,7 @@ function renderMod() {
       + '<div class="acts">'
       + '<button class="act ap" onclick="approve(' + l.id + ')">&#10003; Approuver</button>'
       + '<button class="act rj" onclick="doReject(' + l.id + ')">&#10005; Rejeter</button>'
-      + '<button class="act"   onclick="editListing(' + l.id + ')">&#9998; Details</button>'
+      + '<button class="act"   onclick="viewListing(' + l.id + ')">&#128269; Voir</button>'
       + '</div></div></div>';
   }).join('');
 }
@@ -818,6 +913,7 @@ function renderList() {
       + '<td><div class="acts">'
       + (l.status === 'pending' ? '<button class="act ap" onclick="approve(' + l.id + ')">&#10003;</button>' : '')
       + (l.status === 'live'    ? '<button class="act rj" onclick="doReject(' + l.id + ')">&#8856;</button>' : '')
+      + '<button class="act" onclick="viewListing(' + l.id + ')">&#128269;</button>'
       + '<button class="act" onclick="editListing(' + l.id + ')">&#9998;</button>'
       + '<button class="act rj" onclick="delListing(' + l.id + ')">&#10005;</button>'
       + '</div></td></tr>';
@@ -1022,6 +1118,124 @@ function closeM(id) { var m = sel(id); if (m) m.classList.remove('open'); }
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') document.querySelectorAll('.modal-back.open').forEach(function(m) { m.classList.remove('open'); });
 });
+
+/* ── CREER ANNONCE ── */
+function clearNewListing(){
+  ['new-make','new-model','new-year','new-price','new-airport','new-country',
+   'new-seller-name','new-seller-email','new-hours','new-desc'].forEach(function(id){
+    var el = sel(id); if(el) el.value = '';
+  });
+  var cur = sel('new-currency'); if(cur) cur.value = 'EUR';
+  var cat = sel('new-category'); if(cat) cat.value = 'light';
+  var st  = sel('new-status');   if(st)  st.value  = 'live';
+}
+
+async function submitNewListing(){
+  var make     = (sel('new-make')         || {}).value.trim();
+  var model    = (sel('new-model')        || {}).value.trim();
+  var year     = (sel('new-year')         || {}).value.trim();
+  var price    = (sel('new-price')        || {}).value.trim();
+  var currency = (sel('new-currency')     || {}).value || 'EUR';
+  var category = (sel('new-category')     || {}).value || 'light';
+  var airport  = (sel('new-airport')      || {}).value.trim();
+  var country  = (sel('new-country')      || {}).value.trim();
+  var sName    = (sel('new-seller-name')  || {}).value.trim();
+  var sEmail   = (sel('new-seller-email') || {}).value.trim();
+  var status   = (sel('new-status')       || {}).value || 'live';
+  var hours    = (sel('new-hours')        || {}).value.trim();
+  var desc     = (sel('new-desc')         || {}).value.trim();
+
+  if(!make || !model || !year || !price || !desc){
+    showToast('Remplissez les champs obligatoires (*)'); return;
+  }
+
+  var listing = {
+    id:           Date.now(),
+    make:         make,
+    model:        model,
+    year:         year,
+    price:        price,
+    currency:     currency,
+    category:     category,
+    airport:      airport,
+    country:      country,
+    description:  desc,
+    status:       status,
+    seller_name:  sName,
+    seller_email: sEmail,
+    views:        0,
+    enquiries:    0,
+    icon:         '&#9992;',
+    submitted_at: new Date().toISOString()
+  };
+
+  try {
+    await sb('POST', 'listings', null, listing);
+    showToast('Annonce creee avec succes !');
+    await refreshAll();
+    clearNewListing();
+    showTab('list', sel('sn-list'));
+  } catch(e){
+    showToast('Erreur : ' + e.message);
+  }
+}
+
+/* ── VOIR DETAIL ANNONCE ── */
+var _viewListingId = null;
+
+function viewListing(id){
+  var l = _allListings.find(function(l){ return String(l.id) === String(id); });
+  if(!l) return;
+  _viewListingId = id;
+
+  var pr = l.price ? cur(l.currency) + Number(l.price).toLocaleString() : '--';
+  var body =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">' +
+      '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Aeronef</div>' +
+      '<div style="font-size:.95rem;font-weight:600;color:#f0f4f8">' + ltitle(l) + '</div></div>' +
+      '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Prix</div>' +
+      '<div style="font-family:Bebas Neue,sans-serif;font-size:1.3rem;color:#f5c842">' + pr + '</div></div>' +
+      '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Categorie</div>' +
+      '<div style="color:#f0f4f8">' + (l.category || '--') + '</div></div>' +
+      '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Aeroport</div>' +
+      '<div style="color:#f0f4f8">' + (l.airport || '--') + '</div></div>' +
+      '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Vendeur</div>' +
+      '<div style="color:#f0f4f8">' + (l.sellerName || '--') + '</div></div>' +
+      '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Email vendeur</div>' +
+      '<div style="color:#f0f4f8;font-size:.75rem">' + (l.sellerEmail || '--') + '</div></div>' +
+      '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Statut</div>' +
+      '<div>' + statusPill(l.status) + '</div></div>' +
+      '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Soumis le</div>' +
+      '<div style="color:#f0f4f8">' + fmtDate(l.submittedAt) + '</div></div>' +
+    '</div>' +
+    '<div style="border-top:1px solid rgba(200,220,240,.09);padding-top:.75rem">' +
+      '<div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.4rem">Description</div>' +
+      '<div style="font-size:.78rem;color:#8fa3b8;line-height:1.7">' + (l.desc || l.description || 'Aucune description') + '</div>' +
+    '</div>' +
+    (l.views ? '<div style="margin-top:.75rem;font-size:.68rem;color:#4a6278">Vues : ' + l.views + ' &middot; Contacts : ' + (l.enquiries||0) + '</div>' : '');
+
+  sel('mViewBody').innerHTML = body;
+  sel('mViewTitle').innerHTML = ltitle(l) + ' <em>' + statusPill(l.status) + '</em>';
+  sel('mViewApproveBtn').style.display = l.status === 'pending' ? 'inline-flex' : 'none';
+  sel('mViewRejectBtn').style.display  = l.status === 'live'    ? 'inline-flex' : 'none';
+  openM('mViewListing');
+}
+
+async function approveFromView(){
+  if(!_viewListingId) return;
+  await approve(_viewListingId);
+  closeM('mViewListing');
+}
+async function rejectFromView(){
+  if(!_viewListingId) return;
+  await doReject(_viewListingId);
+  closeM('mViewListing');
+}
+function editFromView(){
+  if(!_viewListingId) return;
+  closeM('mViewListing');
+  editListing(_viewListingId);
+}
 
 /* ── TOAST ── */
 var _tt;
