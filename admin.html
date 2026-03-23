@@ -1280,6 +1280,28 @@ function viewListing(id){
     '</div>' +
     (l.views ? '<div style="margin-top:.75rem;font-size:.68rem;color:#4a6278">Vues : ' + l.views + ' &middot; Contacts : ' + (l.enquiries||0) + '</div>' : '');
 
+  // Rating & certified block
+  var currentRating = l.seller_rating || 0;
+  var ratingHtml = '<div style="margin-top:1rem;padding:.75rem;background:rgba(200,220,240,.05);border:1px solid rgba(200,220,240,.1);border-radius:6px">'
+    + '<div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.5rem">Vendeur — Modération</div>'
+    + '<div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">'
+    + '<div>'
+    + '<div style="font-size:.65rem;color:#8fa3b8;margin-bottom:.3rem">Note (étoiles)</div>'
+    + '<div style="display:flex;gap:4px" id="ratingStars">'
+    + [1,2,3,4,5].map(function(n){
+        return '<span onclick="setRating('+n+')" style="cursor:pointer;font-size:1.3rem;color:'+(n<=currentRating?'#f5c842':'rgba(200,220,240,.2)')+'" data-star="'+n+'">★</span>';
+      }).join('')
+    + '</div>'
+    + '</div>'
+    + '<label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.75rem;color:#f0f4f8">'
+    + '<input type="checkbox" id="certifiedCheck" '+(l.seller_certified?'checked':'')+' onchange="toggleCertified()" style="accent-color:#22c55e;width:14px;height:14px">'
+    + '✓ Vendeur certifié'
+    + '</label>'
+    + '<div style="font-size:.62rem;color:#4a6278">ID: ' + l.id + '</div>'
+    + '</div></div>';
+
+  body += ratingHtml;
+
   sel('mViewBody').innerHTML = body;
   sel('mViewTitle').innerHTML = ltitle(l) + ' <em>' + statusPill(l.status) + '</em>';
   sel('mViewApproveBtn').style.display = l.status === 'pending' ? 'inline-flex' : 'none';
@@ -1517,6 +1539,26 @@ async function renderStats(){
   }
 }
 
+
+function setRating(n){
+  if(!_viewListingId) return;
+  // Update stars UI
+  document.querySelectorAll('#ratingStars [data-star]').forEach(function(s){
+    s.style.color = parseInt(s.dataset.star) <= n ? '#f5c842' : 'rgba(200,220,240,.2)';
+  });
+  // Save to Supabase
+  sb('PATCH','listings','id=eq.'+_viewListingId,{seller_rating:n})
+    .then(function(){ showToast('Note ' + n + '★ enregistrée'); refreshAll(); })
+    .catch(function(e){ showToast('Erreur: ' + e.message); });
+}
+
+function toggleCertified(){
+  if(!_viewListingId) return;
+  var checked = document.getElementById('certifiedCheck').checked;
+  sb('PATCH','listings','id=eq.'+_viewListingId,{seller_certified:checked})
+    .then(function(){ showToast(checked ? '✓ Vendeur certifié' : 'Certification retirée'); refreshAll(); })
+    .catch(function(e){ showToast('Erreur: ' + e.message); });
+}
 /* ── TOAST ── */
 var _tt;
 function showToast(msg) {
