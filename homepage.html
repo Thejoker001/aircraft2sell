@@ -297,7 +297,7 @@ footer{position:relative;z-index:1;background:var(--deep);border-top:1px solid v
   <nav class="mobile-menu-links" id="mmLinks"></nav>
   <div class="mm-lang-row" id="mmLangs">
     <button class="mm-lang-btn active" onclick="setLang('fr');
-_initListings().then(function(){renderListings();renderCats();});closeMobileMenu()">🇫🇷 FR</button>
+loadLiveListings().then(function(rows){LISTINGS=rows;normalizeListings();if(typeof renderListings==='function')renderListings();if(typeof renderCats==='function')renderCats();}).catch(function(){if(typeof renderListings==='function')renderListings();});renderCats();});closeMobileMenu()">🇫🇷 FR</button>
     <button class="mm-lang-btn" onclick="setLang('en');closeMobileMenu()">🇬🇧 EN</button>
     <button class="mm-lang-btn" onclick="setLang('de');closeMobileMenu()">🇩🇪 DE</button>
     <button class="mm-lang-btn" onclick="setLang('es');closeMobileMenu()">🇪🇸 ES</button>
@@ -517,6 +517,20 @@ _initListings().then(function(){renderListings();renderCats();});closeMobileMenu
 <div class="toast" id="toast"></div>
 
 <script data-cfasync="false">
+/* ═══════ SUPABASE CLIENT — Aircraft2Sell ═══════ */
+var _SB='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+async function sbReq(method,table,params,body){var url=_SB+'/rest/v1/'+table+(params?'?'+params:'');var hdrs={'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json','Prefer':'return=representation'};var res=await fetch(url,{method:method,headers:hdrs,body:body?JSON.stringify(body):undefined});var txt=await res.text();if(!res.ok)throw new Error(txt);return txt?JSON.parse(txt):[];}
+var sbGet=function(t,p){return sbReq('GET',t,p);};
+var sbPost=function(t,b){return sbReq('POST',t,null,b);};
+var sbPatch=function(t,p,b){return sbReq('PATCH',t,p,b);};
+var sbDelete=function(t,p){return sbReq('DELETE',t,p);};
+function sbRowListing(r){var ph=Array.isArray(r.photos)?r.photos:[];var th=ph.length?ph[0]:(r.icon||'✈');var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[r.currency||'EUR']||'€';var pn=r.price&&!isNaN(Number(r.price))?Number(r.price):null;return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'—',priceDisplay:pn?sym+pn.toLocaleString('fr-FR'):(r.price||'—'),currency:r.currency||'EUR',category:r.category||'light',catDisp:r.category||'light',airport:r.airport||'',loc:r.airport||r.country||'—',country:r.country||'',desc:r.description||'',description:r.description||'',status:r.status||'pending',sellerName:r.seller_name||'',sellerEmail:r.seller_email||'',seller_name:r.seller_name||'',seller_email:r.seller_email||'',views:r.views||0,enquiries:r.enquiries||0,hours:r.hours||'—',icon:th,photos:ph,rejectionReason:r.rejection_reason||'',submittedAt:r.submitted_at||r.created_at||'',submitted_at:r.submitted_at||r.created_at||'',title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'Sans titre'};}
+function sbRowUser(r){return{id:r.id,name:r.name||'',email:r.email||'',plan:r.plan||'Essentiel',status:r.status||'active',registeredAt:r.registered_at||r.created_at||'',registered_at:r.registered_at||r.created_at||'',listings:0};}
+var sbRow=sbRowListing;var sbL=sbRowListing;
+function fmtDate(iso){if(!iso)return'—';try{return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return'—';}}
+function fmtDateTime(iso){if(!iso)return'—';try{return new Date(iso).toLocaleString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return'—';}}
+async function sbEnsureUser(name,email,plan){if(!email)return;try{var ex=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&limit=1');if(ex&&ex.length){if(name&&ex[0].name!==name)await sbPatch('users','email=eq.'+encodeURIComponent(email),{name:name});}else{await sbPost('users',{id:Date.now(),name:name||email.split('@')[0],email:email,plan:plan||'Essentiel',status:'active',registered_at:new Date().toISOString()});}}catch(e){console.warn('sbEnsureUser:',e.message);}}
+/* ═══════════════════════════════════════════════════ */
 /* ── SUPABASE CLIENT ── */
 var _SB='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 async function sbGet(t,p){var r=await fetch(_SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':_SK,'Authorization':'Bearer '+_SK}});return r.ok?(await r.json()):[];}
@@ -576,10 +590,11 @@ negotiable:'价格可议',firm:'定价出售',offers:'欢迎出价',fixed:'固�
 async function loadLiveListings(){
   try {
     var rows = await sbGet('listings','status=eq.live&order=submitted_at.desc');
-    return rows.map(sbRow);
-  } catch(e){ return []; }
+    return rows.map(sbRowListing);
+  } catch(e){ console.error('loadLiveListings:',e); return []; }
+} catch(e){ return []; }
 }
-let LISTINGS = [];
+var LISTINGS = [];
 
 let lang='fr';
 function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}

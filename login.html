@@ -370,6 +370,20 @@ nav{position:sticky;top:0;z-index:200;background:rgba(6,11,21,.94);backdrop-filt
 <div class="toast" id="toast"></div>
 
 <script data-cfasync="false">
+/* ═══════ SUPABASE CLIENT — Aircraft2Sell ═══════ */
+var _SB='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+async function sbReq(method,table,params,body){var url=_SB+'/rest/v1/'+table+(params?'?'+params:'');var hdrs={'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json','Prefer':'return=representation'};var res=await fetch(url,{method:method,headers:hdrs,body:body?JSON.stringify(body):undefined});var txt=await res.text();if(!res.ok)throw new Error(txt);return txt?JSON.parse(txt):[];}
+var sbGet=function(t,p){return sbReq('GET',t,p);};
+var sbPost=function(t,b){return sbReq('POST',t,null,b);};
+var sbPatch=function(t,p,b){return sbReq('PATCH',t,p,b);};
+var sbDelete=function(t,p){return sbReq('DELETE',t,p);};
+function sbRowListing(r){var ph=Array.isArray(r.photos)?r.photos:[];var th=ph.length?ph[0]:(r.icon||'✈');var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[r.currency||'EUR']||'€';var pn=r.price&&!isNaN(Number(r.price))?Number(r.price):null;return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'—',priceDisplay:pn?sym+pn.toLocaleString('fr-FR'):(r.price||'—'),currency:r.currency||'EUR',category:r.category||'light',catDisp:r.category||'light',airport:r.airport||'',loc:r.airport||r.country||'—',country:r.country||'',desc:r.description||'',description:r.description||'',status:r.status||'pending',sellerName:r.seller_name||'',sellerEmail:r.seller_email||'',seller_name:r.seller_name||'',seller_email:r.seller_email||'',views:r.views||0,enquiries:r.enquiries||0,hours:r.hours||'—',icon:th,photos:ph,rejectionReason:r.rejection_reason||'',submittedAt:r.submitted_at||r.created_at||'',submitted_at:r.submitted_at||r.created_at||'',title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'Sans titre'};}
+function sbRowUser(r){return{id:r.id,name:r.name||'',email:r.email||'',plan:r.plan||'Essentiel',status:r.status||'active',registeredAt:r.registered_at||r.created_at||'',registered_at:r.registered_at||r.created_at||'',listings:0};}
+var sbRow=sbRowListing;var sbL=sbRowListing;
+function fmtDate(iso){if(!iso)return'—';try{return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return'—';}}
+function fmtDateTime(iso){if(!iso)return'—';try{return new Date(iso).toLocaleString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return'—';}}
+async function sbEnsureUser(name,email,plan){if(!email)return;try{var ex=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&limit=1');if(ex&&ex.length){if(name&&ex[0].name!==name)await sbPatch('users','email=eq.'+encodeURIComponent(email),{name:name});}else{await sbPost('users',{id:Date.now(),name:name||email.split('@')[0],email:email,plan:plan||'Essentiel',status:'active',registered_at:new Date().toISOString()});}}catch(e){console.warn('sbEnsureUser:',e.message);}}
+/* ═══════════════════════════════════════════════════ */
 /* ── NAV JS ──────────────────────────────────────────── */
 let lang = 'fr';
 const BUDGET_SYMS={'EUR':'€','USD':'$','GBP':'£','CHF':'Fr','CAD':'CA$','AUD':'AU$','JPY':'¥','CNY':'¥','HKD':'HK$','SEK':'kr','NOK':'kr','DKK':'kr','PLN':'zł','CZK':'Kč','HUF':'Ft','TRY':'₺','BRL':'R$','AED':'د.إ','INR':'₹','SGD':'S$','NZD':'NZ$','ZAR':'R','MXN':'MX$'};;
@@ -579,59 +593,13 @@ async function handleLogin(){
      if(error){ btn.classList.remove('loading'); btn.disabled=false; pErr.textContent=error.message; return; }
   */
   const emailName = email.split('@')[0].replace(/[._-]/g,' ').replace(/\w/g, c => c.toUpperCase());
-  // Toujours ecrire dans localStorage pour que dashboard.html puisse verifier
+    // Toujours ecrire dans localStorage
   localStorage.setItem('a2s_logged_in','true');
   localStorage.setItem('a2s_user_email', email);
   if(!localStorage.getItem('a2s_user_name')) localStorage.setItem('a2s_user_name', emailName);
   if(window.a2sAuth){ a2sAuth.login(emailName, email, 'Essentiel'); }
-  // Sync vers Supabase
-  syncUserToSupabase(localStorage.getItem('a2s_user_name') || emailName, email, 'Essentiel');
-  // Enregistrer dans a2s_users pour l'admin (si pas déjà présent)
-  try {
-    const _users = JSON.parse(localStorage.getItem('a2s_users')||'[]');
-    if(!_users.some(u => u.email === email)){
-      const _name = localStorage.getItem('a2s_user_name') || emailName;
-      _users.unshift({ id: Date.now(), name: _name, email, plan:'Essentiel', status:'active', registeredAt: new Date().toISOString(), listings:0 });
-      localStorage.setItem('a2s_users', JSON.stringify(_users));
-    }
-  } catch(e){}
-  const params = new URLSearchParams(window.location.search);
-  window.location.href = params.get('redirect') ? decodeURIComponent(params.get('redirect')) : 'dashboard.html';
-}
-
-/* ── REGISTER ────────────────────────────────────────── */
-async function handleRegister(){
-  const first = document.getElementById('regFirst').value.trim();
-  const last  = document.getElementById('regLast').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
-  const pw    = document.getElementById('regPw').value;
-  const pwc   = document.getElementById('regPwConf').value;
-  let ok = true;
-  ['regFirstErr','regLastErr','regEmailErr','regPwErr','regPwConfErr'].forEach(id => document.getElementById(id).textContent = '');
-  if(!first){ document.getElementById('regFirstErr').textContent = 'Requis'; ok = false; }
-  if(!last){  document.getElementById('regLastErr').textContent  = 'Requis'; ok = false; }
-  if(!email || !email.includes('@')){ document.getElementById('regEmailErr').textContent = 'Email invalide'; ok = false; }
-  if(pw.length < 8){ document.getElementById('regPwErr').textContent = 'Minimum 8 caractères'; ok = false; }
-  if(pw !== pwc){ document.getElementById('regPwConfErr').textContent = 'Les mots de passe ne correspondent pas'; ok = false; }
-  if(!ok) return;
-
-  const btn = document.getElementById('registerBtn');
-  btn.classList.add('loading'); btn.disabled = true;
-  showToast('Création du compte…');
-
-  await new Promise(r => setTimeout(r, 1500));
-  /* SUPABASE:
-     const { data, error } = await supabase.auth.signUp({ email, password: pw, options:{ data:{ full_name: first+' '+last } } });
-     if(error){ btn.classList.remove('loading'); btn.disabled=false; return; }
-  */
-  const fullName = (first+' '+last).trim();
-  // Toujours ecrire dans localStorage
-  localStorage.setItem('a2s_logged_in','true');
-  localStorage.setItem('a2s_user_name', fullName);
-  localStorage.setItem('a2s_user_email', email);
-  if(window.a2sAuth){ a2sAuth.login(fullName, email, 'Essentiel'); }
-  // Sync vers Supabase
-  syncUserToSupabase(fullName, email, 'Essentiel');
+  // Sync vers Supabase avec le vrai nom
+  sbEnsureUser(localStorage.getItem('a2s_user_name')||emailName, email, 'Essentiel');
   // Enregistrer dans a2s_users pour l'espace admin
   try {
     const users = JSON.parse(localStorage.getItem('a2s_users')||'[]');
@@ -672,28 +640,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-/* ── SUPABASE USER SYNC ── */
-function syncUserToSupabase(name, email, plan) {
-  var SB_URL = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
-  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-  fetch(SB_URL + '/rest/v1/users', {
-    method: 'POST',
-    headers: {
-      'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=ignore-duplicates,return=minimal'
-    },
-    body: JSON.stringify({
-      id: Date.now(),
-      name: name || '',
-      email: email || '',
-      plan: plan || 'Essentiel',
-      status: 'active',
-      registered_at: new Date().toISOString()
-    })
-  }).catch(function(e) { console.error('Supabase sync error:', e); });
-}
 </script>
 <script src="nav.js"></script>
 </body>
