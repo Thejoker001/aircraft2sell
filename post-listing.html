@@ -436,7 +436,7 @@ var MAX_PHOTOS = 5;
 
 // Supabase helpers (available before nav.js)
 var _SB_PL='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK_PL='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-function sbPost_pl(table,body){return fetch(_SB_PL+'/rest/v1/'+table,{method:'POST',headers:{'apikey':_SK_PL,'Authorization':'Bearer '+_SK_PL,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)});}
+function sbPost_pl(table,body){return fetch(_SB_PL+'/rest/v1/'+table,{method:'POST',headers:{'apikey':_SK_PL,'Authorization':'Bearer '+_SK_PL,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)}).then(function(r){if(!r.ok)r.clone().text().then(function(t){console.error('sbPost_pl error:',table,t);});return r;});}
 function sbGet_pl(table,params){return fetch(_SB_PL+'/rest/v1/'+table+(params?'?'+params:''),{headers:{'apikey':_SK_PL,'Authorization':'Bearer '+_SK_PL}}).then(function(r){return r.json();});}
 function sbPatch_pl(table,params,body){return fetch(_SB_PL+'/rest/v1/'+table+'?'+params,{method:'PATCH',headers:{'apikey':_SK_PL,'Authorization':'Bearer '+_SK_PL,'Content-Type':'application/json'},body:JSON.stringify(body)});}
 function sbEnsureUser(name,email,plan){if(!email)return;sbGet_pl('users','email=eq.'+encodeURIComponent(email)+'&limit=1').then(function(ex){if(ex&&ex.length){if(name&&ex[0].name!==name)sbPatch_pl('users','email=eq.'+encodeURIComponent(email),{name:name});}else{sbPost_pl('users',{id:Date.now(),name:name||email.split('@')[0],email:email,plan:plan||'Essentiel',status:'active',registered_at:new Date().toISOString()});}}).catch(function(){});}
@@ -588,7 +588,7 @@ async function submitListing(){
     views:        0,
     enquiries:    0,
     submitted_at: now,
-    photos:       photos.map(function(p){return p.url||p;}).filter(function(u){return u&&u.startsWith('http');})
+    photos:       photos.filter(function(p){return p.url&&p.url.startsWith('http');}).map(function(p){return p.url;})
   };
   sbPost_pl('listings', sbListing).catch(function(e){ console.error('Supabase listing error:', e); });
 
