@@ -681,13 +681,18 @@ const PLAN_SLOTS  = { Essentiel:1, Aviateur:3, Pro:999 };
 
 async function getListings(){
   try{
-    var arr=JSON.parse(localStorage.getItem(LS_LISTINGS)||'[]');if(!Array.isArray(arr))arr=[];return arr.map(function(l){
+    var raw = localStorage.getItem(LS_LISTINGS);
+    if(!raw) return [];
+    var arr = JSON.parse(raw);
+    if(!Array.isArray(arr)){ localStorage.removeItem(LS_LISTINGS); return []; }
+    return arr.map(function(l){
+      if(!l || typeof l !== 'object') return null;
       if(!l.title) l.title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'--';
       if(!l.submittedAt && l.submitted_at) l.submittedAt=l.submitted_at;
       if(!l.sellerName && l.seller_name) l.sellerName=l.seller_name;
       return l;
-    });
-  }catch(e){ return []; }
+    }).filter(Boolean);
+  }catch(e){ localStorage.removeItem(LS_LISTINGS); return []; }
 }
 
 function saveListings(arr){
@@ -732,7 +737,8 @@ function statusPill(status){
 }
 
 function renderListings(){
-  const listings = getListings();
+  var listings = getListings();
+  if(!Array.isArray(listings)) listings = [];
   const plan     = localStorage.getItem('a2s_user_plan') || 'Essentiel';
   const maxSlots = PLAN_SLOTS[plan] || 1;
 
@@ -976,6 +982,11 @@ function showToast(msg){
   clearTimeout(toastTimer); toastTimer = setTimeout(()=>el.classList.remove('show'), 3000);
 }
 window.addEventListener('DOMContentLoaded',()=>{
+  // Clean corrupt localStorage data
+  try{
+    var _ls=localStorage.getItem('a2s_listings');
+    if(_ls){var _p=JSON.parse(_ls);if(!Array.isArray(_p))localStorage.removeItem('a2s_listings');}
+  }catch(e){localStorage.removeItem('a2s_listings');}
   loadUserListings();
   setLang('fr');
   updateNavAuth();
