@@ -579,13 +579,11 @@ async function handleLogin(){
      if(error){ btn.classList.remove('loading'); btn.disabled=false; pErr.textContent=error.message; return; }
   */
   const emailName = email.split('@')[0].replace(/[._-]/g,' ').replace(/\w/g, c => c.toUpperCase());
-  if(window.a2sAuth){
-    a2sAuth.login(emailName, email, 'Essentiel');
-  } else {
-    localStorage.setItem('a2s_logged_in','true');
-    localStorage.setItem('a2s_user_email', email);
-    if(!localStorage.getItem('a2s_user_name')) localStorage.setItem('a2s_user_name', emailName);
-  }
+  // Toujours ecrire dans localStorage pour que dashboard.html puisse verifier
+  localStorage.setItem('a2s_logged_in','true');
+  localStorage.setItem('a2s_user_email', email);
+  if(!localStorage.getItem('a2s_user_name')) localStorage.setItem('a2s_user_name', emailName);
+  if(window.a2sAuth){ a2sAuth.login(emailName, email, 'Essentiel'); }
   // Sync vers Supabase
   syncUserToSupabase(localStorage.getItem('a2s_user_name') || emailName, email, 'Essentiel');
   // Enregistrer dans a2s_users pour l'admin (si pas déjà présent)
@@ -627,13 +625,11 @@ async function handleRegister(){
      if(error){ btn.classList.remove('loading'); btn.disabled=false; return; }
   */
   const fullName = (first+' '+last).trim();
-  if(window.a2sAuth){
-    a2sAuth.login(fullName, email, 'Essentiel');
-  } else {
-    localStorage.setItem('a2s_logged_in','true');
-    localStorage.setItem('a2s_user_name', fullName);
-    localStorage.setItem('a2s_user_email', email);
-  }
+  // Toujours ecrire dans localStorage
+  localStorage.setItem('a2s_logged_in','true');
+  localStorage.setItem('a2s_user_name', fullName);
+  localStorage.setItem('a2s_user_email', email);
+  if(window.a2sAuth){ a2sAuth.login(fullName, email, 'Essentiel'); }
   // Sync vers Supabase
   syncUserToSupabase(fullName, email, 'Essentiel');
   // Enregistrer dans a2s_users pour l'espace admin
