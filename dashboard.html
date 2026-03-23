@@ -700,30 +700,13 @@ function saveListings(arr){
 }
 
 function addListingFromSession(){
-  /* Called after post-listing redirect — reads sessionStorage */
-  const raw = sessionStorage.getItem('a2s_last_listing');
-  if(!raw) return;
-  const data = JSON.parse(raw);
-  if(!data || !data.submittedAt) return;
-  const listings = getListings();
-  // Avoid duplicates
-  const alreadyExists = listings.some(l => l.submittedAt === data.submittedAt);
-  if(alreadyExists){ sessionStorage.removeItem('a2s_last_listing'); return; }
-  const listing = {
-    id: Date.now(),
-    make: data.make || '—',
-    model: data.model || '—',
-    year: data.year || '—',
-    price: data.price ? Number(data.price).toLocaleString() : '—',
-    currency: data.currency || 'EUR',
-    status: 'pending', /* pending | live | rejected | draft */
-    submittedAt: data.submittedAt,
-    views: 0, enquiries: 0,
-    icon: '✈'
-  };
-  listings.unshift(listing);
-  saveListings(listings);
-  sessionStorage.removeItem('a2s_last_listing');
+  /* Listing already saved to Supabase by post-listing.html
+     Just clear sessionStorage and let loadUserListings fetch from Supabase */
+  try {
+    var raw = sessionStorage.getItem('a2s_last_listing');
+    if(!raw) return;
+    sessionStorage.removeItem('a2s_last_listing');
+  } catch(e){}
 }
 
 function statusPill(status){
