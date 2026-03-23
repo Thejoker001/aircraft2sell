@@ -585,6 +585,9 @@ function renderTicker(){
   document.getElementById('ticker').innerHTML=dbl.map(i=>`<div class="ticker-item"><div class="ticker-dot"></div><span>${i}</span></div>`).join('');
 }
 
+function normalizeListings(){
+
+}
 function renderListings(){
   const g=document.getElementById('listingsGrid');
   if(!g) return;
@@ -626,6 +629,28 @@ function renderListings(){
 }
 
 function renderCats(){
+  // Mettre a jour les compteurs de categories depuis LISTINGS
+  var catMap = {light:0,heli:0,jet:0,turbo:0,ulm:0,airliner:0};
+  LISTINGS.forEach(function(l){ if(catMap[l.category]!==undefined) catMap[l.category]++; });
+  var cats = t('cats');
+  if(Array.isArray(cats)){
+    cats.forEach(function(cat){
+      if(cat.name && !cat.wanted && !cat.special){
+        var catKey = {
+          'Light aircraft':'light','Avion leger':'light',
+          'Helicopters':'heli','Helicopteres':'heli',
+          'Business jets':'jet','Jets':'jet',
+          'Turboprops':'turbo',
+          'Ultralight / ULM':'ulm','ULM':'ulm',
+          'Airliners':'airliner'
+        }[cat.name];
+        if(catKey !== undefined){
+          var n = catMap[catKey] || 0;
+          cat.count = n + (n === 1 ? ' annonce' : ' annonces');
+        }
+      }
+    });
+  }
   document.getElementById('catGrid').innerHTML=t('cats').map(c=>{
     if(c.wanted){
       return `<div class="cat-card cat-wanted" onclick="openWantedForm()">
@@ -899,6 +924,7 @@ setLang('fr');
 // Charger les annonces depuis Supabase
 loadLiveListings().then(function(rows){
   LISTINGS = rows;
+  normalizeListings();
   if(typeof renderListings === 'function') renderListings();
   if(typeof renderCats === 'function') renderCats();
 }).catch(function(){
