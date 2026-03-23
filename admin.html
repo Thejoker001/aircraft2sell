@@ -226,6 +226,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
     </div>
     <div class="sb-sec">
       <div class="sb-sec-lbl">Systeme</div>
+      <div class="sn" id="sn-stats" onclick="showTab('stats',this)"><span class="sn-ico">&#9650;</span> Statistiques</div>
       <div class="sn" id="sn-set" onclick="showTab('set',this)"><span class="sn-ico">&#9881;</span> Parametres</div>
     </div>
     <div class="sb-foot">
@@ -479,6 +480,70 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
         </div>
       </div>
 
+      <!-- STATISTIQUES -->
+      <div class="sec" id="tab-stats">
+        <div class="toolbar">
+          <div class="sec-title"><em>Statistiques</em> du site</div>
+          <select class="filter-sel" id="stats-period" onchange="renderStats()">
+            <option value="7">7 derniers jours</option>
+            <option value="30">30 derniers jours</option>
+            <option value="90">90 derniers jours</option>
+          </select>
+          <button class="tb-btn" onclick="renderStats()">&#8634; Actualiser</button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="krow" id="stats-kpis">
+          <div class="kc a"><div class="kl">Visites totales</div><div class="kv" id="st-visits">—</div><div class="ks">sessions uniques</div></div>
+          <div class="kc g"><div class="kl">Pages vues</div><div class="kv" id="st-pageviews">—</div></div>
+          <div class="kc b"><div class="kl">Vues annonces</div><div class="kv" id="st-listviews">—</div></div>
+          <div class="kc p"><div class="kl">Taux mobile</div><div class="kv" id="st-mobile">—</div></div>
+        </div>
+
+        <div class="g2">
+          <!-- Pages les plus visitées -->
+          <div class="card">
+            <div class="card-head"><div class="card-title">Pages les plus visitees</div></div>
+            <div class="card-body" id="st-pages"><div class="loading-row">Chargement...</div></div>
+          </div>
+
+          <!-- Pays -->
+          <div class="card">
+            <div class="card-head"><div class="card-title">Visiteurs par pays</div></div>
+            <div class="card-body" id="st-countries"><div class="loading-row">Chargement...</div></div>
+          </div>
+        </div>
+
+        <div class="g2">
+          <!-- Annonces les plus vues -->
+          <div class="card">
+            <div class="card-head"><div class="card-title">Annonces les plus vues</div></div>
+            <div class="card-body" id="st-top-listings"><div class="loading-row">Chargement...</div></div>
+          </div>
+
+          <!-- Appareils / Navigateurs -->
+          <div class="card">
+            <div class="card-head"><div class="card-title">Appareils et navigateurs</div></div>
+            <div class="card-body" id="st-devices"><div class="loading-row">Chargement...</div></div>
+          </div>
+        </div>
+
+        <!-- Visites par jour (graphique simple) -->
+        <div class="card">
+          <div class="card-head"><div class="card-title">Visites par jour</div></div>
+          <div class="card-body">
+            <div id="st-chart" style="display:flex;align-items:flex-end;gap:4px;height:80px;padding:.5rem 0"></div>
+            <div id="st-chart-labels" style="display:flex;gap:4px;margin-top:.3rem;font-size:.55rem;color:#4a6278;justify-content:space-between"></div>
+          </div>
+        </div>
+
+        <!-- Sources de trafic -->
+        <div class="card">
+          <div class="card-head"><div class="card-title">Sources de trafic</div></div>
+          <div class="card-body" id="st-referrers"><div class="loading-row">Chargement...</div></div>
+        </div>
+      </div>
+
       <!-- PARAMETRES -->
       <div class="sec" id="tab-set">
         <div class="sec-title"><em>Parametres</em></div>
@@ -697,7 +762,7 @@ function planPill(p) {
 }
 
 /* ── STATE ── */
-var TABS = ['dash', 'mod', 'list', 'new', 'users', 'subs', 'set'];
+var TABS = ['dash', 'mod', 'list', 'new', 'users', 'subs', 'stats', 'set'];
 var CURRENT_TAB = 'dash';
 var _allListings = [];
 var _allUsers    = [];
@@ -706,7 +771,7 @@ var _allUsers    = [];
 var TITLES = {
   dash: 'Tableau de <em>bord</em>', mod: 'File de <em>moderation</em>',
   list: 'Toutes les <em>annonces</em>', new: 'Creer une <em>annonce</em>', users: 'Gestion des <em>membres</em>',
-  subs: '<em>Abonnements</em>', set: '<em>Parametres</em>'
+  subs: '<em>Abonnements</em>', stats: '<em>Statistiques</em>', set: '<em>Parametres</em>'
 };
 function showTab(id, navEl) {
   TABS.forEach(function(t) {
@@ -1288,6 +1353,168 @@ async function syncSellersAsMembers(){
 
   await refreshAll();
   showToast(added + ' membre(s) ajoute(s) !' + (errors ? ' ' + errors + ' erreur(s).' : ''));
+}
+
+/* ── STATISTIQUES ── */
+async function renderStats(){
+  var days = parseInt((sel('stats-period')||{value:'7'}).value) || 7;
+  var since = new Date(Date.now() - days*86400000).toISOString();
+
+  // Set loading state
+  ['st-pages','st-countries','st-top-listings','st-devices','st-referrers'].forEach(function(id){
+    var el = sel(id);
+    if(el) el.innerHTML = '<div class="loading-row">Chargement...</div>';
+  });
+
+  try {
+    // Fetch analytics data
+    var analytics = await sb('GET','analytics','created_at=gte.'+since+'&order=created_at.desc&limit=2000');
+    var listViews  = await sb('GET','listing_views','created_at=gte.'+since+'&order=created_at.desc&limit=2000');
+
+    // ── KPIs ──
+    var sessions   = new Set(analytics.map(function(r){return r.session_id;})).size;
+    var pageviews  = analytics.length;
+    var lvCount    = listViews.length;
+    var mobileCount= analytics.filter(function(r){return r.device==='mobile';}).length;
+    var mobileRate = pageviews>0 ? Math.round(mobileCount/pageviews*100)+'%' : '0%';
+
+    setText('st-visits',    sessions.toLocaleString('fr-FR'));
+    setText('st-pageviews', pageviews.toLocaleString('fr-FR'));
+    setText('st-listviews', lvCount.toLocaleString('fr-FR'));
+    setText('st-mobile',    mobileRate);
+
+    // ── Pages ──
+    var pageCounts = {};
+    analytics.forEach(function(r){ pageCounts[r.page]=(pageCounts[r.page]||0)+1; });
+    var pages = Object.entries(pageCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+    var maxP = pages[0] ? pages[0][1] : 1;
+    sel('st-pages').innerHTML = pages.length ? pages.map(function(p){
+      var pct = Math.round(p[1]/maxP*100);
+      var label = {
+        'homepage.html':'Accueil','search.html':'Recherche','listing.html':'Annonces',
+        'login.html':'Connexion','post-listing.html':'Poster annonce',
+        'dashboard.html':'Dashboard','pricing.html':'Tarifs',
+        'contact.html':'Contact','guide-acheteur.html':'Guide acheteur'
+      }[p[0]] || p[0];
+      return '<div style="margin-bottom:.6rem">'
+        +'<div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:.2rem">'
+        +'<span style="color:#f0f4f8">'+label+'</span>'
+        +'<span style="color:#e8a020;font-weight:600">'+p[1].toLocaleString('fr-FR')+'</span></div>'
+        +'<div style="height:4px;background:rgba(200,220,240,.08);border-radius:2px">'
+        +'<div style="height:100%;width:'+pct+'%;background:#e8a020;border-radius:2px;transition:width .4s"></div>'
+        +'</div></div>';
+    }).join('') : '<div style="color:#4a6278;font-size:.75rem">Aucune donnee</div>';
+
+    // ── Pays ──
+    var countryCounts = {};
+    analytics.forEach(function(r){ if(r.country) countryCounts[r.country]=(countryCounts[r.country]||0)+1; });
+    var countries = Object.entries(countryCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+    var maxC = countries[0] ? countries[0][1] : 1;
+    sel('st-countries').innerHTML = countries.length ? countries.map(function(c){
+      var pct = Math.round(c[1]/maxC*100);
+      return '<div style="margin-bottom:.6rem">'
+        +'<div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:.2rem">'
+        +'<span style="color:#f0f4f8">'+c[0]+'</span>'
+        +'<span style="color:#60a5fa;font-weight:600">'+c[1].toLocaleString('fr-FR')+'</span></div>'
+        +'<div style="height:4px;background:rgba(200,220,240,.08);border-radius:2px">'
+        +'<div style="height:100%;width:'+pct+'%;background:#60a5fa;border-radius:2px;transition:width .4s"></div>'
+        +'</div></div>';
+    }).join('') : '<div style="color:#4a6278;font-size:.75rem">Aucune donnee</div>';
+
+    // ── Annonces les plus vues ──
+    var lidCounts = {};
+    listViews.forEach(function(r){ if(r.listing_id) lidCounts[r.listing_id]=(lidCounts[r.listing_id]||0)+1; });
+    var topLids = Object.entries(lidCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
+    if(topLids.length){
+      sel('st-top-listings').innerHTML = topLids.map(function(entry){
+        var lid = entry[0], views = entry[1];
+        var listing = _allListings.find(function(l){return String(l.id)===String(lid);});
+        var title = listing ? ltitle(listing) : 'Annonce #'+lid;
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid rgba(200,220,240,.06);font-size:.74rem">'
+          +'<span style="color:#f0f4f8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">'+title+'</span>'
+          +'<span style="color:#22c55e;font-weight:600;flex-shrink:0;margin-left:.5rem">'+views+' vues</span>'
+          +'</div>';
+      }).join('');
+    } else {
+      sel('st-top-listings').innerHTML = '<div style="color:#4a6278;font-size:.75rem">Aucune vue enregistree</div>';
+    }
+
+    // ── Appareils / Navigateurs ──
+    var devCounts = {mobile:0,desktop:0,tablet:0};
+    var brCounts  = {};
+    analytics.forEach(function(r){
+      if(r.device && devCounts[r.device]!==undefined) devCounts[r.device]++;
+      if(r.browser) brCounts[r.browser]=(brCounts[r.browser]||0)+1;
+    });
+    var devHtml = Object.entries(devCounts).map(function(d){
+      var icons = {mobile:'&#128241;',desktop:'&#128438;',tablet:'&#128138;'};
+      var pct   = pageviews>0 ? Math.round(d[1]/pageviews*100) : 0;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem 0;font-size:.72rem">'
+        +'<span style="color:#f0f4f8">'+(icons[d[0]]||'')+'&nbsp;'+d[0]+'</span>'
+        +'<span style="color:#a78bfa;font-weight:600">'+pct+'% ('+d[1]+')</span></div>';
+    }).join('');
+    var brHtml = Object.entries(brCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,5).map(function(b){
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem 0;font-size:.72rem">'
+        +'<span style="color:#8fa3b8">'+b[0]+'</span>'
+        +'<span style="color:#8fa3b8">'+b[1]+'</span></div>';
+    }).join('');
+    sel('st-devices').innerHTML = '<div style="border-bottom:1px solid rgba(200,220,240,.09);padding-bottom:.5rem;margin-bottom:.5rem">'+devHtml+'</div>'+brHtml;
+
+    // ── Graphique par jour ──
+    var dayCounts = {};
+    var now2 = new Date();
+    for(var di=days-1;di>=0;di--){
+      var d2=new Date(now2-di*86400000);
+      var key=d2.toISOString().slice(0,10);
+      dayCounts[key]=0;
+    }
+    analytics.forEach(function(r){
+      if(r.created_at){var k=r.created_at.slice(0,10);if(dayCounts[k]!==undefined)dayCounts[k]++;}
+    });
+    var dayEntries = Object.entries(dayCounts);
+    var maxD = Math.max.apply(null, dayEntries.map(function(e){return e[1];})) || 1;
+    var chartEl   = sel('st-chart');
+    var labelsEl  = sel('st-chart-labels');
+    if(chartEl){
+      chartEl.innerHTML = dayEntries.map(function(e){
+        var h = Math.max(Math.round(e[1]/maxD*72), e[1]>0?2:1);
+        return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'
+          +'<span style="font-size:.5rem;color:#8fa3b8">'+(e[1]||'')+'</span>'
+          +'<div style="width:100%;height:'+h+'px;background:#e8a020;border-radius:2px 2px 0 0;min-height:1px;opacity:'+(e[1]>0?'.85':'.15')+';transition:height .3s"></div>'
+          +'</div>';
+      }).join('');
+    }
+    if(labelsEl){
+      var step = Math.ceil(dayEntries.length/7);
+      labelsEl.innerHTML = dayEntries.filter(function(_,i){return i%step===0;}).map(function(e){
+        var d3=new Date(e[0]);return '<span>'+d3.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+'</span>';
+      }).join('');
+    }
+
+    // ── Sources de trafic ──
+    var refCounts = {};
+    analytics.forEach(function(r){
+      var ref = r.referrer||'direct';
+      var src = ref==='direct'?'Direct':ref.includes('google')?'Google':ref.includes('facebook')||ref.includes('fb.')?'Facebook':ref.includes('instagram')?'Instagram':ref.includes('linkedin')?'LinkedIn':ref.includes('twitter')||ref.includes('x.com')?'Twitter/X':ref.includes(location.hostname)?'Interne':new URL(ref.startsWith('http')?ref:'https://'+ref).hostname;
+      refCounts[src]=(refCounts[src]||0)+1;
+    });
+    var refs = Object.entries(refCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+    var maxR = refs[0]?refs[0][1]:1;
+    sel('st-referrers').innerHTML = refs.length ? refs.map(function(r){
+      var pct=Math.round(r[1]/maxR*100);
+      return '<div style="margin-bottom:.6rem">'
+        +'<div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:.2rem">'
+        +'<span style="color:#f0f4f8">'+r[0]+'</span>'
+        +'<span style="color:#f97316;font-weight:600">'+r[1].toLocaleString('fr-FR')+'</span></div>'
+        +'<div style="height:4px;background:rgba(200,220,240,.08);border-radius:2px">'
+        +'<div style="height:100%;width:'+pct+'%;background:#f97316;border-radius:2px;transition:width .4s"></div>'
+        +'</div></div>';
+    }).join('') : '<div style="color:#4a6278;font-size:.75rem">Aucune source detectee</div>';
+
+  } catch(e){
+    console.error('renderStats error:', e);
+    showToast('Erreur chargement stats : ' + e.message);
+  }
 }
 
 /* ── TOAST ── */
