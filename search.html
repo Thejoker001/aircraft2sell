@@ -769,8 +769,6 @@ async function loadLiveListings(){
     var rows = await sbGet('listings','status=eq.live&order=submitted_at.desc');
     return rows.map(sbRowListing);
   }catch(e){ return []; }
-} catch(e){
-    try { return JSON.parse(localStorage.getItem('a2s_listings')||'[]').filter(function(l){return l.status==='live';}); }
     catch(e2){ return []; }
   }
 }
@@ -803,14 +801,14 @@ function toggleMobileFilters(){
 function normalizeMock(){
   MOCK = MOCK.map(function(l){
     if(!l.title) l.title = [l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Sans titre';
-    if(!l.loc)   l.loc   = l.airport || l.location || '—';
+    if(!l.loc)   l.loc   = l.airport || l.country || l.location || '—';
     if(!l.catDisp) l.catDisp = l.category || 'light';
+    if(!l.sellerName && l.seller_name) l.sellerName = l.seller_name;
+    if(!l.hours) l.hours = l.tt ? l.tt+'h TT' : '—';
     if(l.price && l.price !== '—' && !isNaN(Number(l.price))){
       var sym = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
-      l.priceDisplay = sym + Number(l.price).toLocaleString();
-    } else {
-      l.priceDisplay = l.price || '—';
-    }
+      l.priceDisplay = sym + Number(l.price).toLocaleString('fr-FR');
+    } else { l.priceDisplay = l.price || '—'; }
     return l;
   });
 }
