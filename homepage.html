@@ -567,13 +567,13 @@ desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
 negotiable:'价格可议',firm:'定价出售',offers:'欢迎出价',fixed:'固定价格',leasing:'可融资租赁',wanted_section_title:'求购<em>飞机</em>',wanted_sub:'正在寻找特定飞机？发布您的求购信息，让卖家主动联系您。',wanted_btn:'发布求购信息',wanted_form_title:'发布飞机求购信息',wanted_cat_label:'类别',wanted_make_label:'品牌/型号（如已知）',wanted_make_ph:'例如：赛斯纳172、派珀PA-28…',wanted_budget_label:'最高预算（€）',wanted_budget_ph:'例如：150000',wanted_year_label:'最大年份',wanted_hours_label:'最大飞行时间',wanted_loc_label:'首选地点',wanted_loc_ph:'例如：法国、欧洲…',wanted_desc_label:'其他要求',wanted_desc_ph:'描述您的需求 — 航电、状态、IFR、RVSM…',wanted_submit:'提交求购信息',wanted_cancel:'取消',wanted_count:'0条',wanted_toast:'求购信息已提交！卖家将收到通知。',badge_sold2:'已售'}
 };
 
-function loadLiveListings(){
+async function loadLiveListings(){
   try {
     var rows = await sbGet('listings','status=eq.live&order=submitted_at.desc');
     return rows.map(sbRow);
   } catch(e){ return []; }
 }
-let LISTINGS = loadLiveListings();
+let LISTINGS = [];
 
 let lang='fr';
 function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
@@ -896,6 +896,15 @@ function animCount(el,target){let c=0;const s=Math.ceil(target/60);const i=setIn
 window.addEventListener('load',()=>{setTimeout(()=>{animCount(document.getElementById('sn1'),0);animCount(document.getElementById('sn2'),0);animCount(document.getElementById('sn3'),0);},500);});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 setLang('fr');
+// Charger les annonces depuis Supabase
+loadLiveListings().then(function(rows){
+  LISTINGS = rows;
+  if(typeof renderListings === 'function') renderListings();
+  if(typeof renderCats === 'function') renderCats();
+}).catch(function(){
+  if(typeof renderListings === 'function') renderListings();
+  if(typeof renderCats === 'function') renderCats();
+});
 </script>
 <script src="nav.js"></script>
 </body>
