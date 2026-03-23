@@ -239,7 +239,15 @@ footer{position:relative;z-index:1;background:var(--deep);border-top:1px solid v
 .budget-inp{outline:none}
 .budget-inp:focus{border-color:var(--accent)}
 .budget-curr option{background:var(--card-bg,#0e1a2e);color:var(--white,#f0f4f8)}
+
+.nav-user{display:flex;align-items:center;gap:.5rem;cursor:default}
+.nav-avatar{width:32px;height:32px;border-radius:50%;background:rgba(232,160,32,.15);border:1.5px solid rgba(232,160,32,.4);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.76rem;color:var(--accent);flex-shrink:0;text-transform:uppercase}
+.nav-user-info{display:flex;flex-direction:column;line-height:1.2}
+.nav-user-name{font-size:.78rem;font-weight:500;color:var(--white)}
+.nav-user-plan{font-size:.58rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
 </style>
+<link rel="stylesheet" href="mobile.css">
+<script src="supabase.js"></script>
 </head>
 <body>
 
@@ -269,10 +277,35 @@ footer{position:relative;z-index:1;background:var(--deep);border-top:1px solid v
       <button class="lb" onclick="setLang('es')"><span class="lf">🇪🇸</span><span class="lb-lbl">ES</span></button>
       <button class="lb" onclick="setLang('zh')"><span class="lf">🇨🇳</span><span class="lb-lbl">中文</span></button>
     </div>
+        <div class="nav-user" id="navUser" style="display:none">
+      <div class="nav-avatar" id="navAvatar">U</div>
+      <div class="nav-user-info">
+        <div class="nav-user-name" id="navUserName">Mon compte</div>
+        <div class="nav-user-plan" id="navUserPlan">Essentiel</div>
+      </div>
+    </div>
     <a href="login.html" class="btn-login" id="btnLogin"><span class="login-icon">👤</span><span id="btnLoginTxt">Connexion</span></a>
-    <a href="#" class="btn-post" data-i18n="btn_post" onclick="requireLogin(event,'post-listing.html')"></a>
+    <a href="#" class="btn-post" data-i18n="btn_post" onclick="a2sAuth.requireLogin(event,'post-listing.html')" id="btnPost">Déposer une annonce</a>
   </div>
+
+  <!-- Mobile burger -->
+  <button class="burger" id="burgerBtn" onclick="toggleMobileMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+<div class="mobile-menu" id="mobileMenu">
+  <div id="mmUserSection"></div>
+  <nav class="mobile-menu-links" id="mmLinks"></nav>
+  <div class="mm-lang-row" id="mmLangs">
+    <button class="mm-lang-btn active" onclick="setLang('fr');
+loadLiveListings().then(function(rows){LISTINGS=rows;normalizeListings();if(typeof renderListings==='function')renderListings();if(typeof renderCats==='function')renderCats();}).catch(function(){if(typeof renderListings==='function')renderListings();});renderCats();});closeMobileMenu()">🇫🇷 FR</button>
+    <button class="mm-lang-btn" onclick="setLang('en');closeMobileMenu()">🇬🇧 EN</button>
+    <button class="mm-lang-btn" onclick="setLang('de');closeMobileMenu()">🇩🇪 DE</button>
+    <button class="mm-lang-btn" onclick="setLang('es');closeMobileMenu()">🇪🇸 ES</button>
+    <button class="mm-lang-btn" onclick="setLang('zh');closeMobileMenu()">🇨🇳 中文</button>
+  </div>
+  <div class="mobile-menu-bottom" id="mmBottom"></div>
+</div>
 
 <section class="hero">
   <p class="hero-eyebrow" data-i18n="hero_eyebrow"></p>
@@ -353,10 +386,7 @@ footer{position:relative;z-index:1;background:var(--deep);border-top:1px solid v
   </div>
 </div>
 
-<div class="section" id="categories" style="padding-top:1rem">
-  <div class="section-hd"><h2 class="section-title" id="catTitle"></h2></div>
-  <div class="cat-grid" id="catGrid"></div>
-</div>
+
 
 <!-- WANTED SECTION -->
 <div class="section" id="wanted" style="padding-top:0">
@@ -419,7 +449,7 @@ footer{position:relative;z-index:1;background:var(--deep);border-top:1px solid v
     <div class="footer-col">
       <h4 data-i18n="footer_col2"></h4>
       <ul>
-        <li><a href="#" onclick="requireLogin(event,'post-listing.html')" data-i18n="btn_post"></a></li>
+        <li><a href="#" onclick="a2sAuth.requireLogin(event,'post-listing.html')" data-i18n="btn_post"></a></li>
         <li><a href="guide-acheteur.html" data-i18n="footer_guide"></a></li>
         <li><a href="pricing.html" data-i18n="nav_pricing"></a></li>
       </ul>
@@ -535,7 +565,13 @@ desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
 negotiable:'价格可议',firm:'定价出售',offers:'欢迎出价',fixed:'固定价格',leasing:'可融资租赁',wanted_section_title:'求购<em>飞机</em>',wanted_sub:'正在寻找特定飞机？发布您的求购信息，让卖家主动联系您。',wanted_btn:'发布求购信息',wanted_form_title:'发布飞机求购信息',wanted_cat_label:'类别',wanted_make_label:'品牌/型号（如已知）',wanted_make_ph:'例如：赛斯纳172、派珀PA-28…',wanted_budget_label:'最高预算（€）',wanted_budget_ph:'例如：150000',wanted_year_label:'最大年份',wanted_hours_label:'最大飞行时间',wanted_loc_label:'首选地点',wanted_loc_ph:'例如：法国、欧洲…',wanted_desc_label:'其他要求',wanted_desc_ph:'描述您的需求 — 航电、状态、IFR、RVSM…',wanted_submit:'提交求购信息',wanted_cancel:'取消',wanted_count:'0条',wanted_toast:'求购信息已提交！卖家将收到通知。',badge_sold2:'已售'}
 };
 
-const LISTINGS = [];
+async function loadLiveListings(){
+  try {
+    var rows = await sbGet('listings','status=eq.live&order=submitted_at.desc');
+    return rows.map(sbRowListing);
+  } catch(e){ console.error('loadLiveListings:',e); return []; }
+}
+var LISTINGS = [];
 
 let lang='fr';
 function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
@@ -547,68 +583,95 @@ function renderTicker(){
   document.getElementById('ticker').innerHTML=dbl.map(i=>`<div class="ticker-item"><div class="ticker-dot"></div><span>${i}</span></div>`).join('');
 }
 
+function normalizeListings(){
+  var today = new Date().toDateString();
+  LISTINGS = LISTINGS.map(function(l){
+    // Title
+    if(!l.title) l.title = [l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ') || 'Sans titre';
+    // Location
+    if(!l.loc) l.loc = l.airport || l.country || l.location || '—';
+    // Category display key
+    if(!l.catDisp) l.catDisp = l.category || 'cat_light';
+    // Hours
+    if(!l.hours) l.hours = l.tt ? l.tt+'h TT' : '—';
+    // Price display
+    if(!l.priceDisplay && l.price && l.price !== '—' && !isNaN(Number(l.price))){
+      var sym = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
+      l.priceDisplay = sym + Number(l.price).toLocaleString('fr-FR');
+    }
+    if(!l.priceDisplay) l.priceDisplay = l.price || '—';
+    // Price sub
+    if(!l.priceSub) l.priceSub = '';
+    // Views & favs defaults
+    if(!l.views) l.views = 0;
+    if(!l.favs)  l.favs  = 0;
+    // Seller name (ensure visible)
+    if(!l.sellerName && l.seller_name) l.sellerName = l.seller_name;
+    // New today badge
+    if(l.submittedAt && new Date(l.submittedAt).toDateString() === today && !l.badge){
+      l.badge = 'new'; l.badgeKey = 'badge_new';
+    }
+    return l;
+  });
+}
+
+function updateStats(){
+  var live = LISTINGS.filter(function(l){ return l.status === 'live' || !l.status; });
+  var sellers = new Set(live.map(function(l){ return l.sellerEmail||l.sellerName||l.seller_email; })).size;
+  var countries = new Set(live.map(function(l){ return l.country||l.loc; }).filter(Boolean)).size;
+  var today = new Date().toDateString();
+  var todayCount = live.filter(function(l){ return l.submittedAt && new Date(l.submittedAt).toDateString()===today; }).length;
+
+  var sn1 = document.getElementById('sn1');
+  var sn2 = document.getElementById('sn2');
+  var sn3 = document.getElementById('sn3');
+  var sn4 = document.getElementById('sn4');
+  if(sn1) sn1.textContent = live.length;
+  if(sn2) sn2.textContent = sellers || live.length;
+  if(sn3) sn3.textContent = countries || '15+';
+  if(sn4) sn4.textContent = todayCount;
+}
 function renderListings(){
   const g=document.getElementById('listingsGrid');
   if(!g) return;
   if(LISTINGS.length === 0){
-    // Show skeleton loaders while waiting for DB
-    g.innerHTML = Array(6).fill(0).map(()=>`
-      <div class="card" style="pointer-events:none">
-        <div class="card-img" style="background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite"></div>
-        <div class="card-body" style="gap:.6rem">
-          <div style="height:10px;width:60%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-          <div style="height:14px;width:85%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-          <div style="height:10px;width:50%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-          <div style="margin-top:auto;padding-top:.8rem;border-top:1px solid var(--border);display:flex;justify-content:space-between">
-            <div style="height:20px;width:35%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-            <div style="height:10px;width:20%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px;align-self:center"></div>
-          </div>
-        </div>
-      </div>`).join('');
-    /* SUPABASE: replace skeletons with real data:
-       const { data } = await supabase.from('listings').select('*').eq('status','approved').order('created_at',{ascending:false}).limit(6);
-       LISTINGS.push(...data); renderListings(); */
+    g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--mist)">'
+      + '<div style="font-size:3rem;opacity:.15;margin-bottom:1rem">✈</div>'
+      + '<div style="font-family:Bebas Neue,sans-serif;font-size:1.4rem;letter-spacing:.06em;color:var(--white);margin-bottom:.5rem">Aucune annonce publiée</div>'
+      + '<p style="font-size:.82rem;line-height:1.6;max-width:300px;margin:0 auto;color:var(--mist)">Soyez le premier à <a href="post-listing.html" style="color:var(--accent)">déposer une annonce</a>.</p>'
+      + '</div>';
+    /*SKELETON_PLACEHOLDER*/
     return;
   }
   g.innerHTML='';
+  // Normaliser les données localStorage vers le format attendu
+  LISTINGS = LISTINGS.map(function(l){
+    if(!l.title && (l.make||l.model)){
+      l.title = [l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ');
+    }
+    if(!l.loc)   l.loc = l.airport || l.location || '—';
+    if(!l.hours) l.hours = l.tt ? l.tt+'h TT' : '—';
+    if(!l.price && l.priceRaw) l.price = l.priceRaw;
+    if(!l.catDisp) l.catDisp = l.category||'cat_light';
+    if(!l.price) l.price = '—';
+    // Format prix avec symbole
+    if(l.price && l.price!=='—' && !isNaN(Number(l.price))){
+      var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
+      l.priceDisplay = sym+Number(l.price).toLocaleString();
+    } else {
+      l.priceDisplay = l.price||'—';
+    }
+    return l;
+  });
   LISTINGS.forEach(l=>{
-    if(l.featured){ const d=document.createElement('div'); d.className='featured-banner'; d.onclick=()=>openModal(l.id); d.innerHTML=`<div class="feat-label">${t('feat_label')}</div><div class="feat-info"><div class="card-cat">${t(l.catDisp)}</div><div class="feat-title">${l.title}</div><div class="feat-specs"><span class="spec">📅 ${l.year} · ${l.hours}</span><span class="spec">🛫 ${l.loc}</span><span class="spec">🪑 ${t('feat_pax')}</span></div></div><div class="feat-price">${l.price}</div>`; g.appendChild(d); return; }
+    if(l.featured){ const d=document.createElement('div'); d.className='featured-banner'; d.onclick=()=>openModal(l.id); d.innerHTML=`<div class="feat-label">${t('feat_label')}</div><div class="feat-info"><div class="card-cat">${t(l.catDisp)}</div><div class="feat-title">${l.title}</div><div class="feat-specs"><span class="spec">📅 ${l.year} · ${l.hours}</span><span class="spec">🛫 ${l.loc}</span><span class="spec">🪑 ${t('feat_pax')}</span></div></div><div class="feat-price">${l.priceDisplay||l.price||"—"}</div>`; g.appendChild(d); return; }
     const c=document.createElement('div'); c.className='card'; c.onclick=()=>openModal(l.id);
-    c.innerHTML=`<div class="card-img"><div class="plane-bg">${l.icon}</div>${l.badge?`<span class="badge ${l.badge}">${t(l.badgeKey)}</span>`:''}<button class="fav${l.liked?' liked':''}" onclick="event.stopPropagation();toggleFav(this)">${l.liked?'♥':'♡'}</button><div class="urgency"><span class="urgency-dot"></span>${l.views}${t('urgency_views')} · ${l.favs}${t('urgency_fav')}</div></div><div class="card-body"><div class="card-cat">${t(l.catDisp)}</div><div class="card-title">${l.title}</div><div class="card-specs"><span class="spec">📅 ${l.year}</span><span class="spec">⏱ ${l.hours}</span></div><div class="trust-chip">✓ ${t('seller_verified')}</div><div class="card-ft"><div><div class="price">${l.price}</div><div class="price-sub">${t(l.priceSub)}</div></div><div class="loc">📍 ${l.loc}</div></div></div>`;
+    c.innerHTML=`<div class="card-img"><div class="plane-bg">${l.icon}</div>${l.badge?`<span class="badge ${l.badge}">${t(l.badgeKey)}</span>`:''}<button class="fav${l.liked?' liked':''}" onclick="event.stopPropagation();toggleFav(this)">${l.liked?'♥':'♡'}</button><div class="urgency"><span class="urgency-dot"></span>${l.views}${t('urgency_views')} · ${l.favs}${t('urgency_fav')}</div></div><div class="card-body"><div class="card-cat">${t(l.catDisp)}</div><div class="card-title">${l.title}</div><div class="card-specs"><span class="spec">📅 ${l.year}</span><span class="spec">⏱ ${l.hours}</span></div><div class="trust-chip">✓ ${l.sellerName||t('seller_verified')}</div><div class="card-ft"><div><div class="price">${l.priceDisplay||l.price||"—"}</div><div class="price-sub">${t(l.priceSub)}</div></div><div class="loc">📍 ${l.loc}</div></div></div>`;
     g.appendChild(c);
   });
 }
 
-function renderCats(){
-  document.getElementById('catGrid').innerHTML=t('cats').map(c=>{
-    if(c.wanted){
-      return `<div class="cat-card cat-wanted" onclick="openWantedForm()">
-        <div class="cat-icon">${c.icon}</div>
-        <div class="cat-name" style="color:var(--accent)">${c.name}</div>
-        <div class="cat-count">${c.count}</div>
-      </div>`;
-    }
-    if(c.special){
-      return `<div class="cat-card" style="border-color:rgba(232,160,32,.35);background:rgba(232,160,32,.05)" onclick="window.location.href='search.html'">
-        <div class="cat-icon">${c.icon}</div>
-        <div class="cat-name" style="color:var(--accent)">${c.name}</div>
-        <div class="cat-count">${c.count}</div>
-      </div>`;
-    }
-    if(c.special){
-      return `<div class="cat-card" style="border-color:rgba(232,160,32,.35);background:rgba(232,160,32,.05);cursor:pointer" onclick="window.location.href='search.html'">
-        <div class="cat-icon">${c.icon}</div>
-        <div class="cat-name" style="color:var(--accent)">${c.name}</div>
-        <div class="cat-count">${c.count}</div>
-      </div>`;
-    }
-    return `<div class="cat-card" onclick="filterByCategory('${c.name}')">
-      <div class="cat-icon">${c.icon}</div>
-      <div class="cat-name">${c.name}</div>
-      <div class="cat-count">${c.count}</div>
-    </div>`;
-  }).join('');
-}
+function renderCats(){ /* catGrid section removed */ }
 
 function filterByCategory(name){
   window.location.href='search.html?cat='+encodeURIComponent(name);
@@ -836,20 +899,36 @@ function setLang(l){
   document.getElementById('alertEmail').placeholder=t('alert_placeholder');
   document.getElementById('heroH1').innerHTML=t('hero_h1');
   document.getElementById('recentTitle').innerHTML=t('recent_title');
-  document.getElementById('catTitle').innerHTML=t('cat_section_title');
+  var _ct=document.getElementById('catTitle');if(_ct)_ct.innerHTML=t('cat_section_title');
   document.getElementById('trustTitle').innerHTML=t('trust_title');
   document.getElementById('stepsTitle').innerHTML=t('steps_title');
   document.getElementById('alertTitle').innerHTML=t('alert_title');
   const wt=document.getElementById('wantedTitle');if(wt)wt.innerHTML=t('wanted_section_title');
   const wft=document.getElementById('wantedFormTitle');if(wft)wft.innerHTML=t('wanted_form_title');
   document.title='Aircraft2Sell — '+(l==='en'?'Buy & Sell Aircraft':l==='fr'?"Achat & Vente d'Avions":l==='de'?'Flugzeuge kaufen & verkaufen':l==='es'?'Compra & Venta de Aeronaves':'飞机买卖平台');
-  renderTicker();renderListings();renderCats();renderTrust();renderSteps();renderNavDropdown();
+  renderTicker();renderListings();renderTrust();renderSteps();renderNavDropdown();
 }
 
 function animCount(el,target){let c=0;const s=Math.ceil(target/60);const i=setInterval(()=>{c=Math.min(c+s,target);el.textContent=c.toLocaleString();if(c>=target)clearInterval(i);},22);}
 window.addEventListener('load',()=>{setTimeout(()=>{animCount(document.getElementById('sn1'),0);animCount(document.getElementById('sn2'),0);animCount(document.getElementById('sn3'),0);},500);});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 setLang('fr');
+// Charger les annonces depuis Supabase
+loadLiveListings().then(function(rows){
+  LISTINGS = rows;
+  normalizeListings();
+  updateStats();
+  if(typeof renderListings === 'function') renderListings();
+  if(typeof renderCats === 'function') renderCats();
+}).catch(function(){
+  if(typeof renderListings === 'function') renderListings();
+  if(typeof renderCats === 'function') renderCats();
+});
+</script>
+<script src="nav.js"></script>
+<script data-cfasync="false" id="a2s-tracker">
+/* A2S Analytics */
+(function(){var SB='https://hlivysnlzlqdjcigqgvk.supabase.co',SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';var sid=sessionStorage.getItem('a2s_sid');if(!sid){sid=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('a2s_sid',sid);}var ua=navigator.userAgent;var dev=/(tablet|ipad|playbook|silk)|(android(?!.*mobile))/i.test(ua)?'tablet':/mobile|android|iphone|ipod|blackberry|opera mini|iemobile/i.test(ua)?'mobile':'desktop';var br=ua.indexOf('Chrome')>-1&&ua.indexOf('Edg')===-1&&ua.indexOf('OPR')===-1?'Chrome':ua.indexOf('Safari')>-1&&ua.indexOf('Chrome')===-1?'Safari':ua.indexOf('Firefox')>-1?'Firefox':ua.indexOf('Edg')>-1?'Edge':'Other';var pg=location.pathname.split('/').pop()||'homepage.html';var lid=new URLSearchParams(location.search).get('id');function track(country){var b={page:pg,referrer:document.referrer||'direct',country:country||'Unknown',device:dev,browser:br,session_id:sid};if(lid)b.listing_id=parseInt(lid);fetch(SB+'/rest/v1/analytics',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(b)}).catch(function(){});if(lid&&pg==='listing.html'){fetch(SB+'/rest/v1/listing_views',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({listing_id:parseInt(lid),country:country||'Unknown',session_id:sid})}).catch(function(){});fetch(SB+'/rest/v1/listings?id=eq.'+lid,{headers:{'apikey':SK,'Authorization':'Bearer '+SK}}).then(function(r){return r.json();}).then(function(rows){if(rows&&rows[0])fetch(SB+'/rest/v1/listings?id=eq.'+lid,{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},body:JSON.stringify({views:(rows[0].views||0)+1})}).catch(function(){});}).catch(function(){});}}var tkey='a2s_t_'+pg;if(!sessionStorage.getItem(tkey)){sessionStorage.setItem(tkey,'1');fetch('https://ipapi.co/json/').then(function(r){return r.json();}).then(function(d){track(d&&d.country_name?d.country_name:'Unknown');}).catch(function(){track('Unknown');});}})();
 </script>
 </body>
 </html>
