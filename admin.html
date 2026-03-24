@@ -74,6 +74,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);fo
 .sec{display:none;flex-direction:column;gap:14px}
 .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .sec-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.05em;flex:1}.sec-title em{color:var(--accent);font-style:normal}
+.filter-inp{background:rgba(200,220,240,.04);border:1px solid var(--border);color:var(--white);padding:.4rem .85rem;font-size:.75rem;border-radius:5px;outline:none;font-family:inherit;transition:border-color .15s;min-width:160px}.filter-inp:focus{border-color:rgba(232,160,32,.3)}.filter-inp::placeholder{color:var(--mist2)}
 .filter-sel{background:rgba(200,220,240,.04);border:1px solid var(--border);color:var(--white);padding:.4rem .8rem;font-size:.75rem;border-radius:5px;outline:none;cursor:pointer;font-family:inherit}
 .filter-sel option{background:var(--deep)}
 .krow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
@@ -384,20 +385,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);fo
             <option value="Aviateur">Aviateur</option>
             <option value="Pro">Pro</option>
           </select>
-          <button class="tb-btn" onclick="syncSellersAsMembers()" title="Importer les vendeurs d annonces comme membres">&#8635; Sync vendeurs</button>
-          <button class="tb-btn" onclick="exportCSV('users')">&#8595; CSV</button>
+          <button class="tb-action" onclick="syncSellersAsMembers()">↺ Sync vendeurs</button>
+          <button class="tb-action" onclick="exportCSV('users')">↓ CSV</button>
         </div>
         <div class="krow">
-          <div class="kc g"><div class="kl">Total</div><div class="kv" id="us-total">0</div></div>
-          <div class="kc a"><div class="kl">Aviateur</div><div class="kv" id="us-avi">0</div></div>
+          <div class="kc g"><div class="kl">Total membres</div><div class="kv" id="us-total">0</div><div class="ks">tous plans</div></div>
+          <div class="kc"><div class="kl">Aviateur</div><div class="kv" id="us-avi">0</div><div class="ks" onclick="showTab('subs',document.getElementById('sn-subs'))">Voir abonnements →</div></div>
           <div class="kc p"><div class="kl">Pro</div><div class="kv" id="us-pro">0</div></div>
           <div class="kc b"><div class="kl">Essentiel</div><div class="kv" id="us-ess">0</div></div>
         </div>
         <div class="card">
+          <div class="card-head">
+            <div class="card-title">Liste des membres</div>
+            <span style="font-size:10px;color:var(--mist2)" id="us-count-label"></span>
+          </div>
           <div class="tbl-wrap">
-            <table>
-              <thead><tr><th>#</th><th>Membre</th><th>Email</th><th>Plan</th><th>Inscrit le</th><th>Actions</th></tr></thead>
-              <tbody id="users-body"><tr><td colspan="6" class="loading-row">Chargement...</td></tr></tbody>
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th style="width:36px">#</th>
+                  <th>Membre</th>
+                  <th>Email</th>
+                  <th style="width:90px">Plan</th>
+                  <th style="width:100px">Note</th>
+                  <th style="width:110px">Inscrit le</th>
+                  <th style="width:90px">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-body">
+                <tr><td colspan="7" class="loading-row">Chargement...</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -1060,18 +1077,26 @@ function filterUsers() {
       + (_allUsers.length ? 'Aucun resultat' : 'Aucun membre dans Supabase') + '</td></tr>';
     return;
   }
+  // Update count label
+  var lbl = document.getElementById('us-count-label');
+  if(lbl) lbl.textContent = filtered.length + ' membre' + (filtered.length>1?'s':'');
+
   tb.innerHTML = filtered.map(function(u, i) {
+    var stars = u.rating ? '★'.repeat(parseInt(u.rating)) : '<span style="color:var(--mist2)">—</span>';
+    var certBadge = u.certified ? '<span style="font-size:9px;color:var(--green);border:1px solid rgba(34,197,94,.2);padding:1px 6px;border-radius:100px;margin-left:5px">✓ Certifié</span>' : '';
     return '<tr>'
-      + '<td style="color:#4a6278;font-size:.64rem">#' + (i + 1) + '</td>'
-      + '<td><div style="display:flex;align-items:center;gap:.4rem">'
-      + '<div class="ml-av" style="width:22px;height:22px;font-size:.52rem;flex-shrink:0">' + ini(u.name, u.email) + '</div>'
-      + '<span style="color:#f0f4f8;font-size:.74rem">' + (u.name || '--') + '</span></div></td>'
-      + '<td style="font-size:.7rem">' + (u.email || '--') + '</td>'
-      + '<td>' + planPill(u.plan) + '</td>'
-      + '<td style="font-size:.64rem;color:#4a6278">' + fmtDate(u.registered_at) + '</td>'
+      + '<td style="color:var(--mist2);font-size:.62rem;width:36px">#' + (i+1) + '</td>'
+      + '<td><div style="display:flex;align-items:center;gap:8px">'
+      + '<div class="ml-av">' + ini(u.name,u.email) + '</div>'
+      + '<div><div style="font-size:.78rem;font-weight:500;color:var(--white)">' + (u.name||'--') + '</div>'
+      + '<div style="font-size:.65rem;color:var(--mist2)">' + (u.email||'--') + '</div></div>'
+      + '</div></td>'
+      + '<td>' + planPill(u.plan) + certBadge + '</td>'
+      + '<td style="font-size:.85rem;color:#f5c842;letter-spacing:1px">' + stars + '</td>'
+      + '<td style="font-size:.68rem;color:var(--mist2)">' + fmtDate(u.registered_at) + '</td>'
       + '<td><div class="acts">'
-      + '<button class="act" onclick="editUser(' + u.id + ')">&#9998; Modifier</button>'
-      + '<button class="act rj" onclick="delUser(' + u.id + ')">&#10005;</button>'
+      + '<button class="act" onclick="editUser(' + u.id + ')" title="Modifier">&#9998;</button>'
+      + '<button class="act rj" onclick="delUser(' + u.id + ')" title="Supprimer">&#10005;</button>'
       + '</div></td></tr>';
   }).join('');
 }
