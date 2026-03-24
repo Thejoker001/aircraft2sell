@@ -6,8 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aircraft2Sell — Buy & Sell Aircraft</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
-<style>
-:root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--horizon2:#0b1e38;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#5a7490;--white:#f0f4f8;--card-bg:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.1);--green:#22c55e;--red:#ef4444}
+<style>:root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--horizon2:#0b1e38;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#5a7490;--white:#f0f4f8;--card-bg:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.1);--green:#22c55e;--red:#ef4444}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 html{scroll-behavior:smooth}
@@ -280,21 +279,11 @@ footer{position:relative;z-index:1;background:var(--deep);border-top:1px solid v
   </ul>
   <div class="nav-right">
     
-        <div class="nav-user" id="navUser" style="display:none">
-      <div class="nav-avatar" id="navAvatar">U</div>
-      <div class="nav-user-info">
-        <div class="nav-user-name" id="navUserName">Mon compte</div>
-        <div class="nav-user-plan" id="navUserPlan">Essentiel</div>
-      </div>
-    </div>
+    <div class="nav-user" id="navUser" style="display:none"><div class="nav-avatar" id="navAvatar">U</div><div class="nav-user-info"><div class="nav-user-name" id="navUserName">Mon compte</div><div class="nav-user-plan" id="navUserPlan">Essentiel</div></div></div>
     <a href="login.html" class="btn-login" id="btnLogin"><span class="login-icon">👤</span><span id="btnLoginTxt">Connexion</span></a>
-    <a href="#" class="btn-post" data-i18n="btn_post" onclick="a2sAuth.requireLogin(event,'post-listing.html')" id="btnPost">Déposer une annonce</a>
+    <a href="#" class="btn-post" data-i18n="btn_post" onclick="requireLogin(event,'post-listing.html')"></a>
   </div>
-
-  <!-- Mobile burger -->
-  <button class="burger" id="burgerBtn" onclick="toggleMobileMenu()" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
+  <button class="burger" id="burgerBtn" onclick="toggleMobileMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
 </nav>
 
   <nav class="mobile-menu-links" id="mmLinks"></nav>
@@ -896,23 +885,33 @@ function renderNavDropdown(){
 
 function setLang(l){
   lang=l;document.documentElement.lang=l;
-  document.querySelectorAll('.lb').forEach(b=>{b.classList.toggle('active',b.getAttribute('onclick').includes("'"+l+"'"));});
-  document.querySelectorAll('.footer-langs button').forEach(b=>{b.classList.toggle('active',b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase()));});
-  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'));});
-  const bli=document.getElementById('btnLoginTxt');if(bli)bli.textContent=t('btnLogin');
-  document.getElementById('searchInput').placeholder=t('search_placeholder');
-  if(typeof updateBudgetCurr==='function')updateBudgetCurr();else document.getElementById('budgetInput').placeholder=t('budget_placeholder');
-  document.getElementById('alertEmail').placeholder=t('alert_placeholder');
-  document.getElementById('heroH1').innerHTML=t('hero_h1');
-  document.getElementById('recentTitle').innerHTML=t('recent_title');
-  document.getElementById('catTitle').innerHTML=t('cat_section_title');
-  document.getElementById('trustTitle').innerHTML=t('trust_title');
-  document.getElementById('stepsTitle').innerHTML=t('steps_title');
-  document.getElementById('alertTitle').innerHTML=t('alert_title');
-  const wt=document.getElementById('wantedTitle');if(wt)wt.innerHTML=t('wanted_section_title');
-  const wft=document.getElementById('wantedFormTitle');if(wft)wft.innerHTML=t('wanted_form_title');
+  document.querySelectorAll('.lb').forEach(function(b){if(b.getAttribute('onclick'))b.classList.toggle('active',b.getAttribute('onclick').includes("'"+l+"'"));});
+  document.querySelectorAll('.footer-langs button').forEach(function(b){b.classList.toggle('active',b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase()));});
+  document.querySelectorAll('[data-i18n]').forEach(function(el){var v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){var v=t(el.getAttribute('data-i18n-placeholder'));if(v)el.placeholder=v;});
+  var _s=function(id){return document.getElementById(id);};
+  var _st=function(id,key){var e=_s(id);if(e)e.textContent=t(key);};
+  var _sh=function(id,key){var e=_s(id);if(e)e.innerHTML=t(key);};
+  var _sp=function(id,key){var e=_s(id);if(e)e.placeholder=t(key);};
+  if(_s('btnLoginTxt'))_s('btnLoginTxt').textContent=t('btnLogin');
+  _sp('searchInput','search_placeholder');
+  if(typeof updateBudgetCurr==='function')updateBudgetCurr();else _sp('budgetInput','budget_placeholder');
+  _sp('alertEmail','alert_placeholder');
+  _sh('heroH1','hero_h1');
+  _st('recentTitle','recent_title');
+  _st('catTitle','cat_section_title');
+  _st('trustTitle','trust_title');
+  _st('stepsTitle','steps_title');
+  _st('alertTitle','alert_title');
+  var wt=_s('wantedTitle');if(wt)wt.innerHTML=t('wanted_section_title');
+  var wft=_s('wantedFormTitle');if(wft)wft.innerHTML=t('wanted_form_title');
   document.title='Aircraft2Sell — '+(l==='en'?'Buy & Sell Aircraft':l==='fr'?"Achat & Vente d'Avions":l==='de'?'Flugzeuge kaufen & verkaufen':l==='es'?'Compra & Venta de Aeronaves':'飞机买卖平台');
-  renderTicker();renderListings();renderCats();renderTrust();renderSteps();renderNavDropdown();
+  if(typeof renderTicker==='function')renderTicker();
+  if(typeof renderListings==='function')renderListings();
+  if(typeof renderCats==='function')renderCats();
+  if(typeof renderTrust==='function')renderTrust();
+  if(typeof renderSteps==='function')renderSteps();
+  if(typeof renderNavDropdown==='function')renderNavDropdown();
 }
 
 function animCount(el,target){let c=0;const s=Math.ceil(target/60);const i=setInterval(()=>{c=Math.min(c+s,target);el.textContent=c.toLocaleString();if(c>=target)clearInterval(i);},22);}
