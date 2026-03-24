@@ -294,9 +294,45 @@ function setLang(l){
   document.getElementById('btnHome').textContent=t('btnHome');
   document.getElementById('btnSearch').textContent=t('btnSearch');
   document.getElementById('sugList').innerHTML=t('suggestions').map(s=>`<li><a href="${s.href}" class="sug-item"><span class="sug-icon">${s.icon}</span>${s.text}</a></li>`).join('');
+  document.querySelectorAll('[data-i18n]').forEach(function(el){var v=t(el.getAttribute('data-i18n'));if(v)el.textContent=v;});
+  var bli=document.getElementById('btnLoginTxt');if(bli)bli.textContent=t('btnLogin');
+  if(typeof renderNavDropdown==='function')renderNavDropdown();
 }
 setLang('fr');
 </script>
 <script src="nav.js"></script>
+<script>
+function renderNavDropdown(){
+  const menu = document.getElementById('navCatDropdown');
+  if(!menu) return;
+  const cats = t('cats');
+  if(!cats||!Array.isArray(cats)) return;
+  menu.innerHTML = cats.map(c=>{
+    const cls = c.special?' special':c.wanted?' wanted':'';
+    var _ck={'light aircraft':'light','business jets':'jet','turboprops':'turbo','helicopters':'heli','ultralight / ulm':'ulm','airliners':'airliner','spare parts':'parts'};
+    const catCode = _ck[c.name.toLowerCase()] || c.name.toLowerCase().replace(/\s+/g,'-');
+    const href = c.url ? c.url : 'search.html?cat='+catCode;
+    const extra = c.wanted ? 'onclick="event.preventDefault();openWantedForm()" href=\"#\"' : '';
+    return '<a class="dropdown-item'+cls+'" href="'+href+'" '+extra+'>'
+      +'<span class="di-icon">'+c.icon+'</span>'
+      +'<span class="di-name">'+c.name+'</span>'
+      +'<span class="di-count">'+c.count+'</span>'
+      +'</a>';
+  }).join('');
+}
+function toggleCatDropdown(e){
+  e.preventDefault();
+  const li = document.getElementById('navCatLi');
+  li.classList.toggle('open');
+  // Close on outside click
+  if(li.classList.contains('open')){
+    setTimeout(()=>{
+      document.addEventListener('click', function close(ev){
+        if(!li.contains(ev.target)){li.classList.remove('open');document.removeEventListener('click',close);}
+      });
+    },0);
+  }
+}
+</script>
 </body>
 </html>
