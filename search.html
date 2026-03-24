@@ -165,6 +165,7 @@ select.sf option{background:var(--card)}
       <option value="turbo" data-i18n="cat_turbo">Turboprops</option>
       <option value="heli" data-i18n="cat_heli">Helicopters</option>
       <option value="ulm" data-i18n="cat_ulm">Ultralight / ULM</option>
+      <option value="airliner" data-i18n="cat_airliner">Airliner</option>
     </select>
     <select class="mm-select sf" id="searchMake" style="flex:1" onchange="onSearchMakeChange()">
       <option value="">Toutes marques</option>
@@ -975,8 +976,26 @@ function setLang(l){
 
   // Update page title with category if present
   const _cat = new URLSearchParams(window.location.search).get('cat');
-  if(_cat) document.title = 'Aircraft2Sell — '+decodeURIComponent(_cat);
-  else document.title = 'Aircraft2Sell — '+t('search_btn');
+  if(_cat){
+    // Map display names to short codes
+    var _catMap = {
+      'light aircraft':'light','business jets':'jet','business jet':'jet',
+      'turboprops':'turbo','turboprop':'turbo','helicopters':'heli','helicopter':'heli',
+      'ultralight / ulm':'ulm','ultralight':'ulm','airliners':'airliner','airliner':'airliner',
+      'spare parts':'parts','light':'light','jet':'jet','turbo':'turbo',
+      'heli':'heli','ulm':'ulm','airliner':'airliner'
+    };
+    var _catCode = _catMap[decodeURIComponent(_cat).toLowerCase()] || decodeURIComponent(_cat);
+    document.title = 'Aircraft2Sell — '+decodeURIComponent(_cat);
+    var catSel = document.getElementById('searchCat');
+    if(catSel){ catSel.value = _catCode; }
+    // Also apply to sidebar filter if present
+    var sidebarCat = document.getElementById('sidebarCat');
+    if(sidebarCat){ sidebarCat.value = _catCode; }
+    setTimeout(function(){ doSearch(); }, 400);
+  } else {
+    document.title = 'Aircraft2Sell — '+t('search_btn');
+  }
 }
 let tt2;function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt2);tt2=setTimeout(()=>el.classList.remove('show'),3000);}
 setLang('fr');initSearchMakeModel();loadLiveListings().then(function(r){
