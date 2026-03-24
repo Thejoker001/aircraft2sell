@@ -935,7 +935,7 @@ loadLiveListings().then(function(rows){
   var sid=sessionStorage.getItem('a2s_sid')||(function(){var s=Math.random().toString(36).slice(2);sessionStorage.setItem('a2s_sid',s);return s;})();
   var page=location.pathname.split('/').pop()||'index.html';
   var lid=new URLSearchParams(location.search).get('id');
-  fetch('https://ipapi.co/json/').then(function(r){return r.json();}).then(function(geo){
+  fetch('https://get.geojs.io/v1/ip/geo.json').then(function(r){return r.json();}).then(function(geo){
     var row={page:page,referrer:document.referrer||null,country:geo.country_code||null,device:/Mobi|Android/i.test(navigator.userAgent)?'mobile':'desktop',browser:(function(){var ua=navigator.userAgent;if(/Chrome/.test(ua))return'Chrome';if(/Firefox/.test(ua))return'Firefox';if(/Safari/.test(ua))return'Safari';return'Other';})(),listing_id:lid?parseInt(lid):null,session_id:sid};
     fetch(SB+'/rest/v1/analytics',{method:'POST',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK,'Prefer':'return=minimal'},body:JSON.stringify(row)});
     if(lid){fetch(SB+'/rest/v1/listing_views',{method:'POST',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK,'Prefer':'return=minimal'},body:JSON.stringify({listing_id:parseInt(lid),country:geo.country_code||null,session_id:sid})});fetch(SB+'/rest/v1/listings?id=eq.'+lid,{method:'PATCH',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK},body:JSON.stringify({views:null})});}

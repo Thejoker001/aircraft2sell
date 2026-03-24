@@ -6,8 +6,10 @@
 <title>Aircraft2Sell — Annonce soumise</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
+.nav-links{display:flex;list-style:none;margin:0;padding:0;gap:1.5rem;align-items:center;height:64px;font-size:.82rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase}.nav-links li{display:flex;align-items:center;height:64px}.nav-links a{color:var(--mist);text-decoration:none;transition:color .2s;display:flex;align-items:center;height:64px;white-space:nowrap}.nav-links a:hover,.nav-links a.active{color:var(--accent)}
 :root{--sky:#060b15;--deep:#04080f;--horizon:#0a1e3a;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#4a6278;--white:#f0f4f8;--card:#0c1826;--border:rgba(200,220,240,0.09);--green:#22c55e}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
 body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
 
 /* Stars background */
@@ -216,7 +218,7 @@ const timer = setInterval(() => {
   var sid=sessionStorage.getItem('a2s_sid')||(function(){var s=Math.random().toString(36).slice(2);sessionStorage.setItem('a2s_sid',s);return s;})();
   var page=location.pathname.split('/').pop()||'index.html';
   var lid=new URLSearchParams(location.search).get('id');
-  fetch('https://ipapi.co/json/').then(function(r){return r.json();}).then(function(geo){
+  fetch('https://get.geojs.io/v1/ip/geo.json').then(function(r){return r.json();}).then(function(geo){
     var row={page:page,referrer:document.referrer||null,country:geo.country_code||null,device:/Mobi|Android/i.test(navigator.userAgent)?'mobile':'desktop',browser:(function(){var ua=navigator.userAgent;if(/Chrome/.test(ua))return'Chrome';if(/Firefox/.test(ua))return'Firefox';if(/Safari/.test(ua))return'Safari';return'Other';})(),listing_id:lid?parseInt(lid):null,session_id:sid};
     fetch(SB+'/rest/v1/analytics',{method:'POST',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK,'Prefer':'return=minimal'},body:JSON.stringify(row)});
     if(lid){fetch(SB+'/rest/v1/listing_views',{method:'POST',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK,'Prefer':'return=minimal'},body:JSON.stringify({listing_id:parseInt(lid),country:geo.country_code||null,session_id:sid})});fetch(SB+'/rest/v1/listings?id=eq.'+lid,{method:'PATCH',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK},body:JSON.stringify({views:null})});}
