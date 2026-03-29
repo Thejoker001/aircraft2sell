@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Aircraft2Sell — Mon espace</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>:root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--horizon2:#0b1e38;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#5a7490;--white:#f0f4f8;--card-bg:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.1);--green:#22c55e;--red:#ef4444}
+<style>
+:root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--horizon2:#0b1e38;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#5a7490;--white:#f0f4f8;--card-bg:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.1);--green:#22c55e;--red:#ef4444}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 html{scroll-behavior:smooth}
@@ -105,6 +106,31 @@ select.sf option{background:var(--card-bg)}
 .burger.open span:nth-child(2){opacity:0}
 .burger.open span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
 
+.dash-card{background:var(--card);border:1px solid var(--border);display:flex;flex-direction:column}
+.dc-head{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid var(--border)}
+.dc-title{font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--white)}
+.dc-action{font-size:.65rem;color:var(--accent);cursor:pointer;background:none;border:none;transition:opacity .15s}
+.dc-action:hover{opacity:.7}
+.dc-body{padding:.8rem 1rem;flex:1}
+.upgrade-banner{background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.18);padding:1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.ub-plan{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.08em;color:var(--accent)}
+.ub-desc{font-size:.74rem;color:var(--mist);margin-top:.2rem}
+.ub-desc strong{color:var(--white)}
+.ub-btns{display:flex;gap:.5rem;flex-wrap:wrap}
+.ub-btn{background:var(--accent);color:var(--deep);border:none;padding:.55rem 1.2rem;font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:.1em;cursor:pointer;transition:background .2s;text-decoration:none;display:inline-flex;align-items:center}
+.ub-btn:hover{background:var(--gold)}
+.ub-btn.outline{background:transparent;color:var(--accent);border:1px solid rgba(232,160,32,.4);font-family:'DM Sans',sans-serif;font-size:.74rem;font-weight:500;letter-spacing:.04em;text-transform:none}
+.ub-btn.outline:hover{background:rgba(232,160,32,.08)}
+.empty{text-align:center;padding:2.5rem 1rem;display:flex;flex-direction:column;align-items:center;gap:.6rem}
+.empty-ic{font-size:2.5rem;opacity:.1;margin-bottom:.3rem}
+.empty-t{font-size:.82rem;font-weight:500;color:var(--white)}
+.empty-s{font-size:.71rem;color:var(--mist);line-height:1.6;max-width:300px}
+.empty-btn{background:var(--accent);color:var(--deep);border:none;padding:.55rem 1.3rem;font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:.1em;cursor:pointer;transition:background .2s;margin-top:.4rem;text-decoration:none;display:inline-flex}
+.empty-btn:hover{background:var(--gold)}
+.empty-btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(232,160,32,.3);font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:500;letter-spacing:.04em;text-transform:none}
+.empty-btn.ghost:hover{background:rgba(232,160,32,.08)}
+.ls-title{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.06em}
+.ls-title em,.msg-title em,.sub-title em,.set-title em,.inv-title em{font-style:normal;color:var(--accent)}
 .listings-toolbar,.msg-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem}
 .slot-bar{background:var(--card);border:1px solid var(--border);padding:.7rem 1rem;display:flex;align-items:center;gap:1rem}
 .slot-label{font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mist2)}
@@ -234,9 +260,9 @@ tbody tr:last-child td{border-bottom:none}
 .fav-saved{font-size:.58rem;color:var(--mist2);margin-top:.2rem}
 .fav-empty{text-align:center;padding:3rem 1rem;display:flex;flex-direction:column;align-items:center;gap:.6rem}
 .fav-empty-ic{font-size:2.5rem;opacity:.1;margin-bottom:.3rem}
+
 </style>
 <link rel="stylesheet" href="mobile.css">
-<script src="supabase.js"></script>
 </head>
 <body>
 
@@ -266,10 +292,17 @@ tbody tr:last-child td{border-bottom:none}
   </div>
   <button class="burger" id="burgerBtn" onclick="toggleMobileMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
 </nav>
-
+<div class="mobile-menu" id="mobileMenu">
+  <div id="mmUserSection"></div>
   <nav class="mobile-menu-links" id="mmLinks"></nav>
-  
-  
+  <div class="mm-lang-row" id="mmLangs">
+    <button class="mm-lang-btn active" onclick="setLang('fr');closeMobileMenu()">🇫🇷 FR</button>
+    <button class="mm-lang-btn" onclick="setLang('en');closeMobileMenu()">🇬🇧 EN</button>
+    <button class="mm-lang-btn" onclick="setLang('de');closeMobileMenu()">🇩🇪 DE</button>
+    <button class="mm-lang-btn" onclick="setLang('es');closeMobileMenu()">🇪🇸 ES</button>
+    <button class="mm-lang-btn" onclick="setLang('zh');closeMobileMenu()">🇨🇳 中文</button>
+  </div>
+  <div class="mobile-menu-bottom" id="mmBottom"></div>
 </div>
 
 <!-- OVERVIEW -->
@@ -499,61 +532,93 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 
 <div class="toast" id="toast"></div>
-<script data-cfasync="false">
-/* ── SUPABASE CLIENT ── */
-var _SB='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-async function sbGet(t,p){var r=await fetch(_SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':_SK,'Authorization':'Bearer '+_SK}});return r.ok?(await r.json()):[];}
-async function sbPost(t,b){return(await fetch(_SB+'/rest/v1/'+t,{method:'POST',headers:{'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(b)})).ok;}
-async function sbPatch(t,p,b){return(await fetch(_SB+'/rest/v1/'+t+'?'+p,{method:'PATCH',headers:{'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json'},body:JSON.stringify(b)})).ok;}
-function sbRow(r){var photos=Array.isArray(r.photos)?r.photos:[];var thumb=photos.length?photos[0]:(r.icon||'✈');return{id:r.id,make:r.make,model:r.model,year:r.year,price:r.price,currency:r.currency||'EUR',category:r.category,airport:r.airport,country:r.country,desc:r.description,status:r.status||'pending',sellerName:r.seller_name,sellerEmail:r.seller_email,views:r.views||0,enquiries:r.enquiries||0,icon:thumb,photos:photos,submittedAt:r.submitted_at,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')};}
+<script>
 const T={
-en:{nav_listings:'Listings',nav_categories:'Categories',nav_pricing:'Pricing',nav_alerts:'Alerts',btnLogin:'Sign in',btn_post:'Post an Ad',hero_eyebrow:"Europe's #1 Aircraft Marketplace",hero_h1:'Find your<br><em>perfect</em><br>aircraft',hero_sub:'From training singles to business jets — buy, sell and discover exceptional aircraft. No commission, ever.',search_placeholder:'Brand, model or type…',budget_placeholder:'Max budget',search_btn:'Search',cat_all:'All categories',cat_light:'Light aircraft',cat_jet:'Business jets',cat_turbo:'Turboprops',cat_heli:'Helicopters',cat_ulm:'Ultralight / ULM',cat_airliner:'Airliners',filter_all:'All',scroll_hint:'Scroll to explore',stat_listings:'Active listings',stat_sellers:'Verified sellers',stat_countries:'Countries',stat_today:'New today',recent_title:'Latest <em>listings</em>',cat_section_title:'Browse by <em>category</em>',see_all:'View all listings →',see_pricing:'View pricing →',load_more:'Load more',trust_title:'Why <em>Aircraft2Sell</em>?',steps_title:'How it <em>works</em>',alert_title:'Never miss your <em>dream</em> aircraft',alert_sub:'Create a free alert and receive an email the moment a matching aircraft is listed.',alert_placeholder:'Your email address…',alert_btn:'Create alert',alert_note:'Free · No spam · Cancel anytime',seller_verified:'Verified seller',modal_model:'Make / Model',modal_year:'Year',modal_hours:'Total hours',modal_location:'Location',modal_reg:'Registration',modal_docs:'Documents',modal_contact:'Contact seller',modal_save:'Save listing',badge_new:'New',badge_urgent:'Urgent',badge_premium:'Premium',badge_sold:'Sold',feat_label:'⭐ Featured',feat_pax:'8 passengers',footer_desc:'The leading European marketplace for buying and selling aircraft.',footer_col1:'Browse',footer_col2:'Sell',footer_col3:'Company',footer_sold:'Recently sold',footer_guide:"Buyer's guide",footer_about:'About us',nav_currency:'Devises',nav_currency:'Devises',nav_contact:'Contact',footer_contact:'Contact',footer_legal:'Legal notice',footer_privacy:'Privacy',footer_copy:'© 2026 Aircraft2Sell — All rights reserved',toast_soon:'Coming soon!',toast_search:'Searching…',toast_loading:'Loading…',toast_sent:'Message sent!',toast_saved:'Saved to favourites!',toast_alert:"Alert created! We'll email you when a match appears.",toast_fav_add:'Added to favourites!',toast_fav_remove:'Removed from favourites',steps:[{num:'01',title:'Create your account',desc:'Sign up free in under 2 minutes.'},{num:'02',title:'Post your listing',desc:'Add photos, specs and your asking price.'},{num:'03',title:'Receive enquiries',desc:'Qualified buyers contact you directly.'},{num:'04',title:'Close the deal',desc:'Zero commission — you keep every euro.'}],empty_title:'No listings yet',empty_sub:'Be the first to list your aircraft on Aircraft2Sell.',urgency_views:' viewing',urgency_fav:' saved',urgency_new:'Listed ',
-trust_items:[{icon:'🔒',title:'Verified sellers',desc:'Every professional seller is manually verified. Identity, company and certifications checked.'},{icon:'🚫',title:'Zero commission',desc:"We take no cut on your sale. Our only revenue is from listing plans."},{icon:'🌍',title:'Countries covered',desc:'Buyers and sellers across Europe and beyond.'},{icon:'✈️',title:'Aviation specialists',desc:'Our team consists of pilots and aviation professionals.'}],
-steps:[{num:'01',title:'Create account',desc:'Sign up in 2 minutes. Email verification included.'},{num:'02',title:'Post your listing',desc:'Fill in aircraft details, upload photos, set your price.'},{num:'03',title:'Get contacted',desc:'Qualified buyers reach you via our secure messaging.'},{num:'04',title:'Close the deal',desc:'Agree terms, arrange inspection, complete transaction.'}],
-cats:[{icon:'🛩',name:'Light aircraft',count:'0 listings'},{icon:'🚁',name:'Helicopters',count:'0 listings'},{icon:'✈️',name:'Business jets',count:'0 listings'},{icon:'🌀',name:'Turboprops',count:'0 listings'},{icon:'🪂',name:'Ultralight / ULM',count:'0 listings'},{icon:'🛫',name:'Airliners',count:'0 listings'},{icon:'🔧',name:'Spare parts',count:'0 listings'},{icon:'🔍',name:'Search listings',count:'Browse all',url:'search.html',special:true},{icon:'🔍',name:'Aircraft wanted',count:'0 requests',wanted:true}],
-ticker_items:[],
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-negotiable:'Negotiable',firm:'Firm price',offers:'Offers welcome',fixed:'Fixed price',leasing:'Leasing available',wanted_section_title:'Aircraft <em>wanted</em>',wanted_sub:'Looking for a specific aircraft? Post your search and let sellers come to you.',wanted_btn:'Post a wanted ad',wanted_form_title:'Post a wanted aircraft request',wanted_cat_label:'Category',wanted_make_label:'Make / Model (if known)',wanted_make_ph:'e.g. Cessna 172, Piper PA-28…',wanted_budget_label:'Maximum budget (€)',wanted_budget_ph:'e.g. 150000',wanted_year_label:'Max year',wanted_hours_label:'Max total hours',wanted_loc_label:'Preferred location',wanted_loc_ph:'e.g. France, Europe…',wanted_desc_label:'Additional details',wanted_desc_ph:'Describe what you are looking for — avionics, condition, IFR, RVSM…',wanted_submit:'Submit my request',wanted_cancel:'Cancel',wanted_count:'0 requests',wanted_toast:'Request submitted! Sellers will be notified.',wanted_login_required:'An account is required to post a wanted request',badge_sold2:'Sold'},
-fr:{nav_listings:'Annonces',nav_categories:'Catégories',nav_pricing:'Tarifs',nav_alerts:'Alertes',btnLogin:'Connexion',btn_post:'Déposer une annonce',hero_eyebrow:"La 1ère marketplace aéronautique d'Europe",hero_h1:'Trouvez<br>votre <em>avion</em><br>idéal',hero_sub:"Des monoplaces d'entraînement aux jets d'affaires — achetez et vendez sans commission.",search_placeholder:'Marque, modèle ou type…',budget_placeholder:'Budget max',search_btn:'Rechercher',cat_all:'Toutes catégories',cat_light:'Avions légers',cat_jet:"Jets d'affaires",cat_turbo:'Turbopropulseurs',cat_heli:'Hélicoptères',cat_ulm:'ULM',cat_airliner:'Avions de ligne',filter_all:'Tous',scroll_hint:'Défiler pour explorer',stat_listings:'Annonces actives',stat_sellers:'Vendeurs vérifiés',stat_countries:'Pays',stat_today:"Nouvelles aujourd'hui",recent_title:'Dernières <em>annonces</em>',cat_section_title:'Explorer par <em>catégorie</em>',see_all:'Voir toutes les annonces →',see_pricing:'Voir les tarifs →',load_more:"Voir plus d'annonces",trust_title:'Pourquoi <em>Aircraft2Sell</em> ?',steps_title:'Comment ça <em>marche</em> ?',alert_title:'Ne ratez plus votre <em>avion idéal</em>',alert_sub:"Créez une alerte gratuite et recevez un email dès qu'une annonce correspond à vos critères.",alert_placeholder:'Votre adresse email…',alert_btn:'Créer une alerte',alert_note:'Gratuit · Sans spam · Désabonnement facile',seller_verified:'Vendeur vérifié',modal_model:'Marque / Modèle',modal_year:'Année',modal_hours:'Heures totales',modal_location:'Localisation',modal_reg:'Matricule',modal_docs:'Documents',modal_contact:'Contacter le vendeur',modal_save:'Sauvegarder',badge_new:'Nouveau',badge_urgent:'Urgent',badge_premium:'Premium',badge_sold:'Vendu',feat_label:'⭐ À la une',feat_pax:'8 passagers',footer_desc:"Le leader européen de la vente d'aéronefs entre particuliers et professionnels.",footer_col1:'Explorer',footer_col2:'Vendre',footer_col3:'Entreprise',footer_sold:'Récemment vendus',footer_guide:'Guide acheteur',footer_about:'À propos',nav_currency:'Devises',nav_contact:'Contact',footer_contact:'Contact',footer_legal:'Mentions légales',footer_privacy:'Confidentialité',footer_copy:'© 2026 Aircraft2Sell — Tous droits réservés',toast_soon:'Bientôt disponible !',toast_search:'Recherche en cours…',toast_loading:'Chargement…',toast_sent:'Message envoyé !',toast_saved:'Annonce sauvegardée !',toast_alert:"Alerte créée ! Vous serez notifié dès qu'une annonce correspond.",toast_fav_add:'Ajouté aux favoris !',toast_fav_remove:'Retiré des favoris',steps:[{num:'01',title:'Créez votre compte',desc:'Inscription gratuite en moins de 2 minutes.'},{num:'02',title:'Publiez votre annonce',desc:'Ajoutez photos, specs et votre prix.'},{num:'03',title:'Recevez des demandes',desc:'Les acheteurs qualifiés vous contactent directement.'},{num:'04',title:'Concluez la vente',desc:'Zéro commission — vous gardez chaque euro.'}],empty_title:'Aucune annonce pour le moment',empty_sub:'Soyez le premier à publier votre avion sur Aircraft2Sell.',urgency_views:' consultent',urgency_fav:' favoris',urgency_new:'Publiée ',
-trust_items:[{icon:'🔒',title:'Vendeurs vérifiés',desc:'Chaque professionnel est vérifié manuellement. Identité, entreprise et certifications contrôlés.'},{icon:'🚫',title:'Zéro commission',desc:"Nous ne prélevons aucune commission sur votre vente."},{icon:'🌍',title:'Pays couverts',desc:"Acheteurs et vendeurs dans toute l'Europe et au-delà."},{icon:'✈️',title:'Spécialistes aviation',desc:'Notre équipe est composée de pilotes et de professionnels de l\'aviation.'}],
-steps:[{num:'01',title:'Créez votre compte',desc:'Inscription en 2 minutes. Vérification par email incluse.'},{num:'02',title:'Publiez votre annonce',desc:'Renseignez les détails, ajoutez vos photos, fixez votre prix.'},{num:'03',title:'Recevez des contacts',desc:'Les acheteurs qualifiés vous contactent via notre messagerie sécurisée.'},{num:'04',title:'Finalisez la vente',desc:"Convenez des conditions, organisez la visite, concluez la transaction."}],
-cats:[{icon:'🛩',name:'Avions légers',count:'0 annonce'},{icon:'🚁',name:'Hélicoptères',count:'0 annonce'},{icon:'✈️',name:"Jets d'affaires",count:'0 annonce'},{icon:'🌀',name:'Turbopropulseurs',count:'0 annonce'},{icon:'🪂',name:'ULM',count:'0 annonce'},{icon:'🛫',name:'Avions de ligne',count:'0 annonce'},{icon:'🔧',name:'Pièces détachées',count:'0 annonce'},{icon:'🔍',name:'Rechercher une annonce',count:'Parcourir tout',url:'search.html',special:true},{icon:'🔍',name:'Avions recherchés',count:'0 demande',wanted:true}],
-ticker_items:[],
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-negotiable:'Prix négociable',firm:'Prix ferme',offers:'Offres bienvenues',fixed:'Prix fixe',leasing:'Leasing possible',wanted_section_title:'Avions <em>recherchés</em>',wanted_sub:"Vous cherchez un avion précis ? Publiez votre demande et laissez les vendeurs venir à vous.",wanted_btn:'Publier une demande',wanted_form_title:"Publier une demande d'achat",wanted_cat_label:'Catégorie',wanted_make_label:'Marque / Modèle (si connu)',wanted_make_ph:'ex : Cessna 172, Piper PA-28…',wanted_budget_label:'Budget maximum (€)',wanted_budget_ph:'ex : 150000',wanted_year_label:'Année max.',wanted_hours_label:'Heures max.',wanted_loc_label:'Localisation souhaitée',wanted_loc_ph:'ex : France, Europe…',wanted_desc_label:'Informations complémentaires',wanted_desc_ph:"Décrivez ce que vous recherchez — avionique, état, IFR, RVSM…",wanted_submit:'Envoyer ma demande',wanted_cancel:'Annuler',wanted_count:'0 demande',wanted_toast:'Demande envoyée ! Les vendeurs seront notifiés.',wanted_login_required:'Un compte est requis pour publier une demande de recherche',badge_sold2:'Vendu'},
-de:{nav_listings:'Anzeigen',nav_categories:'Kategorien',nav_pricing:'Preise',nav_alerts:'Benachrichtigungen',btnLogin:'Anmelden',btn_post:'Anzeige aufgeben',hero_eyebrow:'Europas Nr. 1 Flugzeugmarktplatz',hero_h1:'Finden Sie<br>Ihr <em>perfektes</em><br>Flugzeug',hero_sub:'Von Trainingsflugzeugen bis Business-Jets — kaufen und verkaufen ohne Provision.',search_placeholder:'Marke, Modell oder Typ…',budget_placeholder:'Max. Budget',search_btn:'Suchen',cat_all:'Alle Kategorien',cat_light:'Leichtflugzeuge',cat_jet:'Geschäftsreisejets',cat_turbo:'Turboprops',cat_heli:'Hubschrauber',cat_ulm:'Ultraleicht / ULM',cat_airliner:'Verkehrsflugzeuge',filter_all:'Alle',scroll_hint:'Scrollen',stat_listings:'Aktive Anzeigen',stat_sellers:'Verifizierte Verkäufer',stat_countries:'Länder',stat_today:'Neu heute',recent_title:'Neueste <em>Anzeigen</em>',cat_section_title:'Nach <em>Kategorie</em>',see_all:'Alle ansehen →',see_pricing:'Preise →',load_more:'Mehr laden',trust_title:'Warum <em>Aircraft2Sell</em>?',steps_title:'So <em>funktioniert</em> es',alert_title:'Nie Ihr <em>Traumflugzeug</em> verpassen',alert_sub:'Erstellen Sie einen Alert und erhalten Sie eine E-Mail, sobald ein passendes Flugzeug erscheint.',alert_placeholder:'Ihre E-Mail…',alert_btn:'Alert erstellen',alert_note:'Kostenlos · Kein Spam · Jederzeit kündbar',seller_verified:'Verifizierter Verkäufer',modal_model:'Marke / Modell',modal_year:'Jahr',modal_hours:'Gesamtstunden',modal_location:'Standort',modal_reg:'Kennzeichen',modal_docs:'Dokumente',modal_contact:'Verkäufer kontaktieren',modal_save:'Speichern',badge_new:'Neu',badge_urgent:'Dringend',badge_premium:'Premium',badge_sold:'Verkauft',feat_label:'⭐ Empfohlen',feat_pax:'8 Passagiere',footer_desc:'Der führende europäische Marktplatz für Flugzeuge.',footer_col1:'Entdecken',footer_col2:'Verkaufen',footer_col3:'Unternehmen',footer_sold:'Kürzlich verkauft',footer_guide:'Käuferratgeber',footer_about:'Über uns',nav_currency:'Devisen',nav_contact:'Kontakt',footer_contact:'Kontakt',footer_legal:'Impressum',footer_privacy:'Datenschutz',footer_copy:'© 2026 Aircraft2Sell — Alle Rechte vorbehalten',toast_soon:'Bald verfügbar!',toast_search:'Suche…',toast_loading:'Laden…',toast_sent:'Gesendet!',toast_saved:'Gespeichert!',toast_alert:'Alert erstellt!',toast_fav_add:'Favorit!',toast_fav_remove:'Entfernt',steps:[{num:'01',title:'Konto erstellen',desc:'Kostenlose Anmeldung in unter 2 Minuten.'},{num:'02',title:'Inserat aufgeben',desc:'Fotos, Spezifikationen und Preis hinzufügen.'},{num:'03',title:'Anfragen erhalten',desc:'Qualifizierte Käufer kontaktieren Sie direkt.'},{num:'04',title:'Abschluss erzielen',desc:'Null Provision — Sie behalten jeden Euro.'}],empty_title:'Noch keine Anzeigen',empty_sub:'Seien Sie der Erste, der ein Flugzeug auf Aircraft2Sell inseriert.',urgency_views:' ansehen',urgency_fav:' gespeichert',urgency_new:'Eingestellt ',
-trust_items:[{icon:'🔒',title:'Verifizierte Verkäufer',desc:'Jeder professionelle Verkäufer wird manuell überprüft.'},{icon:'🚫',title:'Keine Provision',desc:'Wir erheben keine Provision auf Ihren Verkauf.'},{icon:'🌍',title:'Länder',desc:'Käufer und Verkäufer in ganz Europa.'},{icon:'✈️',title:'Luftfahrt-Experten',desc:'Unser Team besteht aus Piloten und Fachleuten.'}],
-steps:[{num:'01',title:'Konto erstellen',desc:'In 2 Minuten. E-Mail-Verifizierung inklusive.'},{num:'02',title:'Inserat aufgeben',desc:'Daten eingeben, Fotos hochladen, Preis festlegen.'},{num:'03',title:'Kontakte erhalten',desc:'Qualifizierte Käufer kontaktieren Sie direkt.'},{num:'04',title:'Abschluss',desc:'Konditionen vereinbaren und Transaktion abschließen.'}],
-cats:[{icon:'🛩',name:'Leichtflugzeuge',count:'0 Anzeige'},{icon:'🚁',name:'Hubschrauber',count:'0 Anzeige'},{icon:'✈️',name:'Geschäftsreisejets',count:'0 Anzeige'},{icon:'🌀',name:'Turboprops',count:'0 Anzeige'},{icon:'🪂',name:'Ultraleicht',count:'0 Anzeige'},{icon:'🛫',name:'Verkehrsflugzeuge',count:'0 Anzeige'},{icon:'🔧',name:'Ersatzteile',count:'0 Anzeige'},{icon:'🔍',name:'Inserat suchen',count:'Alle durchsuchen',url:'search.html',special:true},{icon:'🔍',name:'Flugzeug gesucht',count:'0 Anfrage',wanted:true}],
-ticker_items:[],
-desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
-negotiable:'Verhandelbar',firm:'Fester Preis',offers:'Angebote willkommen',fixed:'Festpreis',leasing:'Leasing möglich',wanted_section_title:'Flugzeug <em>gesucht</em>',wanted_sub:'Suchen Sie ein bestimmtes Flugzeug? Veröffentlichen Sie Ihre Anfrage und lassen Sie Verkäufer auf Sie zukommen.',wanted_btn:'Gesuch aufgeben',wanted_form_title:'Flugzeug-Gesuch aufgeben',wanted_cat_label:'Kategorie',wanted_make_label:'Marke / Modell (falls bekannt)',wanted_make_ph:'z.B. Cessna 172, Piper PA-28…',wanted_budget_label:'Maximales Budget (€)',wanted_budget_ph:'z.B. 150000',wanted_year_label:'Max. Baujahr',wanted_hours_label:'Max. Gesamtstunden',wanted_loc_label:'Bevorzugter Standort',wanted_loc_ph:'z.B. Deutschland, Europa…',wanted_desc_label:'Zusätzliche Details',wanted_desc_ph:'Beschreiben Sie Ihre Anforderungen — Avionik, Zustand, IFR, RVSM…',wanted_submit:'Gesuch einreichen',wanted_cancel:'Abbrechen',wanted_count:'0 Anfrage',wanted_toast:'Gesuch eingereicht! Verkäufer werden benachrichtigt.',wanted_login_required:'Ein Konto ist erforderlich, um ein Gesuch aufzugeben',badge_sold2:'Verkauft'},
-es:{nav_listings:'Anuncios',nav_categories:'Categorías',nav_pricing:'Tarifas',nav_alerts:'Alertas',btnLogin:'Iniciar sesión',btn_post:'Publicar anuncio',hero_eyebrow:'El marketplace aeronáutico nº 1 en Europa',hero_h1:'Encuentra<br>tu <em>avión</em><br>ideal',hero_sub:'Desde monomotores hasta jets ejecutivos — compra y vende sin comisión.',search_placeholder:'Marca, modelo o tipo…',budget_placeholder:'Presupuesto máx.',search_btn:'Buscar',cat_all:'Todas las categorías',cat_light:'Aviones ligeros',cat_jet:'Jets ejecutivos',cat_turbo:'Turbohélices',cat_heli:'Helicópteros',cat_ulm:'Ultraligero / ULM',cat_airliner:'Aeronaves comerciales',filter_all:'Todos',scroll_hint:'Desplázate',stat_listings:'Anuncios activos',stat_sellers:'Vendedores verificados',stat_countries:'Países',stat_today:'Nuevos hoy',recent_title:'Últimos <em>anuncios</em>',cat_section_title:'Explorar por <em>categoría</em>',see_all:'Ver todos →',see_pricing:'Ver tarifas →',load_more:'Ver más',trust_title:'¿Por qué <em>Aircraft2Sell</em>?',steps_title:'¿Cómo <em>funciona</em>?',alert_title:'No te pierdas tu <em>avión ideal</em>',alert_sub:'Crea una alerta gratuita y recibe un email cuando aparezca un avión con tus criterios.',alert_placeholder:'Tu email…',alert_btn:'Crear alerta',alert_note:'Gratis · Sin spam · Cancela cuando quieras',seller_verified:'Vendedor verificado',modal_model:'Marca / Modelo',modal_year:'Año',modal_hours:'Horas totales',modal_location:'Ubicación',modal_reg:'Matrícula',modal_docs:'Documentación',modal_contact:'Contactar vendedor',modal_save:'Guardar',badge_new:'Nuevo',badge_urgent:'Urgente',badge_premium:'Premium',badge_sold:'Vendido',feat_label:'⭐ Destacado',feat_pax:'8 pasajeros',footer_desc:'El marketplace europeo líder para compra y venta de aeronaves.',footer_col1:'Explorar',footer_col2:'Vender',footer_col3:'Empresa',footer_sold:'Vendidos recientemente',footer_guide:'Guía del comprador',footer_about:'Acerca de',nav_currency:'Divisas',nav_contact:'Contacto',footer_contact:'Contacto',footer_legal:'Aviso legal',footer_privacy:'Privacidad',footer_copy:'© 2026 Aircraft2Sell — Todos los derechos reservados',toast_soon:'¡Próximamente!',toast_search:'Buscando…',toast_loading:'Cargando…',toast_sent:'¡Mensaje enviado!',toast_saved:'¡Guardado!',toast_alert:'¡Alerta creada!',toast_fav_add:'¡Favorito!',toast_fav_remove:'Eliminado',steps:[{num:'01',title:'Crea tu cuenta',desc:'Regístrate gratis en menos de 2 minutos.'},{num:'02',title:'Publica tu anuncio',desc:'Añade fotos, especificaciones y precio.'},{num:'03',title:'Recibe consultas',desc:'Los compradores te contactan directamente.'},{num:'04',title:'Cierra el trato',desc:'Cero comisión — te quedas con todo.'}],empty_title:'Todavía no hay anuncios',empty_sub:'Sé el primero en publicar tu aeronave en Aircraft2Sell.',urgency_views:' viendo',urgency_fav:' guardados',urgency_new:'Publicado ',
-trust_items:[{icon:'🔒',title:'Vendedores verificados',desc:'Cada vendedor profesional es verificado manualmente.'},{icon:'🚫',title:'Sin comisión',desc:'Nunca cobramos comisión sobre tu venta.'},{icon:'🌍',title:'Países',desc:'Compradores y vendedores en toda Europa.'},{icon:'✈️',title:'Especialistas',desc:'Nuestro equipo está formado por pilotos y profesionales.'}],
-steps:[{num:'01',title:'Crea tu cuenta',desc:'Regístrate en 2 minutos.'},{num:'02',title:'Publica tu anuncio',desc:'Datos, fotos, precio.'},{num:'03',title:'Recibe contactos',desc:'Compradores serios te escriben.'},{num:'04',title:'Cierra la venta',desc:'Acuerda términos y firma.'}],
-cats:[{icon:'🛩',name:'Aviones ligeros',count:'0 anuncios'},{icon:'🚁',name:'Helicópteros',count:'0 anuncios'},{icon:'✈️',name:'Jets ejecutivos',count:'0 anuncios'},{icon:'🌀',name:'Turbohélices',count:'0 anuncios'},{icon:'🪂',name:'Ultraligero',count:'0 anuncios'},{icon:'🛫',name:'Aeronaves comerciales',count:'0 anuncios'},{icon:'🔧',name:'Repuestos',count:'0 anuncios'},{icon:'🔍',name:'Buscar anuncio',count:'Ver todo',url:'search.html',special:true},{icon:'🔍',name:'Aviones buscados',count:'0 solicitud',wanted:true}],
-ticker_items:[],
-desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
-negotiable:'Precio negociable',firm:'Precio fijo',offers:'Se aceptan ofertas',fixed:'Precio fijo',leasing:'Leasing disponible',wanted_section_title:'Aviones <em>buscados</em>',wanted_sub:'¿Buscas una aeronave específica? Publica tu búsqueda y deja que los vendedores vengan a ti.',wanted_btn:'Publicar búsqueda',wanted_form_title:'Publicar búsqueda de aeronave',wanted_cat_label:'Categoría',wanted_make_label:'Marca / Modelo (si se conoce)',wanted_make_ph:'ej: Cessna 172, Piper PA-28…',wanted_budget_label:'Presupuesto máximo (€)',wanted_budget_ph:'ej: 150000',wanted_year_label:'Año máx.',wanted_hours_label:'Horas máx.',wanted_loc_label:'Ubicación preferida',wanted_loc_ph:'ej: España, Europa…',wanted_desc_label:'Detalles adicionales',wanted_desc_ph:'Describe lo que buscas — aviónica, estado, IFR, RVSM…',wanted_submit:'Enviar mi búsqueda',wanted_cancel:'Cancelar',wanted_count:'0 solicitud',wanted_toast:'¡Búsqueda enviada! Los vendedores serán notificados.',wanted_login_required:'Se requiere una cuenta para publicar una búsqueda',badge_sold2:'Vendido'},
-zh:{nav_listings:'列表',nav_categories:'分类',nav_pricing:'定价',nav_alerts:'提醒',btnLogin:'登录',btn_post:'发布广告',hero_eyebrow:'欧洲第一航空器交易平台',hero_h1:'寻找您的<br><em>理想</em><br>飞机',hero_sub:'从训练单发机到商务喷气机 — 零佣金买卖。',search_placeholder:'品牌、型号或类型…',budget_placeholder:'最高预算',search_btn:'搜索',cat_all:'全部类别',cat_light:'轻型飞机',cat_jet:'公务机',cat_turbo:'涡桨飞机',cat_heli:'直升机',cat_ulm:'超轻型飞机',cat_airliner:'客机',filter_all:'全部',scroll_hint:'滚动探索',stat_listings:'在售广告',stat_sellers:'认证卖家',stat_countries:'覆盖国家',stat_today:'今日新增',recent_title:'最新<em>广告</em>',cat_section_title:'按<em>类别</em>浏览',see_all:'查看全部 →',see_pricing:'查看定价 →',load_more:'加载更多',trust_title:'为什么选择<em>Aircraft2Sell</em>？',steps_title:'如何<em>运作</em>',alert_title:'不错过您的<em>理想飞机</em>',alert_sub:'创建免费提醒，一旦有匹配飞机上架立即收到邮件。',alert_placeholder:'您的邮箱…',alert_btn:'创建提醒',alert_note:'免费 · 无垃圾邮件 · 随时取消',seller_verified:'认证卖家',modal_model:'品牌 / 型号',modal_year:'年份',modal_hours:'总飞行时间',modal_location:'所在地',modal_reg:'注册号',modal_docs:'文件',modal_contact:'联系卖家',modal_save:'收藏广告',badge_new:'新发布',badge_urgent:'紧急',badge_premium:'高端',badge_sold:'已售',feat_label:'⭐ 精选',feat_pax:'8名乘客',footer_desc:'欧洲领先的飞机买卖交易平台，深受飞行员和航空专业人士信赖。',footer_col1:'浏览',footer_col2:'出售',footer_col3:'公司',footer_sold:'近期成交',footer_guide:'买家指南',footer_about:'关于我们',nav_currency:'外汇',nav_contact:'联系我们',footer_contact:'联系我们',footer_legal:'法律声明',footer_privacy:'隐私政策',footer_copy:'© 2026 Aircraft2Sell — 版权所有',toast_soon:'功能即将上线！',toast_search:'搜索中…',toast_loading:'加载中…',toast_sent:'消息已发送！',toast_saved:'已收藏！',toast_alert:'提醒已创建！',toast_fav_add:'已添加！',toast_fav_remove:'已移除',steps:[{num:'01',title:'创建账户',desc:'免费注册，不到2分钟。'},{num:'02',title:'发布广告',desc:'添加照片、规格和要价。'},{num:'03',title:'接收询盘',desc:'合格买家直接联系您。'},{num:'04',title:'完成交易',desc:'零佣金——每一分钱归您所有。'}],empty_title:'暂无广告',empty_sub:'成为第一个在Aircraft2Sell发布飞机广告的卖家。',urgency_views:'人查看',urgency_fav:'次收藏',urgency_new:'发布于',
-trust_items:[{icon:'🔒',title:'认证卖家',desc:'每位专业卖家均经过人工审核。'},{icon:'🚫',title:'零佣金',desc:'我们从不在您的成交中收取任何佣金。'},{icon:'🌍',title:'覆盖多国',desc:'欧洲及周边地区买卖双方。'},{icon:'✈️',title:'航空专业团队',desc:'由飞行员和航空专业人士组成的团队。'}],
-steps:[{num:'01',title:'创建账户',desc:'2分钟完成注册。'},{num:'02',title:'发布广告',desc:'填写信息，上传照片，设定价格。'},{num:'03',title:'接收联系',desc:'合格买家通过安全消息联系您。'},{num:'04',title:'完成交易',desc:'商定条款，安排检验，成交。'}],
-cats:[{icon:'🛩',name:'轻型飞机',count:'0条'},{icon:'🚁',name:'直升机',count:'0条'},{icon:'✈️',name:'公务机',count:'0条'},{icon:'🌀',name:'涡桨飞机',count:'0条'},{icon:'🪂',name:'超轻型',count:'0条'},{icon:'🛫',name:'客机',count:'0条'},{icon:'🔧',name:'备用零件',count:'0条'},{icon:'🔍',name:'搜索广告',count:'浏览全部',url:'search.html',special:true},{icon:'🔍',name:'求购飞机',count:'0条',wanted:true}],
-ticker_items:[],
-desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
-negotiable:'价格可议',firm:'定价出售',offers:'欢迎出价',fixed:'固定价格',leasing:'可融资租赁',wanted_section_title:'求购<em>飞机</em>',wanted_sub:'正在寻找特定飞机？发布您的求购信息，让卖家主动联系您。',wanted_btn:'发布求购信息',wanted_form_title:'发布飞机求购信息',wanted_cat_label:'类别',wanted_make_label:'品牌/型号（如已知）',wanted_make_ph:'例如：赛斯纳172、派珀PA-28…',wanted_budget_label:'最高预算（€）',wanted_budget_ph:'例如：150000',wanted_year_label:'最大年份',wanted_hours_label:'最大飞行时间',wanted_loc_label:'首选地点',wanted_loc_ph:'例如：法国、欧洲…',wanted_desc_label:'其他要求',wanted_desc_ph:'描述您的需求 — 航电、状态、IFR、RVSM…',wanted_submit:'提交求购信息',wanted_cancel:'取消',wanted_count:'0条',wanted_toast:'求购信息已提交！卖家将收到通知。',badge_sold2:'已售'}
+  en:{
+    sbPlanBadge:'ACTIVE', sbStatus:'Active subscription', sbUpgrade:'Upgrade to Pro', sbBilling:'Update payment method', sbCancel:'Cancel subscription',
+    snOverview:'Overview', snListings:'My listings', snMessages:'Messages', snSub:'Subscription', snInvoices:'Invoices', snSettings:'Settings',
+    pageTitle:'Your <em>dashboard</em>', upgradeBtn:'Upgrade', btnPostNew:'+ Post new listing',
+    scLbl1:'Total views', scLbl2:'Enquiries', scLbl3:'Saved by buyers', scLbl4:'Active listings',
+    scChg1:'Aucune annonce', scChg2:'Aucun contact', scChg3:'Aucune sauvegarde', scChg4:'Slot disponible',
+    slActive:'Active listings', slAddBtn:'+ Add listing',
+    lsViews:'Views', lsEnq:'Enquiries', lsFav:'Saved', spLive:'Live', laEdit:'Edit',
+    subTitle:'Abonnement — ESSENTIEL', subActivePill:'Active',
+    siPlan:'Current plan', siPrice:'Monthly price', siNext:'Next payment', siSince:'Member since', siMethod:'Payment method', siStatus:'Status', siStatusVal:'Active',
+    siNextVal:'—',
+    sabUpgrade:'Passer à Aviateur — 29 €/mois', sabBilling:'Update card', sabCancel:'Cancel subscription',
+    invTitle:'Invoice history', thDate:'Date', thDesc:'Description', thAmt:'Amount', thStatus:'Status', thAction:'Invoice',
+    toast_upgrade:'Redirecting to upgrade page…', toast_billing:'Redirecting to payment update…', toast_cancel:'Are you sure? Click again to confirm cancellation.', toast_post:'Feature coming soon!', toast_edit:'Editing listing…', toast_preview:'Opening preview…', toast_delete:'Listing deleted.',
+    userPlan:'Plan Essentiel',
+    invoices:[]
+  },
+  fr:{
+    sbPlanBadge:'ACTIF', sbStatus:'Abonnement actif', sbUpgrade:'Passer à Pro', sbBilling:'Modifier le paiement', sbCancel:"Annuler l'abonnement",
+    snOverview:'Vue d\'ensemble', snListings:'Mes annonces', snMessages:'Messages', snSub:'Abonnement', snInvoices:'Factures', snSettings:'Paramètres',
+    pageTitle:'Votre <em>espace</em>', upgradeBtn:'Passer à Pro', btnPostNew:'+ Déposer une annonce',
+    scLbl1:'Vues totales', scLbl2:'Demandes', scLbl3:'Mis en favoris', scLbl4:'Annonces actives',
+    scChg1:'Aucune annonce', scChg2:'Aucun contact', scChg3:'Aucune sauvegarde', scChg4:'Slot disponible',
+    slActive:'Annonces actives', slAddBtn:'+ Ajouter une annonce',
+    lsViews:'Vues', lsEnq:'Demandes', lsFav:'Favoris', spLive:'En ligne', laEdit:'Modifier',
+    subTitle:'Abonnement — ESSENTIEL', subActivePill:'Actif',
+    siPlan:'Formule actuelle', siPrice:'Prix mensuel', siNext:'Prochain paiement', siSince:'Membre depuis', siMethod:'Moyen de paiement', siStatus:'Statut', siStatusVal:'Actif',
+    siNextVal:'—',
+    sabUpgrade:'Passer à Aviateur — 29 €/mois', sabBilling:'Modifier la carte', sabCancel:"Annuler l'abonnement",
+    invTitle:'Historique des factures', thDate:'Date', thDesc:'Description', thAmt:'Montant', thStatus:'Statut', thAction:'Facture',
+    toast_upgrade:'Redirection vers la mise à niveau…', toast_billing:'Redirection vers la mise à jour du paiement…', toast_cancel:"Êtes-vous sûr ? Cliquez à nouveau pour confirmer l'annulation.", toast_post:'Fonctionnalité bientôt disponible !', toast_edit:"Modification de l'annonce…", toast_preview:'Ouverture de l\'aperçu…', toast_delete:'Annonce supprimée.',
+    userPlan:'Formule Essentiel',
+    invoices:[]
+  },
+  de:{
+    sbPlanBadge:'AKTIV', sbStatus:'Aktives Abonnement', sbUpgrade:'Auf Pro upgraden', sbBilling:'Zahlung aktualisieren', sbCancel:'Abonnement kündigen',
+    snOverview:'Übersicht', snListings:'Meine Inserate', snMessages:'Nachrichten', snSub:'Abonnement', snInvoices:'Rechnungen', snSettings:'Einstellungen',
+    pageTitle:'Ihr <em>Dashboard</em>', upgradeBtn:'Upgrade', btnPostNew:'+ Neues Inserat',
+    scLbl1:'Gesamtaufrufe', scLbl2:'Anfragen', scLbl3:'Gespeichert von Käufern', scLbl4:'Aktive Inserate',
+    scChg1:'Keine Anzeigen', scChg2:'Keine Anfragen', scChg3:'Keine Speicherungen', scChg4:'Slot verfügbar',
+    slActive:'Aktive Inserate', slAddBtn:'+ Inserat hinzufügen',
+    lsViews:'Aufrufe', lsEnq:'Anfragen', lsFav:'Gespeichert', spLive:'Live', laEdit:'Bearbeiten',
+    subTitle:'Abonnement — ESSENTIEL', subActivePill:'Aktiv',
+    siPlan:'Aktueller Plan', siPrice:'Monatspreis', siNext:'Nächste Zahlung', siSince:'Mitglied seit', siMethod:'Zahlungsmethode', siStatus:'Status', siStatusVal:'Aktiv',
+    siNextVal:'—',
+    sabUpgrade:'Auf Aviateur upgraden — 29 €/Mo.', sabBilling:'Karte aktualisieren', sabCancel:'Abonnement kündigen',
+    invTitle:'Rechnungsverlauf', thDate:'Datum', thDesc:'Beschreibung', thAmt:'Betrag', thStatus:'Status', thAction:'Rechnung',
+    toast_upgrade:'Weiterleitung zur Upgrade-Seite…', toast_billing:'Weiterleitung zur Zahlungsaktualisierung…', toast_cancel:'Sind Sie sicher? Erneut klicken zum Bestätigen.', toast_post:'Funktion bald verfügbar!', toast_edit:'Inserat wird bearbeitet…', toast_preview:'Vorschau wird geöffnet…', toast_delete:'Inserat gelöscht.',
+    userPlan:'Essentiel-Plan',
+    invoices:[]
+  },
+  es:{
+    sbPlanBadge:'ACTIVO', sbStatus:'Suscripción activa', sbUpgrade:'Actualizar a Pro', sbBilling:'Actualizar pago', sbCancel:'Cancelar suscripción',
+    snOverview:'Resumen', snListings:'Mis anuncios', snMessages:'Mensajes', snSub:'Suscripción', snInvoices:'Facturas', snSettings:'Ajustes',
+    pageTitle:'Tu <em>panel</em>', upgradeBtn:'Actualizar', btnPostNew:'+ Publicar anuncio',
+    scLbl1:'Visitas totales', scLbl2:'Consultas', scLbl3:'Guardados por compradores', scLbl4:'Anuncios activos',
+    scChg1:'+34 esta semana', scChg2:'+3 esta semana', scChg3:'Sin cambios', scChg4:'1 / 1 espacio usado',
+    slActive:'Anuncios activos', slAddBtn:'+ Añadir anuncio',
+    lsViews:'Visitas', lsEnq:'Consultas', lsFav:'Guardados', spLive:'En línea', laEdit:'Editar',
+    subTitle:'Suscripción — AVIATEUR', subActivePill:'Activo',
+    siPlan:'Plan actual', siPrice:'Precio mensual', siNext:'Próximo pago', siSince:'Miembro desde', siMethod:'Método de pago', siStatus:'Estado', siStatusVal:'Activo',
+    siNextVal:'—',
+    sabUpgrade:'Actualizar a Aviateur — €29/mes', sabBilling:'Actualizar tarjeta', sabCancel:'Cancelar suscripción',
+    invTitle:'Historial de facturas', thDate:'Fecha', thDesc:'Descripción', thAmt:'Importe', thStatus:'Estado', thAction:'Factura',
+    toast_upgrade:'Redirigiendo a la página de actualización…', toast_billing:'Redirigiendo a la actualización de pago…', toast_cancel:'¿Estás seguro? Haz clic de nuevo para confirmar la cancelación.', toast_post:'¡Función próximamente!', toast_edit:'Editando anuncio…', toast_preview:'Abriendo vista previa…', toast_delete:'Anuncio eliminado.',
+    userPlan:'Plan Esencial',
+    invoices:[]
+  },
+  zh:{
+    sbPlanBadge:'有效', sbStatus:'订阅有效', sbUpgrade:'升级至专业版', sbBilling:'更新付款方式', sbCancel:'取消订阅',
+    snOverview:'概览', snListings:'我的广告', snMessages:'消息', snSub:'订阅', snInvoices:'发票', snSettings:'设置',
+    pageTitle:'我的<em>控制台</em>', upgradeBtn:'升级', btnPostNew:'+ 发布新广告',
+    scLbl1:'总浏览量', scLbl2:'询盘数', scLbl3:'买家收藏', scLbl4:'有效广告',
+    scChg1:'本周 +34', scChg2:'本周 +3', scChg3:'无变化', scChg4:'已用 1 / 1',
+    slActive:'有效广告', slAddBtn:'+ 添加广告',
+    lsViews:'浏览', lsEnq:'询盘', lsFav:'收藏', spLive:'已上线', laEdit:'编辑',
+    subTitle:'订阅 — 加速版', subActivePill:'有效',
+    siPlan:'当前方案', siPrice:'月费', siNext:'下次付款', siSince:'注册时间', siMethod:'付款方式', siStatus:'状态', siStatusVal:'有效',
+    siNextVal:'—',
+    sabUpgrade:'升级至Aviateur — €29/月', sabBilling:'更新银行卡', sabCancel:'取消订阅',
+    invTitle:'发票历史', thDate:'日期', thDesc:'描述', thAmt:'金额', thStatus:'状态', thAction:'发票',
+    toast_upgrade:'正在跳转至升级页面…', toast_billing:'正在跳转至付款更新…', toast_cancel:'确定取消？再次点击确认。', toast_post:'功能即将上线！', toast_edit:'正在编辑广告…', toast_preview:'正在打开预览…', toast_delete:'广告已删除。',
+    userPlan:'基础版方案',
+    invoices:[]
+  }
 };
 let lang='fr';
 function t(k){return (T[lang]&&T[lang][k])||(T.en&&T.en[k])||k;}
@@ -618,16 +683,7 @@ function initGreeting(){
 const LS_LISTINGS = 'a2s_listings';
 const PLAN_SLOTS  = { Essentiel:1, Aviateur:3, Pro:999 };
 
-async function getListings(){
-  const email = localStorage.getItem('a2s_user_email')||'';
-  if(email){
-    try {
-      const rows = await sbGet('listings','seller_email=eq.'+encodeURIComponent(email)+'&order=submitted_at.desc');
-      // Also sync to localStorage as fallback
-      localStorage.setItem(LS_LISTINGS, JSON.stringify(rows.map(sbRow)));
-      return rows.map(sbRow);
-    } catch(e){}
-  }
+function getListings(){
   try{ return JSON.parse(localStorage.getItem(LS_LISTINGS)||'[]'); }
   catch(e){ return []; }
 }
@@ -897,10 +953,6 @@ function saveProfile(){
   if(first||last){const fn=(first+' '+last).trim();localStorage.setItem('a2s_user_name',fn);updateNavAuth();}
   if(email)localStorage.setItem('a2s_user_email',email);
   showToast('Profil mis à jour !');
-  // Sync profile to Supabase
-  const _e = localStorage.getItem('a2s_user_email')||'';
-  const _n = localStorage.getItem('a2s_user_name')||'';
-  if(_e){ sbPatch('users','email=eq.'+encodeURIComponent(_e),{name:_n,email:_e}).catch(function(){}); }
 }
 function prefillSettings(){
   const name=localStorage.getItem('a2s_user_name')||''
@@ -931,19 +983,29 @@ window.addEventListener('DOMContentLoaded',()=>{
 </script>
 <script src="favorites.js"></script>
 <script src="nav.js"></script>
-<script id="a2s-tracker">
-(function(){
-  var SB='https://hlivysnlzlqdjcigqgvk.supabase.co',
-      SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-  var sid=sessionStorage.getItem('a2s_sid')||(function(){var s=Math.random().toString(36).slice(2);sessionStorage.setItem('a2s_sid',s);return s;})();
-  var page=location.pathname.split('/').pop()||'index.html';
-  var lid=new URLSearchParams(location.search).get('id');
-  fetch('https://get.geojs.io/v1/ip/geo.json').then(function(r){return r.json();}).then(function(geo){
-    var row={page:page,referrer:document.referrer||null,country:geo.country_code||null,device:/Mobi|Android/i.test(navigator.userAgent)?'mobile':'desktop',browser:(function(){var ua=navigator.userAgent;if(/Chrome/.test(ua))return'Chrome';if(/Firefox/.test(ua))return'Firefox';if(/Safari/.test(ua))return'Safari';return'Other';})(),listing_id:lid?parseInt(lid):null,session_id:sid};
-    fetch(SB+'/rest/v1/analytics',{method:'POST',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK,'Prefer':'return=minimal'},body:JSON.stringify(row)});
-    if(lid){fetch(SB+'/rest/v1/listing_views',{method:'POST',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK,'Prefer':'return=minimal'},body:JSON.stringify({listing_id:parseInt(lid),country:geo.country_code||null,session_id:sid})});fetch(SB+'/rest/v1/listings?id=eq.'+lid,{method:'PATCH',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK},body:JSON.stringify({views:null})});}
-  }).catch(function(){});
-})();
+<script>
+function renderNavDropdown(){
+  var menu = document.getElementById('navCatDropdown');
+  if(!menu) return;
+  var cats = t('cats');
+  if(!cats||!Array.isArray(cats)) return;
+  var _ck = {'light aircraft':'light','avions legers':'light','avions l\u00e9gers':'light','business jets':'jet','jets d affaires':'jet','turboprops':'turbo','turbopropulseurs':'turbo','helicopters':'heli','h\u00e9licopt\u00e8res':'heli','ultralight / ulm':'ulm','ulm':'ulm','airliners':'airliner','avions de ligne':'airliner','spare parts':'parts','pi\u00e8ces d\u00e9tach\u00e9es':'parts'};
+  menu.innerHTML = cats.map(function(cat){
+    var cls = cat.special?' special':cat.wanted?' wanted':'';
+    var key = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').trim();
+    var catCode = _ck[key] || cat.name.toLowerCase().replace(/[^a-z0-9]/g,'-');
+    var href = cat.url ? cat.url : 'search.html?cat='+catCode;
+    var extra = cat.wanted ? 'onclick="event.preventDefault();if(typeof openWantedForm===\'function\')openWantedForm()" href="#"' : '';
+    return '<a class="dropdown-item'+cls+'" href="'+href+'" '+extra+'><span class="di-icon">'+cat.icon+'</span><span class="di-name">'+cat.name+'</span><span class="di-count">'+cat.count+'</span></a>';
+  }).join('');
+}
+function toggleCatDropdown(e){
+  e.preventDefault();
+  var li=document.getElementById('navCatLi');
+  if(!li)return;
+  li.classList.toggle('open');
+  if(li.classList.contains('open')){setTimeout(function(){document.addEventListener('click',function close(ev){if(!li.contains(ev.target)){li.classList.remove('open');document.removeEventListener('click',close);}});},0);}
+}
 </script>
 </body>
 </html>

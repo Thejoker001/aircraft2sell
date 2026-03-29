@@ -184,6 +184,7 @@ select.sf option{background:var(--card-bg)}
 .nav-user-info{display:flex;flex-direction:column;line-height:1.2}
 .nav-user-name{font-size:.78rem;font-weight:500;color:var(--white)}
 .nav-user-plan{font-size:.58rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+
 </style>
 <link rel="stylesheet" href="mobile.css">
 <script>
@@ -387,7 +388,7 @@ function updateBudgetCurr(){
 }
 function qFilter(b){document.querySelectorAll('.qf').forEach(x=>x.classList.remove('active'));b.classList.add('active');}
 function toggleFav(btn){btn.classList.toggle('liked');btn.textContent=btn.classList.contains('liked')?'♥':'♡';showToast(t(btn.classList.contains('liked')?'toast_fav_add':'toast_fav_remove'));}
-function submitAlert(){const v=(document.getElementById('alertEmail')||{}).value;if(v&&v.includes('@')){showToast(t('toast_alert'));(document.getElementById('alertEmail')||{}).value='';}else showToast('⚠ Please enter a valid email');}
+function submitAlert(){const v=document.getElementById('alertEmail').value;if(v&&v.includes('@')){showToast(t('toast_alert'));document.getElementById('alertEmail').value='';}else showToast('⚠ Please enter a valid email');}
 let tt;
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),3000);}
 
@@ -512,21 +513,18 @@ function toggleCatDropdown(e){
   }
 }
 function renderNavDropdown(){
-  const menu = document.getElementById('navCatDropdown');
+  var menu = document.getElementById('navCatDropdown');
   if(!menu) return;
-  const cats = t('cats');
+  var cats = t('cats');
   if(!cats||!Array.isArray(cats)) return;
-  menu.innerHTML = cats.map(c=>{
-    const cls = c.special?' special':c.wanted?' wanted':'';
-    var _ck={'light aircraft':'light','business jets':'jet','turboprops':'turbo','helicopters':'heli','ultralight / ulm':'ulm','airliners':'airliner','spare parts':'parts'};
-    const catCode = _ck[c.name.toLowerCase()] || c.name.toLowerCase().replace(/\s+/g,'-');
-    const href = c.url ? c.url : 'search.html?cat='+catCode;
-    const extra = c.wanted ? 'onclick="event.preventDefault();openWantedForm()" href=\"#\"' : '';
-    return '<a class="dropdown-item'+cls+'" href="'+href+'" '+extra+'>'
-      +'<span class="di-icon">'+c.icon+'</span>'
-      +'<span class="di-name">'+c.name+'</span>'
-      +'<span class="di-count">'+c.count+'</span>'
-      +'</a>';
+  var _ck = {'light aircraft':'light','avions legers':'light','avions l\u00e9gers':'light','business jets':'jet','jets d affaires':'jet','turboprops':'turbo','turbopropulseurs':'turbo','helicopters':'heli','h\u00e9licopt\u00e8res':'heli','ultralight / ulm':'ulm','ulm':'ulm','airliners':'airliner','avions de ligne':'airliner','spare parts':'parts','pi\u00e8ces d\u00e9tach\u00e9es':'parts'};
+  menu.innerHTML = cats.map(function(cat){
+    var cls = cat.special?' special':cat.wanted?' wanted':'';
+    var key = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').trim();
+    var catCode = _ck[key] || cat.name.toLowerCase().replace(/[^a-z0-9]/g,'-');
+    var href = cat.url ? cat.url : 'search.html?cat='+catCode;
+    var extra = cat.wanted ? 'onclick="event.preventDefault();if(typeof openWantedForm===\'function\')openWantedForm()" href="#"' : '';
+    return '<a class="dropdown-item'+cls+'" href="'+href+'" '+extra+'><span class="di-icon">'+cat.icon+'</span><span class="di-name">'+cat.name+'</span><span class="di-count">'+cat.count+'</span></a>';
   }).join('');
 }
 
@@ -620,7 +618,7 @@ setLang('fr');
         <div class="email-icon-wrap">✉</div>
         <div class="email-info">
           <div class="email-type" id="emailTypeGen">Contact général</div>
-          <div class="email-addr"><span class="__cf_email__" data-cfemail="482b27263c292b3c0829213a2b3a292e3c7a3b2d2424662d3d">[email&#160;protected]</span></div>
+          <div class="email-addr"><span class="__cf_email__" data-cfemail="dab9b5b4aebbb9ae9abbb3a8b9a8bbbcaee8a9bfb6b6f4bfaf">[email&#160;protected]</span></div>
           <div class="email-desc" id="emailDescGen">Questions, informations, partenariats</div>
         </div>
       </a>
@@ -629,7 +627,7 @@ setLang('fr');
         <div class="email-icon-wrap">🛠</div>
         <div class="email-info">
           <div class="email-type" id="emailTypeSupport">Support technique</div>
-          <div class="email-addr"><span class="__cf_email__" data-cfemail="6d0e0203190c0e192d0c041f0e1f0c0b195f1e080101430818">[email&#160;protected]</span></div>
+          <div class="email-addr"><span class="__cf_email__" data-cfemail="573438392336342317363e2534253631236524323b3b793222">[email&#160;protected]</span></div>
           <div class="email-desc" id="emailDescSupport">Problèmes avec votre annonce ou compte</div>
         </div>
       </a>
