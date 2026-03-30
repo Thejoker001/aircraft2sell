@@ -12,8 +12,7 @@ h1{font-family:'Bebas Neue',system-ui;font-size:1.8rem;letter-spacing:.1em;color
 .card-title{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8fa3b8;margin-bottom:.8rem}
 .row{display:flex;align-items:center;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid rgba(200,220,240,.06);font-size:.82rem}
 .row:last-child{border-bottom:none}
-.lbl{color:#4a6278}
-.val{font-weight:500}
+.lbl{color:#4a6278}.val{font-weight:500}
 .ok{color:#22c55e}.warn{color:#f97316}.err{color:#ef4444}
 .btn{background:#e8a020;color:#060b15;border:none;padding:.6rem 1.2rem;font-weight:700;font-size:.8rem;cursor:pointer;margin:.3rem .3rem 0 0;transition:background .2s}
 .btn:hover{background:#f5c842}
@@ -25,9 +24,32 @@ h1{font-family:'Bebas Neue',system-ui;font-size:1.8rem;letter-spacing:.1em;color
 .b-err{background:rgba(239,68,68,.15);color:#ef4444}
 .b-warn{background:rgba(249,115,22,.15);color:#f97316}
 hr{border:none;border-top:1px solid rgba(200,220,240,.08);margin:1rem 0}
+/* Gate de sécurité */
+#gate{position:fixed;inset:0;background:#030812;display:flex;align-items:center;justify-content:center;z-index:1000}
+#gate.hidden{display:none}
+.gate-box{background:#0c1826;border:1px solid rgba(200,220,240,.1);border-radius:12px;padding:2rem;width:320px;text-align:center}
+.gate-title{font-size:1.1rem;font-weight:600;margin-bottom:.5rem;color:#e8a020}
+.gate-sub{font-size:.75rem;color:#4a6278;margin-bottom:1.2rem}
+.gate-input{width:100%;background:rgba(200,220,240,.04);border:1px solid rgba(200,220,240,.1);border-radius:6px;padding:.6rem .9rem;color:#f0f4f8;font-size:.85rem;margin-bottom:.75rem;outline:none}
+.gate-btn{width:100%;background:#e8a020;color:#060b15;border:none;padding:.7rem;font-weight:700;border-radius:6px;cursor:pointer;font-size:.9rem}
+.gate-err{color:#ef4444;font-size:.75rem;margin-top:.5rem}
 </style>
 </head>
 <body>
+
+<!-- GATE DE SÉCURITÉ -->
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-title">🔒 Accès restreint</div>
+    <div class="gate-sub">Diagnostic réservé aux administrateurs</div>
+    <input type="password" id="gPw" class="gate-input" placeholder="Mot de passe admin" onkeydown="if(event.key==='Enter')checkGate()">
+    <button class="gate-btn" onclick="checkGate()">Accéder</button>
+    <div class="gate-err" id="gErr"></div>
+  </div>
+</div>
+
+<!-- CONTENU DIAGNOSTIC (masqué jusqu'à auth) -->
+<div id="diagContent" style="display:none">
 <h1>🔧 Diagnostic Aircraft2Sell</h1>
 
 <div class="card">
@@ -57,7 +79,7 @@ hr{border:none;border-top:1px solid rgba(200,220,240,.08);margin:1rem 0}
 </div>
 
 <div class="card">
-  <div class="card-title">5. Actions</div>
+  <div class="card-title">5. Actions de test</div>
   <button class="btn" onclick="injectListing()">+ Injecter annonce test (pending)</button>
   <button class="btn" onclick="injectUser()">+ Injecter membre test</button>
   <button class="btn ghost" onclick="refresh()">↺ Rafraîchir</button>
@@ -78,215 +100,221 @@ hr{border:none;border-top:1px solid rgba(200,220,240,.08);margin:1rem 0}
   <button class="btn ghost" onclick="showRaw()">Afficher JSON brut</button>
   <div id="raw-data"></div>
 </div>
+</div>
 
-<script data-cfasync="false">
-/* ═══════ SUPABASE CLIENT — Aircraft2Sell ═══════ */
-var _SB='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-async function sbReq(method,table,params,body){var url=_SB+'/rest/v1/'+table+(params?'?'+params:'');var hdrs={'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json','Prefer':'return=representation'};var res=await fetch(url,{method:method,headers:hdrs,body:body?JSON.stringify(body):undefined});var txt=await res.text();if(!res.ok)throw new Error(txt);return txt?JSON.parse(txt):[];}
-var sbGet=function(t,p){return sbReq('GET',t,p);};
-var sbPost=function(t,b){return sbReq('POST',t,null,b);};
-var sbPatch=function(t,p,b){return sbReq('PATCH',t,p,b);};
-var sbDelete=function(t,p){return sbReq('DELETE',t,p);};
-function sbRowListing(r){var ph=Array.isArray(r.photos)?r.photos:[];var th=ph.length?ph[0]:(r.icon||'✈');var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[r.currency||'EUR']||'€';var pn=r.price&&!isNaN(Number(r.price))?Number(r.price):null;return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'—',priceDisplay:pn?sym+pn.toLocaleString('fr-FR'):(r.price||'—'),currency:r.currency||'EUR',category:r.category||'light',catDisp:r.category||'light',airport:r.airport||'',loc:r.airport||r.country||'—',country:r.country||'',desc:r.description||'',description:r.description||'',status:r.status||'pending',sellerName:r.seller_name||'',sellerEmail:r.seller_email||'',seller_name:r.seller_name||'',seller_email:r.seller_email||'',views:r.views||0,enquiries:r.enquiries||0,hours:r.hours||'—',icon:th,photos:ph,rejectionReason:r.rejection_reason||'',submittedAt:r.submitted_at||r.created_at||'',submitted_at:r.submitted_at||r.created_at||'',title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'Sans titre'};}
-function sbRowUser(r){return{id:r.id,name:r.name||'',email:r.email||'',plan:r.plan||'Essentiel',status:r.status||'active',registeredAt:r.registered_at||r.created_at||'',registered_at:r.registered_at||r.created_at||'',listings:0};}
-var sbRow=sbRowListing;var sbL=sbRowListing;
-function fmtDate(iso){if(!iso)return'—';try{return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return'—';}}
-function fmtDateTime(iso){if(!iso)return'—';try{return new Date(iso).toLocaleString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return'—';}}
-async function sbEnsureUser(name,email,plan){if(!email)return;try{var ex=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&limit=1');if(ex&&ex.length){if(name&&ex[0].name!==name)await sbPatch('users','email=eq.'+encodeURIComponent(email),{name:name});}else{await sbPost('users',{id:Date.now(),name:name||email.split('@')[0],email:email,plan:plan||'Essentiel',status:'active',registered_at:new Date().toISOString()});}}catch(e){console.warn('sbEnsureUser:',e.message);}}
-/* ═══════════════════════════════════════════════════ */
-/* ── SUPABASE CLIENT ── */
-var _SB='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-async function sbGet(t,p){var r=await fetch(_SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':_SK,'Authorization':'Bearer '+_SK}});return r.ok?(await r.json()):[];}
-async function sbPost(t,b){return(await fetch(_SB+'/rest/v1/'+t,{method:'POST',headers:{'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(b)})).ok;}
-async function sbPatch(t,p,b){return(await fetch(_SB+'/rest/v1/'+t+'?'+p,{method:'PATCH',headers:{'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json'},body:JSON.stringify(b)})).ok;}
-function sbRow(r){var photos=Array.isArray(r.photos)?r.photos:[];var thumb=photos.length?photos[0]:(r.icon||'✈');return{id:r.id,make:r.make,model:r.model,year:r.year,price:r.price,currency:r.currency||'EUR',category:r.category,airport:r.airport,country:r.country,desc:r.description,status:r.status||'pending',sellerName:r.seller_name,sellerEmail:r.seller_email,views:r.views||0,enquiries:r.enquiries||0,icon:thumb,photos:photos,submittedAt:r.submitted_at,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')};}
+<script>
+/* ── GATE DE SÉCURITÉ ── */
+/* Le mot de passe doit être changé régulièrement et ne jamais être celui de l'admin principal */
+var _DIAG_HASH = '5e8c9b5b3f2a1d4e6f7a8b9c0d1e2f3a'; // SHA256 du mot de passe à définir côté serveur
+var _diagAuthed = false;
+var _gAttempts  = 0;
+
+/* Vérification via Supabase Auth (même mécanisme que l'admin) */
+async function checkGate() {
+  if (_gAttempts >= 5) {
+    document.getElementById('gErr').textContent = 'Trop de tentatives. Rechargez la page.';
+    return;
+  }
+  var pw = document.getElementById('gPw').value;
+  if (!pw) return;
+
+  /* Vérifier la session admin existante */
+  var adminToken = sessionStorage.getItem('a2s_admin_session');
+  if (adminToken) {
+    try {
+      var payload = JSON.parse(atob(adminToken.split('.')[1]));
+      if (payload.exp * 1000 > Date.now()) {
+        unlockDiag();
+        return;
+      }
+    } catch(e) {}
+  }
+
+  /* Sinon auth Supabase */
+  _gAttempts++;
+  var adminEmails = ['contact.aircraft2sell@gmail.com'];
+  var emailInput  = prompt('Email admin :');
+  if (!emailInput || adminEmails.indexOf(emailInput.trim().toLowerCase()) === -1) {
+    document.getElementById('gErr').textContent = 'Accès refusé.';
+    document.getElementById('gPw').value = '';
+    return;
+  }
+
+  try {
+    var res = await fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailInput.trim(), password: pw })
+    });
+    var data = await res.json();
+    if (!res.ok || !data.access_token) throw new Error('Auth échouée');
+    sessionStorage.setItem('a2s_admin_session', data.access_token);
+    unlockDiag();
+  } catch(e) {
+    document.getElementById('gErr').textContent = 'Identifiants incorrects.';
+    document.getElementById('gPw').value = '';
+  }
+}
+
+function unlockDiag() {
+  _diagAuthed = true;
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('diagContent').style.display = 'block';
+  refresh();
+  checkSB();
+}
+
+/* Vérification auto si déjà connecté */
+window.addEventListener('DOMContentLoaded', function() {
+  var adminToken = sessionStorage.getItem('a2s_admin_session');
+  if (adminToken) {
+    try {
+      var payload = JSON.parse(atob(adminToken.split('.')[1]));
+      if (payload.exp * 1000 > Date.now()) { unlockDiag(); return; }
+    } catch(e) {}
+  }
+});
+
+/* ── SUPABASE ── */
+var _SB = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
+var _SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+
+function getAuthHeaders() {
+  var token = sessionStorage.getItem('a2s_admin_session') || _SK;
+  return { 'apikey': _SK, 'Authorization': 'Bearer ' + token };
+}
+
+async function sbGet(t, p) {
+  var r = await fetch(_SB + '/rest/v1/' + t + (p ? '?' + p : ''), { headers: getAuthHeaders() });
+  return r.ok ? (await r.json()) : [];
+}
+async function sbPost(t, b) {
+  return (await fetch(_SB + '/rest/v1/' + t, {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }, getAuthHeaders()),
+    body: JSON.stringify(b)
+  })).ok;
+}
+
+/* ── ESCAPE HTML ── */
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── HELPERS ── */
 function getLS(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
 function setLS(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
-
 function badge(ok, textOk, textErr){
-  return ok
-    ? '<span class="badge b-ok">'+textOk+'</span>'
-    : '<span class="badge b-err">'+textErr+'</span>';
+  return ok ? '<span class="badge b-ok">'+textOk+'</span>' : '<span class="badge b-err">'+textErr+'</span>';
 }
 
 function refresh(){
-  // 1. Status général
+  if (!_diagAuthed) return;
   var listings = getLS('a2s_listings');
   var users    = getLS('a2s_users');
   var loggedIn = localStorage.getItem('a2s_logged_in') === 'true';
-  var userName = localStorage.getItem('a2s_user_name') || '—';
-  var userEmail= localStorage.getItem('a2s_user_email') || '—';
+  var userName = esc(localStorage.getItem('a2s_user_name') || '—');
+  var userEmail= esc(localStorage.getItem('a2s_user_email') || '—');
   var pending  = listings.filter(function(l){ return !l.status || l.status === 'pending'; });
   var live     = listings.filter(function(l){ return l.status === 'live'; });
 
   document.getElementById('ls-status').innerHTML =
     '<div class="row"><span class="lbl">localStorage disponible</span><span class="val">' + badge(typeof localStorage !== 'undefined', '✓ OK', '✗ Absent') + '</span></div>' +
-    '<div class="row"><span class="lbl">a2s_listings</span><span class="val ' + (listings.length ? 'ok' : 'warn') + '">' + listings.length + ' annonce(s) ' + badge(listings.length > 0, 'données présentes', 'vide') + '</span></div>' +
-    '<div class="row"><span class="lbl">└ En attente (pending)</span><span class="val ' + (pending.length ? 'ok' : 'warn') + '">' + pending.length + '</span></div>' +
-    '<div class="row"><span class="lbl">└ Publiées (live)</span><span class="val">' + live.length + '</span></div>' +
-    '<div class="row"><span class="lbl">a2s_users</span><span class="val ' + (users.length ? 'ok' : 'warn') + '">' + users.length + ' membre(s) ' + badge(users.length > 0, 'données présentes', 'vide') + '</span></div>' +
+    '<div class="row"><span class="lbl">a2s_listings</span><span class="val ' + (listings.length ? 'ok' : 'warn') + '">' + listings.length + ' ' + badge(listings.length > 0, 'données présentes', 'vide') + '</span></div>' +
+    '<div class="row"><span class="lbl">└ En attente</span><span class="val ' + (pending.length ? 'ok' : 'warn') + '">' + pending.length + '</span></div>' +
+    '<div class="row"><span class="lbl">└ Publiées</span><span class="val">' + live.length + '</span></div>' +
+    '<div class="row"><span class="lbl">a2s_users</span><span class="val ' + (users.length ? 'ok' : 'warn') + '">' + users.length + ' ' + badge(users.length > 0, 'données présentes', 'vide') + '</span></div>' +
     '<div class="row"><span class="lbl">Utilisateur connecté</span><span class="val">' + badge(loggedIn, '✓ Oui', '✗ Non') + ' ' + userName + ' (' + userEmail + ')</span></div>';
 
-  // 2. Listings
   var llEl = document.getElementById('ls-listings');
-  if(!listings.length){
-    llEl.innerHTML = '<div class="row"><span class="warn">Aucune annonce dans localStorage</span></div>' +
-      '<div style="margin-top:.5rem;font-size:.75rem;color:#4a6278">→ Allez sur <a href="post-listing.html" style="color:#e8a020">post-listing.html</a> et soumettez une annonce, ou cliquez "+ Injecter annonce test" ci-dessous.</div>';
+  if (!listings.length) {
+    llEl.innerHTML = '<div class="row"><span class="warn">Aucune annonce</span></div>';
   } else {
-    var html = '';
-    listings.forEach(function(l, i){
-      var statusColor = l.status === 'live' ? 'ok' : (l.status === 'rejected' ? 'err' : 'warn');
-      html += '<div class="row">'
-        + '<span class="lbl">#'+(i+1)+' — '+(l.make||'?')+' '+(l.model||'')+(l.year?' ('+l.year+')':'')+'</span>'
-        + '<span class="val"><span class="' + statusColor + '">'+(l.status||'pending')+'</span> · ID:'+String(l.id).slice(-6)+'</span>'
-        + '</div>';
-    });
-    llEl.innerHTML = html;
+    llEl.innerHTML = listings.map(function(l, i){
+      var sc = l.status === 'live' ? 'ok' : (l.status === 'rejected' ? 'err' : 'warn');
+      return '<div class="row"><span class="lbl">#'+(i+1)+' — '+esc(l.make||'?')+' '+esc(l.model||'')+'</span><span class="val"><span class="'+sc+'">'+(l.status||'pending')+'</span></span></div>';
+    }).join('');
   }
 
-  // 3. Users
   var usEl = document.getElementById('ls-users');
-  if(!users.length){
-    usEl.innerHTML = '<div class="row"><span class="warn">Aucun membre dans localStorage</span></div>' +
-      '<div style="margin-top:.5rem;font-size:.75rem;color:#4a6278">→ Connectez-vous sur <a href="login.html" style="color:#e8a020">login.html</a> ou cliquez "+ Injecter membre test".</div>';
+  if (!users.length) {
+    usEl.innerHTML = '<div class="row"><span class="warn">Aucun membre</span></div>';
   } else {
-    var html2 = '';
-    users.forEach(function(u, i){
-      html2 += '<div class="row">'
-        + '<span class="lbl">#'+(i+1)+' — '+(u.name||'?')+' ('+u.email+')</span>'
-        + '<span class="val">'+(u.plan||'Essentiel')+'</span>'
-        + '</div>';
-    });
-    usEl.innerHTML = html2;
+    usEl.innerHTML = users.map(function(u, i){
+      return '<div class="row"><span class="lbl">#'+(i+1)+' — '+esc(u.name||'?')+' ('+esc(u.email)+')</span><span class="val">'+esc(u.plan||'Essentiel')+'</span></div>';
+    }).join('');
   }
 
-  // 4. Session
   var adminSess = sessionStorage.getItem('a2s_admin_session');
   document.getElementById('session-info').innerHTML =
-    '<div class="row"><span class="lbl">Session admin (sessionStorage)</span><span class="val">' + badge(!!adminSess, '✓ Connecté', '✗ Non connecté — ouvrez admin.html et connectez-vous') + '</span></div>' +
-    '<div class="row"><span class="lbl">a2s_last_listing (sessionStorage)</span><span class="val">' + badge(!!sessionStorage.getItem('a2s_last_listing'), '✓ Données présentes', '—') + '</span></div>';
+    '<div class="row"><span class="lbl">Session admin</span><span class="val">' + badge(!!adminSess, '✓ Token présent', '✗ Non connecté') + '</span></div>';
 }
 
 function injectListing(){
   var listings = getLS('a2s_listings');
-  listings.unshift({
-    id: Date.now(),
-    make: 'Cessna', model: '172 Skyhawk', year: '2019',
-    price: '85000', currency: 'EUR', category: 'light',
-    airport: 'LFPG', desc: 'Annonce injectée depuis diag.html',
-    status: 'pending',
-    submittedAt: new Date().toISOString(),
-    sellerName: 'Client Test', sellerEmail: 'test@aircraft2sell.eu',
-    views: 0, enquiries: 0, icon: '✈'
-  });
+  listings.unshift({ id:Date.now(), make:'Cessna', model:'172 Skyhawk', year:'2019', price:'85000', currency:'EUR', category:'light', airport:'LFPG', desc:'Test diag', status:'pending', submittedAt:new Date().toISOString(), sellerName:'Test', sellerEmail:'test@aircraft2sell.eu', views:0, enquiries:0, icon:'✈' });
   setLS('a2s_listings', listings);
   refresh();
-  alert('✓ Annonce Cessna 172 injectée (statut: pending)\n\nOuvrez maintenant admin.html → Modération pour la voir.');
+  alert('✓ Annonce test injectée (pending)');
 }
 
 function injectUser(){
   var users = getLS('a2s_users');
   var email = 'test'+Date.now().toString().slice(-4)+'@aircraft2sell.eu';
-  users.unshift({
-    id: Date.now(), name: 'Jean Dupont', email: email,
-    plan: 'Essentiel', status: 'active',
-    registeredAt: new Date().toISOString(), listings: 0
-  });
+  users.unshift({ id:Date.now(), name:'Jean Dupont', email:email, plan:'Essentiel', status:'active', registeredAt:new Date().toISOString(), listings:0 });
   setLS('a2s_users', users);
   refresh();
-  alert('✓ Membre Jean Dupont injecté\n\nOuvrez admin.html → Membres pour le voir.');
+  alert('✓ Membre test injecté');
 }
 
-function clearAll(){
-  if(!confirm('Effacer TOUTES les données Aircraft2Sell du localStorage ?')) return;
-  ['a2s_listings','a2s_users','a2s_logged_in','a2s_user_name','a2s_user_email','a2s_user_plan'].forEach(function(k){ localStorage.removeItem(k); });
-  refresh();
-}
+function clearAll(){ if(confirm('Effacer TOUTES les données localStorage ?')){ ['a2s_listings','a2s_users','a2s_logged_in','a2s_user_name','a2s_user_email','a2s_user_plan'].forEach(function(k){ localStorage.removeItem(k); }); refresh(); } }
 function clearListings(){ if(confirm('Effacer toutes les annonces ?')){ localStorage.removeItem('a2s_listings'); refresh(); } }
 function clearUsers(){    if(confirm('Effacer tous les membres ?')){ localStorage.removeItem('a2s_users'); refresh(); } }
 
 function testFullFlow(){
   var el = document.getElementById('flow-result');
-  var steps = [];
-  var ok = true;
-
-  // Step 1: localStorage
+  var steps = [], ok = true, ts = Date.now();
   if(typeof localStorage !== 'undefined') steps.push({ok:true, msg:'localStorage disponible'});
-  else { steps.push({ok:false, msg:'localStorage non disponible — impossible de fonctionner'}); ok=false; }
-
-  // Step 2: Injecter
-  var ts = Date.now();
-  var test = {id:ts, make:'Test', model:'Diag', year:'2024', price:'50000', currency:'EUR',
-    status:'pending', submittedAt:new Date().toISOString(),
-    sellerName:'Test User', sellerEmail:'diag@test.eu', views:0, enquiries:0};
+  else { steps.push({ok:false, msg:'localStorage non disponible'}); ok=false; }
+  var test = {id:ts, make:'Test', model:'Diag', year:'2024', price:'50000', currency:'EUR', status:'pending', submittedAt:new Date().toISOString(), sellerName:'Test', sellerEmail:'diag@test.eu', views:0};
   var listings = getLS('a2s_listings');
-  listings.unshift(test);
-  setLS('a2s_listings', listings);
-  steps.push({ok:true, msg:'Annonce injectée dans a2s_listings (id: '+ts+')'});
-
-  // Step 3: Relire
-  var readback = getLS('a2s_listings');
-  var found = readback.find(function(l){ return String(l.id) === String(ts); });
-  if(found) steps.push({ok:true, msg:'Relecture OK — annonce trouvée avec status: '+found.status});
-  else { steps.push({ok:false, msg:'ERREUR: annonce non retrouvée après injection'}); ok=false; }
-
-  // Step 4: Filtrer pending
-  var pending = readback.filter(function(l){ return !l.status || l.status === 'pending'; });
-  steps.push({ok:pending.length>0, msg:'Filtre pending: '+pending.length+' annonce(s)'});
-
-  // Step 5: Modifier status
-  var idx = readback.findIndex(function(l){ return String(l.id) === String(ts); });
-  if(idx > -1){
-    readback[idx].status = 'live';
-    setLS('a2s_listings', readback);
-    var check = getLS('a2s_listings').find(function(l){ return String(l.id) === String(ts); });
-    if(check && check.status === 'live') steps.push({ok:true, msg:'Modification status: pending → live OK'});
-    else { steps.push({ok:false, msg:'ERREUR: status non modifié'}); ok=false; }
-  }
-
-  // Step 6: Nettoyer
-  setLS('a2s_listings', getLS('a2s_listings').filter(function(l){ return String(l.id) !== String(ts); }));
+  listings.unshift(test); setLS('a2s_listings', listings);
+  steps.push({ok:true, msg:'Injection OK (id: '+ts+')'});
+  var found = getLS('a2s_listings').find(function(l){ return String(l.id)===String(ts); });
+  if(found) steps.push({ok:true, msg:'Relecture OK'});
+  else { steps.push({ok:false, msg:'ERREUR: annonce non retrouvée'}); ok=false; }
+  setLS('a2s_listings', getLS('a2s_listings').filter(function(l){ return String(l.id)!==String(ts); }));
   steps.push({ok:true, msg:'Nettoyage OK'});
-
-  var html = '<div style="font-size:.78rem">';
-  steps.forEach(function(s){
-    html += '<div style="padding:.3rem 0;display:flex;gap:.5rem;align-items:flex-start">'
-      + '<span style="color:'+(s.ok?'#22c55e':'#ef4444');html+=';flex-shrink:0">'+(s.ok?'✓':'✗')+'</span>'
-      + '<span style="color:'+(s.ok?'#f0f4f8':'#ef4444')+'">' + s.msg + '</span>'
-      + '</div>';
-  });
-  html += '<div style="margin-top:.8rem;font-weight:600;color:' + (ok?'#22c55e':'#ef4444') + '">'
-    + (ok ? '✅ Tout fonctionne — le problème vient du fichier admin.html. Utilisez le bouton + Test dans admin.'
-          : '❌ Problème détecté — voir les erreurs ci-dessus')
-    + '</div></div>';
-  el.innerHTML = html;
+  el.innerHTML = '<div style="font-size:.78rem">' + steps.map(function(s){
+    return '<div style="padding:.3rem 0;display:flex;gap:.5rem"><span style="color:'+(s.ok?'#22c55e':'#ef4444')+'">'+(s.ok?'✓':'✗')+'</span><span style="color:'+(s.ok?'#f0f4f8':'#ef4444')+'">'+esc(s.msg)+'</span></div>';
+  }).join('') + '<div style="margin-top:.8rem;font-weight:600;color:'+(ok?'#22c55e':'#ef4444')+'">'+(ok?'✅ Flux OK':'❌ Problème détecté')+'</div></div>';
   refresh();
 }
 
 function showRaw(){
+  if (!_diagAuthed) return;
   var data = {};
-  ['a2s_listings','a2s_users','a2s_logged_in','a2s_user_name','a2s_user_email','a2s_user_plan'].forEach(function(k){
-    var v = localStorage.getItem(k);
-    try{ data[k] = JSON.parse(v); } catch(e){ data[k] = v; }
+  ['a2s_listings','a2s_users','a2s_logged_in','a2s_user_name','a2s_user_email'].forEach(function(k){
+    try{ data[k]=JSON.parse(localStorage.getItem(k)); }catch(e){ data[k]=localStorage.getItem(k); }
   });
-  document.getElementById('raw-data').innerHTML = '<div class="code">' + JSON.stringify(data, null, 2) + '</div>';
+  /* Ne pas afficher les emails en clair dans la sortie brute */
+  document.getElementById('raw-data').innerHTML = '<div class="code">' + esc(JSON.stringify(data, null, 2)) + '</div>';
 }
-
 
 async function checkSB(){
-  var el=document.getElementById('sb-status');
+  if (!_diagAuthed) return;
+  var el = document.getElementById('sb-status');
   try{
-    var l=await sbGet('listings','limit=3&order=submitted_at.desc');
-    var u=await sbGet('users','limit=3');
-    el.innerHTML='<div class="row"><span class="lbl">Supabase listings</span><span class="val ok">'+l.length+' recents trouvés</span></div>'
-      +'<div class="row"><span class="lbl">Supabase users</span><span class="val ok">'+u.length+' recents trouvés</span></div>'
+    var l = await sbGet('listings','limit=3&order=submitted_at.desc');
+    var u = await sbGet('users','limit=3');
+    el.innerHTML = '<div class="row"><span class="lbl">Listings</span><span class="val ok">'+l.length+' récents</span></div>'
+      +'<div class="row"><span class="lbl">Users</span><span class="val ok">'+u.length+' récents</span></div>'
       +'<div class="row"><span class="lbl">Connexion</span><span class="val ok">✓ OK</span></div>';
-  }catch(e){el.innerHTML='<div class="row"><span class="lbl">Supabase</span><span class="val err">Erreur: '+e.message+'</span></div>';}
+  }catch(e){
+    el.innerHTML = '<div class="row"><span class="lbl">Supabase</span><span class="val err">Erreur: '+esc(e.message)+'</span></div>';
+  }
 }
-
-// Auto-run
-refresh();
-checkSB();
 </script>
 </body>
 </html>

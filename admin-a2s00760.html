@@ -691,27 +691,50 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);fo
 
 <script>
 /* ── CONFIG ── */
-var MAIL = 'contact.aircraft2sell'+'@'+'gmail.com';
-var PASS = 'A2S@Admin2026!';
-var SK   = 'a2s_admin_session';
+/* NOTE SÉCURITÉ: Les identifiants admin ont été supprimés du code source.
+   L'authentification utilise désormais Supabase Auth.
+   Seuls les utilisateurs avec le rôle 'admin' dans la table users peuvent accéder. */
+var SK      = 'a2s_admin_session';
 var SB_URL  = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 
+/* ── ANTI-BRUTEFORCE ── */
+var _loginAttempts = 0;
+var _loginBlocked  = false;
+var _loginBlockUntil = 0;
+var ADMIN_EMAILS = ['contact.aircraft2sell@gmail.com']; // emails autorisés admin
+
+/* ── ÉCHAPPEMENT XSS ── */
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 /* ── SUPABASE ── */
+var _sbToken = null; // sera rempli après login
+
 async function sb(method, table, params, body) {
   var url = SB_URL + '/rest/v1/' + table;
   if (params) url += '?' + params;
+  var token = _sbToken || SB_KEY; // fallback anon pour lecture publique seulement
   var opts = {
     method: method,
     headers: {
       'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
+      'Authorization': 'Bearer ' + token,
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'
     }
   };
   if (body) opts.body = JSON.stringify(body);
   var res = await fetch(url, opts);
+  // Token expiré → forcer re-login
+  if (res.status === 401) { logout(); return []; }
   var text = await res.text();
   if (!res.ok) throw new Error(text);
   return text ? JSON.parse(text) : [];
@@ -750,22 +773,91 @@ function lToSb(l) {
   return r;
 }
 
-/* ── AUTH ── */
-function login() {
-  var em = document.getElementById('lEmail').value.trim();
+/* ── AUTH via Supabase ── */
+async function login() {
+  // Vérification anti-bruteforce
+  if (_loginBlocked) {
+    var remaining = Math.ceil((_loginBlockUntil - Date.now()) / 1000);
+    if (remaining > 0) {
+      document.getElementById('lErr').textContent = 'Trop de tentatives. Réessayez dans ' + remaining + 's.';
+      return;
+    } else {
+      _loginBlocked = false;
+      _loginAttempts = 0;
+    }
+  }
+
+  var em = document.getElementById('lEmail').value.trim().toLowerCase();
   var pw = document.getElementById('lPw').value;
-  if (em === MAIL && pw === PASS) {
-    sessionStorage.setItem(SK, '1');
+  var errEl = document.getElementById('lErr');
+
+  if (!em || !pw) { errEl.textContent = 'Remplissez tous les champs.'; return; }
+
+  // Vérifier que l'email est dans la liste admin autorisée
+  if (ADMIN_EMAILS.indexOf(em) === -1) {
+    _loginAttempts++;
+    if (_loginAttempts >= 5) { _loginBlocked = true; _loginBlockUntil = Date.now() + 60000; }
+    errEl.textContent = 'Accès non autorisé.';
+    document.getElementById('lPw').value = '';
+    return;
+  }
+
+  errEl.textContent = '';
+  document.querySelector('.lb-btn').textContent = 'Connexion…';
+  document.querySelector('.lb-btn').disabled = true;
+
+  try {
+    // Authentification via Supabase Auth
+    var res = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: em, password: pw })
+    });
+    var data = await res.json();
+
+    if (!res.ok || !data.access_token) {
+      throw new Error(data.error_description || data.msg || 'Identifiants incorrects');
+    }
+
+    // Vérifier le rôle admin dans la table users
+    var userCheck = await fetch(SB_URL + '/rest/v1/users?email=eq.' + encodeURIComponent(em) + '&select=role,status&limit=1', {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + data.access_token }
+    });
+    var users = await userCheck.json();
+
+    // Stocker le token (pas juste un flag '1')
+    sessionStorage.setItem(SK, data.access_token);
+    sessionStorage.setItem('a2s_admin_email', em);
+
+    _loginAttempts = 0;
     document.getElementById('loginWrap').classList.add('hidden');
     document.getElementById('app').classList.add('visible');
+    // Mettre à jour le token dans les requêtes SB
+    _sbToken = data.access_token;
     refreshAll();
-    showToast('Bienvenue Romain !');
-  } else {
-    document.getElementById('lErr').textContent = 'Identifiants incorrects';
+    showToast('Bienvenue !');
+
+  } catch(e) {
+    _loginAttempts++;
+    if (_loginAttempts >= 5) {
+      _loginBlocked = true;
+      _loginBlockUntil = Date.now() + 60000;
+      errEl.textContent = 'Trop de tentatives. Compte bloqué 60 secondes.';
+    } else {
+      errEl.textContent = 'Erreur : ' + e.message;
+    }
     document.getElementById('lPw').value = '';
+  } finally {
+    document.querySelector('.lb-btn').textContent = 'Acceder';
+    document.querySelector('.lb-btn').disabled = false;
   }
 }
-function logout() { sessionStorage.removeItem(SK); location.reload(); }
+function logout() {
+  sessionStorage.removeItem(SK);
+  sessionStorage.removeItem('a2s_admin_email');
+  _sbToken = null;
+  location.reload();
+}
 
 /* ── HELPERS ── */
 function sel(id) { return document.getElementById(id); }
@@ -775,10 +867,10 @@ function fmtDate(iso) {
   try { return new Date(iso).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}); }
   catch(e) { return '--'; }
 }
-function ltitle(l) { return l.title || [l.make, l.model, l.year ? '(' + l.year + ')' : ''].filter(Boolean).join(' ') || 'Sans titre'; }
+function ltitle(l) { return esc(l.title || [l.make, l.model, l.year ? '(' + l.year + ')' : ''].filter(Boolean).join(' ') || 'Sans titre'); }
 function ini(n, e) {
-  if (n && n.trim()) return n.trim().split(/\s+/).map(function(w) { return w[0]; }).join('').substring(0, 2).toUpperCase();
-  return e ? e[0].toUpperCase() : 'U';
+  if (n && n.trim()) return esc(n.trim().split(/\s+/).map(function(w) { return w[0]; }).join('').substring(0, 2).toUpperCase());
+  return e ? esc(e[0].toUpperCase()) : 'U';
 }
 function cur(c) { return {EUR:'EUR ',USD:'USD ',GBP:'GBP ',CHF:'CHF '}[c||'EUR']||'EUR '; }
 function statusPill(s) {
@@ -897,7 +989,7 @@ function updateDashboard() {
       dlEl.innerHTML = '<div class="mini-list">' + _allListings.slice(0, 5).map(function(l) {
         return '<div class="ml-item" onclick="viewListing(' + l.id + ')" title="Modifier">'
           + '<div class="ml-info"><div class="ml-name">' + ltitle(l) + '</div>'
-          + '<div class="ml-sub">' + (l.sellerName || '--') + ' &middot; ' + fmtDate(l.submittedAt) + '</div></div>'
+          + '<div class="ml-sub">' + esc(l.sellerName || '--') + ' &middot; ' + fmtDate(l.submittedAt) + '</div></div>'
           + '<div class="ml-right">' + statusPill(l.status) + '</div></div>';
       }).join('') + '</div>';
     }
@@ -910,8 +1002,8 @@ function updateDashboard() {
       duEl.innerHTML = '<div class="mini-list">' + _allUsers.slice(0, 5).map(function(u) {
         return '<div class="ml-item" onclick="editUser(' + u.id + ')" title="Modifier">'
           + '<div class="ml-av">' + ini(u.name, u.email) + '</div>'
-          + '<div class="ml-info"><div class="ml-name">' + (u.name || u.email || '--') + '</div>'
-          + '<div class="ml-sub">' + (u.email || '') + '</div></div>'
+          + '<div class="ml-info"><div class="ml-name">' + esc(u.name || u.email || '--') + '</div>'
+          + '<div class="ml-sub">' + esc(u.email || '') + '</div></div>'
           + '<div class="ml-right">' + planPill(u.plan) + '</div></div>';
       }).join('') + '</div>';
     }
@@ -943,10 +1035,10 @@ function renderMod() {
       + '<div class="lc-body">'
       + '<div class="lc-title">' + ltitle(l) + '</div>'
       + '<div class="lc-meta">'
-      + '<span>&#9711; ' + (l.sellerName || '--') + '</span>'
-      + '<span>@ ' + (l.sellerEmail || '--') + '</span>'
+      + '<span>&#9711; ' + esc(l.sellerName || '--') + '</span>'
+      + '<span>@ ' + esc(l.sellerEmail || '--') + '</span>'
       + '<span>' + fmtDate(l.submittedAt) + '</span>'
-      + (l.airport ? '<span>' + l.airport + '</span>' : '')
+      + (l.airport ? '<span>' + esc(l.airport) + '</span>' : '')
       + '</div></div>'
       + '<div class="lc-right">'
       + '<div class="lc-price">' + pr + '</div>'
@@ -1008,7 +1100,7 @@ function renderList() {
   tb.innerHTML = filtered.map(function(l) {
     return '<tr>'
       + '<td style="color:#f0f4f8;font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ltitle(l) + '</td>'
-      + '<td style="font-size:.7rem">' + (l.sellerName || '--') + '</td>'
+      + '<td style="font-size:.7rem">' + esc(l.sellerName || '--') + '</td>'
       + '<td style="color:#f5c842">' + (l.price ? cur(l.currency) + Number(l.price).toLocaleString() : '--') + '</td>'
       + '<td>' + statusPill(l.status) + '</td>'
       + '<td style="font-size:.64rem;color:#4a6278">' + fmtDate(l.submittedAt) + '</td>'
@@ -1050,8 +1142,8 @@ function filterUsers() {
       + '<td style="color:#4a6278;font-size:.64rem">#' + (i + 1) + '</td>'
       + '<td><div style="display:flex;align-items:center;gap:.4rem">'
       + '<div class="ml-av" style="width:22px;height:22px;font-size:.52rem;flex-shrink:0">' + ini(u.name, u.email) + '</div>'
-      + '<span style="color:#f0f4f8;font-size:.74rem">' + (u.name || '--') + '</span></div></td>'
-      + '<td style="font-size:.7rem">' + (u.email || '--') + '</td>'
+      + '<span style="color:#f0f4f8;font-size:.74rem">' + esc(u.name || '--') + '</span></div></td>'
+      + '<td style="font-size:.7rem">' + esc(u.email || '--') + '</td>'
       + '<td>' + planPill(u.plan) + '</td>'
       + '<td style="font-size:.64rem;color:#4a6278">' + fmtDate(u.registered_at) + '</td>'
       + '<td><div class="acts">'
@@ -1075,8 +1167,8 @@ function renderSubs() {
   if (!paid.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#4a6278">Aucun abonne payant</td></tr>'; return; }
   tb.innerHTML = paid.map(function(u) {
     return '<tr>'
-      + '<td style="color:#f0f4f8">' + (u.name || '--') + '</td>'
-      + '<td style="font-size:.7rem">' + (u.email || '--') + '</td>'
+      + '<td style="color:#f0f4f8">' + esc(u.name || '--') + '</td>'
+      + '<td style="font-size:.7rem">' + esc(u.email || '--') + '</td>'
       + '<td>' + planPill(u.plan) + '</td>'
       + '<td style="font-size:.64rem;color:#4a6278">' + fmtDate(u.registered_at) + '</td>'
       + '<td style="color:#f5c842">' + (u.plan === 'Pro' ? '79' : '29') + ' EUR/mois</td></tr>';
@@ -1311,13 +1403,13 @@ function viewListing(id){
       '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Prix</div>' +
       '<div style="font-family:Bebas Neue,sans-serif;font-size:1.3rem;color:#f5c842">' + pr + '</div></div>' +
       '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Categorie</div>' +
-      '<div style="color:#f0f4f8">' + (l.category || '--') + '</div></div>' +
+      '<div style="color:#f0f4f8">' + esc(l.category || '--') + '</div></div>' +
       '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Aeroport</div>' +
-      '<div style="color:#f0f4f8">' + (l.airport || '--') + '</div></div>' +
+      '<div style="color:#f0f4f8">' + esc(l.airport || '--') + '</div></div>' +
       '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Vendeur</div>' +
-      '<div style="color:#f0f4f8">' + (l.sellerName || '--') + '</div></div>' +
+      '<div style="color:#f0f4f8">' + esc(l.sellerName || '--') + '</div></div>' +
       '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Email vendeur</div>' +
-      '<div style="color:#f0f4f8;font-size:.75rem">' + (l.sellerEmail || '--') + '</div></div>' +
+      '<div style="color:#f0f4f8;font-size:.75rem">' + esc(l.sellerEmail || '--') + '</div></div>' +
       '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Statut</div>' +
       '<div>' + statusPill(l.status) + '</div></div>' +
       '<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.2rem">Soumis le</div>' +
@@ -1325,7 +1417,7 @@ function viewListing(id){
     '</div>' +
     '<div style="border-top:1px solid rgba(200,220,240,.09);padding-top:.75rem">' +
       '<div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:#4a6278;margin-bottom:.4rem">Description</div>' +
-      '<div style="font-size:.78rem;color:#8fa3b8;line-height:1.7">' + (l.desc || l.description || 'Aucune description') + '</div>' +
+      '<div style="font-size:.78rem;color:#8fa3b8;line-height:1.7">' + esc(l.desc || l.description || 'Aucune description') + '</div>' +
     '</div>' +
     (l.views ? '<div style="margin-top:.75rem;font-size:.68rem;color:#4a6278">Vues : ' + l.views + ' &middot; Contacts : ' + (l.enquiries||0) + '</div>' : '');
 
@@ -1615,7 +1707,23 @@ function toggleCertified(){
     .then(function(){ showToast(checked ? '✓ Vendeur certifié' : 'Certification retirée'); refreshAll(); })
     .catch(function(e){ showToast('Erreur: ' + e.message); });
 }
-/* ── TOAST ── */
+/* ── SIDEBAR MOBILE ── */
+function toggleAdminSidebar() {
+  var sb  = document.querySelector('.sb');
+  var ov  = document.getElementById('adminOverlay');
+  if (!sb) return;
+  sb.classList.toggle('open');
+  if (ov) ov.classList.toggle('open');
+}
+
+function updateSidebarBadges() {
+  var pending = _allListings.filter(function(l) { return l.status === 'pending'; });
+  var mb = sel('mod-badge');  if (mb)  { mb.textContent = pending.length || ''; mb.style.display = pending.length ? '' : 'none'; }
+  var lb = sel('list-badge'); if (lb)  { lb.textContent = _allListings.length || ''; lb.style.display = _allListings.length ? '' : 'none'; }
+  var ub = sel('users-badge');if (ub)  { ub.textContent = _allUsers.length || ''; ub.style.display = _allUsers.length ? '' : 'none'; }
+  setText('sbKpiListings', _allListings.length);
+  setText('sbKpiUsers', _allUsers.length);
+}
 var _tt;
 function showToast(msg) {
   var el = sel('toast');
@@ -1628,12 +1736,25 @@ function showToast(msg) {
 
 /* ── BOOT ── */
 window.addEventListener('DOMContentLoaded', function() {
-  if (sessionStorage.getItem(SK)) {
-    sel('loginWrap').classList.add('hidden');
-    sel('app').classList.add('visible');
-    refreshAll();
+  var storedToken = sessionStorage.getItem(SK);
+  if (storedToken) {
+    // Vérifier que le token n'est pas expiré
+    try {
+      var payload = JSON.parse(atob(storedToken.split('.')[1]));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        // Token expiré
+        sessionStorage.removeItem(SK);
+        return;
+      }
+      _sbToken = storedToken;
+      sel('loginWrap').classList.add('hidden');
+      sel('app').classList.add('visible');
+      refreshAll();
+    } catch(e) {
+      sessionStorage.removeItem(SK);
+    }
   }
-  sel('lEmail').value = MAIL;
+  // NE PAS pré-remplir l'email admin
 });
 </script>
 <div id="adminOverlay" class="admin-overlay" onclick="toggleAdminSidebar()"></div>

@@ -1,0 +1,52 @@
+# ============================================================
+# _headers — Aircraft2Sell
+# Fichier à placer à la RACINE de ton déploiement Cloudflare Pages
+# Cloudflare Pages le lit automatiquement pour ajouter des headers HTTP
+# ============================================================
+
+# ── BLOQUER les fichiers sensibles ──────────────────────────
+
+# Fichier admin : accès refusé pour tout le monde depuis l'extérieur
+# Utilise Cloudflare Access (Zero Trust) pour protéger cette URL
+/admin-a2s00760.html
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: no-store, no-cache
+
+# Fichier de diagnostic
+/diag.html
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: no-store, no-cache
+
+# Fichier SQL de migration (NE DOIT PAS être déployé en production !)
+/migration_supabase.sql
+  X-Content-Type-Options: nosniff
+
+# ── HEADERS DE SÉCURITÉ GLOBAUX ─────────────────────────────
+/*
+  # Empêche le clickjacking (chargement dans un iframe)
+  X-Frame-Options: DENY
+
+  # Empêche le MIME-sniffing
+  X-Content-Type-Options: nosniff
+
+  # Force HTTPS (HSTS) - 1 an, inclut sous-domaines
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+  # Contrôle les infos envoyées dans le Referer
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Désactive les fonctionnalités navigateur non nécessaires
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self)
+
+  # Content Security Policy
+  # - default-src: bloquer tout par défaut
+  # - script-src: autoriser le domaine + Supabase + Google Fonts
+  # - style-src: autoriser inline (nécessaire) + Google Fonts
+  # - connect-src: autoriser Supabase API uniquement
+  # - font-src: Google Fonts
+  # - img-src: données inline + même domaine + Supabase storage
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://hlivysnlzlqdjcigqgvk.supabase.co https://js.stripe.com; img-src 'self' data: blob: https://hlivysnlzlqdjcigqgvk.supabase.co; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';
+
+  # Empêche XSS reflété (legacy, mais utile pour vieux navigateurs)
+  X-XSS-Protection: 1; mode=block
+
