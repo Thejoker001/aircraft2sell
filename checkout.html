@@ -1,1546 +1,468 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aircraft2Sell — Checkout</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<!-- Stripe.js -->
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aircraft2Sell — Paiement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&display=swap" rel="stylesheet">
 <script src="https://js.stripe.com/v3/"></script>
 <style>
-:root{--sky:#0a0f1e;--deep:#060b15;--horizon:#0d2847;--horizon2:#0b1e38;--accent:#e8a020;--gold:#f5c842;--mist:#8fa3b8;--mist2:#5a7490;--white:#f0f4f8;--card-bg:#0e1a2e;--card2:#111f35;--border:rgba(200,212,224,0.1);--green:#22c55e;--red:#ef4444}
+:root{--bg:#05080f;--deep:#030610;--surface:#0a1020;--card:#0c1428;--card2:#0f1830;--border:rgba(180,200,230,.08);--border2:rgba(180,200,230,.14);--accent:#e8a020;--gold:#f5c518;--mist:#7a93aa;--mist2:#3d5468;--white:#edf2f8;--dim:#c8d8e8;--green:#22c55e;--red:#ef4444}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-
 html{scroll-behavior:smooth}
-body{font-family:'DM Sans',sans-serif;background:var(--sky);color:var(--white);overflow-x:hidden}
-body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(1px 1px at 8% 15%,rgba(255,255,255,.7) 0%,transparent 100%),radial-gradient(1px 1px at 25% 65%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 42% 8%,rgba(255,255,255,.6) 0%,transparent 100%),radial-gradient(1px 1px at 60% 45%,rgba(255,255,255,.3) 0%,transparent 100%),radial-gradient(1px 1px at 78% 78%,rgba(255,255,255,.5) 0%,transparent 100%),radial-gradient(2px 2px at 15% 82%,rgba(255,255,255,.6) 0%,transparent 100%),radial-gradient(2px 2px at 52% 30%,rgba(255,255,255,.7) 0%,transparent 100%),radial-gradient(2px 2px at 84% 55%,rgba(255,255,255,.5) 0%,transparent 100%),radial-gradient(1px 1px at 35% 92%,rgba(255,255,255,.4) 0%,transparent 100%),radial-gradient(1px 1px at 95% 40%,rgba(255,255,255,.3) 0%,transparent 100%)}
-nav{position:sticky;top:0;z-index:200;background:rgba(6,11,21,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);height:64px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
-.nav-links{display:flex;list-style:none;margin:0;padding:0;gap:1.5rem;align-items:center;height:64px;font-size:.82rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase}.nav-links li{display:flex;align-items:center;height:64px}.nav-links a{color:var(--mist);text-decoration:none;transition:color .2s;display:flex;align-items:center;height:64px;white-space:nowrap}.nav-links a:hover,.nav-links a.active{color:var(--accent)}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.1em;color:var(--white);display:flex;align-items:center;gap:.5rem;flex-shrink:0;text-decoration:none}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;background:rgba(3,6,16,.9);backdrop-filter:blur(28px);border-bottom:1px solid var(--border)}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.75rem;letter-spacing:.12em;color:var(--white);text-decoration:none;flex-shrink:0}
 .logo span{color:var(--accent)}
-.logo-icon{font-size:1.4rem;transform:rotate(-10deg);display:inline-block;animation:flt 4s ease-in-out infinite}
-@keyframes flt{0%,100%{transform:rotate(-10deg) translateY(0)}50%{transform:rotate(-10deg) translateY(-4px)}}
-
-
-
-.nav-right{display:flex;align-items:center;gap:.7rem;flex-shrink:0}
-.lang-sw{display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.04);border:1px solid var(--border);padding:3px}
-.lb{background:none;border:none;color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:600;padding:.28rem .45rem;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:3px;white-space:nowrap}
-.lb:hover{color:var(--white)}
-.lb.active{background:var(--accent);color:var(--deep)}
-.lf{font-size:.9rem}
-.btn-login{background:transparent;color:var(--mist);border:1px solid var(--border);padding:.5rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;letter-spacing:.06em;cursor:pointer;transition:all .2s;text-transform:uppercase;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem}
-.btn-login:hover{border-color:var(--accent);color:var(--accent)}
-.btn-login .login-icon{font-size:.9rem}
-.btn-post{background:var(--accent);color:var(--deep);border:none;padding:.5rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;letter-spacing:.06em;cursor:pointer;transition:background .2s,transform .15s;text-transform:uppercase;white-space:nowrap}
-.btn-post:hover{background:var(--gold);transform:translateY(-1px)}
-.nav-dropdown{position:relative;align-items:center;display:flex}
-.nav-dropdown>a{display:flex;align-items:center;gap:.3rem;cursor:pointer}
-.nav-dropdown>a::after{content:'▾';font-size:.6rem;opacity:.6;transition:transform .2s}
-.nav-dropdown:hover>a::after{transform:rotate(180deg)}
-.dropdown-menu{position:absolute;top:100%;left:50%;transform:translateX(-50%);background:rgba(6,11,21,.98);backdrop-filter:blur(24px);border:1px solid var(--border);min-width:220px;opacity:0;pointer-events:none;transition:opacity .15s;z-index:500;padding-top:8px}
-.dropdown-menu::before{content:'';position:absolute;top:-8px;left:0;right:0;height:8px}
-.nav-dropdown:hover .dropdown-menu,.nav-dropdown.open .dropdown-menu{opacity:1;pointer-events:auto}
-.nav-dropdown:hover>a::after,.nav-dropdown.open>a::after{transform:rotate(180deg)}
-
-.dropdown-item{display:flex;align-items:center;gap:.7rem;padding:.65rem 1rem;color:var(--mist);font-size:.78rem;text-decoration:none;transition:all .15s;border-bottom:1px solid var(--border);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:400;letter-spacing:.02em;text-transform:none;white-space:nowrap}
-.dropdown-item:last-child{border-bottom:none}
-.dropdown-item:hover{color:var(--white);background:rgba(255,255,255,.04)}
-.dropdown-item .di-icon{font-size:1rem;width:22px;text-align:center;flex-shrink:0}
-.dropdown-item .di-name{flex:1}
-.dropdown-item .di-count{font-size:.62rem;color:var(--mist2);margin-left:auto}
-.dropdown-item.special{color:var(--accent)}
-.dropdown-item.special:hover{background:rgba(232,160,32,.06)}
-.dropdown-item.wanted{color:var(--mist2)}
-.curr-conv{overflow:hidden}
-.curr-hd{padding:.5rem .9rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.curr-hd-lbl{font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mist2);font-weight:600}
-.curr-live{font-size:.56rem;color:var(--green);display:flex;align-items:center;gap:.3rem}
-.curr-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:cvpulse 2s infinite;flex-shrink:0}
-@keyframes cvpulse{0%,100%{opacity:1}50%{opacity:.3}}
-.curr-bd{padding:.75rem .9rem}
-.curr-row{display:flex;gap:0;margin-bottom:.45rem}
-.cv-inp{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--white);padding:.65rem .75rem;font-family:'DM Sans',sans-serif;font-size:1.05rem;outline:none;min-width:0;transition:border-color .15s}
-.cv-inp:focus{border-color:var(--accent)}
-.cv-sel{background:rgba(255,255,255,.07);border:1px solid var(--border);border-left:none;color:var(--white);padding:.45rem .55rem;font-family:'DM Sans',sans-serif;font-size:.8rem;outline:none;cursor:pointer;min-width:76px;flex-shrink:0}
-.cv-sel:focus{border-color:var(--accent);outline:none}
-.cv-swap{text-align:center;padding:.25rem 0;cursor:pointer;color:var(--mist);font-size:1rem;user-select:none;transition:color .15s}
-.cv-swap:hover{color:var(--accent)}
-.cv-result{background:rgba(232,160,32,.07);border:1px solid rgba(232,160,32,.18);padding:.6rem .85rem;display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
-.cv-res-val{font-size:1.3rem;font-weight:600;color:var(--accent)}
-.cv-res-sub{font-size:.6rem;color:var(--mist2);margin-top:.1rem}
-.cv-rate{font-size:.63rem;color:var(--mist2);text-align:center;padding:.3rem 0 .15rem;border-top:1px solid var(--border)}
-.cv-rate span{color:var(--mist)}
-.cv-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:.55rem}
-.cv-qbtn{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--mist);padding:.3rem .25rem;font-size:.64rem;font-weight:600;cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .12s;font-family:'DM Sans',sans-serif}
-.cv-qbtn:hover,.cv-qbtn.cva{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.06)}
-.dropdown-divider{height:1px;background:var(--border);margin:0}
-.hero{position:relative;z-index:1;min-height:90vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5rem 2rem 4rem;text-align:center;overflow:hidden}
-.hero::before{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:2px;height:35%;background:linear-gradient(0deg,transparent,rgba(232,160,32,.5),transparent);animation:rnwy 3s ease-in-out infinite}
-@keyframes rnwy{0%,100%{opacity:.4;height:28%}50%{opacity:1;height:40%}}
-.hero-eyebrow{font-size:.72rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:1.5rem;font-weight:500;animation:fu .6s .1s both}
-.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(4rem,9vw,8rem);letter-spacing:.04em;line-height:.88;color:var(--white);margin-bottom:1.8rem;animation:fu .6s .2s both}
-.hero h1 em{font-style:normal;color:var(--accent)}
-.hero-sub{color:var(--mist);font-size:1.05rem;font-weight:300;max-width:520px;margin:0 auto 2.8rem;line-height:1.7;animation:fu .6s .3s both}
-@keyframes fu{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
-.hero-search{width:100%;max-width:820px;animation:fu .6s .4s both}
-.search-wrap{background:var(--card-bg);border:1px solid var(--border);display:flex;flex-wrap:wrap;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
-.sf{flex:1;min-width:140px;padding:1rem 1.1rem;border:none;border-right:1px solid var(--border);background:transparent;color:var(--white);font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none}
-.sf::placeholder{color:var(--mist2)}
-.sf:focus{background:rgba(255,255,255,.03)}
-select.sf option{background:var(--card-bg)}
-.sbtn{background:var(--accent);color:var(--deep);border:none;padding:1rem 2rem;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:.1em;cursor:pointer;white-space:nowrap;transition:background .2s}
-.sbtn:hover{background:var(--gold)}
-.quick-filters{display:flex;gap:.5rem;margin-top:.8rem;flex-wrap:wrap;justify-content:center}
-.qf{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.3rem .8rem;font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s}
-.qf:hover,.qf.active{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.07)}
-.scroll-hint{position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:.4rem;opacity:.35;animation:bnc 2s infinite}
-.scroll-hint span{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--mist)}
-.scroll-arrow{width:18px;height:18px;border-right:1px solid var(--mist);border-bottom:1px solid var(--mist);transform:rotate(45deg)}
-@keyframes bnc{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(6px)}}
-.stats-bar{position:relative;z-index:1;background:var(--horizon);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1.2rem 2rem;display:flex;justify-content:center;gap:3rem;flex-wrap:wrap}
-.stat{text-align:center}
-.stat-num{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent);letter-spacing:.05em;line-height:1}
-.stat-label{font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mist);margin-top:.2rem}
-.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.4rem;background:none;border:none;z-index:301;flex-shrink:0}
-.burger span{display:block;width:22px;height:2px;background:var(--white);border-radius:2px;transition:all .25s}
+.nav-links{display:flex;list-style:none;align-items:center;gap:.1rem;height:64px}
+.nav-links a{display:flex;align-items:center;height:64px;padding:0 .9rem;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);text-decoration:none;transition:color .2s;white-space:nowrap}
+.nav-links a:hover{color:var(--white)}
+.nav-right{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
+.btn-nav-login{background:transparent;border:1px solid var(--border2);color:var(--dim);padding:.44rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center}
+.btn-nav-login:hover{border-color:var(--accent);color:var(--accent)}
+.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:.5rem;min-height:unset}
+.burger span{display:block;width:22px;height:2px;background:var(--white);border-radius:1px;transition:all .25s}
 .burger.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
 .burger.open span:nth-child(2){opacity:0}
 .burger.open span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
 
-.checkout-wrap{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:3rem 2rem;
-  display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
-@media(max-width:700px){.checkout-wrap{grid-template-columns:1fr}}
+/* MOBILE MENU */
+.mobile-menu{display:none;position:fixed;inset:0;background:rgba(3,6,16,.98);backdrop-filter:blur(20px);z-index:490;flex-direction:column;padding:5rem 2rem 2rem;overflow-y:auto}
+.mobile-menu.open{display:flex}
+.mobile-menu a{padding:1rem 0;font-size:.9rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-decoration:none;border-bottom:1px solid var(--border);display:block;transition:color .2s}
+.mobile-menu a:hover{color:var(--accent)}
+.mm-cta{margin-top:2rem;background:var(--accent);color:var(--deep);text-align:center;padding:1rem;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.1em;cursor:pointer;text-decoration:none;display:block}
 
-/* LEFT — Order summary */
+/* CHECKOUT LAYOUT */
+.checkout-wrap{max-width:1100px;margin:0 auto;padding:3rem 2rem 6rem;display:grid;grid-template-columns:1fr 1.4fr;gap:2.5rem;align-items:start}
+
+/* ── RÉSUMÉ COMMANDE ── */
 .order-summary{position:sticky;top:80px}
-.summary-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.08em;color:var(--mist);
-  margin-bottom:1.5rem;text-transform:uppercase}
+.block-title{font-size:.6rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--mist2);margin-bottom:1.1rem;padding-bottom:.7rem;border-bottom:1px solid var(--border)}
 
-/* PLAN SELECTOR */
-.plan-selector{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:1.5rem}
-.plan-option{background:var(--card);padding:1.2rem 1.4rem;cursor:pointer;
-  display:flex;align-items:center;gap:1rem;transition:background .2s;border-left:3px solid transparent;position:relative}
-.plan-option:hover{background:rgba(255,255,255,.03)}
-.plan-option.selected{background:rgba(232,160,32,.07);border-left-color:var(--accent)}
-.plan-radio{width:18px;height:18px;border:1px solid var(--border);border-radius:50%;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color .2s}
-.plan-option.selected .plan-radio{border-color:var(--accent)}
-.plan-radio::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);
-  opacity:0;transition:opacity .2s}
-.plan-option.selected .plan-radio::after{opacity:1}
+/* Plan selector */
+.plan-option{display:flex;align-items:center;gap:.8rem;padding:.85rem 1rem;background:var(--card);border:1px solid var(--border2);margin-bottom:2px;cursor:pointer;transition:all .18s;position:relative}
+.plan-option:hover{background:var(--card2)}
+.plan-option.selected{border-color:rgba(232,160,32,.45);background:rgba(232,160,32,.05)}
+.plan-radio{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--mist2);flex-shrink:0;transition:all .18s;position:relative}
+.plan-option.selected .plan-radio{border-color:var(--accent);background:var(--accent)}
+.plan-option.selected .plan-radio::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:var(--deep)}
+.plan-badge{position:absolute;top:-.55rem;right:.8rem;background:var(--accent);color:var(--deep);font-size:.52rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.18rem .55rem}
 .plan-info{flex:1}
-.plan-name-sm{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.06em;color:var(--white)}
-.plan-desc-sm{font-size:.76rem;color:var(--mist);margin-top:.15rem}
-.plan-price-sm{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--gold);letter-spacing:.04em;flex-shrink:0}
-.plan-badge-sm{position:absolute;top:.6rem;right:.6rem;background:var(--accent);color:var(--deep);
-  font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.15rem .45rem;font-weight:700}
+.plan-name{font-size:.8rem;font-weight:600;color:var(--white)}
+.plan-desc{font-size:.7rem;color:var(--mist);margin-top:.1rem}
+.plan-price{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.04em;color:var(--accent);white-space:nowrap}
+.plan-price span{font-family:'DM Sans',sans-serif;font-size:.72rem;color:var(--mist);font-weight:400}
 
-/* ADDON */
-.addon-box{background:var(--card);border:1px solid var(--border);padding:1rem 1.4rem;
-  display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;cursor:pointer;
-  transition:border-color .2s}
-.addon-box:hover{border-color:rgba(232,160,32,.3)}
-.addon-checkbox{width:18px;height:18px;border:1px solid var(--border);display:flex;align-items:center;
-  justify-content:center;flex-shrink:0;font-size:.8rem;transition:all .2s}
-.addon-checkbox.checked{background:var(--accent);border-color:var(--accent);color:var(--deep)}
+/* Addon */
+.addon-box{display:flex;align-items:center;gap:.8rem;padding:.85rem 1rem;background:var(--card);border:1px solid var(--border2);cursor:pointer;transition:all .18s;margin-top:.5rem}
+.addon-box:hover{background:var(--card2)}
+.addon-box.checked{border-color:rgba(232,160,32,.35);background:rgba(232,160,32,.04)}
+.addon-chk{width:16px;height:16px;border:1.5px solid var(--mist2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:transparent;transition:all .18s}
+.addon-box.checked .addon-chk{border-color:var(--accent);background:var(--accent);color:var(--deep)}
 .addon-info{flex:1}
-.addon-name{font-size:.88rem;font-weight:600;color:var(--white)}
-.addon-desc-sm{font-size:.74rem;color:var(--mist);margin-top:.1rem}
-.addon-price-sm{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--gold);flex-shrink:0}
+.addon-name{font-size:.8rem;font-weight:600;color:var(--white)}
+.addon-desc{font-size:.7rem;color:var(--mist);margin-top:.1rem}
+.addon-price{font-size:.8rem;font-weight:600;color:var(--accent);white-space:nowrap}
 
-/* ORDER TOTAL */
-.order-total{background:var(--card);border:1px solid var(--border);padding:1.4rem}
-.total-row{display:flex;justify-content:space-between;align-items:center;
-  padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.84rem}
-.total-row:last-child{border:none;padding-top:.8rem;margin-top:.3rem}
+/* Total */
+.order-total{background:var(--surface);border:1px solid var(--border2);padding:1.25rem;margin-top:1rem}
+.total-row{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;font-size:.8rem;border-bottom:1px solid var(--border)}
+.total-row:last-child{border-bottom:none;padding-bottom:0}
 .total-label{color:var(--mist)}
 .total-val{color:var(--white);font-weight:500}
-.total-grand{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--gold);letter-spacing:.04em}
-.total-period{font-size:.7rem;color:var(--mist);letter-spacing:.08em;text-transform:uppercase}
-.no-commission{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--green);margin-top:.8rem}
+.total-grand{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.04em;color:var(--white);line-height:1}
+.total-period{font-size:.66rem;color:var(--mist2);margin-top:.2rem}
+.no-commission{font-size:.7rem;color:var(--green);margin-top:.75rem;display:flex;align-items:center;gap:.4rem}
 
-/* RIGHT — Payment form */
-.payment-form-wrap{}
-.form-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.08em;color:var(--mist);
-  margin-bottom:1.5rem;text-transform:uppercase}
+/* ── FORMULAIRE PAIEMENT ── */
+.payment-form{background:var(--card);border:1px solid var(--border2);padding:1.75rem}
+.form-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.06em;margin-bottom:1.5rem}
 
-.form-section{background:var(--card);border:1px solid var(--border);padding:1.5rem;margin-bottom:1px}
-.form-section-title{font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);
-  font-weight:600;margin-bottom:1.2rem;display:flex;align-items:center;gap:.5rem}
-.form-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+/* Méthodes de paiement */
+.pay-methods{display:flex;gap:2px;margin-bottom:1.5rem}
+.pay-method{flex:1;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.65rem .5rem;background:var(--surface);border:1px solid var(--border2);cursor:pointer;transition:all .18s;font-size:.76rem;color:var(--mist);font-weight:500;min-height:44px}
+.pay-method:hover{border-color:var(--border2);color:var(--dim)}
+.pay-method.active{border-color:rgba(232,160,32,.4);background:rgba(232,160,32,.05);color:var(--accent)}
+.pay-icon{font-size:1rem}
 
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+/* Sections formulaire */
+.form-section{margin-bottom:1.5rem}
+.form-section-title{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mist2);margin-bottom:.9rem;padding-bottom:.55rem;border-bottom:1px solid var(--border)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem}
 .form-row.full{grid-template-columns:1fr}
-.form-group{display:flex;flex-direction:column;gap:.4rem}
-.form-label{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);font-weight:500}
-.form-input{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);
-  padding:.75rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;
-  transition:border-color .2s}
-.form-input:focus{border-color:var(--accent)}
-.form-input::placeholder{color:rgba(143,163,184,.5)}
+.form-group{display:flex;flex-direction:column;gap:.35rem}
+.form-label{font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mist2)}
+.form-input{background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:.72rem 1rem;outline:none;transition:border-color .2s;appearance:none;width:100%}
+.form-input:focus{border-color:rgba(232,160,32,.5)}
+.form-input::placeholder{color:var(--mist2)}
+.form-input option{background:var(--deep)}
 
-/* Stripe card element container */
-.stripe-element-wrap{background:rgba(255,255,255,.04);border:1px solid var(--border);padding:.85rem 1rem;transition:border-color .2s}
-.stripe-element-wrap.focused{border-color:var(--accent)}
-#card-errors{color:var(--red);font-size:.78rem;margin-top:.5rem;min-height:1.2em}
+/* Stripe elements */
+.stripe-wrap{background:rgba(255,255,255,.04);border:1px solid var(--border2);padding:.72rem 1rem;transition:border-color .2s;min-height:42px}
+.stripe-wrap.focused{border-color:rgba(232,160,32,.5)}
+#card-errors,#sepa-errors{font-size:.75rem;color:var(--red);margin-top:.4rem;min-height:1rem}
 
-/* Payment methods */
-.pay-methods{display:flex;gap:.6rem;margin-bottom:1.5rem;flex-wrap:wrap}
-.pay-method{flex:1;min-width:80px;background:var(--card);border:2px solid var(--border);
-  padding:.55rem .7rem;display:flex;align-items:center;justify-content:center;gap:.4rem;
-  cursor:pointer;font-size:.78rem;color:var(--mist);transition:all .2s;font-weight:500;
-  min-height:44px}
-.pay-method:hover{border-color:var(--accent);color:var(--white)}
-.pay-method.active{border-color:var(--accent);color:var(--white);background:rgba(232,160,32,.08)}
-.pay-icon{font-size:1.2rem}
-/* Apple Pay dark background so white logo is visible */
-.pay-method[onclick*="apple"]{background:#000;border-color:#333}
-.pay-method[onclick*="apple"]:hover{border-color:var(--accent)}
-.pay-method[onclick*="apple"].active{border-color:var(--accent);background:#000}
-/* Google Pay — white background for the multicolor logo */
-.pay-method[onclick*="google"]{background:#fff;border-color:#e0e0e0}
-.pay-method[onclick*="google"]:hover{border-color:var(--accent)}
-.pay-method[onclick*="google"].active{border-color:var(--accent);background:#fff}
+/* Promo */
+.promo-wrap{display:flex;gap:.5rem;margin-bottom:1rem}
+.promo-input{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.84rem;padding:.65rem 1rem;outline:none;transition:border-color .2s}
+.promo-input:focus{border-color:rgba(232,160,32,.4)}
+.promo-input::placeholder{color:var(--mist2)}
+.promo-btn{background:var(--surface);border:1px solid var(--border2);color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:600;padding:.65rem 1.1rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+.promo-btn:hover{color:var(--white);border-color:var(--border2)}
 
-/* Submit button */
-.pay-btn{width:100%;background:var(--accent);color:var(--deep);border:none;
-  padding:1.1rem;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.1em;
-  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.8rem;
-  position:relative;overflow:hidden}
-.pay-btn:hover{background:var(--gold)}
-.pay-btn:disabled{background:rgba(232,160,32,.4);cursor:not-allowed}
-.pay-btn .btn-amount{font-size:1rem;opacity:.8}
-
-/* Loading spinner */
-.spinner{width:18px;height:18px;border:2px solid rgba(6,11,21,.3);border-top-color:var(--deep);
-  border-radius:50%;animation:spin .7s linear infinite;display:none}
+/* Submit */
+.btn-pay{width:100%;background:var(--accent);color:var(--deep);border:none;padding:1rem;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:.1em;cursor:pointer;transition:background .2s,transform .15s;display:flex;align-items:center;justify-content:center;gap:.6rem;margin-top:.25rem}
+.btn-pay:hover{background:var(--gold);transform:translateY(-1px)}
+.btn-pay:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.spinner{width:16px;height:16px;border:2px solid rgba(5,8,15,.25);border-top-color:var(--deep);border-radius:50%;animation:spin .7s linear infinite;display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
-.pay-btn.loading .spinner{display:block}
-.pay-btn.loading .btn-text{display:none}
+.btn-pay.loading .spinner{display:block}
+.btn-pay.loading .pay-lbl{display:none}
 
-/* Security badges */
-.security-row{display:flex;align-items:center;justify-content:center;gap:1.5rem;
-  margin-top:1rem;flex-wrap:wrap}
-.sec-badge{display:flex;align-items:center;gap:.35rem;font-size:.7rem;color:var(--mist)}
-.sec-icon{font-size:.9rem}
+/* Sécurité */
+.security-note{display:flex;align-items:center;justify-content:center;gap:.5rem;font-size:.7rem;color:var(--mist2);margin-top:.75rem}
+.sepa-mandate{font-size:.72rem;color:var(--mist);line-height:1.6;margin-top:.75rem}
 
-/* Billing info */
-.billing-note{background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.2);
-  padding:.9rem 1rem;font-size:.78rem;color:var(--mist);line-height:1.6;margin-top:1px}
-.billing-note strong{color:var(--accent)}
-
-/* VAT indicator */
-.vat-indicator{display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;
-  background:rgba(255,255,255,.03);border:1px solid var(--border);margin-bottom:.8rem;
-  transition:all .3s}
-.vat-indicator.zero{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2)}
-.vat-indicator.warning{background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.2)}
-.vat-flag{font-size:1.1rem;flex-shrink:0}
-.vat-info{flex:1}
-.vat-country{font-size:.78rem;font-weight:600;color:var(--white)}
-.vat-rule{font-size:.7rem;color:var(--mist);margin-top:.1rem}
-.vat-rate-badge{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.04em;
-  color:var(--gold);flex-shrink:0}
-.vat-rate-badge.zero-rate{color:var(--green)}
-
-/* VAT number field */
-.vat-number-wrap{overflow:hidden;max-height:0;transition:max-height .3s ease,opacity .3s;opacity:0}
-.vat-number-wrap.show{max-height:80px;opacity:1}
-.vat-status{font-size:.7rem;margin-top:.3rem;min-height:1em}
-.vat-status.valid{color:var(--green)}
-.vat-status.invalid{color:var(--red)}
-.vat-status.checking{color:var(--mist)}
-
-/* OSS tooltip */
-.oss-note{font-size:.7rem;color:var(--mist2);margin-top:.4rem;line-height:1.5;
-  padding:.5rem .7rem;background:rgba(255,255,255,.02);border-left:2px solid var(--border)}
-
-/* LANG */
-
-.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--accent);
-  padding:.9rem 1.4rem;color:var(--white);font-size:.86rem;z-index:999;opacity:0;
-  transform:translateY(20px);transition:all .3s;pointer-events:none}
+/* Toast */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card2);border:1px solid var(--border2);color:var(--white);padding:.75rem 1.3rem;font-size:.8rem;z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
-.nav-user{display:flex;align-items:center;gap:.5rem;cursor:default}
-.nav-avatar{width:32px;height:32px;border-radius:50%;background:rgba(232,160,32,.15);border:1.5px solid rgba(232,160,32,.4);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.76rem;color:var(--accent);flex-shrink:0;text-transform:uppercase}
-.nav-user-info{display:flex;flex-direction:column;line-height:1.2}
-.nav-user-name{font-size:.78rem;font-weight:500;color:var(--white)}
-.nav-user-plan{font-size:.58rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
 
+/* RESPONSIVE */
+@media(max-width:960px){.checkout-wrap{grid-template-columns:1fr;padding:2rem 1.25rem 4rem}.order-summary{position:static}}
+@media(max-width:768px){nav{padding:0 1.25rem}.nav-links,.btn-nav-login{display:none}.burger{display:flex}.pay-methods{flex-wrap:wrap}.form-row{grid-template-columns:1fr}}
+@media(max-width:480px){input,select,button{font-size:16px !important}}
 </style>
-<link rel="stylesheet" href="mobile.css">
-<script>
-const T={
-en:{nav_listings:'Listings',nav_categories:'Categories',nav_pricing:'Pricing',nav_alerts:'Alerts',btnLogin:'Sign in',btn_post:'Post an Ad',hero_eyebrow:"Europe's #1 Aircraft Marketplace",hero_h1:'Find your<br><em>perfect</em><br>aircraft',hero_sub:'From training singles to business jets — buy, sell and discover exceptional aircraft. No commission, ever.',search_placeholder:'Brand, model or type…',budget_placeholder:'Max budget',search_btn:'Search',cat_all:'All categories',cat_light:'Light aircraft',cat_jet:'Business jets',cat_turbo:'Turboprops',cat_heli:'Helicopters',cat_ulm:'Ultralight / ULM',cat_airliner:'Airliners',filter_all:'All',scroll_hint:'Scroll to explore',stat_listings:'Active listings',stat_sellers:'Verified sellers',stat_countries:'Countries',stat_today:'New today',recent_title:'Latest <em>listings</em>',cat_section_title:'Browse by <em>category</em>',see_all:'View all listings →',see_pricing:'View pricing →',load_more:'Load more',trust_title:'Why <em>Aircraft2Sell</em>?',steps_title:'How it <em>works</em>',alert_title:'Never miss your <em>dream</em> aircraft',alert_sub:'Create a free alert and receive an email the moment a matching aircraft is listed.',alert_placeholder:'Your email address…',alert_btn:'Create alert',alert_note:'Free · No spam · Cancel anytime',seller_verified:'Verified seller',modal_model:'Make / Model',modal_year:'Year',modal_hours:'Total hours',modal_location:'Location',modal_reg:'Registration',modal_docs:'Documents',modal_contact:'Contact seller',modal_save:'Save listing',badge_new:'New',badge_urgent:'Urgent',badge_premium:'Premium',badge_sold:'Sold',feat_label:'⭐ Featured',feat_pax:'8 passengers',footer_desc:'The leading European marketplace for buying and selling aircraft.',footer_col1:'Browse',footer_col2:'Sell',footer_col3:'Company',footer_sold:'Recently sold',footer_guide:"Buyer's guide",footer_about:'About us',nav_currency:'Devises',nav_currency:'Devises',nav_contact:'Contact',footer_contact:'Contact',footer_legal:'Legal notice',footer_privacy:'Privacy',footer_copy:'© 2026 Aircraft2Sell — All rights reserved',toast_soon:'Coming soon!',toast_search:'Searching…',toast_loading:'Loading…',toast_sent:'Message sent!',toast_saved:'Saved to favourites!',toast_alert:"Alert created! We'll email you when a match appears.",toast_fav_add:'Added to favourites!',toast_fav_remove:'Removed from favourites',steps:[{num:'01',title:'Create your account',desc:'Sign up free in under 2 minutes.'},{num:'02',title:'Post your listing',desc:'Add photos, specs and your asking price.'},{num:'03',title:'Receive enquiries',desc:'Qualified buyers contact you directly.'},{num:'04',title:'Close the deal',desc:'Zero commission — you keep every euro.'}],empty_title:'No listings yet',empty_sub:'Be the first to list your aircraft on Aircraft2Sell.',urgency_views:' viewing',urgency_fav:' saved',urgency_new:'Listed ',
-trust_items:[{icon:'🔒',title:'Verified sellers',desc:'Every professional seller is manually verified. Identity, company and certifications checked.'},{icon:'🚫',title:'Zero commission',desc:"We take no cut on your sale. Our only revenue is from listing plans."},{icon:'🌍',title:'Countries covered',desc:'Buyers and sellers across Europe and beyond.'},{icon:'✈️',title:'Aviation specialists',desc:'Our team consists of pilots and aviation professionals.'}],
-steps:[{num:'01',title:'Create account',desc:'Sign up in 2 minutes. Email verification included.'},{num:'02',title:'Post your listing',desc:'Fill in aircraft details, upload photos, set your price.'},{num:'03',title:'Get contacted',desc:'Qualified buyers reach you via our secure messaging.'},{num:'04',title:'Close the deal',desc:'Agree terms, arrange inspection, complete transaction.'}],
-cats:[{icon:'🛩',name:'Light aircraft',count:'0 listings'},{icon:'🚁',name:'Helicopters',count:'0 listings'},{icon:'✈️',name:'Business jets',count:'0 listings'},{icon:'🌀',name:'Turboprops',count:'0 listings'},{icon:'🪂',name:'Ultralight / ULM',count:'0 listings'},{icon:'🛫',name:'Airliners',count:'0 listings'},{icon:'🔧',name:'Spare parts',count:'0 listings'},{icon:'🔍',name:'Search listings',count:'Browse all',url:'search.html',special:true},{icon:'🔍',name:'Aircraft wanted',count:'0 requests',wanted:true}],
-ticker_items:[],
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-negotiable:'Negotiable',firm:'Firm price',offers:'Offers welcome',fixed:'Fixed price',leasing:'Leasing available',wanted_section_title:'Aircraft <em>wanted</em>',wanted_sub:'Looking for a specific aircraft? Post your search and let sellers come to you.',wanted_btn:'Post a wanted ad',wanted_form_title:'Post a wanted aircraft request',wanted_cat_label:'Category',wanted_make_label:'Make / Model (if known)',wanted_make_ph:'e.g. Cessna 172, Piper PA-28…',wanted_budget_label:'Maximum budget (€)',wanted_budget_ph:'e.g. 150000',wanted_year_label:'Max year',wanted_hours_label:'Max total hours',wanted_loc_label:'Preferred location',wanted_loc_ph:'e.g. France, Europe…',wanted_desc_label:'Additional details',wanted_desc_ph:'Describe what you are looking for — avionics, condition, IFR, RVSM…',wanted_submit:'Submit my request',wanted_cancel:'Cancel',wanted_count:'0 requests',wanted_toast:'Request submitted! Sellers will be notified.',wanted_login_required:'An account is required to post a wanted request',badge_sold2:'Sold'},
-fr:{nav_listings:'Annonces',nav_categories:'Catégories',nav_pricing:'Tarifs',nav_alerts:'Alertes',btnLogin:'Connexion',btn_post:'Déposer une annonce',hero_eyebrow:"La 1ère marketplace aéronautique d'Europe",hero_h1:'Trouvez<br>votre <em>avion</em><br>idéal',hero_sub:"Des monoplaces d'entraînement aux jets d'affaires — achetez et vendez sans commission.",search_placeholder:'Marque, modèle ou type…',budget_placeholder:'Budget max',search_btn:'Rechercher',cat_all:'Toutes catégories',cat_light:'Avions légers',cat_jet:"Jets d'affaires",cat_turbo:'Turbopropulseurs',cat_heli:'Hélicoptères',cat_ulm:'ULM',cat_airliner:'Avions de ligne',filter_all:'Tous',scroll_hint:'Défiler pour explorer',stat_listings:'Annonces actives',stat_sellers:'Vendeurs vérifiés',stat_countries:'Pays',stat_today:"Nouvelles aujourd'hui",recent_title:'Dernières <em>annonces</em>',cat_section_title:'Explorer par <em>catégorie</em>',see_all:'Voir toutes les annonces →',see_pricing:'Voir les tarifs →',load_more:"Voir plus d'annonces",trust_title:'Pourquoi <em>Aircraft2Sell</em> ?',steps_title:'Comment ça <em>marche</em> ?',alert_title:'Ne ratez plus votre <em>avion idéal</em>',alert_sub:"Créez une alerte gratuite et recevez un email dès qu'une annonce correspond à vos critères.",alert_placeholder:'Votre adresse email…',alert_btn:'Créer une alerte',alert_note:'Gratuit · Sans spam · Désabonnement facile',seller_verified:'Vendeur vérifié',modal_model:'Marque / Modèle',modal_year:'Année',modal_hours:'Heures totales',modal_location:'Localisation',modal_reg:'Matricule',modal_docs:'Documents',modal_contact:'Contacter le vendeur',modal_save:'Sauvegarder',badge_new:'Nouveau',badge_urgent:'Urgent',badge_premium:'Premium',badge_sold:'Vendu',feat_label:'⭐ À la une',feat_pax:'8 passagers',footer_desc:"Le leader européen de la vente d'aéronefs entre particuliers et professionnels.",footer_col1:'Explorer',footer_col2:'Vendre',footer_col3:'Entreprise',footer_sold:'Récemment vendus',footer_guide:'Guide acheteur',footer_about:'À propos',nav_currency:'Devises',nav_contact:'Contact',footer_contact:'Contact',footer_legal:'Mentions légales',footer_privacy:'Confidentialité',footer_copy:'© 2026 Aircraft2Sell — Tous droits réservés',toast_soon:'Bientôt disponible !',toast_search:'Recherche en cours…',toast_loading:'Chargement…',toast_sent:'Message envoyé !',toast_saved:'Annonce sauvegardée !',toast_alert:"Alerte créée ! Vous serez notifié dès qu'une annonce correspond.",toast_fav_add:'Ajouté aux favoris !',toast_fav_remove:'Retiré des favoris',steps:[{num:'01',title:'Créez votre compte',desc:'Inscription gratuite en moins de 2 minutes.'},{num:'02',title:'Publiez votre annonce',desc:'Ajoutez photos, specs et votre prix.'},{num:'03',title:'Recevez des demandes',desc:'Les acheteurs qualifiés vous contactent directement.'},{num:'04',title:'Concluez la vente',desc:'Zéro commission — vous gardez chaque euro.'}],empty_title:'Aucune annonce pour le moment',empty_sub:'Soyez le premier à publier votre avion sur Aircraft2Sell.',urgency_views:' consultent',urgency_fav:' favoris',urgency_new:'Publiée ',
-trust_items:[{icon:'🔒',title:'Vendeurs vérifiés',desc:'Chaque professionnel est vérifié manuellement. Identité, entreprise et certifications contrôlés.'},{icon:'🚫',title:'Zéro commission',desc:"Nous ne prélevons aucune commission sur votre vente."},{icon:'🌍',title:'Pays couverts',desc:"Acheteurs et vendeurs dans toute l'Europe et au-delà."},{icon:'✈️',title:'Spécialistes aviation',desc:'Notre équipe est composée de pilotes et de professionnels de l\'aviation.'}],
-steps:[{num:'01',title:'Créez votre compte',desc:'Inscription en 2 minutes. Vérification par email incluse.'},{num:'02',title:'Publiez votre annonce',desc:'Renseignez les détails, ajoutez vos photos, fixez votre prix.'},{num:'03',title:'Recevez des contacts',desc:'Les acheteurs qualifiés vous contactent via notre messagerie sécurisée.'},{num:'04',title:'Finalisez la vente',desc:"Convenez des conditions, organisez la visite, concluez la transaction."}],
-cats:[{icon:'🛩',name:'Avions légers',count:'0 annonce'},{icon:'🚁',name:'Hélicoptères',count:'0 annonce'},{icon:'✈️',name:"Jets d'affaires",count:'0 annonce'},{icon:'🌀',name:'Turbopropulseurs',count:'0 annonce'},{icon:'🪂',name:'ULM',count:'0 annonce'},{icon:'🛫',name:'Avions de ligne',count:'0 annonce'},{icon:'🔧',name:'Pièces détachées',count:'0 annonce'},{icon:'🔍',name:'Rechercher une annonce',count:'Parcourir tout',url:'search.html',special:true},{icon:'🔍',name:'Avions recherchés',count:'0 demande',wanted:true}],
-ticker_items:[],
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-desc_:"",
-negotiable:'Prix négociable',firm:'Prix ferme',offers:'Offres bienvenues',fixed:'Prix fixe',leasing:'Leasing possible',wanted_section_title:'Avions <em>recherchés</em>',wanted_sub:"Vous cherchez un avion précis ? Publiez votre demande et laissez les vendeurs venir à vous.",wanted_btn:'Publier une demande',wanted_form_title:"Publier une demande d'achat",wanted_cat_label:'Catégorie',wanted_make_label:'Marque / Modèle (si connu)',wanted_make_ph:'ex : Cessna 172, Piper PA-28…',wanted_budget_label:'Budget maximum (€)',wanted_budget_ph:'ex : 150000',wanted_year_label:'Année max.',wanted_hours_label:'Heures max.',wanted_loc_label:'Localisation souhaitée',wanted_loc_ph:'ex : France, Europe…',wanted_desc_label:'Informations complémentaires',wanted_desc_ph:"Décrivez ce que vous recherchez — avionique, état, IFR, RVSM…",wanted_submit:'Envoyer ma demande',wanted_cancel:'Annuler',wanted_count:'0 demande',wanted_toast:'Demande envoyée ! Les vendeurs seront notifiés.',wanted_login_required:'Un compte est requis pour publier une demande de recherche',badge_sold2:'Vendu'},
-de:{nav_listings:'Anzeigen',nav_categories:'Kategorien',nav_pricing:'Preise',nav_alerts:'Benachrichtigungen',btnLogin:'Anmelden',btn_post:'Anzeige aufgeben',hero_eyebrow:'Europas Nr. 1 Flugzeugmarktplatz',hero_h1:'Finden Sie<br>Ihr <em>perfektes</em><br>Flugzeug',hero_sub:'Von Trainingsflugzeugen bis Business-Jets — kaufen und verkaufen ohne Provision.',search_placeholder:'Marke, Modell oder Typ…',budget_placeholder:'Max. Budget',search_btn:'Suchen',cat_all:'Alle Kategorien',cat_light:'Leichtflugzeuge',cat_jet:'Geschäftsreisejets',cat_turbo:'Turboprops',cat_heli:'Hubschrauber',cat_ulm:'Ultraleicht / ULM',cat_airliner:'Verkehrsflugzeuge',filter_all:'Alle',scroll_hint:'Scrollen',stat_listings:'Aktive Anzeigen',stat_sellers:'Verifizierte Verkäufer',stat_countries:'Länder',stat_today:'Neu heute',recent_title:'Neueste <em>Anzeigen</em>',cat_section_title:'Nach <em>Kategorie</em>',see_all:'Alle ansehen →',see_pricing:'Preise →',load_more:'Mehr laden',trust_title:'Warum <em>Aircraft2Sell</em>?',steps_title:'So <em>funktioniert</em> es',alert_title:'Nie Ihr <em>Traumflugzeug</em> verpassen',alert_sub:'Erstellen Sie einen Alert und erhalten Sie eine E-Mail, sobald ein passendes Flugzeug erscheint.',alert_placeholder:'Ihre E-Mail…',alert_btn:'Alert erstellen',alert_note:'Kostenlos · Kein Spam · Jederzeit kündbar',seller_verified:'Verifizierter Verkäufer',modal_model:'Marke / Modell',modal_year:'Jahr',modal_hours:'Gesamtstunden',modal_location:'Standort',modal_reg:'Kennzeichen',modal_docs:'Dokumente',modal_contact:'Verkäufer kontaktieren',modal_save:'Speichern',badge_new:'Neu',badge_urgent:'Dringend',badge_premium:'Premium',badge_sold:'Verkauft',feat_label:'⭐ Empfohlen',feat_pax:'8 Passagiere',footer_desc:'Der führende europäische Marktplatz für Flugzeuge.',footer_col1:'Entdecken',footer_col2:'Verkaufen',footer_col3:'Unternehmen',footer_sold:'Kürzlich verkauft',footer_guide:'Käuferratgeber',footer_about:'Über uns',nav_currency:'Devisen',nav_contact:'Kontakt',footer_contact:'Kontakt',footer_legal:'Impressum',footer_privacy:'Datenschutz',footer_copy:'© 2026 Aircraft2Sell — Alle Rechte vorbehalten',toast_soon:'Bald verfügbar!',toast_search:'Suche…',toast_loading:'Laden…',toast_sent:'Gesendet!',toast_saved:'Gespeichert!',toast_alert:'Alert erstellt!',toast_fav_add:'Favorit!',toast_fav_remove:'Entfernt',steps:[{num:'01',title:'Konto erstellen',desc:'Kostenlose Anmeldung in unter 2 Minuten.'},{num:'02',title:'Inserat aufgeben',desc:'Fotos, Spezifikationen und Preis hinzufügen.'},{num:'03',title:'Anfragen erhalten',desc:'Qualifizierte Käufer kontaktieren Sie direkt.'},{num:'04',title:'Abschluss erzielen',desc:'Null Provision — Sie behalten jeden Euro.'}],empty_title:'Noch keine Anzeigen',empty_sub:'Seien Sie der Erste, der ein Flugzeug auf Aircraft2Sell inseriert.',urgency_views:' ansehen',urgency_fav:' gespeichert',urgency_new:'Eingestellt ',
-trust_items:[{icon:'🔒',title:'Verifizierte Verkäufer',desc:'Jeder professionelle Verkäufer wird manuell überprüft.'},{icon:'🚫',title:'Keine Provision',desc:'Wir erheben keine Provision auf Ihren Verkauf.'},{icon:'🌍',title:'Länder',desc:'Käufer und Verkäufer in ganz Europa.'},{icon:'✈️',title:'Luftfahrt-Experten',desc:'Unser Team besteht aus Piloten und Fachleuten.'}],
-steps:[{num:'01',title:'Konto erstellen',desc:'In 2 Minuten. E-Mail-Verifizierung inklusive.'},{num:'02',title:'Inserat aufgeben',desc:'Daten eingeben, Fotos hochladen, Preis festlegen.'},{num:'03',title:'Kontakte erhalten',desc:'Qualifizierte Käufer kontaktieren Sie direkt.'},{num:'04',title:'Abschluss',desc:'Konditionen vereinbaren und Transaktion abschließen.'}],
-cats:[{icon:'🛩',name:'Leichtflugzeuge',count:'0 Anzeige'},{icon:'🚁',name:'Hubschrauber',count:'0 Anzeige'},{icon:'✈️',name:'Geschäftsreisejets',count:'0 Anzeige'},{icon:'🌀',name:'Turboprops',count:'0 Anzeige'},{icon:'🪂',name:'Ultraleicht',count:'0 Anzeige'},{icon:'🛫',name:'Verkehrsflugzeuge',count:'0 Anzeige'},{icon:'🔧',name:'Ersatzteile',count:'0 Anzeige'},{icon:'🔍',name:'Inserat suchen',count:'Alle durchsuchen',url:'search.html',special:true},{icon:'🔍',name:'Flugzeug gesucht',count:'0 Anfrage',wanted:true}],
-ticker_items:[],
-desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
-negotiable:'Verhandelbar',firm:'Fester Preis',offers:'Angebote willkommen',fixed:'Festpreis',leasing:'Leasing möglich',wanted_section_title:'Flugzeug <em>gesucht</em>',wanted_sub:'Suchen Sie ein bestimmtes Flugzeug? Veröffentlichen Sie Ihre Anfrage und lassen Sie Verkäufer auf Sie zukommen.',wanted_btn:'Gesuch aufgeben',wanted_form_title:'Flugzeug-Gesuch aufgeben',wanted_cat_label:'Kategorie',wanted_make_label:'Marke / Modell (falls bekannt)',wanted_make_ph:'z.B. Cessna 172, Piper PA-28…',wanted_budget_label:'Maximales Budget (€)',wanted_budget_ph:'z.B. 150000',wanted_year_label:'Max. Baujahr',wanted_hours_label:'Max. Gesamtstunden',wanted_loc_label:'Bevorzugter Standort',wanted_loc_ph:'z.B. Deutschland, Europa…',wanted_desc_label:'Zusätzliche Details',wanted_desc_ph:'Beschreiben Sie Ihre Anforderungen — Avionik, Zustand, IFR, RVSM…',wanted_submit:'Gesuch einreichen',wanted_cancel:'Abbrechen',wanted_count:'0 Anfrage',wanted_toast:'Gesuch eingereicht! Verkäufer werden benachrichtigt.',wanted_login_required:'Ein Konto ist erforderlich, um ein Gesuch aufzugeben',badge_sold2:'Verkauft'},
-es:{nav_listings:'Anuncios',nav_categories:'Categorías',nav_pricing:'Tarifas',nav_alerts:'Alertas',btnLogin:'Iniciar sesión',btn_post:'Publicar anuncio',hero_eyebrow:'El marketplace aeronáutico nº 1 en Europa',hero_h1:'Encuentra<br>tu <em>avión</em><br>ideal',hero_sub:'Desde monomotores hasta jets ejecutivos — compra y vende sin comisión.',search_placeholder:'Marca, modelo o tipo…',budget_placeholder:'Presupuesto máx.',search_btn:'Buscar',cat_all:'Todas las categorías',cat_light:'Aviones ligeros',cat_jet:'Jets ejecutivos',cat_turbo:'Turbohélices',cat_heli:'Helicópteros',cat_ulm:'Ultraligero / ULM',cat_airliner:'Aeronaves comerciales',filter_all:'Todos',scroll_hint:'Desplázate',stat_listings:'Anuncios activos',stat_sellers:'Vendedores verificados',stat_countries:'Países',stat_today:'Nuevos hoy',recent_title:'Últimos <em>anuncios</em>',cat_section_title:'Explorar por <em>categoría</em>',see_all:'Ver todos →',see_pricing:'Ver tarifas →',load_more:'Ver más',trust_title:'¿Por qué <em>Aircraft2Sell</em>?',steps_title:'¿Cómo <em>funciona</em>?',alert_title:'No te pierdas tu <em>avión ideal</em>',alert_sub:'Crea una alerta gratuita y recibe un email cuando aparezca un avión con tus criterios.',alert_placeholder:'Tu email…',alert_btn:'Crear alerta',alert_note:'Gratis · Sin spam · Cancela cuando quieras',seller_verified:'Vendedor verificado',modal_model:'Marca / Modelo',modal_year:'Año',modal_hours:'Horas totales',modal_location:'Ubicación',modal_reg:'Matrícula',modal_docs:'Documentación',modal_contact:'Contactar vendedor',modal_save:'Guardar',badge_new:'Nuevo',badge_urgent:'Urgente',badge_premium:'Premium',badge_sold:'Vendido',feat_label:'⭐ Destacado',feat_pax:'8 pasajeros',footer_desc:'El marketplace europeo líder para compra y venta de aeronaves.',footer_col1:'Explorar',footer_col2:'Vender',footer_col3:'Empresa',footer_sold:'Vendidos recientemente',footer_guide:'Guía del comprador',footer_about:'Acerca de',nav_currency:'Divisas',nav_contact:'Contacto',footer_contact:'Contacto',footer_legal:'Aviso legal',footer_privacy:'Privacidad',footer_copy:'© 2026 Aircraft2Sell — Todos los derechos reservados',toast_soon:'¡Próximamente!',toast_search:'Buscando…',toast_loading:'Cargando…',toast_sent:'¡Mensaje enviado!',toast_saved:'¡Guardado!',toast_alert:'¡Alerta creada!',toast_fav_add:'¡Favorito!',toast_fav_remove:'Eliminado',steps:[{num:'01',title:'Crea tu cuenta',desc:'Regístrate gratis en menos de 2 minutos.'},{num:'02',title:'Publica tu anuncio',desc:'Añade fotos, especificaciones y precio.'},{num:'03',title:'Recibe consultas',desc:'Los compradores te contactan directamente.'},{num:'04',title:'Cierra el trato',desc:'Cero comisión — te quedas con todo.'}],empty_title:'Todavía no hay anuncios',empty_sub:'Sé el primero en publicar tu aeronave en Aircraft2Sell.',urgency_views:' viendo',urgency_fav:' guardados',urgency_new:'Publicado ',
-trust_items:[{icon:'🔒',title:'Vendedores verificados',desc:'Cada vendedor profesional es verificado manualmente.'},{icon:'🚫',title:'Sin comisión',desc:'Nunca cobramos comisión sobre tu venta.'},{icon:'🌍',title:'Países',desc:'Compradores y vendedores en toda Europa.'},{icon:'✈️',title:'Especialistas',desc:'Nuestro equipo está formado por pilotos y profesionales.'}],
-steps:[{num:'01',title:'Crea tu cuenta',desc:'Regístrate en 2 minutos.'},{num:'02',title:'Publica tu anuncio',desc:'Datos, fotos, precio.'},{num:'03',title:'Recibe contactos',desc:'Compradores serios te escriben.'},{num:'04',title:'Cierra la venta',desc:'Acuerda términos y firma.'}],
-cats:[{icon:'🛩',name:'Aviones ligeros',count:'0 anuncios'},{icon:'🚁',name:'Helicópteros',count:'0 anuncios'},{icon:'✈️',name:'Jets ejecutivos',count:'0 anuncios'},{icon:'🌀',name:'Turbohélices',count:'0 anuncios'},{icon:'🪂',name:'Ultraligero',count:'0 anuncios'},{icon:'🛫',name:'Aeronaves comerciales',count:'0 anuncios'},{icon:'🔧',name:'Repuestos',count:'0 anuncios'},{icon:'🔍',name:'Buscar anuncio',count:'Ver todo',url:'search.html',special:true},{icon:'🔍',name:'Aviones buscados',count:'0 solicitud',wanted:true}],
-ticker_items:[],
-desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
-negotiable:'Precio negociable',firm:'Precio fijo',offers:'Se aceptan ofertas',fixed:'Precio fijo',leasing:'Leasing disponible',wanted_section_title:'Aviones <em>buscados</em>',wanted_sub:'¿Buscas una aeronave específica? Publica tu búsqueda y deja que los vendedores vengan a ti.',wanted_btn:'Publicar búsqueda',wanted_form_title:'Publicar búsqueda de aeronave',wanted_cat_label:'Categoría',wanted_make_label:'Marca / Modelo (si se conoce)',wanted_make_ph:'ej: Cessna 172, Piper PA-28…',wanted_budget_label:'Presupuesto máximo (€)',wanted_budget_ph:'ej: 150000',wanted_year_label:'Año máx.',wanted_hours_label:'Horas máx.',wanted_loc_label:'Ubicación preferida',wanted_loc_ph:'ej: España, Europa…',wanted_desc_label:'Detalles adicionales',wanted_desc_ph:'Describe lo que buscas — aviónica, estado, IFR, RVSM…',wanted_submit:'Enviar mi búsqueda',wanted_cancel:'Cancelar',wanted_count:'0 solicitud',wanted_toast:'¡Búsqueda enviada! Los vendedores serán notificados.',wanted_login_required:'Se requiere una cuenta para publicar una búsqueda',badge_sold2:'Vendido'},
-zh:{nav_listings:'列表',nav_categories:'分类',nav_pricing:'定价',nav_alerts:'提醒',btnLogin:'登录',btn_post:'发布广告',hero_eyebrow:'欧洲第一航空器交易平台',hero_h1:'寻找您的<br><em>理想</em><br>飞机',hero_sub:'从训练单发机到商务喷气机 — 零佣金买卖。',search_placeholder:'品牌、型号或类型…',budget_placeholder:'最高预算',search_btn:'搜索',cat_all:'全部类别',cat_light:'轻型飞机',cat_jet:'公务机',cat_turbo:'涡桨飞机',cat_heli:'直升机',cat_ulm:'超轻型飞机',cat_airliner:'客机',filter_all:'全部',scroll_hint:'滚动探索',stat_listings:'在售广告',stat_sellers:'认证卖家',stat_countries:'覆盖国家',stat_today:'今日新增',recent_title:'最新<em>广告</em>',cat_section_title:'按<em>类别</em>浏览',see_all:'查看全部 →',see_pricing:'查看定价 →',load_more:'加载更多',trust_title:'为什么选择<em>Aircraft2Sell</em>？',steps_title:'如何<em>运作</em>',alert_title:'不错过您的<em>理想飞机</em>',alert_sub:'创建免费提醒，一旦有匹配飞机上架立即收到邮件。',alert_placeholder:'您的邮箱…',alert_btn:'创建提醒',alert_note:'免费 · 无垃圾邮件 · 随时取消',seller_verified:'认证卖家',modal_model:'品牌 / 型号',modal_year:'年份',modal_hours:'总飞行时间',modal_location:'所在地',modal_reg:'注册号',modal_docs:'文件',modal_contact:'联系卖家',modal_save:'收藏广告',badge_new:'新发布',badge_urgent:'紧急',badge_premium:'高端',badge_sold:'已售',feat_label:'⭐ 精选',feat_pax:'8名乘客',footer_desc:'欧洲领先的飞机买卖交易平台，深受飞行员和航空专业人士信赖。',footer_col1:'浏览',footer_col2:'出售',footer_col3:'公司',footer_sold:'近期成交',footer_guide:'买家指南',footer_about:'关于我们',nav_currency:'外汇',nav_contact:'联系我们',footer_contact:'联系我们',footer_legal:'法律声明',footer_privacy:'隐私政策',footer_copy:'© 2026 Aircraft2Sell — 版权所有',toast_soon:'功能即将上线！',toast_search:'搜索中…',toast_loading:'加载中…',toast_sent:'消息已发送！',toast_saved:'已收藏！',toast_alert:'提醒已创建！',toast_fav_add:'已添加！',toast_fav_remove:'已移除',steps:[{num:'01',title:'创建账户',desc:'免费注册，不到2分钟。'},{num:'02',title:'发布广告',desc:'添加照片、规格和要价。'},{num:'03',title:'接收询盘',desc:'合格买家直接联系您。'},{num:'04',title:'完成交易',desc:'零佣金——每一分钱归您所有。'}],empty_title:'暂无广告',empty_sub:'成为第一个在Aircraft2Sell发布飞机广告的卖家。',urgency_views:'人查看',urgency_fav:'次收藏',urgency_new:'发布于',
-trust_items:[{icon:'🔒',title:'认证卖家',desc:'每位专业卖家均经过人工审核。'},{icon:'🚫',title:'零佣金',desc:'我们从不在您的成交中收取任何佣金。'},{icon:'🌍',title:'覆盖多国',desc:'欧洲及周边地区买卖双方。'},{icon:'✈️',title:'航空专业团队',desc:'由飞行员和航空专业人士组成的团队。'}],
-steps:[{num:'01',title:'创建账户',desc:'2分钟完成注册。'},{num:'02',title:'发布广告',desc:'填写信息，上传照片，设定价格。'},{num:'03',title:'接收联系',desc:'合格买家通过安全消息联系您。'},{num:'04',title:'完成交易',desc:'商定条款，安排检验，成交。'}],
-cats:[{icon:'🛩',name:'轻型飞机',count:'0条'},{icon:'🚁',name:'直升机',count:'0条'},{icon:'✈️',name:'公务机',count:'0条'},{icon:'🌀',name:'涡桨飞机',count:'0条'},{icon:'🪂',name:'超轻型',count:'0条'},{icon:'🛫',name:'客机',count:'0条'},{icon:'🔧',name:'备用零件',count:'0条'},{icon:'🔍',name:'搜索广告',count:'浏览全部',url:'search.html',special:true},{icon:'🔍',name:'求购飞机',count:'0条',wanted:true}],
-ticker_items:[],
-desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',desc_:'',
-negotiable:'价格可议',firm:'定价出售',offers:'欢迎出价',fixed:'固定价格',leasing:'可融资租赁',wanted_section_title:'求购<em>飞机</em>',wanted_sub:'正在寻找特定飞机？发布您的求购信息，让卖家主动联系您。',wanted_btn:'发布求购信息',wanted_form_title:'发布飞机求购信息',wanted_cat_label:'类别',wanted_make_label:'品牌/型号（如已知）',wanted_make_ph:'例如：赛斯纳172、派珀PA-28…',wanted_budget_label:'最高预算（€）',wanted_budget_ph:'例如：150000',wanted_year_label:'最大年份',wanted_hours_label:'最大飞行时间',wanted_loc_label:'首选地点',wanted_loc_ph:'例如：法国、欧洲…',wanted_desc_label:'其他要求',wanted_desc_ph:'描述您的需求 — 航电、状态、IFR、RVSM…',wanted_submit:'提交求购信息',wanted_cancel:'取消',wanted_count:'0条',wanted_toast:'求购信息已提交！卖家将收到通知。',badge_sold2:'已售'}
-};
-
-const LISTINGS = [];
-
-let lang='fr';
-function t(k){return(T[lang]&&T[lang][k])||(T.en[k])||k}
-
-function renderTicker(){
-  const items=t('ticker_items');
-  if(!items||!items.length){document.getElementById('ticker').innerHTML='<div class="ticker-item"><div class="ticker-dot"></div><span>No listings yet — be the first to post!</span></div>';return;}
-  const dbl=[...items,...items];
-  document.getElementById('ticker').innerHTML=dbl.map(i=>`<div class="ticker-item"><div class="ticker-dot"></div><span>${i}</span></div>`).join('');
-}
-
-function renderListings(){
-  const g=document.getElementById('listingsGrid');
-  if(!g) return;
-  if(LISTINGS.length === 0){
-    // Show skeleton loaders while waiting for DB
-    g.innerHTML = Array(6).fill(0).map(()=>`
-      <div class="card" style="pointer-events:none">
-        <div class="card-img" style="background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite"></div>
-        <div class="card-body" style="gap:.6rem">
-          <div style="height:10px;width:60%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-          <div style="height:14px;width:85%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-          <div style="height:10px;width:50%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-          <div style="margin-top:auto;padding-top:.8rem;border-top:1px solid var(--border);display:flex;justify-content:space-between">
-            <div style="height:20px;width:35%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px"></div>
-            <div style="height:10px;width:20%;background:linear-gradient(90deg,#0d1e38 25%,#1a2d4a 50%,#0d1e38 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:2px;align-self:center"></div>
-          </div>
-        </div>
-      </div>`).join('');
-    /* SUPABASE: replace skeletons with real data:
-       const { data } = await supabase.from('listings').select('*').eq('status','approved').order('created_at',{ascending:false}).limit(6);
-       LISTINGS.push(...data); renderListings(); */
-    return;
-  }
-  g.innerHTML='';
-  LISTINGS.forEach(l=>{
-    if(l.featured){ const d=document.createElement('div'); d.className='featured-banner'; d.onclick=()=>openModal(l.id); d.innerHTML=`<div class="feat-label">${t('feat_label')}</div><div class="feat-info"><div class="card-cat">${t(l.catDisp)}</div><div class="feat-title">${l.title}</div><div class="feat-specs"><span class="spec">📅 ${l.year} · ${l.hours}</span><span class="spec">🛫 ${l.loc}</span><span class="spec">🪑 ${t('feat_pax')}</span></div></div><div class="feat-price">${l.price}</div>`; g.appendChild(d); return; }
-    const c=document.createElement('div'); c.className='card'; c.onclick=()=>openModal(l.id);
-    c.innerHTML=`<div class="card-img"><div class="plane-bg">${l.icon}</div>${l.badge?`<span class="badge ${l.badge}">${t(l.badgeKey)}</span>`:''}<button class="fav${l.liked?' liked':''}" onclick="event.stopPropagation();toggleFav(this)">${l.liked?'♥':'♡'}</button><div class="urgency"><span class="urgency-dot"></span>${l.views}${t('urgency_views')} · ${l.favs}${t('urgency_fav')}</div></div><div class="card-body"><div class="card-cat">${t(l.catDisp)}</div><div class="card-title">${l.title}</div><div class="card-specs"><span class="spec">📅 ${l.year}</span><span class="spec">⏱ ${l.hours}</span></div><div class="trust-chip">✓ ${t('seller_verified')}</div><div class="card-ft"><div><div class="price">${l.price}</div><div class="price-sub">${t(l.priceSub)}</div></div><div class="loc">📍 ${l.loc}</div></div></div>`;
-    g.appendChild(c);
-  });
-}
-
-function renderCats(){
-  document.getElementById('catGrid').innerHTML=t('cats').map(c=>{
-    if(c.wanted){
-      return `<div class="cat-card cat-wanted" onclick="openWantedForm()">
-        <div class="cat-icon">${c.icon}</div>
-        <div class="cat-name" style="color:var(--accent)">${c.name}</div>
-        <div class="cat-count">${c.count}</div>
-      </div>`;
-    }
-    if(c.special){
-      return `<div class="cat-card" style="border-color:rgba(232,160,32,.35);background:rgba(232,160,32,.05)" onclick="window.location.href='search.html'">
-        <div class="cat-icon">${c.icon}</div>
-        <div class="cat-name" style="color:var(--accent)">${c.name}</div>
-        <div class="cat-count">${c.count}</div>
-      </div>`;
-    }
-    if(c.special){
-      return `<div class="cat-card" style="border-color:rgba(232,160,32,.35);background:rgba(232,160,32,.05);cursor:pointer" onclick="window.location.href='search.html'">
-        <div class="cat-icon">${c.icon}</div>
-        <div class="cat-name" style="color:var(--accent)">${c.name}</div>
-        <div class="cat-count">${c.count}</div>
-      </div>`;
-    }
-    return `<div class="cat-card" onclick="filterByCategory('${c.name}')">
-      <div class="cat-icon">${c.icon}</div>
-      <div class="cat-name">${c.name}</div>
-      <div class="cat-count">${c.count}</div>
-    </div>`;
-  }).join('');
-}
-
-function filterByCategory(name){
-  window.location.href='search.html?cat='+encodeURIComponent(name);
-}
-
-function openWantedForm(){
-  /* ─── AUTH CHECK ──────────────────────────────────────────────
-     In production with Supabase, replace this with:
-     const { data: { user } } = await supabase.auth.getUser();
-     const isLoggedIn = !!user;
-     ─────────────────────────────────────────────────────────── */
-  const isLoggedIn = false; // set to true after Supabase auth check
-
-  if(!isLoggedIn){
-    // Not logged in → redirect to login with return URL and message
-    window.location.href='login.html?redirect=dashboard.html%23wanted&msg=wanted';
-    return;
-  }
-
-  // Logged in → redirect to dashboard wanted section
-  window.location.href='dashboard.html#wanted';
-}
-
-function renderTrust(){
-  document.getElementById('trustGrid').innerHTML=t('trust_items').map(i=>
-    `<div class="trust-item"><div class="t-icon">${i.icon}</div><div><div class="t-title">${i.title}</div><div class="t-desc">${i.desc}</div></div></div>`).join('');
-}
-
-function renderSteps(){
-  const steps=t('steps');
-  if(!steps||!Array.isArray(steps)) return;
-  document.getElementById('stepsGrid').innerHTML=steps.map((s,i)=>
-    `<div class="step">
-      <div class="step-num">${s.num}</div>
-      <div class="step-title">${s.title}</div>
-      <div class="step-desc">${s.desc}</div>
-      ${i<steps.length-1?'<div style="position:absolute;top:50%;right:-1px;transform:translateY(-50%);width:0;height:0;border-top:12px solid transparent;border-bottom:12px solid transparent;border-left:10px solid var(--border);z-index:1"></div>':''}
-    </div>`).join('');
-}
-
-function openModal(id){
-  const l=LISTINGS.find(x=>x.id===id);if(!l)return;
-  document.getElementById('mTitle').textContent=l.title;
-  document.getElementById('mImg').innerHTML=`<span style="font-size:8rem;opacity:.1">${l.icon}</span><div class="photo-dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>`;
-  document.getElementById('dModel').textContent=l.title;
-  document.getElementById('dYear').textContent=l.year;
-  document.getElementById('dHours').textContent=l.hours;
-  document.getElementById('dLoc').textContent=l.loc;
-  document.getElementById('dReg').textContent=l.reg;
-  document.getElementById('dDoc').textContent=l.doc;
-  document.getElementById('mDesc').textContent=t(l.desc);
-  document.getElementById('mSeller').textContent=l.seller;
-  const urg=document.getElementById('mUrg');
-  if(l.id!=='c6'){
-    urg.style.display='flex';
-    urg.innerHTML=`<div class="urg-item">👁 <strong>${l.views}</strong> ${t('urgency_views')}</div><div class="urg-item">♡ <strong>${l.favs}</strong> ${t('urgency_fav')}</div><div class="urg-item">🕐 ${t('urgency_new')}${l.daysAgo===0?'today':l.daysAgo+'d ago'}</div>`;
-  }else{urg.style.display='none';}
-  document.querySelectorAll('#modal [data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'));});
-  document.getElementById('modal').classList.add('open');
-  document.body.style.overflow='hidden';
-}
-function closeModal(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';}
-function closeOut(e){if(e.target===document.getElementById('modal'))closeModal();}
-
-const BUDGET_SYMS={'EUR':'€','USD':'$','GBP':'£','CHF':'Fr','CAD':'CA$','AUD':'AU$','JPY':'¥','CNY':'¥','HKD':'HK$','SEK':'kr','NOK':'kr','DKK':'kr','PLN':'zł','CZK':'Kč','HUF':'Ft','TRY':'₺','BRL':'R$','AED':'د.إ','INR':'₹','SGD':'S$','NZD':'NZ$','ZAR':'R','MXN':'MX$'};
-function updateBudgetCurr(){
-  const sel=document.getElementById('budgetCurr');
-  const inp=document.getElementById('budgetInput');
-  if(!sel||!inp)return;
-  const sym=BUDGET_SYMS[sel.value]||sel.value;
-  const baseLabel=t('budget_placeholder')||'Budget max';
-  inp.placeholder=baseLabel+' ('+sym+')';
-}
-function qFilter(b){document.querySelectorAll('.qf').forEach(x=>x.classList.remove('active'));b.classList.add('active');}
-function toggleFav(btn){btn.classList.toggle('liked');btn.textContent=btn.classList.contains('liked')?'♥':'♡';showToast(t(btn.classList.contains('liked')?'toast_fav_add':'toast_fav_remove'));}
-function submitAlert(){const v=document.getElementById('alertEmail').value;if(v&&v.includes('@')){showToast(t('toast_alert'));document.getElementById('alertEmail').value='';}else showToast('⚠ Please enter a valid email');}
-let tt;
-function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),3000);}
-
-
-/* ─── AUTH GATE ─────────────────────────────────────────────
-   Checks if user is logged in before navigating.
-   Replace the localStorage check with your real Supabase check:
-   const { data:{ user } } = await supabase.auth.getUser();
-   if(user) window.location.href = dest;
-   ─────────────────────────────────────────────────────────── */
-function requireLogin(e, dest){
-  e.preventDefault();
-  /* SUPABASE — replace this block:
-  supabase.auth.getUser().then(({data:{user}})=>{
-    if(user){ window.location.href = dest; }
-    else { window.location.href = 'login.html?redirect='+encodeURIComponent(dest); }
-  }); */
-  // Temporary check using localStorage (replace with Supabase above)
-  const isLoggedIn = localStorage.getItem('a2s_logged_in') === 'true';
-  if(isLoggedIn){
-    window.location.href = dest;
-  } else {
-    window.location.href = 'login.html?redirect=' + encodeURIComponent(dest);
-  }
-}
-
-
-
-/* -- CURRENCY CONVERTER v2 mini flottant -- */
-const CV_SYMS={'EUR':'€','USD':'$','GBP':'£','CHF':'Fr','CAD':'CA$','AUD':'AU$','JPY':'¥','CNY':'¥','HKD':'HK$','SEK':'kr','NOK':'kr','DKK':'kr','PLN':'zł','CZK':'Kč','HUF':'Ft','TRY':'₺','BRL':'R$','AED':'د.إ','INR':'₹','SGD':'S$','NZD':'NZ$','ZAR':'R','MXN':'MX$','RUB':'₽'};
-const CV_OPTS_FROM=`<option value="EUR">€ EUR</option><option value="USD">$ USD</option><option value="GBP">£ GBP</option><option value="CHF">Fr CHF</option><option value="CAD">CA$ CAD</option><option value="AUD">AU$ AUD</option><option value="JPY">¥ JPY</option><option value="CNY">¥ CNY</option><option value="HKD">HK$ HKD</option><option value="SEK">kr SEK</option><option value="NOK">kr NOK</option><option value="DKK">kr DKK</option><option value="PLN">zł PLN</option><option value="CZK">Kč CZK</option><option value="HUF">Ft HUF</option><option value="TRY">₺ TRY</option><option value="BRL">R$ BRL</option><option value="AED">د.إ AED</option><option value="INR">₹ INR</option><option value="SGD">S$ SGD</option><option value="NZD">NZ$ NZD</option><option value="ZAR">R ZAR</option><option value="MXN">MX$ MXN</option><option value="RUB">₽ RUB</option>`;
-const CV_OPTS_TO=`<option value="EUR">€ EUR</option><option value="USD" selected>$ USD</option><option value="GBP">£ GBP</option><option value="CHF">Fr CHF</option><option value="CAD">CA$ CAD</option><option value="AUD">AU$ AUD</option><option value="JPY">¥ JPY</option><option value="CNY">¥ CNY</option><option value="HKD">HK$ HKD</option><option value="SEK">kr SEK</option><option value="NOK">kr NOK</option><option value="DKK">kr DKK</option><option value="PLN">zł PLN</option><option value="CZK">Kč CZK</option><option value="HUF">Ft HUF</option><option value="TRY">₺ TRY</option><option value="BRL">R$ BRL</option><option value="AED">د.إ AED</option><option value="INR">₹ INR</option><option value="SGD">S$ SGD</option><option value="NZD">NZ$ NZD</option><option value="ZAR">R ZAR</option><option value="MXN">MX$ MXN</option><option value="RUB">₽ RUB</option>`;
-const CV_QUICK=`<button class="cv-qbtn" onclick="setCvTo('EUR')">EUR</button><button class="cv-qbtn" onclick="setCvTo('USD')">USD</button><button class="cv-qbtn" onclick="setCvTo('GBP')">GBP</button><button class="cv-qbtn" onclick="setCvTo('CHF')">CHF</button><button class="cv-qbtn" onclick="setCvTo('CAD')">CAD</button><button class="cv-qbtn" onclick="setCvTo('AUD')">AUD</button><button class="cv-qbtn" onclick="setCvTo('JPY')">JPY</button><button class="cv-qbtn" onclick="setCvTo('CNY')">CNY</button><button class="cv-qbtn" onclick="setCvTo('HKD')">HKD</button><button class="cv-qbtn" onclick="setCvTo('SEK')">SEK</button><button class="cv-qbtn" onclick="setCvTo('NOK')">NOK</button><button class="cv-qbtn" onclick="setCvTo('DKK')">DKK</button>`;
-let cvFrom='EUR',cvTo='USD',cvAmount=100000,cvRate=null,cvLastUpdate=null,cvBusy=false;
-
-async function cvFetch(){
-  if(cvBusy)return;
-  cvBusy=true;
-  try{
-    const r=await fetch('https://api.frankfurter.app/latest?base='+cvFrom+'&symbols='+cvTo);
-    if(!r.ok)throw 0;
-    const d=await r.json();
-    cvRate=d.rates[cvTo]||1;
-    cvLastUpdate=new Date();
-  }catch(e){cvRate=null;}
-  cvBusy=false;
-  renderCurrencyPanel();
-}
-
-function cvCompute(){
-  if(cvFrom===cvTo)return cvAmount;
-  return cvRate?Math.round(cvAmount*cvRate*100)/100:null;
-}
-
-function renderCurrencyPanel(){
-  const menu=document.getElementById('currencyDropdownMenu');
-  if(!menu)return;
-  const fSym=CV_SYMS[cvFrom]||cvFrom;
-  const tSym=CV_SYMS[cvTo]||cvTo;
-  const res=cvCompute();
-  const resStr=res!=null?(tSym+(res>1?res.toLocaleString(undefined,{maximumFractionDigits:2}):res.toFixed(5))):'...';
-  const rateStr=cvRate?'1 '+cvFrom+' = '+(Math.round(cvRate*100000)/100000)+' '+cvTo:'...';
-  const ts=cvLastUpdate?cvLastUpdate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
-  const live=lang==='fr'?'En direct':lang==='de'?'Aktuell':lang==='es'?'En vivo':lang==='zh'?'实时':'Live';
-  const title=lang==='fr'?'Convertisseur':lang==='de'?'Währungsrechner':lang==='es'?'Divisas':lang==='zh'?'货币换算':'Currency';
-  const swap=lang==='fr'?'Inverser':'Swap';
-
-  menu.innerHTML=
-    '<div class="curr-conv">'
-    +'<div class="curr-hd"><span class="curr-hd-lbl">'+title+'</span><span class="curr-live">'+live+(ts?' '+ts:'')+'</span></div>'
-    +'<div class="curr-bd">'
-    +'<div class="curr-row">'
-    +'<input class="cv-inp" type="number" value="'+cvAmount+'" min="0" oninput="cvSetAmt(this.value)">'
-    +'<select class="cv-sel" onchange="cvSetFrom(this.value)">'+CV_OPTS_FROM+'</select>'
-    +'</div>'
-    +'<div class="cv-swap" onclick="cvSwap()" title="'+swap+'">⇅</div>'
-    +'<div class="cv-result">'
-    +'<div><div class="cv-res-val">'+resStr+'</div><div class="cv-res-sub">BCE · Taux indicatif</div></div>'
-    +'<select class="cv-sel" style="border-left:1px solid var(--border);background:rgba(232,160,32,.08);color:var(--accent)" onchange="cvSetTo(this.value)">'+CV_OPTS_TO+'</select>'
-    +'</div>'
-    +'<div class="cv-rate"><span>'+rateStr+'</span></div>'
-    +'<div class="cv-quick">'+CV_QUICK+'</div>'
-    +'</div></div>';
-
-  const fs=menu.querySelector('.cv-sel');if(fs)fs.value=cvFrom;
-  menu.querySelectorAll('.cv-qbtn').forEach(b=>b.classList.toggle('cva',b.textContent===cvTo));
-  const icon=document.getElementById('currNavIcon');if(icon)icon.textContent=fSym;
-}
-
-function cvSetAmt(v){cvAmount=parseFloat(v)||0;renderCurrencyPanel();}
-function cvSetFrom(v){cvFrom=v;cvRate=null;renderCurrencyPanel();cvFetch();}
-function cvSetTo(v){cvTo=v;cvRate=null;renderCurrencyPanel();cvFetch();}
-function setCvTo(v){cvSetTo(v);}
-function cvSwap(){var t=cvFrom;cvFrom=cvTo;cvTo=t;cvRate=null;renderCurrencyPanel();cvFetch();}
-
-function toggleCurrencyDropdown(e){
-  e.preventDefault();
-  var li=document.getElementById('currencyDropdownLi');
-  li.classList.toggle('open');
-  if(li.classList.contains('open')){
-    renderCurrencyPanel();
-    if(!cvRate&&!cvBusy)cvFetch();
-    setTimeout(function(){
-      document.addEventListener('click',function close(ev){
-        if(!li.contains(ev.target)){li.classList.remove('open');document.removeEventListener('click',close);}
-      });
-    },0);
-  }
-}
-
-function toggleCatDropdown(e){
-  e.preventDefault();
-  const li = document.getElementById('navCatLi');
-  li.classList.toggle('open');
-  // Close on outside click
-  if(li.classList.contains('open')){
-    setTimeout(()=>{
-      document.addEventListener('click', function close(ev){
-        if(!li.contains(ev.target)){li.classList.remove('open');document.removeEventListener('click',close);}
-      });
-    },0);
-  }
-}
-function renderNavDropdown(){
-  var menu = document.getElementById('navCatDropdown');
-  if(!menu) return;
-  var cats = t('cats');
-  if(!cats||!Array.isArray(cats)) return;
-  var _ck = {'light aircraft':'light','avions legers':'light','avions l\u00e9gers':'light','business jets':'jet','jets d affaires':'jet','turboprops':'turbo','turbopropulseurs':'turbo','helicopters':'heli','h\u00e9licopt\u00e8res':'heli','ultralight / ulm':'ulm','ulm':'ulm','airliners':'airliner','avions de ligne':'airliner','spare parts':'parts','pi\u00e8ces d\u00e9tach\u00e9es':'parts'};
-  menu.innerHTML = cats.map(function(cat){
-    var cls = cat.special?' special':cat.wanted?' wanted':'';
-    var key = cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').trim();
-    var catCode = _ck[key] || cat.name.toLowerCase().replace(/[^a-z0-9]/g,'-');
-    var href = cat.url ? cat.url : 'search.html?cat='+catCode;
-    var extra = cat.wanted ? 'onclick="event.preventDefault();if(typeof openWantedForm===\'function\')openWantedForm()" href="#"' : '';
-    return '<a class="dropdown-item'+cls+'" href="'+href+'" '+extra+'><span class="di-icon">'+cat.icon+'</span><span class="di-name">'+cat.name+'</span><span class="di-count">'+cat.count+'</span></a>';
-  }).join('');
-}
-
-function setLang(l){
-  lang=l;document.documentElement.lang=l;
-  document.querySelectorAll('.lb').forEach(b=>{b.classList.toggle('active',b.getAttribute('onclick').includes("'"+l+"'"));});
-  document.querySelectorAll('.footer-langs button').forEach(b=>{b.classList.toggle('active',b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase()));});
-  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.getAttribute('data-i18n'));});
-  const bli=document.getElementById('btnLoginTxt');if(bli)bli.textContent=t('btnLogin');
-  document.getElementById('searchInput').placeholder=t('search_placeholder');
-  if(typeof updateBudgetCurr==='function')updateBudgetCurr();else document.getElementById('budgetInput').placeholder=t('budget_placeholder');
-  document.getElementById('alertEmail').placeholder=t('alert_placeholder');
-  document.getElementById('heroH1').innerHTML=t('hero_h1');
-  document.getElementById('recentTitle').innerHTML=t('recent_title');
-  document.getElementById('catTitle').innerHTML=t('cat_section_title');
-  document.getElementById('trustTitle').innerHTML=t('trust_title');
-  document.getElementById('stepsTitle').innerHTML=t('steps_title');
-  document.getElementById('alertTitle').innerHTML=t('alert_title');
-  const wt=document.getElementById('wantedTitle');if(wt)wt.innerHTML=t('wanted_section_title');
-  const wft=document.getElementById('wantedFormTitle');if(wft)wft.innerHTML=t('wanted_form_title');
-  document.title='Aircraft2Sell — '+(l==='en'?'Buy & Sell Aircraft':l==='fr'?"Achat & Vente d'Avions":l==='de'?'Flugzeuge kaufen & verkaufen':l==='es'?'Compra & Venta de Aeronaves':'飞机买卖平台');
-  renderTicker();renderListings();renderCats();renderTrust();renderSteps();renderNavDropdown();
-}
-
-function animCount(el,target){let c=0;const s=Math.ceil(target/60);const i=setInterval(()=>{c=Math.min(c+s,target);el.textContent=c.toLocaleString();if(c>=target)clearInterval(i);},22);}
-window.addEventListener('load',()=>{setTimeout(()=>{animCount(document.getElementById('sn1'),0);animCount(document.getElementById('sn2'),0);animCount(document.getElementById('sn3'),0);},500);});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
-setLang('fr');
-</script>
 </head>
 <body>
 
 <nav>
-  <a href="#" class="logo"><svg viewBox="0 0 64 64" style="width:1.4em;height:1.4em;display:inline-block;vertical-align:middle;fill:var(--accent);flex-shrink:0;animation:flt 4s ease-in-out infinite" xmlns="http://www.w3.org/2000/svg"><path d="M60 22c0-2-2-4-5-4l-12 1-16-14H18l8 14-14 1-5-6H2l3 10-3 10h5l5-6 14 1-8 14h9l16-14 12 1c3 0 5-2 5-4v-3z"/></svg>Aircraft2<span>Sell</span></a>
+  <a href="homepage.html" class="logo">Aircraft2<span>Sell</span></a>
   <ul class="nav-links">
-    <li><a href="#listings" class="active" data-i18n="nav_listings"></a></li>
-    <li class="nav-dropdown" id="navCatLi">
-      <a href="search.html" data-i18n="nav_categories" onclick="toggleCatDropdown(event)"></a>
-      <div class="dropdown-menu" id="navCatDropdown"></div>
-    </li>
-    <li><a href="#alert" data-i18n="nav_alerts"></a></li>
-    <li class="nav-dropdown" id="currencyDropdownLi">
-      <a href="#" onclick="toggleCurrencyDropdown(event)" style="display:flex;align-items:center;gap:.3rem">
-        <span id="currNavIcon" style="font-size:.75rem;font-weight:700;color:var(--accent)">€</span>
-        <span data-i18n="nav_currency">Devises</span>
-      </a>
-      <div class="dropdown-menu" id="currencyDropdownMenu" style="min-width:290px"></div>
-    </li>
-    <li><a href="contact.html" data-i18n="nav_contact">Contact</a></li>
+    <li><a href="search.html">Annonces</a></li>
+    <li><a href="pricing.html">Tarifs</a></li>
+    <li><a href="guide-acheteur.html">Guide</a></li>
+    <li><a href="contact.html">Contact</a></li>
   </ul>
   <div class="nav-right">
-    
-    <div class="nav-user" id="navUser" style="display:none"><div class="nav-avatar" id="navAvatar">U</div><div class="nav-user-info"><div class="nav-user-name" id="navUserName">Mon compte</div><div class="nav-user-plan" id="navUserPlan">Essentiel</div></div></div>
-    <a href="login.html" class="btn-login" id="btnLogin"><span class="login-icon">👤</span><span id="btnLoginTxt">Connexion</span></a>
-    <a href="#" class="btn-post" data-i18n="btn_post" onclick="requireLogin(event,'post-listing.html')"></a>
+    <a href="login.html" class="btn-nav-login">Connexion</a>
+    <button class="burger" id="burger" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
   </div>
-  <button class="burger" id="burgerBtn" onclick="toggleMobileMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
 </nav>
 
-  <nav class="mobile-menu-links" id="mmLinks"></nav>
-  
-  
+<div class="mobile-menu" id="mobileMenu">
+  <a href="search.html">Annonces</a>
+  <a href="pricing.html">Tarifs</a>
+  <a href="guide-acheteur.html">Guide acheteur</a>
+  <a href="contact.html">Contact</a>
+  <a href="login.html" class="mm-cta">Se connecter</a>
 </div>
 
 <div class="checkout-wrap">
 
-  <!-- LEFT: Order Summary -->
+  <!-- RÉSUMÉ COMMANDE -->
   <div class="order-summary">
-    <div class="summary-title" id="summaryTitle">Your order</div>
+    <div class="block-title">Votre commande</div>
 
-    <!-- Plan selector -->
-    <div class="plan-selector">
+    <!-- Plans -->
+    <div id="planSelector">
       <div class="plan-option" id="opt-essential" onclick="selectPlan('essential')">
         <div class="plan-radio"></div>
         <div class="plan-info">
-          <div class="plan-name-sm" id="pn-essential">ESSENTIAL</div>
-          <div class="plan-desc-sm" id="pd-essential">1 listing · 5 photos · 60 days</div>
+          <div class="plan-name">ESSENTIEL</div>
+          <div class="plan-desc">1 annonce · 5 photos · 60 jours</div>
         </div>
-        <div class="plan-price-sm">€0</div>
+        <div class="plan-price">Gratuit</div>
       </div>
       <div class="plan-option selected" id="opt-aviateur" onclick="selectPlan('aviateur')">
-        <div class="plan-badge-sm" id="pb-popular">Most popular</div>
+        <div class="plan-badge">Le plus populaire</div>
         <div class="plan-radio"></div>
         <div class="plan-info">
-          <div class="plan-name-sm" id="pn-aviateur">AVIATEUR</div>
-          <div class="plan-desc-sm" id="pd-aviateur">1 listing · 20 photos · Featured</div>
+          <div class="plan-name">AVIATEUR</div>
+          <div class="plan-desc">1 annonce · 20 photos · Mise en avant</div>
         </div>
-        <div class="plan-price-sm">€29<span style="font-size:.8rem;color:var(--mist)">/mo</span></div>
+        <div class="plan-price">€29<span>/mois</span></div>
       </div>
       <div class="plan-option" id="opt-pro" onclick="selectPlan('pro')">
         <div class="plan-radio"></div>
         <div class="plan-info">
-          <div class="plan-name-sm" id="pn-pro">PRO</div>
-          <div class="plan-desc-sm" id="pd-pro">Unlimited listings · Certified badge</div>
+          <div class="plan-name">PRO</div>
+          <div class="plan-desc">Annonces illimitées · Badge certifié</div>
         </div>
-        <div class="plan-price-sm">€79<span style="font-size:.8rem;color:var(--mist)">/mo</span></div>
+        <div class="plan-price">€79<span>/mois</span></div>
       </div>
     </div>
 
-    <!-- Photos+ addon -->
+    <!-- Addon -->
     <div class="addon-box" id="addonBox" onclick="toggleAddon()">
-      <div class="addon-checkbox" id="addonCheck">+</div>
+      <div class="addon-chk" id="addonChk">✓</div>
       <div class="addon-info">
-        <div class="addon-name" id="addonName">📸 Photos+ Add-on</div>
-        <div class="addon-desc-sm" id="addonDesc">Add 5 extra photos to Essential (5→10)</div>
+        <div class="addon-name">📸 Photos+ Add-on</div>
+        <div class="addon-desc">5 photos supplémentaires pour Essentiel</div>
       </div>
-      <div class="addon-price-sm">+€10/mo</div>
+      <div class="addon-price">+€10/mois</div>
     </div>
 
-    <!-- Order total -->
+    <!-- Total -->
     <div class="order-total">
-      <div class="total-row">
-        <span class="total-label" id="tlPlan">Plan</span>
-        <span class="total-val" id="tvPlan">€29/mo</span>
-      </div>
-      <div class="total-row" id="addonRow" style="display:none">
-        <span class="total-label">Photos+</span>
-        <span class="total-val">+€10/mo</span>
-      </div>
-      <div class="total-row" id="discountRow" style="display:none">
-        <span class="total-label" id="dDiscountLbl">Promo discount</span>
-        <span class="total-val" style="color:var(--green)" id="dDiscount">−€0.00</span>
-      </div>
-      <div class="total-row" id="subtotalRow" style="display:none">
-        <span class="total-label" id="tlSubtotal">Subtotal</span>
-        <span class="total-val" id="tvSubtotal">€39/mo</span>
-      </div>
-      <div class="total-row">
-        <span class="total-label" id="tlTax">VAT</span>
-        <span class="total-val" id="tvTax">€5.80</span>
-      </div>
-      <div class="total-row">
+      <div class="total-row"><span class="total-label">Plan</span><span class="total-val" id="tvPlan">€29/mois</span></div>
+      <div class="total-row" id="addonRow" style="display:none"><span class="total-label">Photos+</span><span class="total-val">+€10/mois</span></div>
+      <div class="total-row" id="discountRow" style="display:none"><span class="total-label">Réduction promo</span><span class="total-val" style="color:var(--green)" id="tvDiscount">−€0</span></div>
+      <div class="total-row"><span class="total-label">TVA (20%)</span><span class="total-val" id="tvTax">€5.80</span></div>
+      <div class="total-row" style="padding-top:.75rem">
         <div>
           <div class="total-grand" id="tvTotal">€34.80</div>
-          <div class="total-period" id="tvPeriod">per month · cancel anytime</div>
+          <div class="total-period">par mois · résiliable à tout moment</div>
         </div>
       </div>
-      <div class="no-commission">✓ <span id="noCommText">No commission on aircraft sales. Ever.</span></div>
+      <div class="no-commission">✓ Zéro commission sur vos ventes d'aéronefs</div>
     </div>
   </div>
 
-  <!-- RIGHT: Payment Form -->
-  <div class="payment-form-wrap">
-    <div class="form-title" id="formTitle">Payment details</div>
+  <!-- FORMULAIRE PAIEMENT -->
+  <div>
+    <div class="payment-form">
+      <div class="form-title">Détails du paiement</div>
 
-    <!-- Payment methods -->
-    <div class="pay-methods">
-      <div class="pay-method active" onclick="setPayMethod('card',this)">
-        <span class="pay-icon">💳</span><span id="pmCard">Card</span>
-      </div>
-      <div class="pay-method" onclick="setPayMethod('sepa',this)">
-        <span class="pay-icon">🏦</span><span id="pmSepa">SEPA</span>
-      </div>
-      <div class="pay-method" onclick="setPayMethod('apple',this)">
-        <!-- Apple Pay official logo (SVG inline) -->
-        <svg viewBox="0 0 165.52 105.96" xmlns="http://www.w3.org/2000/svg" width="46" height="20" style="flex-shrink:0">
-          <path d="M150.698 0H14.823c-.566 0-1.133 0-1.698.003-.477.004-.953.009-1.43.022C10.565.044 9.433.115 8.318.33a11.04 11.04 0 0 0-3.926 1.648 10.827 10.827 0 0 0-2.732 2.733A10.955 10.955 0 0 0 .013 8.64C-.004 9.76-.003 10.88 0 12v81.968c-.003 1.12-.004 2.237.013 3.355.018 1.12.09 2.246.306 3.35a10.947 10.947 0 0 0 1.648 3.925 10.826 10.826 0 0 0 2.732 2.733 11.04 11.04 0 0 0 3.926 1.648c1.115.215 2.247.287 3.377.306.477.013.953.02 1.43.022.565.002 1.132.002 1.698.002h135.875c.566 0 1.133 0 1.699-.002.476-.002.952-.009 1.428-.022 1.13-.019 2.263-.09 3.378-.306a11.04 11.04 0 0 0 3.926-1.648 10.827 10.827 0 0 0 2.732-2.733 10.952 10.952 0 0 0 1.648-3.926c.216-1.103.288-2.23.307-3.35.013-1.118.012-2.235.012-3.355V12c0-1.12.001-2.24-.012-3.36-.019-1.12-.09-2.248-.307-3.358A10.957 10.957 0 0 0 163.816 1.98a10.826 10.826 0 0 0-2.732-2.732A11.04 11.04 0 0 0 157.158.33C156.042.114 154.91.043 153.78.025c-.476-.013-.952-.018-1.428-.022C151.831 0 151.264 0 150.698 0z" fill="#000"/>
-          <path d="M150.698 3.532l1.672.003c.452.003.906.008 1.36.02 1.027.018 2.046.076 3.065.278a7.51 7.51 0 0 1 2.666 1.12 7.297 7.297 0 0 1 1.843 1.843 7.49 7.49 0 0 1 1.12 2.666c.2 1.01.26 2.03.278 3.065.012 1.073.011 2.147.011 3.218v81.968c0 1.072.001 2.143-.011 3.217-.018 1.036-.078 2.056-.28 3.078a7.484 7.484 0 0 1-1.12 2.662 7.292 7.292 0 0 1-1.843 1.841 7.51 7.51 0 0 1-2.66 1.12c-1.03.2-2.054.261-3.082.279-.45.012-.9.018-1.352.022l-1.672.001H14.824l-1.678-.001a31.738 31.738 0 0 1-1.347-.022c-1.03-.018-2.054-.079-3.087-.28a7.517 7.517 0 0 1-2.659-1.12 7.297 7.297 0 0 1-1.843-1.841 7.49 7.49 0 0 1-1.12-2.663c-.201-1.02-.261-2.04-.279-3.078-.012-1.074-.012-2.145-.012-3.217v-81.97c0-1.07 0-2.143.012-3.214.018-1.036.078-2.055.28-3.072a7.493 7.493 0 0 1 1.119-2.662 7.303 7.303 0 0 1 1.843-1.843 7.517 7.517 0 0 1 2.66-1.12c1.018-.2 2.038-.26 3.065-.278.454-.012.908-.017 1.362-.02l1.67-.003h135.876" fill="#fff"/>
-          <path d="M43.508 35.77c1.404-1.755 2.356-4.112 2.105-6.51-2.062.09-4.576 1.39-6.02 3.147-1.32 1.537-2.482 3.976-2.168 6.29 2.314.18 4.63-1.148 6.083-2.927m2.082 3.352c-3.364-.2-6.226 1.906-7.828 1.906-1.6 0-4.05-1.8-6.716-1.758-3.453.047-6.65 2.01-8.424 5.134-3.6 6.22-.944 15.443 2.567 20.504 1.706 2.51 3.764 5.272 6.472 5.174 2.567-.1 3.564-1.658 6.673-1.658 3.109 0 3.998 1.658 6.716 1.608 2.815-.05 4.57-2.51 6.274-5.022 1.963-2.858 2.77-5.618 2.818-5.768-.05-.05-5.434-2.106-5.484-8.277-.048-5.173 4.217-7.63 4.416-7.778-2.416-3.56-6.173-3.96-7.484-4.065m29.706-10.123v38.508h5.988V55.08h8.284c7.575 0 12.898-5.218 12.898-12.744 0-7.527-5.22-12.693-12.695-12.693zm5.988 5.026h6.9c5.198 0 8.16 2.76 8.16 7.617 0 4.856-2.962 7.64-8.185 7.64h-6.875zm30.77 33.684c3.763 0 7.25-1.905 8.836-4.916h.124v4.616h5.54V48.36c0-5.57-4.466-9.163-11.34-9.163-6.388 0-11.113 3.644-11.29 8.648h5.39c.45-2.36 2.613-3.917 5.663-3.917 3.661 0 5.713 1.706 5.713 4.815v2.112l-7.47.45c-6.943.42-10.693 3.26-10.693 8.198 0 4.987 3.876 8.274 9.527 8.274zm1.62-4.695c-3.188 0-5.215-1.533-5.215-3.868 0-2.41 1.953-3.817 5.688-4.043l6.645-.4v2.16c0 3.595-3.048 6.15-7.118 6.15zm22.27 15.335c5.84 0 8.584-2.234 10.986-9.008l10.52-29.495h-6.12l-7.045 22.947h-.123l-7.045-22.947h-6.32l10.17 28.17-.55 1.707c-.92 2.908-2.416 4.04-5.09 4.04-.474 0-1.396-.05-1.77-.1v4.615c.35.1 1.87.17 2.386.17z" fill="#000"/>
-        </svg>
-      </div>
-      <div class="pay-method" onclick="setPayMethod('google',this)">
-        <!-- Google Pay official logo (SVG inline) -->
-        <svg viewBox="0 0 122.07 48" xmlns="http://www.w3.org/2000/svg" width="52" height="20" style="flex-shrink:0">
-          <path d="M58.16 24.17v14.4h-4.57V4h12.12a10.94 10.94 0 0 1 7.82 3.08 10.08 10.08 0 0 1 3.24 7.66 10.1 10.1 0 0 1-3.24 7.69 10.83 10.83 0 0 1-7.82 3.09h-7.55zm0-15.77v11.4h7.64a6.12 6.12 0 0 0 4.59-1.84 6.03 6.03 0 0 0 1.86-4.35 6 6 0 0 0-1.86-4.32 6.06 6.06 0 0 0-4.59-1.84h-7.64zm29.63 5.66c3.38 0 6.05.9 8 2.72a9.56 9.56 0 0 1 2.93 7.36v14.43H94.3v-3.25h-.19a8.59 8.59 0 0 1-7.47 4 9.65 9.65 0 0 1-6.64-2.31 7.42 7.42 0 0 1-2.62-5.82 7.05 7.05 0 0 1 2.78-5.85c1.86-1.44 4.33-2.16 7.42-2.16a13.49 13.49 0 0 1 6.53 1.44v-1c0-1.51-.64-2.96-1.76-3.99a6.19 6.19 0 0 0-4.27-1.6 6.7 6.7 0 0 0-5.75 3.04l-4.2-2.63a11.13 11.13 0 0 1 9.9-5.43zm-5.91 17.4a3.58 3.58 0 0 0 1.49 2.94 5.46 5.46 0 0 0 3.52 1.19 7.13 7.13 0 0 0 5.04-2.09 6.62 6.62 0 0 0 2.09-4.88 5.87 5.87 0 0 0-5.81-2.62 7.71 7.71 0 0 0-4.53 1.32 4.02 4.02 0 0 0-1.8 3.14zm33.06-16.6l-15.25 35.12h-4.72l5.66-12.26-10.04-22.86h4.98l7.26 17.47h.09l7.08-17.47z" fill="#3c4043"/>
-          <path d="M40.65 20.56a24.47 24.47 0 0 0-.36-4.24H20.75v8.02h11.15a9.52 9.52 0 0 1-4.13 6.25v5.17h6.67a20.1 20.1 0 0 0 6.21-15.2z" fill="#4285f4"/>
-          <path d="M20.75 41.02c5.59 0 10.28-1.85 13.7-5.01l-6.67-5.17a12.69 12.69 0 0 1-7.03 1.99 12.39 12.39 0 0 1-11.62-8.56H2.19v5.34a20.67 20.67 0 0 0 18.56 11.41z" fill="#34a853"/>
-          <path d="M9.13 24.27a12.39 12.39 0 0 1 0-7.91V11H2.19a20.72 20.72 0 0 0 0 18.61l6.94-5.34z" fill="#fbbc04"/>
-          <path d="M20.75 7.82a11.19 11.19 0 0 1 7.92 3.1l5.89-5.89A19.86 19.86 0 0 0 20.75 0 20.67 20.67 0 0 0 2.19 11.41l6.94 5.34a12.35 12.35 0 0 1 11.62-8.93z" fill="#ea4335"/>
-        </svg>
-      </div>
-    </div>
-
-    <!-- Account info -->
-    <div class="form-section">
-      <div class="form-section-title" id="fsAccount">Account information</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" id="lFirstName">First name</label>
-          <input type="text" class="form-input" id="firstName" placeholder="Jean">
+      <!-- Méthodes -->
+      <div class="pay-methods">
+        <div class="pay-method active" id="pm-card" onclick="setPayMethod('card')"><span class="pay-icon">💳</span> Carte</div>
+        <div class="pay-method" id="pm-sepa" onclick="setPayMethod('sepa')"><span class="pay-icon">🏦</span> SEPA</div>
+        <div class="pay-method" id="pm-apple" onclick="setPayMethod('apple')">
+          <svg viewBox="0 0 814 1000" width="18" height="18" fill="currentColor"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-38.8-165.8-127.3C92.3 813.1 69 734.2 69 656.5c0-220.4 144.7-337.4 287.7-337.4 75.7 0 138.7 48.5 186.8 48.5 46.1 0 118.6-51.7 200.1-51.7 32.3 0 136.9 2.9 210.1 116.1zm-165.1-130.9c37.4-44.2 64.7-105.7 64.7-167.2 0-8.4-.6-16.8-2.1-23.9-61.3 2.3-135.2 41.7-179 91.9-33.1 37.5-64 99.1-64 161.8 0 9 1.4 18 2.1 20.9 3.8.6 10 1.6 16.2 1.6 54.9 0 124.3-36.8 162.1-84.8z"/></svg>
+          Pay
         </div>
-        <div class="form-group">
-          <label class="form-label" id="lLastName">Last name</label>
-          <input type="text" class="form-input" id="lastName" placeholder="Dupont">
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group">
-          <label class="form-label" id="lEmail">Email address</label>
-          <input type="email" class="form-input" id="email" placeholder="jean@example.com">
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group">
-          <label class="form-label" id="lCompany">Company (optional)</label>
-          <input type="text" class="form-input" id="company" placeholder="Aviation SAS">
-        </div>
-      </div>
-    </div>
-
-    <!-- Card details -->
-    <div class="form-section" id="cardSection">
-      <div class="form-section-title" id="fsCard">Card details</div>
-      <div class="form-group" style="margin-bottom:1rem">
-        <label class="form-label" id="lCardNum">Card number</label>
-        <div class="stripe-element-wrap" id="card-element">
-          <!-- Stripe Card Element injected here -->
-        </div>
-        <div id="card-errors"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" id="lExpiry">Expiry</label>
-          <div class="stripe-element-wrap" id="card-expiry"></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label" id="lCvc">CVC</label>
-          <div class="stripe-element-wrap" id="card-cvc"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SEPA section (hidden by default) -->
-    <div class="form-section" id="sepaSection" style="display:none">
-      <div class="form-section-title" id="fsSepa">SEPA Direct Debit</div>
-      <div class="form-group" style="margin-bottom:1rem">
-        <label class="form-label" id="lIban">IBAN</label>
-        <div class="stripe-element-wrap" id="iban-element"></div>
-        <div id="sepa-errors"></div>
-      </div>
-      <p style="font-size:.74rem;color:var(--mist);line-height:1.6;margin-top:.5rem" id="sepaMandate">
-        By providing your IBAN and confirming this payment, you authorise Aircraft2Sell to debit your account for recurring payments.
-      </p>
-    </div>
-
-    <!-- Billing address -->
-    <div class="form-section">
-      <div class="form-section-title" id="fsBilling">Billing address</div>
-
-      <!-- Country selector with flag -->
-      <div class="form-row full" style="margin-bottom:.8rem">
-        <div class="form-group">
-          <label class="form-label" id="lCountry">Country</label>
-          <select class="form-input" id="country" onchange="onCountryChange()">
-            <optgroup label="── Europe ──">
-              <option value="FR">🇫🇷 France</option>
-              <option value="DE">🇩🇪 Germany — Deutschland</option>
-              <option value="ES">🇪🇸 Spain — España</option>
-              <option value="IT">🇮🇹 Italy — Italia</option>
-              <option value="BE">🇧🇪 Belgium — Belgique</option>
-              <option value="NL">🇳🇱 Netherlands</option>
-              <option value="PT">🇵🇹 Portugal</option>
-              <option value="AT">🇦🇹 Austria — Österreich</option>
-              <option value="PL">🇵🇱 Poland — Polska</option>
-              <option value="SE">🇸🇪 Sweden — Sverige</option>
-              <option value="DK">🇩🇰 Denmark — Danmark</option>
-              <option value="FI">🇫🇮 Finland — Suomi</option>
-              <option value="IE">🇮🇪 Ireland</option>
-              <option value="LU">🇱🇺 Luxembourg</option>
-              <option value="GR">🇬🇷 Greece — Ελλάδα</option>
-              <option value="CZ">🇨🇿 Czech Republic</option>
-              <option value="HU">🇭🇺 Hungary</option>
-              <option value="RO">🇷🇴 Romania</option>
-              <option value="BG">🇧🇬 Bulgaria</option>
-              <option value="HR">🇭🇷 Croatia — Hrvatska</option>
-              <option value="SK">🇸🇰 Slovakia</option>
-              <option value="SI">🇸🇮 Slovenia</option>
-              <option value="EE">🇪🇪 Estonia</option>
-              <option value="LV">🇱🇻 Latvia</option>
-              <option value="LT">🇱🇹 Lithuania</option>
-              <option value="CY">🇨🇾 Cyprus</option>
-              <option value="MT">🇲🇹 Malta</option>
-            </optgroup>
-            <optgroup label="── Non-EU Europe ──">
-              <option value="GB">🇬🇧 United Kingdom</option>
-              <option value="CH">🇨🇭 Switzerland — Schweiz</option>
-              <option value="NO">🇳🇴 Norway — Norge</option>
-              <option value="IS">🇮🇸 Iceland</option>
-              <option value="TR">🇹🇷 Turkey — Türkiye</option>
-            </optgroup>
-            <optgroup label="── Rest of World ──">
-              <option value="US">🇺🇸 United States</option>
-              <option value="CA">🇨🇦 Canada</option>
-              <option value="CN">🇨🇳 China — 中国</option>
-              <option value="JP">🇯🇵 Japan — 日本</option>
-              <option value="AE">🇦🇪 UAE</option>
-              <option value="SA">🇸🇦 Saudi Arabia</option>
-              <option value="AU">🇦🇺 Australia</option>
-              <option value="OTHER">🌍 Other</option>
-            </optgroup>
-          </select>
+        <div class="pay-method" id="pm-google" onclick="setPayMethod('google')">
+          <svg viewBox="0 0 122 48" width="40" height="16" fill="currentColor"><path d="M58.16 24.17v14.4h-4.57V4h12.12a10.94 10.94 0 0 1 7.82 3.08 10.08 10.08 0 0 1 3.24 7.66 10.1 10.1 0 0 1-3.24 7.69 10.83 10.83 0 0 1-7.82 3.09h-7.55zm0-15.77v11.4h7.64a6.12 6.12 0 0 0 4.59-1.84 6.03 6.03 0 0 0 1.86-4.35 6 6 0 0 0-1.86-4.32 6.06 6.06 0 0 0-4.59-1.84h-7.64zM88 14.06c3.38 0 6.05.9 8 2.72a9.56 9.56 0 0 1 2.93 7.36v14.43H94.3v-3.25h-.19a8.59 8.59 0 0 1-7.47 4 9.65 9.65 0 0 1-6.64-2.31 7.42 7.42 0 0 1-2.62-5.82 7.05 7.05 0 0 1 2.78-5.85c1.86-1.44 4.33-2.16 7.42-2.16a13.49 13.49 0 0 1 6.53 1.44v-1c0-1.51-.64-2.96-1.76-3.99a6.19 6.19 0 0 0-4.27-1.6 6.7 6.7 0 0 0-5.75 3.04l-4.2-2.63A11.13 11.13 0 0 1 88 14.06zm-5.91 17.4a3.58 3.58 0 0 0 1.49 2.94 5.46 5.46 0 0 0 3.52 1.19 7.13 7.13 0 0 0 5.04-2.09 6.62 6.62 0 0 0 2.09-4.88 5.87 5.87 0 0 0-5.81-2.62 7.71 7.71 0 0 0-4.53 1.32 4.02 4.02 0 0 0-1.8 3.14zm33.06-16.6l-15.25 35.12h-4.72l5.66-12.26-10.04-22.86h4.98l7.26 17.47h.09l7.08-17.47z"/></svg>
+          Pay
         </div>
       </div>
 
-      <!-- Live VAT indicator — updates on country change -->
-      <div class="vat-indicator" id="vatIndicator">
-        <span class="vat-flag" id="vatFlag">🇫🇷</span>
-        <div class="vat-info">
-          <div class="vat-country" id="vatCountryName">France</div>
-          <div class="vat-rule" id="vatRule">Standard EU VAT rate applies</div>
+      <!-- Infos compte -->
+      <div class="form-section">
+        <div class="form-section-title">Informations du compte</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Prénom</label><input type="text" class="form-input" id="firstName" placeholder="Jean" autocomplete="given-name"></div>
+          <div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="lastName" placeholder="Dupont" autocomplete="family-name"></div>
         </div>
-        <div class="vat-rate-badge" id="vatBadge">20%</div>
-      </div>
-
-      <!-- B2B VAT number field — shown for EU countries -->
-      <div class="vat-number-wrap" id="vatNumberWrap">
-        <div class="form-group" style="margin-bottom:.4rem">
-          <label class="form-label" id="lVatNum">VAT number (optional — B2B)</label>
-          <input type="text" class="form-input" id="vatNumber"
-            placeholder="FR12345678901" oninput="onVatNumberInput()"
-            style="text-transform:uppercase;letter-spacing:.06em">
-          <div class="vat-status" id="vatStatus"></div>
+        <div class="form-row full">
+          <div class="form-group"><label class="form-label">Adresse email</label><input type="email" class="form-input" id="email" placeholder="jean@example.com" autocomplete="email"></div>
         </div>
-        <div class="oss-note" id="ossNote">
-          Providing a valid EU VAT number sets your rate to 0% (reverse charge). Your business handles VAT in your country.
+        <div class="form-row full">
+          <div class="form-group"><label class="form-label">Entreprise (optionnel)</label><input type="text" class="form-input" id="company" placeholder="Aviation SAS" autocomplete="organization"></div>
         </div>
       </div>
 
-      <div class="form-row" style="margin-top:.8rem">
-        <div class="form-group">
-          <label class="form-label" id="lCity">City</label>
-          <input type="text" class="form-input" id="city" placeholder="Paris">
+      <!-- Carte -->
+      <div class="form-section" id="cardSection">
+        <div class="form-section-title">Détails de la carte</div>
+        <div class="form-group" style="margin-bottom:.75rem">
+          <label class="form-label">Numéro de carte</label>
+          <div class="stripe-wrap" id="card-element"></div>
+          <div id="card-errors"></div>
         </div>
-        <div class="form-group">
-          <label class="form-label" id="lPostal">Postal code</label>
-          <input type="text" class="form-input" id="postal" placeholder="75001">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Expiration</label><div class="stripe-wrap" id="card-expiry"></div></div>
+          <div class="form-group"><label class="form-label">CVC</label><div class="stripe-wrap" id="card-cvc"></div></div>
         </div>
       </div>
-    </div>
 
-
-    <!-- Promo code -->
-    <div class="form-section" id="promoSection">
-      <div class="form-section-title" id="fsPromo">Promo code</div>
-      <div style="display:flex;gap:6px;align-items:stretch">
-        <input type="text" class="form-input" id="promoInput"
-          placeholder="WELCOME10" maxlength="20" style="text-transform:uppercase;letter-spacing:.08em"
-          oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')applyPromo()">
-        <button style="background:rgba(255,255,255,.07);border:1px solid var(--border);color:var(--mist);padding:0 14px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap;letter-spacing:.04em"
-          id="promoBtnEl" onclick="applyPromo()">Apply</button>
+      <!-- SEPA -->
+      <div class="form-section" id="sepaSection" style="display:none">
+        <div class="form-section-title">Prélèvement SEPA</div>
+        <div class="form-group" style="margin-bottom:.5rem">
+          <label class="form-label">IBAN</label>
+          <div class="stripe-wrap" id="iban-element"></div>
+          <div id="sepa-errors"></div>
+        </div>
+        <p class="sepa-mandate">En fournissant votre IBAN et en confirmant ce paiement, vous autorisez Aircraft2Sell à prélever votre compte pour les paiements récurrents.</p>
       </div>
-      <div id="promoFeedback" style="display:none;margin-top:6px;font-size:.76rem;padding:6px 9px;border-radius:2px"></div>
-      <div id="promoTag" style="margin-top:5px"></div>
-    </div>
-    <!-- Billing note -->
-    <div class="billing-note" id="billingNote">
-      <strong>Subscription billing:</strong> You will be charged today, then automatically on the same date each month. Cancel anytime from your dashboard with no penalty.
-    </div>
 
-    <!-- Pay button -->
-    <button class="pay-btn" id="payBtn" onclick="handlePayment()" style="margin-top:1px">
-      <div class="btn-text" id="payBtnText">
-        <span id="payBtnLabel">Pay now</span>
-        <span class="btn-amount" id="payBtnAmount">— €34.80/mo</span>
+      <!-- Adresse de facturation -->
+      <div class="form-section">
+        <div class="form-section-title">Adresse de facturation</div>
+        <div class="form-row full" style="margin-bottom:.75rem">
+          <div class="form-group">
+            <label class="form-label">Pays</label>
+            <select class="form-input" id="country">
+              <optgroup label="── Europe ──">
+                <option value="FR">🇫🇷 France</option>
+                <option value="DE">🇩🇪 Allemagne</option>
+                <option value="ES">🇪🇸 Espagne</option>
+                <option value="IT">🇮🇹 Italie</option>
+                <option value="BE">🇧🇪 Belgique</option>
+                <option value="NL">🇳🇱 Pays-Bas</option>
+                <option value="PT">🇵🇹 Portugal</option>
+                <option value="AT">🇦🇹 Autriche</option>
+                <option value="PL">🇵🇱 Pologne</option>
+                <option value="SE">🇸🇪 Suède</option>
+                <option value="CH">🇨🇭 Suisse</option>
+                <option value="GB">🇬🇧 Royaume-Uni</option>
+                <option value="LU">🇱🇺 Luxembourg</option>
+              </optgroup>
+              <optgroup label="── Reste du monde ──">
+                <option value="US">🇺🇸 États-Unis</option>
+                <option value="CA">🇨🇦 Canada</option>
+                <option value="AE">🇦🇪 Émirats Arabes Unis</option>
+                <option value="AU">🇦🇺 Australie</option>
+                <option value="OTHER">🌍 Autre</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group"><label class="form-label">Adresse</label><input type="text" class="form-input" id="address" placeholder="12 rue de l'Aviation" autocomplete="street-address"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Code postal</label><input type="text" class="form-input" id="zip" placeholder="75001" autocomplete="postal-code"></div>
+          <div class="form-group"><label class="form-label">Ville</label><input type="text" class="form-input" id="city" placeholder="Paris" autocomplete="address-level2"></div>
+        </div>
+        <div class="form-row full" id="vatRow">
+          <div class="form-group"><label class="form-label">Numéro de TVA intracommunautaire (optionnel)</label><input type="text" class="form-input" id="vat" placeholder="FR 12 345 678 901"></div>
+        </div>
       </div>
-      <div class="spinner"></div>
-    </button>
 
-    <!-- Security -->
-    <div class="security-row">
-      <div class="sec-badge"><span class="sec-icon">🔒</span><span id="secSSL">SSL encrypted</span></div>
-      <div class="sec-badge"><span class="sec-icon">✅</span><span id="secStripe">Secured by Stripe</span></div>
-      <div class="sec-badge"><span class="sec-icon">🔄</span><span id="secCancel">Cancel anytime</span></div>
+      <!-- Code promo -->
+      <div class="form-section">
+        <div class="form-section-title">Code promotionnel</div>
+        <div class="promo-wrap">
+          <input type="text" class="promo-input" id="promoCode" placeholder="AVIATION2026">
+          <button class="promo-btn" onclick="applyPromo()">Appliquer</button>
+        </div>
+      </div>
+
+      <!-- Bouton paiement -->
+      <button class="btn-pay" id="payBtn" onclick="handlePay()">
+        <span class="pay-lbl">🔒 Payer maintenant</span>
+        <div class="spinner"></div>
+      </button>
+      <div class="security-note">🔒 Paiement sécurisé par Stripe · Données chiffrées SSL</div>
     </div>
   </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-function requireLogin(e, dest){
-  e.preventDefault();
-  const ok = localStorage.getItem('a2s_logged_in')==='true';
-  window.location.href = ok ? dest : 'login.html?redirect='+encodeURIComponent(dest);
-}
+/* ── MOBILE MENU ── */
+function toggleMenu(){var m=document.getElementById('mobileMenu'),b=document.getElementById('burger'),o=m.classList.toggle('open');b.classList.toggle('open',o);document.body.style.overflow=o?'hidden':'';}
 
-/* ─── STRIPE CONFIG ────────────────────────────────────────── */
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_REPLACE_WITH_YOUR_STRIPE_KEY';
-/* ─── PROMO CODES ────────────────────────────────────────────
-   Only WELCOME10 is active — create it in Stripe Dashboard:
-   Stripe → Promotions → + Create promotion code
-   Code: WELCOME10  |  Discount: 10%  |  Recurring
-   ─────────────────────────────────────────────────────────── */
-const PROMO_CODES = {
-  'WELCOME10': { type:'percent', value:10, label:'10% off — Welcome offer' }
-};
+/* ── PLANS ── */
+var plans={essential:{price:0,label:'Gratuit'},aviateur:{price:29,label:'€29/mois'},pro:{price:79,label:'€79/mois'}};
+var currentPlan='aviateur';
+var addonActive=false;
+var discount=0;
+var VAT_RATE=0.20;
 
-const STRIPE_PRICES = {
-  aviateur_monthly: 'price_REPLACE_AVIATEUR_MONTHLY',
-  pro_monthly:   'price_REPLACE_PRO_MONTHLY',
-  photos_addon:  'price_REPLACE_PHOTOS_ADDON',
-};
-
-/* ─── VAT RATES TABLE ──────────────────────────────────────────
-   Sources: EU Commission, HMRC, ESTV (CH), Skatteverket (SE)
-   All rates are for digital / electronic services (OSS rules)
-   Last updated: 2026
-   ─────────────────────────────────────────────────────────── */
-const VAT_DATA = {
-  // EU Member States — OSS rules apply (local rate for B2C)
-  FR:{rate:0.20, name:'France',           flag:'🇫🇷', eu:true,  label:'FR'},
-  DE:{rate:0.19, name:'Germany',          flag:'🇩🇪', eu:true,  label:'DE'},
-  ES:{rate:0.21, name:'Spain',            flag:'🇪🇸', eu:true,  label:'ES'},
-  IT:{rate:0.22, name:'Italy',            flag:'🇮🇹', eu:true,  label:'IT'},
-  BE:{rate:0.21, name:'Belgium',          flag:'🇧🇪', eu:true,  label:'BE'},
-  NL:{rate:0.21, name:'Netherlands',      flag:'🇳🇱', eu:true,  label:'NL'},
-  PT:{rate:0.23, name:'Portugal',         flag:'🇵🇹', eu:true,  label:'PT'},
-  AT:{rate:0.20, name:'Austria',          flag:'🇦🇹', eu:true,  label:'AT'},
-  PL:{rate:0.23, name:'Poland',           flag:'🇵🇱', eu:true,  label:'PL'},
-  SE:{rate:0.25, name:'Sweden',           flag:'🇸🇪', eu:true,  label:'SE'},
-  DK:{rate:0.25, name:'Denmark',          flag:'🇩🇰', eu:true,  label:'DK'},
-  FI:{rate:0.255,name:'Finland',          flag:'🇫🇮', eu:true,  label:'FI'},
-  IE:{rate:0.23, name:'Ireland',          flag:'🇮🇪', eu:true,  label:'IE'},
-  LU:{rate:0.17, name:'Luxembourg',       flag:'🇱🇺', eu:true,  label:'LU'},
-  GR:{rate:0.24, name:'Greece',           flag:'🇬🇷', eu:true,  label:'GR'},
-  CZ:{rate:0.21, name:'Czech Republic',   flag:'🇨🇿', eu:true,  label:'CZ'},
-  HU:{rate:0.27, name:'Hungary',          flag:'🇭🇺', eu:true,  label:'HU'},
-  RO:{rate:0.19, name:'Romania',          flag:'🇷🇴', eu:true,  label:'RO'},
-  BG:{rate:0.20, name:'Bulgaria',         flag:'🇧🇬', eu:true,  label:'BG'},
-  HR:{rate:0.25, name:'Croatia',          flag:'🇭🇷', eu:true,  label:'HR'},
-  SK:{rate:0.23, name:'Slovakia',         flag:'🇸🇰', eu:true,  label:'SK'},
-  SI:{rate:0.22, name:'Slovenia',         flag:'🇸🇮', eu:true,  label:'SI'},
-  EE:{rate:0.22, name:'Estonia',          flag:'🇪🇪', eu:true,  label:'EE'},
-  LV:{rate:0.21, name:'Latvia',           flag:'🇱🇻', eu:true,  label:'LV'},
-  LT:{rate:0.21, name:'Lithuania',        flag:'🇱🇹', eu:true,  label:'LT'},
-  CY:{rate:0.19, name:'Cyprus',           flag:'🇨🇾', eu:true,  label:'CY'},
-  MT:{rate:0.18, name:'Malta',            flag:'🇲🇹', eu:true,  label:'MT'},
-  // Non-EU Europe
-  GB:{rate:0.20, name:'United Kingdom',   flag:'🇬🇧', eu:false, label:'GB'},
-  CH:{rate:0.081,name:'Switzerland',      flag:'🇨🇭', eu:false, label:'CH'},
-  NO:{rate:0.25, name:'Norway',           flag:'🇳🇴', eu:false, label:'NO'},
-  IS:{rate:0.24, name:'Iceland',          flag:'🇮🇸', eu:false, label:'IS'},
-  TR:{rate:0.20, name:'Turkey',           flag:'🇹🇷', eu:false, label:'TR'},
-  // Rest of World — 0% VAT (export)
-  US:{rate:0,    name:'United States',    flag:'🇺🇸', eu:false, label:'US'},
-  CA:{rate:0,    name:'Canada',           flag:'🇨🇦', eu:false, label:'CA'},
-  CN:{rate:0,    name:'China',            flag:'🇨🇳', eu:false, label:'CN'},
-  JP:{rate:0,    name:'Japan',            flag:'🇯🇵', eu:false, label:'JP'},
-  AE:{rate:0,    name:'UAE',              flag:'🇦🇪', eu:false, label:'AE'},
-  SA:{rate:0,    name:'Saudi Arabia',     flag:'🇸🇦', eu:false, label:'SA'},
-  AU:{rate:0,    name:'Australia',        flag:'🇦🇺', eu:false, label:'AU'},
-  OTHER:{rate:0, name:'Other country',    flag:'🌍',  eu:false, label:''},
-};
-
-/* ─── TRANSLATIONS ─────────────────────────────────────────── */
-const T = {
-  en:{
-    navBack:'← Back to pricing', summaryTitle:'Your order', pbPopular:'Most popular',
-    pnEssential:'ESSENTIAL', pdEssential:'1 listing · 5 photos · 60 days',
-    pnAviateur:'AVIATEUR', pdAviateur:'1 listing · 20 photos · Featured',
-    pnPro:'PRO', pdPro:'Unlimited listings · Certified badge',
-    addonName:'📸 Photos+ Add-on', addonDesc:'Add 5 extra photos to Essential (5→10)',
-    tlPlan:'Plan', tlTax:'VAT', tlSubtotal:'Subtotal', tvPeriod:'per month · cancel anytime',
-    noComm:'No commission on aircraft sales. Ever.',
-    formTitle:'Payment details', fsAccount:'Account information',
-    lFirstName:'First name', lLastName:'Last name', lEmail:'Email address', lCompany:'Company (optional)',
-    fsCard:'Card details', lCardNum:'Card number', lExpiry:'Expiry', lCvc:'CVC',
-    fsSepa:'SEPA Direct Debit', lIban:'IBAN',
-    sepaMandate:'By providing your IBAN, you authorise Aircraft2Sell to debit your account for recurring payments.',
-    fsBilling:'Billing address', lCountry:'Country', lCity:'City', lPostal:'Postal code',
-    lVatNum:'VAT number (optional — B2B)',
-    billingNote:'<strong>Subscription billing:</strong> You will be charged today, then automatically each month. Cancel anytime from your dashboard.',
-    payBtnLabel:'Pay now', pmCard:'Card', pmSepa:'SEPA transfer',
-    secSSL:'SSL encrypted', secStripe:'Secured by Stripe', secCancel:'Cancel anytime',
-    errRequired:'Please fill in all required fields.',
-    errEmail:'Please enter a valid email address.',
-    processingMsg:'Processing your payment…',
-    freeMsg:'Your Essential listing is free — no payment required!',
-    vatRuleEU:'EU VAT rate applies (OSS)',
-    vatRuleB2B:'B2B reverse charge — VAT 0%',
-    vatRuleNonEU:'VAT exempt — export outside EU',
-    vatRuleCH:'Swiss VAT (MWST) applies',
-    vatRuleGB:'UK VAT (HMRC) applies',
-    vatChecking:'Checking VAT number…',
-    vatValid:'✓ Valid EU VAT number — 0% rate applied',
-    vatInvalid:'✗ Invalid VAT number — standard rate applies',
-    ossNote:'Providing a valid EU VAT number sets your rate to 0% (reverse charge). Your business handles VAT in your country.',
-  },
-  fr:{
-    navBack:'← Retour aux tarifs', summaryTitle:'Votre commande', pbPopular:'Le plus populaire',
-    pnEssential:'ESSENTIEL', pdEssential:'1 annonce · 5 photos · 60 jours',
-    pnAviateur:'AVIATEUR', pdAviateur:'1 annonce · 20 photos · Mise en avant',
-    pnPro:'PRO', pdPro:'Annonces illimitées · Badge certifié',
-    addonName:'📸 Option Photos+', addonDesc:'Passez de 5 à 10 photos sur Essentiel',
-    tlPlan:'Formule', tlTax:'TVA', tlSubtotal:'Sous-total', tvPeriod:'par mois · annulable à tout moment',
-    noComm:'Aucune commission sur la vente. Jamais.',
-    formTitle:'Informations de paiement', fsAccount:'Informations du compte',
-    lFirstName:'Prénom', lLastName:'Nom', lEmail:'Adresse email', lCompany:'Entreprise (optionnel)',
-    fsCard:'Carte bancaire', lCardNum:'Numéro de carte', lExpiry:'Expiration', lCvc:'CVC',
-    fsSepa:'Prélèvement SEPA', lIban:'IBAN',
-    sepaMandate:"En fournissant votre IBAN, vous autorisez Aircraft2Sell à débiter votre compte.",
-    fsBilling:'Adresse de facturation', lCountry:'Pays', lCity:'Ville', lPostal:'Code postal',
-    lVatNum:'Numéro de TVA (optionnel — B2B)',
-    billingNote:'<strong>Abonnement :</strong> Vous serez prélevé aujourd\'hui, puis automatiquement chaque mois. Annulable à tout moment.',
-    payBtnLabel:'Payer maintenant', pmCard:'Carte', pmSepa:'Virement SEPA',
-    secSSL:'Chiffrement SSL', secStripe:'Sécurisé par Stripe', secCancel:'Annulation facile',
-    errRequired:'Veuillez remplir tous les champs obligatoires.',
-    errEmail:'Veuillez saisir une adresse email valide.',
-    processingMsg:'Traitement du paiement en cours…',
-    freeMsg:"L'annonce Essentiel est gratuite — aucun paiement requis !",
-    vatRuleEU:'Taux TVA UE applicable (OSS)',
-    vatRuleB2B:'Autoliquidation B2B — TVA 0%',
-    vatRuleNonEU:'Exonéré de TVA — exportation hors UE',
-    vatRuleCH:'TVA suisse (MWST) applicable',
-    vatRuleGB:'TVA britannique (HMRC) applicable',
-    vatChecking:'Vérification du numéro de TVA…',
-    vatValid:'✓ Numéro de TVA UE valide — taux 0% appliqué',
-    vatInvalid:'✗ Numéro de TVA invalide — taux standard appliqué',
-    ossNote:'Un numéro de TVA intracommunautaire valide permet l\'application du taux 0% (autoliquidation). Votre entreprise gère la TVA dans son pays.',
-  },
-  de:{
-    navBack:'← Zurück zu Preisen', summaryTitle:'Ihre Bestellung', pbPopular:'Beliebteste Wahl',
-    pnEssential:'BASIS', pdEssential:'1 Inserat · 5 Fotos · 60 Tage',
-    pnAviateur:'AVIATEUR', pdAviateur:'1 Inserat · 20 Fotos · Hervorgehoben',
-    pnPro:'PRO', pdPro:'Unbegrenzte Inserate · Zertifizierungs-Badge',
-    addonName:'📸 Fotos+ Zusatz', addonDesc:'5 zusätzliche Fotos für Basis (5→10)',
-    tlPlan:'Plan', tlTax:'MwSt.', tlSubtotal:'Zwischensumme', tvPeriod:'pro Monat · jederzeit kündbar',
-    noComm:'Keine Provision auf Ihren Verkauf. Niemals.',
-    formTitle:'Zahlungsdetails', fsAccount:'Kontoinformationen',
-    lFirstName:'Vorname', lLastName:'Nachname', lEmail:'E-Mail-Adresse', lCompany:'Unternehmen (optional)',
-    fsCard:'Kartendaten', lCardNum:'Kartennummer', lExpiry:'Ablaufdatum', lCvc:'CVC',
-    fsSepa:'SEPA-Lastschrift', lIban:'IBAN',
-    sepaMandate:'Durch Angabe Ihrer IBAN ermächtigen Sie Aircraft2Sell, wiederkehrende Zahlungen einzuziehen.',
-    fsBilling:'Rechnungsadresse', lCountry:'Land', lCity:'Stadt', lPostal:'Postleitzahl',
-    lVatNum:'USt-IdNr. (optional — B2B)',
-    billingNote:'<strong>Abonnement:</strong> Sie werden heute belastet, dann automatisch jeden Monat. Jederzeit kündbar.',
-    payBtnLabel:'Jetzt bezahlen', pmCard:'Karte', pmSepa:'SEPA-Überweisung',
-    secSSL:'SSL-verschlüsselt', secStripe:'Gesichert durch Stripe', secCancel:'Jederzeit kündbar',
-    errRequired:'Bitte füllen Sie alle Pflichtfelder aus.',
-    errEmail:'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
-    processingMsg:'Zahlung wird verarbeitet…',
-    freeMsg:'Das Basis-Inserat ist kostenlos — keine Zahlung erforderlich!',
-    vatRuleEU:'EU-MwSt.-Satz gilt (OSS)',
-    vatRuleB2B:'B2B Reverse Charge — MwSt. 0%',
-    vatRuleNonEU:'MwSt.-befreit — Export außerhalb der EU',
-    vatRuleCH:'Schweizer MwSt. (MWST) gilt',
-    vatRuleGB:'Britische MwSt. (HMRC) gilt',
-    vatChecking:'USt-IdNr. wird geprüft…',
-    vatValid:'✓ Gültige EU-USt-IdNr. — 0% Satz angewendet',
-    vatInvalid:'✗ Ungültige USt-IdNr. — Standardsatz gilt',
-    ossNote:'Eine gültige EU-USt-IdNr. setzt den Satz auf 0% (Reverse Charge). Ihr Unternehmen verwaltet die MwSt. in Ihrem Land.',
-  },
-  es:{
-    navBack:'← Volver a tarifas', summaryTitle:'Tu pedido', pbPopular:'El más popular',
-    pnEssential:'ESENCIAL', pdEssential:'1 anuncio · 5 fotos · 60 días',
-    pnAviateur:'AVIATEUR', pdAviateur:'1 anuncio · 20 fotos · Destacado',
-    pnPro:'PRO', pdPro:'Anuncios ilimitados · Insignia certificado',
-    addonName:'📸 Opción Fotos+', addonDesc:'Añade 5 fotos extra al plan Esencial (5→10)',
-    tlPlan:'Plan', tlTax:'IVA', tlSubtotal:'Subtotal', tvPeriod:'por mes · cancela cuando quieras',
-    noComm:'Sin comisión en la venta. Nunca.',
-    formTitle:'Detalles de pago', fsAccount:'Información de la cuenta',
-    lFirstName:'Nombre', lLastName:'Apellido', lEmail:'Dirección de email', lCompany:'Empresa (opcional)',
-    fsCard:'Datos de tarjeta', lCardNum:'Número de tarjeta', lExpiry:'Caducidad', lCvc:'CVC',
-    fsSepa:'Débito SEPA', lIban:'IBAN',
-    sepaMandate:'Al proporcionar tu IBAN, autorizas a Aircraft2Sell a debitar tu cuenta.',
-    fsBilling:'Dirección de facturación', lCountry:'País', lCity:'Ciudad', lPostal:'Código postal',
-    lVatNum:'Número de IVA (opcional — B2B)',
-    billingNote:'<strong>Suscripción:</strong> Se te cobrará hoy y automáticamente cada mes. Cancela cuando quieras.',
-    payBtnLabel:'Pagar ahora', pmCard:'Tarjeta', pmSepa:'Transferencia SEPA',
-    secSSL:'Cifrado SSL', secStripe:'Seguro por Stripe', secCancel:'Cancela cuando quieras',
-    errRequired:'Por favor, rellena todos los campos obligatorios.',
-    errEmail:'Por favor, introduce un email válido.',
-    processingMsg:'Procesando el pago…',
-    freeMsg:'¡El plan Esencial es gratuito — no se requiere pago!',
-    vatRuleEU:'Tipo de IVA de la UE aplicable (OSS)',
-    vatRuleB2B:'Inversión del sujeto pasivo B2B — IVA 0%',
-    vatRuleNonEU:'Exento de IVA — exportación fuera de la UE',
-    vatRuleCH:'IVA suizo (MWST) aplicable',
-    vatRuleGB:'IVA del Reino Unido (HMRC) aplicable',
-    vatChecking:'Verificando número de IVA…',
-    vatValid:'✓ Número de IVA de la UE válido — tipo 0% aplicado',
-    vatInvalid:'✗ Número de IVA inválido — tipo estándar aplicado',
-    ossNote:'Un número de IVA intracomunitario válido fija tu tipo en 0% (inversión del sujeto pasivo).',
-  },
-  zh:{
-    navBack:'← 返回定价', summaryTitle:'您的订单', pbPopular:'最受欢迎',
-    pnEssential:'基础版', pdEssential:'1条广告 · 5张照片 · 60天',
-    pnAviateur:'加速版', pdAviateur:'1条广告 · 20张照片 · 置顶展示',
-    pnPro:'专业版', pdPro:'无限广告 · 认证卖家徽章',
-    addonName:'📸 照片加强版', addonDesc:'基础版照片从5张升至10张',
-    tlPlan:'方案', tlTax:'增值税', tlSubtotal:'小计', tvPeriod:'每月 · 随时取消',
-    noComm:'成交零佣金，永远如此。',
-    formTitle:'支付详情', fsAccount:'账户信息',
-    lFirstName:'名字', lLastName:'姓氏', lEmail:'电子邮箱', lCompany:'公司（可选）',
-    fsCard:'银行卡信息', lCardNum:'卡号', lExpiry:'有效期', lCvc:'CVC',
-    fsSepa:'SEPA直接借记', lIban:'IBAN',
-    sepaMandate:'提供IBAN即表示您授权Aircraft2Sell从您账户扣取定期付款。',
-    fsBilling:'账单地址', lCountry:'国家', lCity:'城市', lPostal:'邮政编码',
-    lVatNum:'增值税号（可选 — B2B）',
-    billingNote:'<strong>订阅计费：</strong>今日起每月自动扣款，可随时从控制台取消，无违约金。',
-    payBtnLabel:'立即付款', pmCard:'银行卡', pmSepa:'SEPA转账',
-    secSSL:'SSL加密', secStripe:'Stripe安全保障', secCancel:'随时取消',
-    errRequired:'请填写所有必填字段。',
-    errEmail:'请输入有效的电子邮箱地址。',
-    processingMsg:'正在处理付款…',
-    freeMsg:'基础版免费 — 无需付款！',
-    vatRuleEU:'适用欧盟增值税税率（OSS）',
-    vatRuleB2B:'B2B反向征收 — 增值税 0%',
-    vatRuleNonEU:'免增值税 — 欧盟境外出口',
-    vatRuleCH:'适用瑞士增值税（MWST）',
-    vatRuleGB:'适用英国增值税（HMRC）',
-    vatChecking:'正在验证增值税号…',
-    vatValid:'✓ 有效的欧盟增值税号 — 已应用0%税率',
-    vatInvalid:'✗ 无效的增值税号 — 适用标准税率',
-    ossNote:'提供有效的欧盟增值税号可将税率设为0%（反向征收）。您的公司在本国处理增值税。',
-  }
-};
-
-let lang = 'en';
-function t(k){ return (T[lang]&&T[lang][k]) || (T.en[k]) || k; }
-
-let selectedPlan = 'aviateur';
-let addonActive  = false;
-let payMethod    = 'card';
-let vatB2B       = false; // true when valid VAT number entered
-let vatDebounce  = null;
-
-const PRICES = { essential:0, aviateur:29, pro:79 };
-
-
-/* ─── PROMO CODE LOGIC ─────────────────────────────────────── */
-let activePromo = null;
-
-function applyPromo(){
-  const input = document.getElementById('promoInput');
-  const code  = input.value.trim().toUpperCase();
-  const fb    = document.getElementById('promoFeedback');
-  const btn   = document.getElementById('promoBtnEl');
-  if(!code) return;
-  btn.textContent='...';btn.style.opacity='.5';btn.style.pointerEvents='none';
-  setTimeout(()=>{
-    btn.textContent='Apply';btn.style.opacity='1';btn.style.pointerEvents='auto';
-    if(PROMO_CODES[code]){
-      activePromo = code;
-      input.style.borderColor='var(--green)';input.style.background='rgba(34,197,94,.06)';
-      const c = PROMO_CODES[code];
-      fb.style.display='flex';fb.style.alignItems='center';fb.style.gap='6px';
-      fb.style.background='rgba(34,197,94,.1)';fb.style.border='1px solid rgba(34,197,94,.25)';fb.style.color='var(--green)';
-      fb.innerHTML = '✓ ' + c.label;
-      document.getElementById('promoTag').innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:var(--green);padding:3px 9px;font-size:.72rem;border-radius:2px"><span style="font-family:monospace;letter-spacing:.06em">'+code+'</span> — '+c.label+' <button onclick="removePromo()" style="background:none;border:none;color:rgba(34,197,94,.6);cursor:pointer;font-size:.85rem;padding:0;margin-left:2px" title="Remove">×</button></span>';
-      input.value='';input.style.borderColor='';input.style.background='';
-      updateTotal();
-    } else {
-      activePromo = null;
-      input.style.borderColor='var(--red)';input.style.background='rgba(239,68,68,.06)';
-      fb.style.display='block';fb.style.background='rgba(239,68,68,.08)';fb.style.border='1px solid rgba(239,68,68,.2)';fb.style.color='var(--red)';
-      fb.textContent = '✕ Code "'+code+'" is invalid or expired.';
-      setTimeout(()=>{input.style.borderColor='';input.style.background='';},1500);
-    }
-  },700);
-}
-
-function removePromo(){
-  activePromo = null;
-  document.getElementById('promoInput').value='';
-  document.getElementById('promoFeedback').style.display='none';
-  document.getElementById('promoTag').innerHTML='';
-  updateTotal();
-}
-
-/* ─── GET CURRENT VAT RATE ─────────────────────────────────── */
-function getCurrentVatRate(){
-  const country = document.getElementById('country').value;
-  const d = VAT_DATA[country] || VAT_DATA['OTHER'];
-  if(vatB2B && d.eu) return 0; // B2B reverse charge
-  return d.rate;
-}
-
-/* ─── UPDATE VAT INDICATOR ─────────────────────────────────── */
-function updateVatIndicator(){
-  const country = document.getElementById('country').value;
-  const d = VAT_DATA[country] || {rate:0, name:'Other', flag:'🌍', eu:false};
-  const effectiveRate = vatB2B && d.eu ? 0 : d.rate;
-  const isZero = effectiveRate === 0;
-  const isB2B  = vatB2B && d.eu;
-
-  document.getElementById('vatFlag').textContent        = d.flag;
-  document.getElementById('vatCountryName').textContent = d.name;
-  document.getElementById('vatBadge').textContent       = isZero ? '0%' : `${Math.round(d.rate*100)}%`;
-  document.getElementById('vatBadge').className         = 'vat-rate-badge' + (isZero ? ' zero-rate' : '');
-
-  // Rule label
-  let rule = '';
-  if(isB2B)          rule = t('vatRuleB2B');
-  else if(!d.eu && d.rate === 0) rule = t('vatRuleNonEU');
-  else if(country==='CH') rule = t('vatRuleCH');
-  else if(country==='GB') rule = t('vatRuleGB');
-  else if(d.eu)      rule = t('vatRuleEU');
-  else               rule = t('vatRuleNonEU');
-  document.getElementById('vatRule').textContent = rule;
-
-  // Indicator class
-  const ind = document.getElementById('vatIndicator');
-  ind.className = 'vat-indicator' + (isZero ? ' zero' : (d.rate >= 0.22 ? ' warning' : ''));
-
-  // Show/hide B2B VAT number field for EU countries
-  document.getElementById('vatNumberWrap').classList.toggle('show', d.eu);
-  document.getElementById('ossNote').textContent = t('ossNote');
-}
-
-/* ─── ON COUNTRY CHANGE ────────────────────────────────────── */
-function onCountryChange(){
-  vatB2B = false;
-  document.getElementById('vatNumber').value = '';
-  document.getElementById('vatStatus').textContent = '';
-  document.getElementById('vatStatus').className = 'vat-status';
-  updateVatIndicator();
-  updateTotal();
-}
-
-/* ─── VAT NUMBER VALIDATION (debounced) ────────────────────── */
-function onVatNumberInput(){
-  clearTimeout(vatDebounce);
-  const val = document.getElementById('vatNumber').value.trim().toUpperCase().replace(/\s/g,'');
-  const statusEl = document.getElementById('vatStatus');
-
-  if(!val){ vatB2B = false; updateVatIndicator(); updateTotal(); return; }
-
-  // Basic format check: 2 letters + 8-12 alphanumeric chars
-  const isFormatOk = /^[A-Z]{2}[A-Z0-9]{6,12}$/.test(val);
-  if(!isFormatOk){ vatB2B=false; statusEl.className='vat-status invalid'; statusEl.textContent=t('vatInvalid'); updateVatIndicator(); updateTotal(); return; }
-
-  statusEl.className='vat-status checking'; statusEl.textContent=t('vatChecking');
-
-  // Debounce — simulate VIES check (in production use /api/validate-vat)
-  vatDebounce = setTimeout(()=>{
-    /* In production replace with:
-       const res = await fetch('/api/validate-vat?vat='+val).then(r=>r.json());
-       vatB2B = res.valid;
-    */
-    // Simulate: any properly formatted number starting with a real EU country code = valid
-    const euCodes = ['AT','BE','BG','CY','CZ','DE','DK','EE','ES','FI','FR','GB','GR','HR','HU','IE','IT','LT','LU','LV','MT','NL','PL','PT','RO','SE','SI','SK'];
-    const countryCode = val.substring(0,2);
-    vatB2B = euCodes.includes(countryCode);
-    if(vatB2B){
-      statusEl.className='vat-status valid';   statusEl.textContent=t('vatValid');
-    } else {
-      statusEl.className='vat-status invalid'; statusEl.textContent=t('vatInvalid');
-    }
-    updateVatIndicator(); updateTotal();
-  }, 800);
-}
-
-/* ─── UPDATE ORDER TOTAL ───────────────────────────────────── */
-function updateTotal(){
-  const base    = PRICES[selectedPlan];
-  const addon   = addonActive ? 10 : 0;
-  let   pretax  = base + addon;
-  // Apply promo discount
-  let   discount = 0;
-  if(activePromo && PROMO_CODES[activePromo]){
-    const pc = PROMO_CODES[activePromo];
-    if(pc.type==='percent') discount = Math.round(pretax * pc.value) / 100;
-    if(pc.type==='fixed')   discount = Math.min(pc.value, pretax);
-  }
-  const subtotal = Math.max(pretax - discount, 0);
-  const rate    = getCurrentVatRate();
-  const vatAmt  = Math.round(subtotal * rate * 100) / 100;
-  const total   = Math.round((subtotal + vatAmt) * 100) / 100;
-  // Show/hide discount row
-  const dRow = document.getElementById('discountRow');
-  if(dRow){ if(discount>0){dRow.style.display='flex';document.getElementById('dDiscount').textContent='−€'+discount.toFixed(2);document.getElementById('dDiscountLbl').textContent='WELCOME10 (−'+PROMO_CODES[activePromo].value+'%)';}else{dRow.style.display='none';}}
-  const rateStr = `${Math.round(rate*100)}%`;
-  const country = document.getElementById('country').value;
-  const d       = VAT_DATA[country] || VAT_DATA['OTHER'];
-
-  // Plan line
-  document.getElementById('tvPlan').textContent = base === 0 ? '€0' : `€${base}/mo`;
-
-  // Subtotal line (show only if there's an addon)
-  const subtotalRow = document.getElementById('subtotalRow');
-  if(subtotalRow) subtotalRow.style.display = addonActive && base > 0 ? 'flex' : 'none';
-  const tvSub = document.getElementById('tvSubtotal');
-  if(tvSub) tvSub.textContent = `€${subtotal}/mo`;
-
-  // VAT line label — shows rate + country code
-  const vatLabel = document.getElementById('tlTax');
-  if(vatLabel){
-    const rateDisplay = rate === 0
-      ? (vatB2B ? t('tlTax')+' 0% (B2B)' : t('tlTax')+' 0%')
-      : `${t('tlTax')} ${rateStr} (${d.label||country})`;
-    vatLabel.textContent = rateDisplay;
-  }
-  document.getElementById('tvTax').textContent  = rate === 0 ? '€0.00' : `€${vatAmt.toFixed(2)}`;
-
-  // Grand total
-  document.getElementById('tvTotal').textContent = `€${total.toFixed(2)}`;
-  document.getElementById('tvPeriod').textContent = t('tvPeriod');
-
-  // Pay button
-  const isFree = base === 0 && !addonActive;
-  document.getElementById('payBtnAmount').textContent = isFree ? '— Free' : `— €${total.toFixed(2)}/mo`;
-  document.getElementById('payBtnLabel').textContent  = isFree ? t('freeMsg').split('—')[0].trim() : t('payBtnLabel');
-  document.getElementById('cardSection').style.opacity = isFree ? '.4' : '1';
-}
-
-/* ─── PLAN & ADDON ──────────────────────────────────────────── */
-function selectPlan(plan){
-  selectedPlan = plan;
-  document.querySelectorAll('.plan-option').forEach(o=>o.classList.remove('selected'));
-  document.getElementById('opt-'+plan).classList.add('selected');
-  document.getElementById('addonBox').style.display = plan==='essential' ? 'flex' : 'none';
-  if(plan !== 'essential'){ addonActive=false; document.getElementById('addonRow').style.display='none'; }
+function selectPlan(p){
+  currentPlan=p;
+  document.querySelectorAll('.plan-option').forEach(function(el){el.classList.remove('selected');});
+  document.getElementById('opt-'+p).classList.add('selected');
+  // Addon dispo seulement sur Essentiel
+  document.getElementById('addonBox').style.display=p==='essential'?'flex':'none';
+  if(p!=='essential')addonActive=false;
   updateTotal();
 }
 
 function toggleAddon(){
-  if(selectedPlan !== 'essential') return;
-  addonActive = !addonActive;
-  const cb = document.getElementById('addonCheck');
-  cb.classList.toggle('checked', addonActive);
-  cb.textContent = addonActive ? '✓' : '+';
-  document.getElementById('addonRow').style.display = addonActive ? 'flex' : 'none';
+  addonActive=!addonActive;
+  var box=document.getElementById('addonBox');
+  box.classList.toggle('checked',addonActive);
   updateTotal();
 }
 
-function setPayMethod(method, el){
-  payMethod = method;
-  document.querySelectorAll('.pay-method').forEach(m=>m.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('cardSection').style.display  = ['card','apple','google'].includes(method) ? 'block' : 'none';
-  document.getElementById('sepaSection').style.display  = method==='sepa' ? 'block' : 'none';
+function updateTotal(){
+  var base=plans[currentPlan].price;
+  var addon=addonActive?10:0;
+  var sub=base+addon-discount;
+  var tax=Math.round(sub*VAT_RATE*100)/100;
+  var total=Math.round((sub+tax)*100)/100;
+  document.getElementById('tvPlan').textContent=plans[currentPlan].label;
+  document.getElementById('addonRow').style.display=addonActive?'flex':'none';
+  document.getElementById('discountRow').style.display=discount>0?'flex':'none';
+  if(discount>0)document.getElementById('tvDiscount').textContent='−€'+discount;
+  document.getElementById('tvTax').textContent='€'+tax.toFixed(2);
+  document.getElementById('tvTotal').textContent=base===0&&!addonActive?'Gratuit':'€'+total.toFixed(2);
 }
 
-/* ─── STRIPE INIT ───────────────────────────────────────────── */
-let stripe, cardElement;
+/* ── MÉTHODES DE PAIEMENT ── */
+function setPayMethod(m){
+  document.querySelectorAll('.pay-method').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('pm-'+m).classList.add('active');
+  document.getElementById('cardSection').style.display=m==='card'?'block':'none';
+  document.getElementById('sepaSection').style.display=m==='sepa'?'block':'none';
+  if(m==='apple'||m==='google'){document.getElementById('cardSection').style.display='none';document.getElementById('sepaSection').style.display='none';}
+}
+
+/* ── PROMO ── */
+var PROMOS={'AVIATION2026':5,'A2S2026':10};
+function applyPromo(){
+  var code=document.getElementById('promoCode').value.trim().toUpperCase();
+  if(PROMOS[code]){discount=PROMOS[code];updateTotal();showToast('✅ Code promo appliqué : −€'+discount);}
+  else{showToast('⚠ Code promo invalide');}
+}
+
+/* ── STRIPE ── */
+var stripe=null,cardElement=null,expiryElement=null,cvcElement=null,ibanElement=null;
 function initStripe(){
   try{
-    stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-    const elements = stripe.elements({appearance:{theme:'night',variables:{colorPrimary:'#e8a020',colorBackground:'rgba(255,255,255,0.04)',colorText:'#f0f4f8',colorDanger:'#ef4444',fontFamily:'DM Sans, sans-serif',borderRadius:'0px'}}});
-    cardElement = elements.create('card',{style:{base:{color:'#f0f4f8',fontFamily:'DM Sans, sans-serif',fontSize:'15px','::placeholder':{color:'rgba(143,163,184,0.5)'}},invalid:{color:'#ef4444'}}});
-    cardElement.mount('#card-element');
-    cardElement.on('change',e=>{ document.getElementById('card-errors').textContent=e.error?e.error.message:''; });
-  }catch(e){
-    document.getElementById('card-element').innerHTML='<div style="color:var(--mist);font-size:.8rem;padding:.3rem 0">🔑 Add your Stripe key to enable live payments</div>';
-  }
+    stripe=Stripe('pk_test_VOTRE_CLE_PUBLIQUE_STRIPE');
+    var elements=stripe.elements({locale:'fr'});
+    var style={base:{color:'#edf2f8',fontFamily:'DM Sans, sans-serif',fontSize:'14px','::placeholder':{color:'#3d5468'}},invalid:{color:'#ef4444'}};
+    cardElement=elements.create('cardNumber',{style:style});cardElement.mount('#card-element');
+    expiryElement=elements.create('cardExpiry',{style:style});expiryElement.mount('#card-expiry');
+    cvcElement=elements.create('cardCvc',{style:style});cvcElement.mount('#card-cvc');
+    ibanElement=elements.create('iban',{style:style,supportedCountries:['SEPA']});ibanElement.mount('#iban-element');
+    [cardElement,expiryElement,cvcElement,ibanElement].forEach(function(el){
+      el.on('change',function(e){var err=document.getElementById(e.elementType==='iban'?'sepa-errors':'card-errors');if(err)err.textContent=e.error?e.error.message:'';});
+      el.on('focus',function(){el._frame&&el._frame.parentElement&&el._frame.parentElement.classList.add('focused');});
+      el.on('blur',function(){el._frame&&el._frame.parentElement&&el._frame.parentElement.classList.remove('focused');});
+    });
+  }catch(e){console.warn('Stripe non initialisé :',e);}
 }
 
-/* ─── HANDLE PAYMENT ────────────────────────────────────────── */
-async function handlePayment(){
-  const btn       = document.getElementById('payBtn');
-  const firstName = document.getElementById('firstName').value.trim();
-  const lastName  = document.getElementById('lastName').value.trim();
-  const email     = document.getElementById('email').value.trim();
-  const country   = document.getElementById('country').value;
-  const vatNum    = document.getElementById('vatNumber').value.trim().toUpperCase();
-
-  if(!firstName||!lastName){ showToast(t('errRequired')); return; }
-  if(!email||!email.includes('@')){ showToast(t('errEmail')); return; }
-
-  if(selectedPlan==='essential'&&!addonActive){
-    showToast(t('freeMsg'));
-    setTimeout(()=>{ window.location.href='success.html?plan=essential'; },1500);
-    return;
-  }
-
-  btn.classList.add('loading'); btn.disabled=true;
-  showToast(t('processingMsg'));
-
-  try{
-    /* In production replace with real Stripe call:
-    const { sessionId } = await fetch('/api/create-checkout-session',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ plan:selectedPlan, addon:addonActive, email,
-        name:firstName+' '+lastName, country, vatNumber:vatNum,
-        automaticTax:true }) // Stripe Tax handles the rest
-    }).then(r=>r.json());
-    await stripe.redirectToCheckout({ sessionId }); */
-
-    await new Promise(r=>setTimeout(r,2000));
-    const rate = getCurrentVatRate();
-    window.location.href=`success.html?plan=${selectedPlan}&addon=${addonActive}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(firstName)}&country=${country}&vatrate=${Math.round(rate*100)}`;
-  }catch(err){
-    btn.classList.remove('loading'); btn.disabled=false;
-    showToast('Payment error: '+(err.message||'Please try again'));
-  }
+/* ── PAIEMENT ── */
+async function handlePay(){
+  var first=document.getElementById('firstName').value.trim();
+  var last=document.getElementById('lastName').value.trim();
+  var email=document.getElementById('email').value.trim();
+  if(!first||!last||!email){showToast('⚠ Remplissez tous les champs obligatoires');return;}
+  if(!email.includes('@')){showToast('⚠ Adresse email invalide');return;}
+  var btn=document.getElementById('payBtn');
+  btn.classList.add('loading');btn.disabled=true;
+  // En production : créer un PaymentIntent côté serveur, puis confirmer ici
+  await new Promise(function(r){setTimeout(r,1500);});
+  // Simuler succès / rediriger vers success.html
+  window.location.href='success.html';
 }
 
-/* ─── SET LANG ──────────────────────────────────────────────── */
-function setLang(l){
-  lang = l;
-  document.querySelectorAll('.lb').forEach(b=>{ b.classList.toggle('active', b.textContent.trim()===(l==='zh'?'中文':l.toUpperCase())); });
-  const set=(id,k)=>{ const el=document.getElementById(id); if(el) el.textContent=t(k); };
-  const htm=(id,k)=>{ const el=document.getElementById(id); if(el) el.innerHTML=t(k); };
-  set('navBack','navBack'); set('summaryTitle','summaryTitle'); set('pb-popular','pbPopular');
-  set('pn-essential','pnEssential'); set('pd-essential','pdEssential');
-  set('pn-aviateur','pnAviateur'); set('pd-aviateur','pdAviateur');
-  set('pn-pro','pnPro'); set('pd-pro','pdPro');
-  set('addonName','addonName'); set('addonDesc','addonDesc');
-  set('tlSubtotal','tlSubtotal'); set('tvPeriod','tvPeriod');
-  set('noCommText','noComm'); set('formTitle','formTitle'); set('fsAccount','fsAccount');
-  set('lFirstName','lFirstName'); set('lLastName','lLastName'); set('lEmail','lEmail'); set('lCompany','lCompany');
-  set('fsCard','fsCard'); set('lCardNum','lCardNum'); set('lExpiry','lExpiry'); set('lCvc','lCvc');
-  set('fsSepa','fsSepa'); set('lIban','lIban'); set('sepaMandate','sepaMandate');
-  set('fsPromo','fsPromo'); set('fsBilling','fsBilling'); set('lCountry','lCountry'); set('lCity','lCity'); set('lPostal','lPostal');
-  set('lVatNum','lVatNum'); set('ossNote','ossNote');
-  htm('billingNote','billingNote');
-  set('pmCard','pmCard'); set('pmSepa','pmSepa');
-  set('secSSL','secSSL'); set('secStripe','secStripe'); set('secCancel','secCancel');
-  // Re-render VAT indicator with new language
-  updateVatIndicator(); updateTotal();
-}
+/* ── TOAST ── */
+var _tt;
+function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},3000);}
 
-let toastTimer;
-function showToast(msg){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.classList.add('show');
-  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),3500);
-}
-
-/* ─── INIT ──────────────────────────────────────────────────── */
-window.addEventListener('DOMContentLoaded',()=>{
-  initStripe();
-  updateVatIndicator();
-  updateTotal();
-  const params = new URLSearchParams(window.location.search);
-  const plan = params.get('plan');
-  if(plan&&['essential','aviateur','pro'].includes(plan)) selectPlan(plan);
-});
-</script>
-<script src="nav.js"></script>
-<script id="a2s-tracker">
+/* ── BOOT ── */
+selectPlan('aviateur');
+initStripe();
+// Pré-remplir si connecté
 (function(){
-  var SB='https://hlivysnlzlqdjcigqgvk.supabase.co',
-      SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-  var sid=sessionStorage.getItem('a2s_sid')||(function(){var s=Math.random().toString(36).slice(2);sessionStorage.setItem('a2s_sid',s);return s;})();
-  var page=location.pathname.split('/').pop()||'index.html';
-  var lid=new URLSearchParams(location.search).get('id');
-  fetch('https://get.geojs.io/v1/ip/geo.json').then(function(r){return r.json();}).then(function(geo){
-    var row={page:page,referrer:document.referrer||null,country:geo.country_code||null,device:/Mobi|Android/i.test(navigator.userAgent)?'mobile':'desktop',browser:(function(){var ua=navigator.userAgent;if(/Chrome/.test(ua))return'Chrome';if(/Firefox/.test(ua))return'Firefox';if(/Safari/.test(ua))return'Safari';return'Other';})(),listing_id:lid?parseInt(lid):null,session_id:sid};
-    fetch(SB+'/rest/v1/analytics',{method:'POST',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK,'Prefer':'return=minimal'},body:JSON.stringify(row)});
-    if(lid){fetch(SB+'/rest/v1/listing_views',{method:'POST',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK,'Prefer':'return=minimal'},body:JSON.stringify({listing_id:parseInt(lid),country:geo.country_code||null,session_id:sid})});fetch(SB+'/rest/v1/listings?id=eq.'+lid,{method:'PATCH',headers:{'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK},body:JSON.stringify({views:null})});}
-  }).catch(function(){});
+  var tk=sessionStorage.getItem('a2s_auth_token');
+  if(!tk)return;
+  try{var p=JSON.parse(atob(tk.split('.')[1]));
+  if(p.exp*1000<Date.now())return;
+  document.getElementById('email').value=p.email||'';
+  if(p.user_metadata&&p.user_metadata.full_name){var pts=p.user_metadata.full_name.split(' ');document.getElementById('firstName').value=pts[0]||'';document.getElementById('lastName').value=pts.slice(1).join(' ')||'';}
+  }catch(e){}
+})();
+// Lire le plan depuis l'URL
+(function(){
+  var p=new URLSearchParams(location.search).get('plan');
+  if(p&&plans[p])selectPlan(p);
 })();
 </script>
+<script src="nav.js"></script>
 </body>
 </html>
