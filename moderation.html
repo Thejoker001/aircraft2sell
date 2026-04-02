@@ -275,6 +275,7 @@ negotiable:'价格可议',firm:'定价出售',offers:'欢迎出价',fixed:'固�
       <a href="search.html" data-i18n="nav_categories" onclick="toggleCatDropdown(event)"></a>
       <div class="dropdown-menu" id="navCatDropdown"></div>
     </li>
+    <li><a href="comparateur.html">Comparateur</a></li>
     <li><a href="#alert" data-i18n="nav_alerts"></a></li>
     <li class="nav-dropdown" id="currencyDropdownLi">
       <a href="#" onclick="toggleCurrencyDropdown(event)" style="display:flex;align-items:center;gap:.3rem">
@@ -422,40 +423,70 @@ negotiable:'价格可议',firm:'定价出售',offers:'欢迎出价',fixed:'固�
 
 <script>
 /* -- AUTH -------------------------------------------- */
-/*
-   IDENTIFIANTS MODÉRATEUR
-   Email    : contact.aircraft2sell@gmail.com
-   Password : A2S@Admin2026!
-   
-   EN PRODUCTION : remplacer par Supabase auth + vérification is_admin:
-   const { data: { user } } = await supabase.auth.getUser()
-   const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
-   if (!profile?.is_admin) { doLogout(); return; }
-*/
-const MOD_EMAIL    = 'moderateur@aircraft2sell.com';
-const MOD_PASSWORD = 'A2S@Mod2026!';
-const SESSION_KEY = 'a2s_mod_session';
+/* ── AUTH — Supabase Auth (plus de mot de passe en clair) ── */
+const SESSION_KEY  = 'a2s_admin_session'; // Partage la session avec admin.html
+const SB_URL_MOD   = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
+const SB_KEY_MOD   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+const ADMIN_EMAILS_MOD = ['contact.aircraft2sell@gmail.com'];
 
-function doLogin(){
-  const email = document.getElementById('aEmail').value.trim();
+/* Anti-bruteforce */
+let _modAttempts = 0, _modBlocked = false, _modBlockUntil = 0;
+
+/* Échappement XSS */
+function esc(s){ if(s==null)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;'); }
+
+async function doLogin(){
+  if(_modBlocked){
+    const rem = Math.ceil((_modBlockUntil - Date.now())/1000);
+    if(rem > 0){ document.getElementById('loginErr').textContent = 'Trop de tentatives. Réessayez dans '+rem+'s.'; return; }
+    _modBlocked = false; _modAttempts = 0;
+  }
+  const email = document.getElementById('aEmail').value.trim().toLowerCase();
   const pw    = document.getElementById('aPw').value;
   const err   = document.getElementById('loginErr');
   err.textContent = '';
-  if(email === MOD_EMAIL && pw === MOD_PASSWORD){
-    /* PRODUCTION: await supabase.auth.signInWithPassword({email, password: pw}) then verify is_admin role */
-    sessionStorage.setItem(SESSION_KEY, btoa(email + ':' + Date.now()));
+
+  if(!email || !pw){ err.textContent = 'Remplissez tous les champs.'; return; }
+  if(ADMIN_EMAILS_MOD.indexOf(email) === -1){
+    _modAttempts++;
+    if(_modAttempts >= 5){ _modBlocked = true; _modBlockUntil = Date.now() + 60000; }
+    err.textContent = 'Accès non autorisé.';
+    document.getElementById('aPw').value = '';
+    return;
+  }
+
+  const btn = document.querySelector('.login-btn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Connexion…'; }
+
+  try {
+    const res = await fetch(SB_URL_MOD + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY_MOD, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pw })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.access_token) throw new Error(data.error_description || 'Identifiants incorrects');
+
+    sessionStorage.setItem(SESSION_KEY, data.access_token);
+    _modAttempts = 0;
     document.getElementById('loginOverlay').classList.add('hidden');
     initMod();
-    showToast('\u2728 Connexion r\u00e9ussie \u2014 Bienvenue, Romain');
-  } else {
-    err.textContent = 'Email ou mot de passe incorrect';
+    showToast('✨ Connexion réussie');
+  } catch(e) {
+    _modAttempts++;
+    if(_modAttempts >= 5){ _modBlocked = true; _modBlockUntil = Date.now() + 60000; err.textContent = 'Compte bloqué 60s.'; }
+    else { err.textContent = 'Erreur : ' + e.message; }
     document.getElementById('aPw').value = '';
-    setTimeout(() => err.textContent = '', 3500);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = 'Connexion'; }
   }
 }
 
-function doLogout(){
-  /* PRODUCTION: await supabase.auth.signOut() */
+async function doLogout(){
+  const token = sessionStorage.getItem(SESSION_KEY);
+  if(token){
+    try { await fetch(SB_URL_MOD+'/auth/v1/logout', { method:'POST', headers:{'apikey':SB_KEY_MOD,'Authorization':'Bearer '+token} }); } catch(e){}
+  }
   sessionStorage.removeItem(SESSION_KEY);
   document.getElementById('loginOverlay').classList.remove('hidden');
   document.getElementById('aEmail').value = '';
@@ -463,12 +494,18 @@ function doLogout(){
 }
 
 function checkAuth(){
-  if(!sessionStorage.getItem(SESSION_KEY)){
+  const token = sessionStorage.getItem(SESSION_KEY);
+  if(!token){
     document.getElementById('loginOverlay').classList.remove('hidden');
-  } else {
-    document.getElementById('loginOverlay').classList.add('hidden');
-    initMod();
+    return;
   }
+  // Vérifier expiration JWT
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if(payload.exp * 1000 < Date.now()){ sessionStorage.removeItem(SESSION_KEY); document.getElementById('loginOverlay').classList.remove('hidden'); return; }
+  } catch(e){ sessionStorage.removeItem(SESSION_KEY); document.getElementById('loginOverlay').classList.remove('hidden'); return; }
+  document.getElementById('loginOverlay').classList.add('hidden');
+  initMod();
 }
 
 /* -- GREETING --------------------------------------- */
