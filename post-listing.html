@@ -540,10 +540,13 @@ function updateProgress(){
 
 /* ── VALIDATION & SUBMIT ── */
 var LS_KEY='a2s_listings';
+var SB_URL='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+var PLAN_SLOTS={Essentiel:1,Aviateur:3,Pro:999};
 
 function saveDraft(){showToast('Brouillon sauvegardé !');}
 
-function submitListing(){
+async function submitListing(){
   var required=[{id:'fCategory',label:'la catégorie'},{id:'fYear',label:"l'année"},{id:'fAirport',label:"l'aéroport"},{id:'fPrice',label:'le prix'},{id:'fDesc',label:'la description'}];
   for(var i=0;i<required.length;i++){
     var el=document.getElementById(required[i].id);
@@ -552,6 +555,29 @@ function submitListing(){
   var makeVal=document.getElementById('fMake').value;
   var makeSelVal=(document.getElementById('fMakeSel')||{}).value||'';
   if(!makeVal&&!makeSelVal){showToast('⚠ Sélectionnez une marque');return;}
+
+  // Vérifier plan et slots
+  var email=localStorage.getItem('a2s_user_email')||'';
+  var tk=sessionStorage.getItem('a2s_auth_token');
+  if(email){
+    try{
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=plan&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}});
+      var userData=await res.json();
+      var plan=(userData&&userData[0]&&userData[0].plan)||'Essentiel';
+      var maxSlots=PLAN_SLOTS[plan]||1;
+      var res2=await fetch(SB_URL+'/rest/v1/listings?seller_email=eq.'+encodeURIComponent(email)+'&status=in.(pending,live)&select=id',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}});
+      var activeListings=await res2.json();
+      var activeCount=Array.isArray(activeListings)?activeListings.length:0;
+      var lsListings=JSON.parse(localStorage.getItem(LS_KEY)||'[]');
+      var lsActive=lsListings.filter(function(l){return l.sellerEmail===email&&(l.status==='pending'||l.status==='live');}).length;
+      var totalActive=Math.max(activeCount,lsActive);
+      if(totalActive>=maxSlots){
+        showToast('⚠ Limite atteinte — formule '+plan+' : '+maxSlots+' annonce'+(maxSlots>1?'s':''));
+        setTimeout(function(){window.location.href='checkout.html?plan=aviateur';},2500);
+        return;
+      }
+    }catch(e){console.warn('Vérification plan:',e);}
+  }
 
   // Sync hidden fields
   var makeSel=document.getElementById('fMakeSel');
