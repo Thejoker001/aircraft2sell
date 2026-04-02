@@ -570,39 +570,58 @@ nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;al
 
 <script>
 /* ── AUTH ── */
-function initAuth(){
+var SB_URL='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+
+function applyUserDisplay(name, email){
+  var first=name.split(' ')[0]||email.split('@')[0]||'Pilote';
+  var initials=name.trim().split(/\s+/).map(function(w){return w[0];}).join('').substring(0,2).toUpperCase()||'U';
+  document.getElementById('navAvatar').textContent=initials;
+  document.getElementById('navUserName').textContent=first;
+  var h=new Date().getHours();
+  var greeting=h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
+  var icon=h<12?'☀️':h<18?'🌤️':'🌙';
+  document.getElementById('ovGreeting').innerHTML=greeting+', <em>'+first+'</em> '+icon;
+  var parts=name.split(' ');
+  var f1=document.getElementById('setFirst');var f2=document.getElementById('setLast');var fe=document.getElementById('setEmail');
+  if(f1)f1.value=parts[0]||'';
+  if(f2)f2.value=parts.slice(1).join(' ')||'';
+  if(fe)fe.value=email;
+}
+
+async function initAuth(){
   var tk=sessionStorage.getItem('a2s_auth_token');
   var loggedLs=localStorage.getItem('a2s_logged_in')==='true';
   var name='',email='';
   if(tk){
     try{
       var p=JSON.parse(atob(tk.split('.')[1]));
-      if(p.exp*1000<Date.now()){sessionStorage.removeItem('a2s_auth_token');}
+      if(p.exp*1000<Date.now()){sessionStorage.removeItem('a2s_auth_token');tk=null;}
       else{
         email=p.email||'';
         name=(p.user_metadata&&p.user_metadata.full_name)||'';
       }
+    }catch(e){tk=null;}
+  }
+  if(!tk&&!loggedLs){window.location.href='login.html?redirect=dashboard.html';return;}
+  email=email||localStorage.getItem('a2s_user_email')||'';
+  name=name||localStorage.getItem('a2s_user_name')||'';
+  // Affichage immédiat avec ce qu'on a
+  applyUserDisplay(name, email);
+  // Puis on va chercher le vrai prénom dans public.users
+  if(email){
+    try{
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name&limit=1',{
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}
+      });
+      var data=await res.json();
+      if(data&&data[0]&&data[0].name){
+        name=data[0].name;
+        localStorage.setItem('a2s_user_name',name);
+        applyUserDisplay(name,email);
+      }
     }catch(e){}
   }
-  if(!name&&!loggedLs&&!tk){window.location.href='login.html?redirect=dashboard.html';return;}
-  name=name||localStorage.getItem('a2s_user_name')||'';
-  email=email||localStorage.getItem('a2s_user_email')||'';
-  var first=name.split(' ')[0]||email.split('@')[0]||'Pilote';
-  var initials=name.trim().split(/\s+/).map(function(w){return w[0];}).join('').substring(0,2).toUpperCase()||'U';
-  document.getElementById('navAvatar').textContent=initials;
-  document.getElementById('navUserName').textContent=first;
-  document.getElementById('ovName').textContent=first;
-  // Salutation
-  var h=new Date().getHours();
-  var greeting=h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
-  var icon=h<12?'☀️':h<18?'🌤️':'🌙';
-  document.getElementById('ovGreeting').innerHTML=greeting+', <em>'+first+'</em> '+icon;
-  // Pré-remplir paramètres
-  var parts=name.split(' ');
-  var f1=document.getElementById('setFirst');var f2=document.getElementById('setLast');var fe=document.getElementById('setEmail');
-  if(f1)f1.value=parts[0]||'';
-  if(f2)f2.value=parts.slice(1).join(' ')||'';
-  if(fe)fe.value=email;
 }
 
 function doLogout(){
