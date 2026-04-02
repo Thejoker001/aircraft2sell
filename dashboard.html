@@ -576,12 +576,13 @@ var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 function applyUserDisplay(name, email){
   var first=name.split(' ')[0]||email.split('@')[0]||'Pilote';
   var initials=name.trim().split(/\s+/).map(function(w){return w[0];}).join('').substring(0,2).toUpperCase()||'U';
-  document.getElementById('navAvatar').textContent=initials;
-  document.getElementById('navUserName').textContent=first;
+  var navAv=document.getElementById('navAvatar');if(navAv)navAv.textContent=initials;
+  var navNm=document.getElementById('navUserName');if(navNm)navNm.textContent=first;
   var h=new Date().getHours();
   var greeting=h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
   var icon=h<12?'☀️':h<18?'🌤️':'🌙';
-  document.getElementById('ovGreeting').innerHTML=greeting+', <em>'+first+'</em> '+icon;
+  var ovG=document.getElementById('ovGreeting');if(ovG)ovG.innerHTML=greeting+', <em>'+first+'</em> '+icon;
+  var ovN=document.getElementById('ovName');if(ovN)ovN.textContent=first;
   var parts=name.split(' ');
   var f1=document.getElementById('setFirst');var f2=document.getElementById('setLast');var fe=document.getElementById('setEmail');
   if(f1)f1.value=parts[0]||'';
@@ -606,19 +607,25 @@ async function initAuth(){
   if(!tk&&!loggedLs){window.location.href='login.html?redirect=dashboard.html';return;}
   email=email||localStorage.getItem('a2s_user_email')||'';
   name=name||localStorage.getItem('a2s_user_name')||'';
-  // Affichage immédiat avec ce qu'on a
-  applyUserDisplay(name, email);
-  // Puis on va chercher le vrai prénom dans public.users
+  applyUserDisplay(name,email);
   if(email){
     try{
       var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,plan&limit=1',{
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}
       });
       var data=await res.json();
-      if(data&&data[0]){if(data[0].name){
-        name=data[0].name;
-        localStorage.setItem('a2s_user_name',name);
-        applyUserDisplay(name,email);}if(data[0].plan){_userPlan=data[0].plan;var planEl=document.getElementById('navUserPlan');if(planEl)planEl.textContent=data[0].plan;var sbPlan=document.getElementById('sbPlanName');if(sbPlan)sbPlan.textContent=data[0].plan.toUpperCase();renderListings();}}
+      if(data&&data[0]){
+        if(data[0].name){
+          name=data[0].name;
+          localStorage.setItem('a2s_user_name',name);
+          applyUserDisplay(name,email);
+        }
+        if(data[0].plan){
+          _userPlan=data[0].plan;
+          var planEl=document.getElementById('navUserPlan');if(planEl)planEl.textContent=data[0].plan;
+          var sbPlan=document.getElementById('sbPlanName');if(sbPlan)sbPlan.textContent=data[0].plan.toUpperCase();
+          renderListings();
+        }
       }
     }catch(e){}
   }
