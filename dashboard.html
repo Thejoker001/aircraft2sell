@@ -664,13 +664,46 @@ function closeMobile(){
   document.body.style.overflow='';
 }
 
-/* ── ANNONCES localStorage ── */
+/* ── ANNONCES ── */
 var LS_LISTINGS='a2s_listings';
 var currentPeriod=7;
 var PLAN_SLOTS={Essentiel:1,Aviateur:3,Pro:999};
-var _userPlan='Essentiel'; // mis à jour par initAuth depuis Supabase
+var _userPlan='Essentiel';
+var SB_SERVICE='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDIyMjA3MCwiZXhwIjoyMDg5Nzk4MDcwfQ.Vq4C7c-bY9T9xZQrmFlHofNkjGVD3wuPl0pghOs1YME';
 
 function getListings(){try{return JSON.parse(localStorage.getItem(LS_LISTINGS)||'[]');}catch(e){return[];}}
+
+async function loadListingsFromSupabase(email){
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/listings?seller_email=eq.'+encodeURIComponent(email)+'&order=submitted_at.desc&select=*',{
+      headers:{'apikey':SB_SERVICE,'Authorization':'Bearer '+SB_SERVICE}
+    });
+    if(!res.ok)return null;
+    var rows=await res.json();
+    if(!Array.isArray(rows))return null;
+    // Normaliser les champs Supabase → format dashboard
+    return rows.map(function(r){
+      return{
+        id:r.id,
+        make:r.make||'',
+        model:r.model||'',
+        year:r.year||'',
+        price:r.price||'',
+        currency:r.currency||'EUR',
+        category:r.category||'',
+        airport:r.airport||'',
+        description:r.description||'',
+        status:r.status||'pending',
+        submittedAt:r.submitted_at||r.created_at||'',
+        sellerName:r.seller_name||'',
+        sellerEmail:r.seller_email||'',
+        views:r.views||0,
+        enquiries:r.enquiries||0,
+        _supabase:true
+      };
+    });
+  }catch(e){return null;}
+}
 
 function statusPillDash(s){
   if(s==='live')return'<span class="pill p-live">● En ligne</span>';
@@ -678,8 +711,15 @@ function statusPillDash(s){
   return'<span class="pill" style="background:rgba(249,115,22,.1);color:var(--orange);border:1px solid rgba(249,115,22,.2)">⏳ En attente</span>';
 }
 
-function renderListings(){
-  var listings=getListings();
+async function renderListings(){
+  // Charger depuis Supabase si email dispo, sinon localStorage
+  var email=localStorage.getItem('a2s_user_email')||'';
+  var listings=null;
+  if(email){listings=await loadListingsFromSupabase(email);}
+  if(!listings){listings=getListings();}
+  // Fusionner avec localStorage (annonces non encore sync)
+  var lsListings=getListings().filter(function(l){return!l._supabase&&!listings.find(function(s){return String(s.id)===String(l.id);});});
+  listings=listings.concat(lsListings);
   var slots=PLAN_SLOTS[_userPlan]||1;
   var active=listings.filter(function(l){return l.status!=='rejected';}).length;
   var pct=Math.min(active/slots*100,100);
@@ -750,9 +790,26 @@ function renderListings(){
   }).join('')+'</div>';
 }
 
-function delListing(i){
+async function delListing(i){
   if(!confirm('Supprimer cette annonce ?'))return;
-  var arr=getListings();arr.splice(i,1);localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));renderListings();showToast('Annonce supprimée.');
+  var email=localStorage.getItem('a2s_user_email')||'';
+  var sbListings=email?await loadListingsFromSupabase(email):null;
+  var allListings=sbListings||getListings();
+  var l=allListings[i];
+  // Supprimer dans Supabase si l'annonce y est
+  if(l&&l._supabase&&l.id){
+    try{
+      await fetch(SB_URL+'/rest/v1/listings?id=eq.'+l.id,{
+        method:'DELETE',
+        headers:{'apikey':SB_SERVICE,'Authorization':'Bearer '+SB_SERVICE}
+      });
+    }catch(e){}
+  }
+  // Supprimer dans localStorage
+  var arr=getListings().filter(function(x){return String(x.id)!==String(l&&l.id);});
+  localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));
+  renderListings();
+  showToast('Annonce supprimée.');
 }
 
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
