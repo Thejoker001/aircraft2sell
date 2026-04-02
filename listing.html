@@ -9,212 +9,312 @@
 <style>
 :root{--bg:#05080f;--deep:#030610;--surface:#0a1020;--card:#0c1428;--card2:#0f1830;--border:rgba(180,200,230,.08);--border2:rgba(180,200,230,.14);--accent:#e8a020;--gold:#f5c518;--mist:#7a93aa;--mist2:#3d5468;--white:#edf2f8;--dim:#c8d8e8;--green:#22c55e;--red:#ef4444}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
-/* NAV */
-nav{position:sticky;top:0;z-index:300;height:60px;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;background:rgba(3,6,16,.9);backdrop-filter:blur(24px);border-bottom:1px solid var(--border)}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:.12em;color:var(--white);text-decoration:none}
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;background:rgba(3,6,16,.92);backdrop-filter:blur(28px);border-bottom:1px solid var(--border)}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.75rem;letter-spacing:.12em;color:var(--white);text-decoration:none;flex-shrink:0}
 .logo span{color:var(--accent)}
-.nav-right{display:flex;align-items:center;gap:.6rem}
-.btn-back{background:transparent;border:1px solid var(--border2);color:var(--mist);padding:.38rem .9rem;font-family:'DM Sans',sans-serif;font-size:.74rem;text-decoration:none;transition:all .2s}
-.btn-back:hover{color:var(--white);border-color:var(--border2)}
-.btn-post{background:var(--accent);color:var(--deep);border:none;padding:.42rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.74rem;font-weight:700;text-decoration:none;cursor:pointer;transition:background .2s}
-.btn-post:hover{background:var(--gold)}
+.nav-links{display:flex;list-style:none;align-items:center;gap:.1rem;height:64px}
+.nav-links a{display:flex;align-items:center;height:64px;padding:0 .9rem;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);text-decoration:none;transition:color .2s;white-space:nowrap}
+.nav-links a:hover{color:var(--white)}
+.nav-right{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
+.btn-back{background:transparent;border:1px solid var(--border2);color:var(--mist);padding:.44rem 1rem;font-family:'DM Sans',sans-serif;font-size:.74rem;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center;gap:.35rem}
+.btn-back:hover{color:var(--white)}
+.btn-post-nav{background:var(--accent);color:var(--deep);border:none;padding:.44rem 1.2rem;font-family:'DM Sans',sans-serif;font-size:.74rem;font-weight:700;text-decoration:none;cursor:pointer;transition:background .2s;display:inline-flex;align-items:center}
+.btn-post-nav:hover{background:var(--gold)}
+.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:.5rem}
+.burger span{display:block;width:22px;height:2px;background:var(--white);border-radius:1px;transition:all .25s}
+.burger.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+.burger.open span:nth-child(2){opacity:0}
+.burger.open span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
 
-/* LAYOUT */
+/* ── MOBILE MENU ── */
+.mobile-menu{display:none;position:fixed;inset:0;background:rgba(3,6,16,.98);backdrop-filter:blur(20px);z-index:490;flex-direction:column;padding:5rem 2rem 2rem;overflow-y:auto}
+.mobile-menu.open{display:flex}
+.mobile-menu a{padding:1rem 0;font-size:.9rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-decoration:none;border-bottom:1px solid var(--border);display:block;transition:color .2s}
+.mobile-menu a:hover{color:var(--accent)}
+.mm-cta{margin-top:2rem;background:var(--accent);color:var(--deep);text-align:center;padding:1rem;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.1em;text-decoration:none;display:block}
+
+/* ── LAYOUT ── */
 .listing-wrap{max-width:1200px;margin:0 auto;padding:2rem;display:grid;grid-template-columns:1fr 360px;gap:2rem;align-items:start}
 
 /* ── COLONNE GAUCHE ── */
-/* Breadcrumb */
 .breadcrumb{display:flex;align-items:center;gap:.5rem;font-size:.7rem;color:var(--mist2);margin-bottom:1.5rem;flex-wrap:wrap}
 .breadcrumb a{color:var(--mist);text-decoration:none;transition:color .2s}
 .breadcrumb a:hover{color:var(--accent)}
 .breadcrumb span{opacity:.4}
 
-/* Header annonce */
-.listing-cat{font-size:.62rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:.6rem}
-.listing-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,4vw,3.2rem);letter-spacing:.04em;line-height:.96;margin-bottom:1rem}
-.listing-meta{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.listing-cat{font-size:.62rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:.6rem}
+.listing-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,4vw,3.2rem);letter-spacing:.04em;line-height:.96;margin-bottom:.75rem}
+.listing-meta{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem}
 .listing-meta-item{display:flex;align-items:center;gap:.4rem;font-size:.74rem;color:var(--mist)}
-.listing-status{font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.2rem .65rem;border-radius:0}
-.status-live{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:var(--green)}
+.pill-live{font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.18rem .6rem;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:var(--green)}
+.pill-pending{font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.18rem .6rem;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.2);color:#f97316}
 
 /* Galerie */
-.gallery{margin-bottom:1.5rem}
-.gallery-main{aspect-ratio:16/9;background:linear-gradient(135deg,var(--surface),rgba(13,40,71,.7));display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:4px;overflow:hidden;cursor:pointer}
-.gallery-plane{font-size:10rem;opacity:.08;filter:blur(1px)}
-.gallery-count{position:absolute;bottom:.8rem;right:.8rem;background:rgba(5,8,15,.7);border:1px solid var(--border2);font-size:.66rem;color:var(--mist);padding:.2rem .6rem}
-.gallery-thumbs{display:flex;gap:4px}
-.gallery-thumb{aspect-ratio:16/9;flex:1;background:linear-gradient(135deg,var(--surface),rgba(13,40,71,.5));display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .15s;opacity:.45}
-.gallery-thumb:hover,.gallery-thumb.active{opacity:1}
-.gallery-thumb span{font-size:1.5rem;opacity:.2}
+.gallery{margin-bottom:1.75rem}
+.gallery-main{aspect-ratio:16/9;background:linear-gradient(135deg,var(--surface),rgba(13,40,71,.7));display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:4px;overflow:hidden;cursor:pointer;border:1px solid var(--border)}
+.gallery-main img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.gallery-plane{font-size:9rem;opacity:.06}
+.gallery-badge{position:absolute;top:.75rem;left:.75rem;background:var(--accent);color:var(--deep);font-size:.54rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.2rem .6rem}
+.gallery-count{position:absolute;bottom:.75rem;right:.75rem;background:rgba(5,8,15,.75);border:1px solid var(--border2);font-size:.66rem;color:var(--mist);padding:.2rem .65rem;backdrop-filter:blur(4px)}
+.gallery-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.gallery-thumb{aspect-ratio:16/9;background:linear-gradient(135deg,var(--surface),rgba(13,40,71,.5));display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .15s;opacity:.4;overflow:hidden;border:1px solid transparent;position:relative}
+.gallery-thumb:hover,.gallery-thumb.active{opacity:1;border-color:rgba(232,160,32,.4)}
+.gallery-thumb img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.gallery-thumb span{font-size:1.4rem;opacity:.2}
 
-/* Specs grid */
-.specs-section{margin-bottom:1.5rem}
-.section-label{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mist2);margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
-.specs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
-.spec-item{background:var(--card);padding:1rem 1.1rem}
-.spec-label{font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mist2);margin-bottom:.35rem}
-.spec-val{font-size:.9rem;font-weight:600;color:var(--white)}
-
-/* Description */
-.desc-section{margin-bottom:1.5rem}
-.desc-text{font-size:.84rem;color:var(--mist);line-height:1.85;white-space:pre-line}
+/* Specs */
+.section-label{font-size:.6rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--mist2);margin-bottom:.9rem;padding-bottom:.55rem;border-bottom:1px solid var(--border)}
+.specs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:1.75rem}
+.spec-item{background:var(--card);padding:.95rem 1.1rem}
+.spec-label{font-size:.58rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mist2);margin-bottom:.3rem}
+.spec-val{font-size:.88rem;font-weight:600;color:var(--white)}
+.spec-val.accent{color:var(--accent)}
 
 /* Équipements */
-.equip-grid{display:flex;gap:.45rem;flex-wrap:wrap}
-.equip-tag{background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--dim);font-size:.7rem;padding:.3rem .7rem}
+.equip-section{margin-bottom:1.75rem}
+.equip-tags{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.75rem}
+.equip-tag{background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--dim);font-size:.7rem;padding:.28rem .7rem;display:inline-flex;align-items:center;gap:.35rem}
+.equip-tag.ok{color:var(--green);border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.06)}
+.equip-tag.ok::before{content:'✓';font-size:.6rem}
+
+/* Description */
+.desc-section{margin-bottom:1.75rem}
+.desc-text{font-size:.85rem;color:var(--mist);line-height:1.9;white-space:pre-line}
+
+/* Docs */
+.docs-section{margin-bottom:1.75rem}
 
 /* Vendeur */
-.seller-section{margin-bottom:1.5rem;background:var(--card);border:1px solid var(--border)}
+.seller-section{background:var(--card);border:1px solid var(--border2);margin-bottom:1.75rem}
 .seller-head{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1rem}
-.seller-avatar{width:44px;height:44px;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--accent);flex-shrink:0}
+.seller-avatar{width:46px;height:46px;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--accent);flex-shrink:0}
 .seller-name{font-size:.9rem;font-weight:600;color:var(--white);margin-bottom:.2rem}
-.seller-since{font-size:.7rem;color:var(--mist2)}
-.seller-verified{font-size:.62rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--green);display:flex;align-items:center;gap:.3rem}
-.seller-verified::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green)}
-.seller-body{padding:1rem 1.25rem;font-size:.8rem;color:var(--mist);line-height:1.6}
+.seller-badge{font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--green);display:inline-flex;align-items:center;gap:.3rem}
+.seller-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green)}
+.seller-body{padding:1rem 1.25rem;font-size:.8rem;color:var(--mist);line-height:1.65}
+.seller-since{font-size:.7rem;color:var(--mist2);margin-top:.25rem}
 
-/* Actions STICKY SIDEBAR */
-.listing-sidebar{position:sticky;top:76px}
-.price-card{background:var(--card);border:1px solid var(--border2);padding:1.5rem;margin-bottom:1rem}
-.price-badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem}
-.price-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent)}
-.main-price{font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:.04em;color:var(--white);line-height:1;margin-bottom:.3rem}
-.price-sub{font-size:.72rem;color:var(--mist2);margin-bottom:1.5rem}
-.urg-strip{background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.12);padding:.7rem 1rem;display:flex;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap}
-.urg-item{font-size:.7rem;color:var(--mist);display:flex;align-items:center;gap:.35rem}
-.urg-dot{width:4px;height:4px;border-radius:50%;background:var(--accent)}
-.btn-contact{width:100%;background:var(--accent);color:var(--deep);border:none;padding:.9rem;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.1em;cursor:pointer;transition:background .2s;margin-bottom:.5rem;display:block;text-align:center;text-decoration:none}
-.btn-contact:hover{background:var(--gold)}
-.btn-fav{width:100%;background:transparent;border:1px solid var(--border2);color:var(--mist);padding:.75rem;font-family:'DM Sans',sans-serif;font-size:.84rem;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem}
-.btn-fav:hover{border-color:var(--border2);color:var(--white)}
-.btn-fav.liked{border-color:rgba(239,68,68,.3);color:#ef4444}
-
-/* Info card */
-.info-card{background:var(--card);border:1px solid var(--border);padding:1.25rem;margin-bottom:1rem}
-.info-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.78rem}
-.info-row:last-child{border-bottom:none;padding-bottom:0}
-.info-key{color:var(--mist2)}
-.info-val{color:var(--white);font-weight:500;text-align:right}
-
-/* Similar listings */
-.similar-title{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;margin:2.5rem 0 1rem}
+/* Annonces similaires */
+.similar-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.06em;margin-bottom:1rem}
+.similar-title em{font-style:normal;color:var(--accent)}
 .similar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
 .sc{background:var(--card);cursor:pointer;transition:background .2s}
 .sc:hover{background:var(--card2)}
-.sc-img{aspect-ratio:16/9;background:linear-gradient(135deg,var(--surface),rgba(13,40,71,.5));display:flex;align-items:center;justify-content:center}
-.sc-plane{font-size:2.5rem;opacity:.12}
-.sc-body{padding:.75rem .9rem}
-.sc-title{font-size:.8rem;font-weight:600;color:var(--white);margin-bottom:.3rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-img{aspect-ratio:16/9;background:linear-gradient(135deg,var(--surface),rgba(13,40,71,.5));display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.sc-img img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.sc-plane{font-size:2.5rem;opacity:.1}
+.sc-body{padding:.8rem .9rem}
+.sc-cat{font-size:.56rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:.25rem}
+.sc-title{font-size:.8rem;font-weight:600;color:var(--white);margin-bottom:.35rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-meta{font-size:.66rem;color:var(--mist2);margin-bottom:.35rem}
 .sc-price{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--accent)}
 
-/* Contact form (modal) */
-.msg-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);z-index:800;align-items:center;justify-content:center;padding:1.5rem}
+/* ── SIDEBAR ── */
+.listing-sidebar{position:sticky;top:80px;display:flex;flex-direction:column;gap:1px}
+
+.price-card{background:var(--card);border:1px solid var(--border2);padding:1.5rem}
+.price-eyebrow{font-size:.58rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mist2);margin-bottom:.6rem;display:flex;align-items:center;gap:.35rem}
+.price-eyebrow::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.main-price{font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:.04em;color:var(--white);line-height:1;margin-bottom:.2rem}
+.price-sub{font-size:.72rem;color:var(--mist2);margin-bottom:1.25rem}
+.price-type-tag{display:inline-block;font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.18rem .6rem;background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.2);color:var(--accent);margin-bottom:1.25rem}
+
+.urg-strip{background:rgba(232,160,32,.05);border:1px solid rgba(232,160,32,.12);padding:.65rem 1rem;display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem}
+.urg-item{font-size:.7rem;color:var(--mist);display:flex;align-items:center;gap:.35rem}
+.urg-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+.btn-contact{width:100%;background:var(--accent);color:var(--deep);border:none;padding:.9rem;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.1em;cursor:pointer;transition:background .2s,transform .15s;display:block;text-align:center;text-decoration:none;margin-bottom:.5rem}
+.btn-contact:hover{background:var(--gold);transform:translateY(-1px)}
+.btn-fav{width:100%;background:transparent;border:1px solid var(--border2);color:var(--mist);padding:.72rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.btn-fav:hover{color:var(--white)}
+.btn-fav.liked{border-color:rgba(239,68,68,.3);color:var(--red)}
+
+.info-card{background:var(--card);border:1px solid var(--border)}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:.55rem 1.1rem;border-bottom:1px solid var(--border);font-size:.76rem}
+.info-row:last-child{border-bottom:none}
+.info-key{color:var(--mist2)}
+.info-val{color:var(--white);font-weight:500;text-align:right}
+
+.share-card{background:var(--surface);border:1px solid var(--border);padding:1rem 1.1rem}
+.share-label{font-size:.6rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mist2);margin-bottom:.65rem}
+.share-btns{display:flex;gap:.4rem}
+.share-btn{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--mist);padding:.5rem .3rem;font-family:'DM Sans',sans-serif;font-size:.68rem;cursor:pointer;transition:all .15s;text-align:center}
+.share-btn:hover{color:var(--white);border-color:var(--border2)}
+
+/* Modal contact */
+.msg-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(12px);z-index:800;align-items:center;justify-content:center;padding:1.5rem}
 .msg-overlay.open{display:flex}
-.msg-box{background:var(--card);border:1px solid var(--border2);width:100%;max-width:480px}
+.msg-box{background:var(--card);border:1px solid var(--border2);width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
 .msg-head{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.4rem;border-bottom:1px solid var(--border)}
 .msg-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.06em}
-.msg-close{background:none;border:none;color:var(--mist);font-size:1.1rem;cursor:pointer;transition:color .2s;line-height:1}
-.msg-close:hover{color:var(--accent)}
+.msg-close{background:none;border:none;color:var(--mist);font-size:1.1rem;cursor:pointer;line-height:1;transition:color .15s}
+.msg-close:hover{color:var(--red)}
 .msg-body{padding:1.4rem}
 .fld{margin-bottom:1rem}
-.fld label{display:block;font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mist2);margin-bottom:.4rem}
-.inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.87rem;padding:.72rem 1rem;outline:none;transition:border-color .2s;appearance:none}
+.fld label{display:block;font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mist2);margin-bottom:.38rem}
+.inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.86rem;padding:.72rem 1rem;outline:none;transition:border-color .2s;appearance:none}
 .inp:focus{border-color:rgba(232,160,32,.5)}
 .inp::placeholder{color:var(--mist2)}
-textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
-.btn-send{width:100%;background:var(--accent);color:var(--deep);border:none;padding:.85rem;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.1em;cursor:pointer;transition:background .2s;margin-top:.25rem}
+textarea.inp{resize:vertical;min-height:110px;line-height:1.65}
+.btn-send{width:100%;background:var(--accent);color:var(--deep);border:none;padding:.88rem;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.1em;cursor:pointer;transition:background .2s;margin-top:.25rem}
 .btn-send:hover{background:var(--gold)}
-.msg-note{font-size:.7rem;color:var(--mist2);text-align:center;margin-top:.75rem;line-height:1.5}
+.msg-note{font-size:.68rem;color:var(--mist2);text-align:center;margin-top:.75rem;line-height:1.6}
+.msg-alert{padding:.6rem .9rem;font-size:.76rem;margin-bottom:1rem;display:none}
+.msg-alert.err{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--red)}
+.msg-alert.ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:var(--green)}
 
-/* SKELETON */
+/* Skeleton */
 @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
-.skel{background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:shimmer 1.6s infinite}
+.skel{background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:shimmer 1.6s infinite;border-radius:2px}
 
-/* TOAST */
-.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card2);border:1px solid var(--border2);color:var(--white);padding:.75rem 1.3rem;font-size:.8rem;z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
+/* Toast */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card2);border:1px solid var(--border2);color:var(--white);padding:.75rem 1.3rem;font-size:.8rem;font-weight:500;z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;max-width:300px}
 .toast.show{opacity:1;transform:translateY(0)}
 
-/* RESPONSIVE */
-@media(max-width:960px){
-  .listing-wrap{grid-template-columns:1fr;padding:1.25rem}
-  .listing-sidebar{position:static}
-  .similar-grid{grid-template-columns:repeat(2,1fr)}
-}
-@media(max-width:600px){
-  nav{padding:0 1rem}
-  .listing-wrap{padding:1rem}
-  .specs-grid{grid-template-columns:repeat(2,1fr)}
-  .gallery-thumbs{display:none}
-  .similar-grid{grid-template-columns:1fr}
-}
+/* ── RESPONSIVE ── */
+@media(max-width:960px){.listing-wrap{grid-template-columns:1fr;padding:1.25rem}.listing-sidebar{position:static}.similar-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){nav{padding:0 1.25rem}.nav-links,.btn-post-nav{display:none}.burger{display:flex}.specs-grid{grid-template-columns:repeat(2,1fr)}.gallery-thumbs{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:600px){.listing-wrap{padding:1rem}.gallery-thumbs{display:none}.similar-grid{grid-template-columns:1fr}}
 @media(max-width:480px){input,select,textarea,button{font-size:16px !important}}
 </style>
 </head>
 <body>
 
+<!-- NAV -->
 <nav>
   <a href="homepage.html" class="logo">Aircraft2<span>Sell</span></a>
+  <ul class="nav-links">
+    <li><a href="search.html">Annonces</a></li>
+    <li><a href="pricing.html">Tarifs</a></li>
+    <li><a href="guide-acheteur.html">Guide</a></li>
+    <li><a href="contact.html">Contact</a></li>
+  </ul>
   <div class="nav-right">
     <a href="search.html" class="btn-back">← Retour</a>
-    <a href="login.html" class="btn-post" id="btnLogin">Connexion</a>
+    <a href="post-listing.html" class="btn-post-nav">+ Déposer</a>
+    <button class="burger" id="burger" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
   </div>
 </nav>
 
-<div class="listing-wrap" id="listingWrap">
-  <!-- Chargé dynamiquement -->
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="search.html">Annonces</a>
+  <a href="pricing.html">Tarifs</a>
+  <a href="guide-acheteur.html">Guide acheteur</a>
+  <a href="contact.html">Contact</a>
+  <a href="post-listing.html" class="mm-cta">+ Déposer une annonce</a>
+</div>
+
+<!-- LAYOUT -->
+<div class="listing-wrap">
+
+  <!-- COLONNE GAUCHE -->
   <div id="mainCol">
-    <div class="breadcrumb" id="breadcrumb">
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
       <a href="homepage.html">Accueil</a><span>›</span>
       <a href="search.html">Annonces</a><span>›</span>
-      <span id="bcTitle" class="skel" style="width:160px;height:12px;display:inline-block;border-radius:2px"></span>
+      <span id="bcTitle" class="skel" style="width:160px;height:11px;display:inline-block"></span>
     </div>
-    <div class="listing-cat" id="lCat"><span class="skel" style="width:80px;height:10px;display:inline-block;border-radius:2px"></span></div>
-    <div class="listing-title" id="lTitle"><span class="skel" style="width:60%;height:36px;display:inline-block;border-radius:2px"></span></div>
-    <div class="gallery" id="gallery">
-      <div class="gallery-main skel"></div>
+
+    <!-- Titre -->
+    <div class="listing-cat" id="lCat"><span class="skel" style="width:80px;height:10px;display:inline-block"></span></div>
+    <div class="listing-title" id="lTitle"><span class="skel" style="width:70%;height:40px;display:inline-block"></span></div>
+    <div class="listing-meta" id="lMeta">
+      <span class="skel" style="width:120px;height:12px;display:inline-block"></span>
     </div>
-    <div class="specs-section">
-      <div class="section-label">Caractéristiques</div>
-      <div class="specs-grid" id="specsGrid">
-        <div class="spec-item"><div class="spec-label">Chargement…</div><div class="spec-val">—</div></div>
+
+    <!-- Galerie -->
+    <div class="gallery">
+      <div class="gallery-main skel" id="galleryMain" style="aspect-ratio:16/9">
+        <span class="gallery-plane">✈</span>
+      </div>
+      <div class="gallery-thumbs" id="galleryThumbs">
+        <div class="gallery-thumb active"><span>✈</span></div>
+        <div class="gallery-thumb"><span>✈</span></div>
+        <div class="gallery-thumb"><span>✈</span></div>
+        <div class="gallery-thumb"><span>✈</span></div>
       </div>
     </div>
+
+    <!-- Specs -->
+    <div class="section-label">Caractéristiques techniques</div>
+    <div class="specs-grid" id="specsGrid">
+      <div class="spec-item"><div class="spec-label">Chargement</div><div class="spec-val skel" style="width:60%;height:14px;display:block;margin-top:4px"></div></div>
+    </div>
+
+    <!-- Équipements -->
+    <div class="equip-section" id="equipSection" style="display:none">
+      <div class="section-label">Équipements &amp; Avionique</div>
+      <div class="equip-tags" id="equipTags"></div>
+    </div>
+
+    <!-- Description -->
     <div class="desc-section">
       <div class="section-label">Description</div>
       <div class="desc-text" id="lDesc">Chargement…</div>
     </div>
-    <div class="seller-section" id="sellerSection">
+
+    <!-- Vendeur -->
+    <div class="seller-section">
       <div class="seller-head">
         <div class="seller-avatar" id="sellerAvatar">?</div>
-        <div><div class="seller-name" id="sellerName">Chargement…</div><div class="seller-since" id="sellerSince">—</div></div>
+        <div>
+          <div class="seller-name" id="sellerName">Chargement…</div>
+          <div class="seller-badge">Vendeur vérifié</div>
+          <div class="seller-since" id="sellerSince"></div>
+        </div>
       </div>
+      <div class="seller-body">Aircraft2Sell vérifie l'identité de chaque vendeur professionnel. Les coordonnées complètes vous seront communiquées après prise de contact.</div>
     </div>
-    <div id="similarSection"></div>
-  </div>
 
-  <div class="listing-sidebar" id="sidebarCol">
+    <!-- Similaires -->
+    <div id="similarSection"></div>
+
+  </div><!-- /mainCol -->
+
+  <!-- SIDEBAR -->
+  <div class="listing-sidebar">
+
     <div class="price-card">
-      <div class="price-badge">Prix net vendeur</div>
+      <div class="price-eyebrow">Prix net vendeur</div>
       <div class="main-price" id="lPrice">—</div>
-      <div class="price-sub" id="lPriceSub">Négociable sur demande</div>
+      <div class="price-sub" id="lPriceSub">Chargement…</div>
+      <div id="priceTypeTag"></div>
       <div class="urg-strip" id="urgStrip" style="display:none">
-        <div class="urg-item"><div class="urg-dot"></div><span id="urgViews">0 vues</span></div>
-        <div class="urg-item"><div class="urg-dot"></div><span id="urgFavs">0 favoris</span></div>
+        <div class="urg-item"><div class="urg-dot"></div><span id="urgViews">—</span></div>
+        <div class="urg-item"><div class="urg-dot"></div><span id="urgFavs">—</span></div>
       </div>
-      <a href="#" class="btn-contact" id="contactBtn" onclick="openMsgForm()">Contacter le vendeur</a>
+      <button class="btn-contact" id="contactBtn" onclick="openMsgForm()">Contacter le vendeur</button>
       <button class="btn-fav" id="favBtn" onclick="toggleFav()">♡ Ajouter aux favoris</button>
     </div>
-    <div class="info-card" id="infoCard">
-      <div class="info-row"><span class="info-key">Réf.</span><span class="info-val" id="iRef">—</span></div>
-      <div class="info-row"><span class="info-key">Localisation</span><span class="info-val" id="iLoc">—</span></div>
-      <div class="info-row"><span class="info-key">Mise en ligne</span><span class="info-val" id="iDate">—</span></div>
-    </div>
-  </div>
-</div>
 
-<!-- MODAL MESSAGE -->
+    <div class="info-card">
+      <div class="info-row"><span class="info-key">Référence</span><span class="info-val" id="iRef">—</span></div>
+      <div class="info-row"><span class="info-key">Localisation</span><span class="info-val" id="iLoc">—</span></div>
+      <div class="info-row"><span class="info-key">Aéroport</span><span class="info-val" id="iAirport">—</span></div>
+      <div class="info-row"><span class="info-key">Mise en ligne</span><span class="info-val" id="iDate">—</span></div>
+      <div class="info-row"><span class="info-key">Statut</span><span class="info-val" id="iStatus">—</span></div>
+    </div>
+
+    <div class="share-card">
+      <div class="share-label">Partager cette annonce</div>
+      <div class="share-btns">
+        <button class="share-btn" onclick="copyLink()">🔗 Copier</button>
+        <button class="share-btn" onclick="shareEmail()">✉ Email</button>
+        <button class="share-btn" onclick="shareWhatsApp()">💬 WhatsApp</button>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+</div><!-- /listing-wrap -->
+
+<!-- MODAL CONTACT -->
 <div class="msg-overlay" id="msgOverlay" onclick="if(event.target===this)closeMsgForm()">
   <div class="msg-box">
     <div class="msg-head">
@@ -222,10 +322,11 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
       <button class="msg-close" onclick="closeMsgForm()">✕</button>
     </div>
     <div class="msg-body">
-      <div id="msgAlert" style="display:none;padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem"></div>
+      <div class="msg-alert" id="msgAlert"></div>
       <div class="fld"><label>Votre nom</label><input type="text" class="inp" id="msgName" placeholder="Jean Dupont" autocomplete="name"></div>
       <div class="fld"><label>Votre email</label><input type="email" class="inp" id="msgEmail" placeholder="vous@example.com" autocomplete="email"></div>
-      <div class="fld"><label>Votre message</label><textarea class="inp" id="msgText" placeholder="Bonjour, je suis intéressé par cette annonce…"></textarea></div>
+      <div class="fld"><label>Votre téléphone (optionnel)</label><input type="tel" class="inp" id="msgPhone" placeholder="+33 6 00 00 00 00" autocomplete="tel"></div>
+      <div class="fld"><label>Votre message</label><textarea class="inp" id="msgText" placeholder="Bonjour, je suis intéressé par votre annonce. Pourriez-vous me donner plus d'informations sur…"></textarea></div>
       <button class="btn-send" onclick="sendMsg()">Envoyer le message</button>
       <div class="msg-note">Votre message sera transmis directement au vendeur. Aircraft2Sell ne divulgue pas vos coordonnées sans votre accord.</div>
     </div>
@@ -235,33 +336,56 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
 <div class="toast" id="toast"></div>
 
 <script>
+/* ── MOBILE ── */
+function toggleMenu(){var m=document.getElementById('mobileMenu'),b=document.getElementById('burger'),o=m.classList.toggle('open');b.classList.toggle('open',o);document.body.style.overflow=o?'hidden':'';}
+
+/* ── SUPABASE ── */
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});return r.ok?await r.json():null;}catch(e){return null;}}
+async function sbPatch(t,p,body){try{var r=await fetch(SB+'/rest/v1/'+t+'?'+p,{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});return r.ok?await r.json():null;}catch(e){return null;}}
 
 var LISTING=null;
+var CAT_NAMES={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
+var CURR_SYM={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AED:'د.إ'};
+var PRICE_TYPES={negotiable:'Prix négociable',firm:'Prix ferme',leasing:'Leasing possible',offers:'Offres bienvenues'};
+var COUNTRY_NAMES={FR:'🇫🇷 France',DE:'🇩🇪 Allemagne',ES:'🇪🇸 Espagne',IT:'🇮🇹 Italie',BE:'🇧🇪 Belgique',NL:'🇳🇱 Pays-Bas',CH:'🇨🇭 Suisse',GB:'🇬🇧 Royaume-Uni',PT:'🇵🇹 Portugal',OTHER:'International'};
 
 async function load(){
   var id=new URLSearchParams(location.search).get('id');
-  if(!id){showError('Annonce introuvable.');return;}
+  if(!id){showError('Aucun identifiant d\'annonce fourni.');return;}
+
+  // Essayer Supabase d'abord
   var rows=await sbGet('listings','id=eq.'+encodeURIComponent(id)+'&select=*');
-  if(!rows||!rows.length){showError('Cette annonce n\'existe pas ou n\'est plus disponible.');return;}
-  LISTING=rows[0];
-  render(LISTING);
+  if(rows&&rows.length){
+    LISTING=rows[0];
+    render(LISTING);
+    // Incrémenter les vues
+    if(LISTING.views!=null)sbPatch('listings','id=eq.'+encodeURIComponent(id),{views:(LISTING.views||0)+1});
+    return;
+  }
+
+  // Fallback localStorage (annonces non encore synchro)
+  try{
+    var ls=JSON.parse(localStorage.getItem('a2s_listings')||'[]');
+    var local=ls.find(function(l){return String(l.id)===String(id);});
+    if(local){LISTING=local;render(local);return;}
+  }catch(e){}
+
+  showError('Cette annonce n\'existe pas ou n\'est plus disponible.');
 }
 
-var CAT_NAMES={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
-
 function render(l){
-  var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
+  var sym=CURR_SYM[l.currency||'EUR']||'€';
   var pn=l.price&&!isNaN(Number(l.price))?Number(l.price):null;
-  var pr=pn?sym+pn.toLocaleString('fr-FR'):(l.price||'Prix sur demande');
+  var pr=pn?sym+pn.toLocaleString('fr-FR'):'Prix sur demande';
   var title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Annonce sans titre';
   var cat=CAT_NAMES[l.category]||l.category||'Aéronef';
-  var loc=l.airport||(l.country?l.country:'—');
+  var airport=l.airport||'—';
+  var country=COUNTRY_NAMES[l.country||l.country_code]||(l.country||'');
 
-  document.title='Aircraft2Sell — '+esc(title);
+  document.title='Aircraft2Sell — '+title;
 
   // Breadcrumb
   document.getElementById('bcTitle').className='';
@@ -271,84 +395,133 @@ function render(l){
   document.getElementById('lCat').textContent=cat;
   document.getElementById('lTitle').textContent=title;
 
-  // Galerie
-  document.getElementById('gallery').innerHTML=
-    '<div class="gallery-main"><div class="gallery-plane">✈</div><div class="gallery-count">Photos disponibles sur demande</div></div>'
-    +'<div class="gallery-thumbs">'
-    +'<div class="gallery-thumb active"><span>✈</span></div>'
-    +'<div class="gallery-thumb"><span>✈</span></div>'
-    +'<div class="gallery-thumb"><span>✈</span></div>'
-    +'<div class="gallery-thumb"><span>✈</span></div>'
-    +'</div>';
+  // Meta
+  var statusHtml=l.status==='live'?'<span class="pill-live">● En ligne</span>':'<span class="pill-pending">⏳ En attente</span>';
+  document.getElementById('lMeta').innerHTML=
+    (l.year?'<span class="listing-meta-item">📅 '+esc(l.year)+'</span>':'')
+    +(l.hours||l.tt?'<span class="listing-meta-item">⏱ '+(l.hours||l.tt)+' h TT</span>':'')
+    +(airport!=='—'?'<span class="listing-meta-item">📍 '+esc(airport)+'</span>':'')
+    +statusHtml;
+
+  // Galerie (placeholder si pas de photos)
+  var gMain=document.getElementById('galleryMain');
+  gMain.className='gallery-main';
+  gMain.innerHTML='<span class="gallery-plane">✈</span>'
+    +(l.status==='live'?'<div class="gallery-badge">En ligne</div>':'')
+    +'<div class="gallery-count">Photos sur demande</div>';
 
   // Specs
   var specs=[
-    {label:'Marque',val:l.make||'—'},{label:'Modèle',val:l.model||'—'},{label:'Année',val:l.year||'—'},
-    {label:'Heures totales',val:l.hours?(l.hours+'h TT'):'—'},{label:'Moteur',val:l.engine||'—'},{label:'Immatriculation',val:l.registration||'—'},
-    {label:'Localisation',val:loc},{label:'Documents',val:l.documents||'—'},{label:'TTAF',val:l.ttaf?l.ttaf+'h':'—'}
+    {label:'Marque',val:l.make||'—'},
+    {label:'Modèle',val:l.model||'—'},
+    {label:'Année',val:l.year||'—'},
+    {label:'Heures TT',val:l.hours||l.tt||(l.total_time?l.total_time+'h':'—')},
+    {label:'Moteur(s)',val:l.engine||l.engines||'—'},
+    {label:'SMOH',val:l.smoh?l.smoh+'h':'—'},
+    {label:'Places',val:l.seats||'—'},
+    {label:'Rayon d\'action',val:l.range?l.range+' nm':'—'},
+    {label:'Immatriculation',val:l.registration||'—'},
   ];
-  document.getElementById('specsGrid').innerHTML=specs.map(function(s){return'<div class="spec-item"><div class="spec-label">'+esc(s.label)+'</div><div class="spec-val">'+esc(s.val)+'</div></div>';}).join('');
+  document.getElementById('specsGrid').innerHTML=specs.map(function(s){
+    return'<div class="spec-item"><div class="spec-label">'+esc(s.label)+'</div><div class="spec-val">'+esc(String(s.val))+'</div></div>';
+  }).join('');
+
+  // Équipements
+  var equipItems=[];
+  if(l.avionics)equipItems.push(l.avionics);
+  if(l.equipment||l.equip)equipItems.push(l.equipment||l.equip);
+  if(l.ifr)equipItems.push('IFR certifié');
+  if(l.rvsm)equipItems.push('RVSM approuvé');
+  if(l.adsb)equipItems.push('ADS-B Out');
+  if(l.logs)equipItems.push('Carnets disponibles');
+  if(equipItems.length){
+    document.getElementById('equipSection').style.display='block';
+    document.getElementById('equipTags').innerHTML=equipItems.map(function(e){
+      return'<span class="equip-tag">'+esc(e)+'</span>';
+    }).join('');
+  }
 
   // Description
-  document.getElementById('lDesc').textContent=l.description||'Aucune description fournie.';
+  document.getElementById('lDesc').textContent=l.description||l.desc||'Aucune description fournie.';
 
   // Vendeur
-  var initials=(l.seller_name||'Vendeur').charAt(0).toUpperCase();
-  document.getElementById('sellerAvatar').textContent=initials;
-  document.getElementById('sellerName').textContent=esc(l.seller_name||'Vendeur privé');
-  var since=l.submitted_at?'Membre depuis '+new Date(l.submitted_at).toLocaleDateString('fr-FR',{month:'long',year:'numeric'}):'';
+  var sName=l.seller_name||'Vendeur privé';
+  document.getElementById('sellerAvatar').textContent=sName.charAt(0).toUpperCase();
+  document.getElementById('sellerName').textContent=sName;
+  var since=l.submitted_at?'Annonce publiée le '+new Date(l.submitted_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'';
   document.getElementById('sellerSince').textContent=since;
-  document.getElementById('sellerSection').querySelector('.seller-head').insertAdjacentHTML('beforeend',
-    '<div><div class="seller-verified">Vendeur vérifié</div></div>');
 
   // Prix sidebar
   document.getElementById('lPrice').textContent=pr;
-  if(pn) document.getElementById('lPriceSub').textContent='Soit env. $'+Math.round(pn*1.08).toLocaleString('fr-FR')+' USD';
+  if(pn){document.getElementById('lPriceSub').textContent='≈ $'+Math.round(pn*1.08).toLocaleString('fr-FR')+' USD · £'+Math.round(pn*0.86).toLocaleString('fr-FR')+' GBP';}
+  else{document.getElementById('lPriceSub').textContent='Contactez le vendeur pour le prix';}
+  if(l.price_type&&PRICE_TYPES[l.price_type]){
+    document.getElementById('priceTypeTag').innerHTML='<div class="price-type-tag">'+PRICE_TYPES[l.price_type]+'</div>';
+  }
+
+  // Urgence
+  if(l.views>0||l.enquiries>0){
+    document.getElementById('urgStrip').style.display='flex';
+    document.getElementById('urgViews').textContent=(l.views||0)+' vue'+(l.views>1?'s':'');
+    document.getElementById('urgFavs').textContent=(l.enquiries||0)+' demande'+(l.enquiries>1?'s':'');
+  }
 
   // Infos sidebar
-  document.getElementById('iRef').textContent='#'+String(l.id||'').substring(0,8).toUpperCase();
-  document.getElementById('iLoc').textContent=loc;
+  document.getElementById('iRef').textContent='#'+String(l.id||'').substring(0,10).toUpperCase();
+  document.getElementById('iLoc').textContent=country||'—';
+  document.getElementById('iAirport').textContent=airport;
   document.getElementById('iDate').textContent=l.submitted_at?new Date(l.submitted_at).toLocaleDateString('fr-FR'):'—';
+  document.getElementById('iStatus').innerHTML=l.status==='live'?'<span style="color:var(--green)">● En ligne</span>':'<span style="color:var(--orange)">⏳ En attente</span>';
 
-  // Pré-remplir le form
+  // Pré-remplir form
   var token=sessionStorage.getItem('a2s_auth_token');
-  if(token){try{var p=JSON.parse(atob(token.split('.')[1]));document.getElementById('msgEmail').value=p.email||'';}catch(e){}}
+  if(token){try{var p=JSON.parse(atob(token.split('.')[1]));document.getElementById('msgEmail').value=p.email||'';var n=localStorage.getItem('a2s_user_name');if(n)document.getElementById('msgName').value=n;}catch(e){}}
 
   // Similaires
-  loadSimilar(l.category,l.id);
+  if(l.category)loadSimilar(l.category,l.id);
 }
 
 async function loadSimilar(cat,excludeId){
-  var rows=await sbGet('listings','status=eq.live&category=eq.'+encodeURIComponent(cat)+'&limit=4');
+  var rows=await sbGet('listings','status=eq.live&category=eq.'+encodeURIComponent(cat)+'&limit=5&select=id,make,model,year,price,currency,category,airport');
   if(!rows)return;
   rows=rows.filter(function(r){return r.id!==excludeId;}).slice(0,3);
   if(!rows.length)return;
-  var sym2={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
-  var html='<div class="similar-title">Annonces similaires</div><div class="similar-grid">';
+  var html='<div class="similar-title">Annonces <em>similaires</em></div><div class="similar-grid">';
   rows.forEach(function(r){
-    var s=sym2[r.currency||'EUR']||'€';
+    var s=CURR_SYM[r.currency||'EUR']||'€';
     var pn=r.price&&!isNaN(Number(r.price))?Number(r.price):null;
     var pr=pn?s+pn.toLocaleString('fr-FR'):'—';
     var t=[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'Annonce';
-    html+='<div class="sc" onclick="window.location.href=\'listing.html?id='+encodeURIComponent(r.id)+'\'"><div class="sc-img"><span class="sc-plane">✈</span></div><div class="sc-body"><div class="sc-title">'+esc(t)+'</div><div class="sc-price">'+esc(pr)+'</div></div></div>';
+    var c=CAT_NAMES[r.category]||r.category||'';
+    html+='<div class="sc" onclick="window.location.href=\'listing.html?id='+encodeURIComponent(r.id)+'\'">'
+      +'<div class="sc-img"><span class="sc-plane">✈</span></div>'
+      +'<div class="sc-body"><div class="sc-cat">'+esc(c)+'</div><div class="sc-title">'+esc(t)+'</div>'
+      +(r.airport?'<div class="sc-meta">📍 '+esc(r.airport)+'</div>':'')
+      +'<div class="sc-price">'+esc(pr)+'</div></div></div>';
   });
   html+='</div>';
   document.getElementById('similarSection').innerHTML=html;
 }
 
 function showError(msg){
-  document.getElementById('mainCol').innerHTML='<div style="padding:4rem 0;text-align:center"><div style="font-size:2.5rem;opacity:.1;margin-bottom:1rem">✈</div><div style="font-family:Bebas Neue,sans-serif;font-size:1.6rem;margin-bottom:.5rem">'+esc(msg)+'</div><a href="search.html" style="color:var(--accent);font-size:.8rem">← Retour aux annonces</a></div>';
+  document.getElementById('mainCol').innerHTML='<div style="padding:5rem 0;text-align:center">'
+    +'<div style="font-size:3rem;opacity:.08;margin-bottom:1rem">✈</div>'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:1.6rem;margin-bottom:.5rem">'+esc(msg)+'</div>'
+    +'<a href="search.html" style="color:var(--accent);font-size:.82rem">← Retour aux annonces</a>'
+    +'</div>';
 }
 
-// FAV
+/* ── FAV ── */
 function toggleFav(){
+  if(!LISTING)return;
   var btn=document.getElementById('favBtn');
-  btn.classList.toggle('liked');
-  btn.textContent=btn.classList.contains('liked')?'♥ Retiré des favoris':'♡ Ajouter aux favoris';
-  showToast(btn.classList.contains('liked')?'♥ Annonce sauvegardée':'Retiré des favoris');
+  var liked=btn.classList.toggle('liked');
+  btn.textContent=liked?'♥ Retiré des favoris':'♡ Ajouter aux favoris';
+  if(window.A2SFavs){liked?window.A2SFavs.add(LISTING):window.A2SFavs.remove(LISTING.id);}
+  showToast(liked?'♥ Annonce sauvegardée':'Retiré des favoris');
 }
 
-// MSG FORM
+/* ── CONTACT ── */
 function openMsgForm(){document.getElementById('msgOverlay').classList.add('open');document.body.style.overflow='hidden';}
 function closeMsgForm(){document.getElementById('msgOverlay').classList.remove('open');document.body.style.overflow='';}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMsgForm();});
@@ -357,17 +530,26 @@ async function sendMsg(){
   var name=document.getElementById('msgName').value.trim();
   var email=document.getElementById('msgEmail').value.trim().toLowerCase();
   var msg=document.getElementById('msgText').value.trim();
-  var alertEl=document.getElementById('msgAlert');
-  if(!name||!email||!msg){alertEl.style.display='block';alertEl.style.cssText='display:block;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--red);padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem';alertEl.textContent='Remplissez tous les champs.';return;}
-  if(!email.includes('@')){alertEl.style.display='block';alertEl.textContent='Email invalide.';return;}
-  // En production : insérer dans la table messages de Supabase
-  // await sbPost('messages',{listing_id:LISTING.id,sender_name:name,sender_email:email,content:msg});
-  alertEl.style.cssText='display:block;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:var(--green);padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem';
-  alertEl.textContent='✅ Message envoyé ! Le vendeur vous répondra par email.';
+  var al=document.getElementById('msgAlert');
+  al.className='msg-alert';
+  if(!name||!email||!msg){al.className='msg-alert err';al.style.display='block';al.textContent='Remplissez tous les champs obligatoires.';return;}
+  if(!email.includes('@')){al.className='msg-alert err';al.style.display='block';al.textContent='Adresse email invalide.';return;}
+  // Insérer dans Supabase (table messages)
+  try{
+    await fetch(SB+'/rest/v1/messages',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({listing_id:LISTING?LISTING.id:null,sender_name:name,sender_email:email,sender_phone:document.getElementById('msgPhone').value.trim(),content:msg,seller_email:LISTING?LISTING.seller_email:null})});
+  }catch(e){}
+  al.className='msg-alert ok';al.style.display='block';al.textContent='✅ Message envoyé ! Le vendeur vous répondra par email sous 48h.';
   document.getElementById('msgText').value='';
   setTimeout(closeMsgForm,2500);
 }
 
+/* ── PARTAGE ── */
+function copyLink(){navigator.clipboard.writeText(location.href).then(function(){showToast('🔗 Lien copié !');});}
+function shareEmail(){window.location.href='mailto:?subject=Annonce Aircraft2Sell&body=Bonjour, je souhaitais partager cette annonce avec toi : '+encodeURIComponent(location.href);}
+function shareWhatsApp(){window.open('https://wa.me/?text='+encodeURIComponent('✈ '+document.title+'\n'+location.href),'_blank');}
+
+/* ── TOAST ── */
 var _tt;
 function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2800);}
 
