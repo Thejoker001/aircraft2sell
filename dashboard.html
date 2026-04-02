@@ -611,14 +611,14 @@ async function initAuth(){
   // Puis on va chercher le vrai prénom dans public.users
   if(email){
     try{
-      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name&limit=1',{
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,plan&limit=1',{
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}
       });
       var data=await res.json();
-      if(data&&data[0]&&data[0].name){
+      if(data&&data[0]){if(data[0].name){
         name=data[0].name;
         localStorage.setItem('a2s_user_name',name);
-        applyUserDisplay(name,email);
+        applyUserDisplay(name,email);}if(data[0].plan){_userPlan=data[0].plan;var planEl=document.getElementById('navUserPlan');if(planEl)planEl.textContent=data[0].plan;var sbPlan=document.getElementById('sbPlanName');if(sbPlan)sbPlan.textContent=data[0].plan.toUpperCase();renderListings();}}
       }
     }catch(e){}
   }
@@ -660,45 +660,86 @@ function closeMobile(){
 /* ── ANNONCES localStorage ── */
 var LS_LISTINGS='a2s_listings';
 var currentPeriod=7;
+var PLAN_SLOTS={Essentiel:1,Aviateur:3,Pro:999};
+var _userPlan='Essentiel'; // mis à jour par initAuth depuis Supabase
 
 function getListings(){try{return JSON.parse(localStorage.getItem(LS_LISTINGS)||'[]');}catch(e){return[];}}
 
+function statusPillDash(s){
+  if(s==='live')return'<span class="pill p-live">● En ligne</span>';
+  if(s==='rejected')return'<span class="pill" style="background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)">✕ Rejetée</span>';
+  return'<span class="pill" style="background:rgba(249,115,22,.1);color:var(--orange);border:1px solid rgba(249,115,22,.2)">⏳ En attente</span>';
+}
+
 function renderListings(){
   var listings=getListings();
-  var slots=1;
-  var pct=Math.min(listings.length/slots*100,100);
-  document.getElementById('slotFill').style.width=pct+'%';
-  document.getElementById('slotCount').textContent=listings.length+' / '+slots;
-  document.getElementById('kpiListings').innerHTML=listings.length+'<span style="font-size:1rem;color:var(--mist)">'+'/'+slots+'</span>';
+  var slots=PLAN_SLOTS[_userPlan]||1;
+  var active=listings.filter(function(l){return l.status!=='rejected';}).length;
+  var pct=Math.min(active/slots*100,100);
+  var slotFill=document.getElementById('slotFill');
+  var slotCount=document.getElementById('slotCount');
+  var kpiEl=document.getElementById('kpiListings');
+  if(slotFill)slotFill.style.width=pct+'%';
+  if(slotCount)slotCount.textContent=active+' / '+slots;
+  if(kpiEl)kpiEl.innerHTML=active+'<span style="font-size:1rem;color:var(--mist)">'+'/'+slots+'</span>';
+
   var el=document.getElementById('listingsList');
+  var slotsLeft=slots-active;
+
   if(!listings.length){
-    el.innerHTML='<div class="empty" style="background:var(--card);border:1px solid var(--border);padding:3rem"><div class="empty-ic">✈</div><div class="empty-t">Aucune annonce</div><div class="empty-s">Publiez votre premier aéronef.</div><a href="post-listing.html" class="empty-btn">+ Déposer une annonce</a></div>';
-    // overview
+    el.innerHTML='<div class="empty" style="background:var(--card);border:1px solid var(--border);padding:3rem"><div class="empty-ic">✈</div><div class="empty-t">Aucune annonce</div><div class="empty-s">Publiez votre premier aéronef.</div>'+(slotsLeft>0?'<a href="post-listing.html" class="empty-btn">+ Déposer une annonce</a>':'<a href="checkout.html?plan=aviateur" class="empty-btn">Upgrader mon forfait</a>')+'</div>';
     var ovEl=document.getElementById('ovListingsBody');
     if(ovEl)ovEl.innerHTML='<div class="empty"><div class="empty-ic">✈</div><div class="empty-t">Aucune annonce publiée</div><div class="empty-s">Créez votre première annonce. Zéro commission.</div><a href="post-listing.html" class="empty-btn">+ Nouvelle annonce</a></div>';
     return;
   }
-  el.innerHTML='<div class="listings-list">'+listings.map(function(l,i){
+
+  // Bandeau limite atteinte
+  var limitBanner='';
+  if(slotsLeft<=0){
+    limitBanner='<div style="background:rgba(232,160,32,.07);border:1px solid rgba(232,160,32,.2);border-left:3px solid var(--accent);padding:.75rem 1rem;font-size:.78rem;color:var(--accent);display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:1px">'
+      +'<span>⚠ Limite de slots atteinte — formule <strong>'+_userPlan+'</strong></span>'
+      +'<a href="checkout.html?plan=aviateur" style="background:var(--accent);color:var(--deep);padding:.35rem .9rem;font-family:Bebas Neue,sans-serif;font-size:.85rem;letter-spacing:.08em;text-decoration:none">Upgrader →</a>'
+      +'</div>';
+  }
+
+  el.innerHTML=limitBanner+'<div class="listings-list">'+listings.map(function(l,i){
     var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
     var pn=l.price&&!isNaN(Number(l.price))?Number(l.price):null;
     var pr=pn?sym+pn.toLocaleString('fr-FR'):(l.price||'—');
     var title=l.title||[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Sans titre';
+    var statusNote='';
+    if(l.status==='pending')statusNote='<div style="font-size:.62rem;color:var(--orange);margin-top:.2rem">En attente de validation admin</div>';
+    if(l.status==='rejected')statusNote='<div style="font-size:.62rem;color:var(--red);margin-top:.2rem">Annonce rejetée</div>';
     return'<div class="listing-item"><div class="li-thumb">✈</div>'
       +'<div class="li-body"><div class="li-title">'+esc(title)+'</div>'
-      +'<div class="li-meta">'+esc(pr)+(l.year?' · '+esc(l.year):'')+(l.airport?' · 📍'+esc(l.airport):'')+'</div></div>'
+      +'<div class="li-meta">'+esc(pr)+(l.year?' · '+esc(l.year):'')+(l.airport?' · 📍'+esc(l.airport):'')+'</div>'
+      +statusNote+'</div>'
       +'<div class="li-side"><div class="li-price">'+esc(pr)+'</div>'
-      +'<div style="margin:.2rem 0"><span class="pill p-live">● En ligne</span></div>'
+      +'<div style="margin:.2rem 0">'+statusPillDash(l.status||'pending')+'</div>'
       +'<div class="li-acts">'
-      +'<a href="listing.html" class="li-act" target="_blank">Voir</a>'
-      +'<button class="li-act" onclick="showToast(\'Modification en cours…\')">Modifier</button>'
+      +(l.status==='live'?'<a href="listing.html" class="li-act" target="_blank">Voir</a>':'')
       +'<button class="li-act del" onclick="delListing('+i+')">✕</button>'
       +'</div></div></div>';
   }).join('')+'</div>';
-  // overview
+
+  // Bouton déposer — désactivé si slots épuisés
+  var addBtn=document.querySelector('#panel-listings .ov-btn.primary');
+  if(addBtn){
+    if(slotsLeft<=0){
+      addBtn.href='checkout.html?plan=aviateur';
+      addBtn.textContent='Upgrader — slots épuisés';
+      addBtn.style.opacity='.7';
+    }else{
+      addBtn.href='post-listing.html';
+      addBtn.textContent='+ Nouvelle annonce';
+      addBtn.style.opacity='1';
+    }
+  }
+
   var ovEl=document.getElementById('ovListingsBody');
   if(ovEl)ovEl.innerHTML='<div class="listings-list">'+listings.slice(0,2).map(function(l){
     var title=l.title||[l.make,l.model].filter(Boolean).join(' ')||'Annonce';
-    return'<div class="listing-item"><div class="li-thumb" style="font-size:1.2rem">✈</div><div class="li-body"><div class="li-title">'+esc(title)+'</div></div><div class="li-side" style="min-width:80px"><span class="pill p-live">● En ligne</span></div></div>';
+    return'<div class="listing-item"><div class="li-thumb" style="font-size:1.2rem">✈</div><div class="li-body"><div class="li-title">'+esc(title)+'</div></div><div class="li-side" style="min-width:80px">'+statusPillDash(l.status||'pending')+'</div></div>';
   }).join('')+'</div>';
 }
 
