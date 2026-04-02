@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aircraft2Sell — Comparateur d'aéronefs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#05080f;--deep:#030610;--surface:#0a1020;--card:#0c1428;--card2:#0f1830;--border:rgba(180,200,230,.08);--border2:rgba(180,200,230,.14);--accent:#e8a020;--gold:#f5c518;--mist:#7a93aa;--mist2:#3d5468;--white:#edf2f8;--dim:#c8d8e8;--green:#22c55e;--red:#ef4444;--blue:#3b82f6}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
+
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;background:rgba(3,6,16,.92);backdrop-filter:blur(28px);border-bottom:1px solid var(--border)}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.75rem;letter-spacing:.12em;color:var(--white);text-decoration:none;flex-shrink:0}
+.logo span{color:var(--accent)}
+.nav-links{display:flex;list-style:none;align-items:center;gap:0;height:64px}
+.nav-links a{display:flex;align-items:center;height:64px;padding:0 .9rem;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);text-decoration:none;transition:color .2s;white-space:nowrap}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-right{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
+.btn-nav{background:transparent;border:1px solid var(--border2);color:var(--dim);padding:.44rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center}
+.btn-nav:hover{border-color:var(--accent);color:var(--accent)}
+.btn-nav-cta{background:var(--accent);color:var(--deep);border:none;padding:.44rem 1.2rem;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:.06em;transition:background .2s;display:inline-flex;align-items:center}
+.btn-nav-cta:hover{background:var(--gold)}
+.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:.5rem}
+.burger span{display:block;width:22px;height:2px;background:var(--white);border-radius:1px;transition:all .25s}
+.burger.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+.burger.open span:nth-child(2){opacity:0}
+.burger.open span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
+.mobile-menu{display:none;position:fixed;inset:0;background:rgba(3,6,16,.98);backdrop-filter:blur(20px);z-index:490;flex-direction:column;padding:5rem 2rem 2rem}
+.mobile-menu.open{display:flex}
+.mobile-menu a{padding:1rem 0;font-size:.9rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-decoration:none;border-bottom:1px solid var(--border);display:block;transition:color .2s}
+.mobile-menu a:hover{color:var(--accent)}
+
+/* ── HERO ── */
+.page-hero{padding:3rem 2rem 2.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.page-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 0%,rgba(232,160,32,.06) 0%,transparent 70%);pointer-events:none}
+.hero-eyebrow{font-size:.6rem;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem}
+.hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,6vw,5rem);letter-spacing:.04em;line-height:.92;margin-bottom:.75rem}
+.hero-title em{font-style:normal;color:var(--accent)}
+.hero-sub{font-size:.9rem;color:var(--mist);max-width:480px;margin:0 auto;line-height:1.7}
+
+/* ── MAIN ── */
+.main-wrap{max-width:1200px;margin:0 auto;padding:2rem}
+
+/* ── SELECTOR GRID ── */
+.selector-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border2);margin-bottom:2px}
+.sel-panel{background:var(--card);padding:1.5rem}
+.sel-label{font-size:.58rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;margin-bottom:.85rem;display:flex;align-items:center;gap:.5rem}
+.sel-label-a{color:#378ADD}
+.sel-label-b{color:#D85A30}
+.sel-indicator{width:8px;height:8px;border-radius:50%}
+.ind-a{background:#378ADD}
+.ind-b{background:#D85A30}
+
+/* Autocomplete */
+.ac-wrap{position:relative}
+.ac-input{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.84rem;padding:.7rem 1rem;outline:none;transition:border-color .2s}
+.ac-input:focus{border-color:rgba(232,160,32,.4)}
+.ac-input::placeholder{color:var(--mist2)}
+.ac-list{display:none;position:absolute;left:0;right:0;top:100%;background:var(--card2);border:1px solid var(--border2);z-index:200;max-height:260px;overflow-y:auto}
+.ac-group-title{padding:6px 12px 3px;font-size:.58rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mist2);border-top:1px solid var(--border)}
+.ac-group-title:first-child{border-top:none}
+.ac-item{padding:8px 12px;font-size:.82rem;cursor:pointer;color:var(--dim);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;transition:background .12s}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover{background:rgba(255,255,255,.04);color:var(--white)}
+.ac-item-range{font-size:.68rem;color:var(--mist2)}
+
+/* Sélection active */
+.sel-chosen{margin-top:1rem;padding:1rem;border:1px solid var(--border2)}
+.sel-chosen-name{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.04em;margin-bottom:.4rem}
+.sel-chosen-cat{font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mist2);margin-bottom:.75rem}
+.mini-specs{display:grid;grid-template-columns:1fr 1fr;gap:.35rem}
+.mini-spec{font-size:.72rem;color:var(--mist)}
+.mini-spec span{color:var(--white);font-weight:500}
+.btn-clear{background:transparent;border:1px solid var(--border);color:var(--mist2);padding:.3rem .7rem;font-family:'DM Sans',sans-serif;font-size:.66rem;cursor:pointer;transition:all .2s;margin-top:.75rem;letter-spacing:.06em;text-transform:uppercase}
+.btn-clear:hover{border-color:var(--red);color:var(--red)}
+.placeholder-hint{color:var(--mist2);font-size:.78rem;margin-top:1rem;line-height:1.6}
+
+/* ── BASE DE DÉPART ── */
+.base-section{background:var(--card);border:1px solid var(--border2);border-top:none;padding:1rem 1.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.base-label{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mist2);flex-shrink:0}
+.base-ac-wrap{position:relative;flex:1;min-width:200px;max-width:400px}
+.base-chosen-label{font-size:.78rem;color:var(--accent);display:flex;align-items:center;gap:.4rem;flex-shrink:0}
+.base-chosen-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+/* ── CARTE ── */
+.map-section{background:var(--card);border:1px solid var(--border2);border-top:none;position:relative;overflow:hidden;cursor:crosshair}
+.map-wrap{position:relative;width:100%}
+#wMap{width:100%;display:block}
+.map-hint{position:absolute;bottom:10px;right:14px;font-size:.62rem;color:var(--mist2);pointer-events:none;letter-spacing:.06em}
+.map-legend{position:absolute;top:10px;left:14px;display:flex;flex-direction:column;gap:.35rem}
+.legend-item{display:flex;align-items:center;gap:.5rem;font-size:.66rem;color:var(--dim);background:rgba(5,8,15,.7);padding:.25rem .55rem;border:1px solid var(--border)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#mTip{display:none;position:absolute;background:var(--card2);border:1px solid var(--border2);color:var(--white);padding:6px 10px;font-size:.72rem;pointer-events:none;z-index:50;white-space:nowrap}
+
+/* ── TABLEAU COMPARATIF ── */
+.comp-section{background:var(--card);border:1px solid var(--border2);border-top:none}
+.comp-header{padding:1.1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.6rem}
+.comp-header-title{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.08em}
+.comp-table-wrap{overflow-x:auto}
+#compTable{width:100%;border-collapse:collapse;font-size:.82rem}
+#compTable th{text-align:left;padding:.75rem 1.2rem;border-bottom:1px solid var(--border2);font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mist2)}
+#compTable th.col-a{color:#378ADD}
+#compTable th.col-b{color:#D85A30}
+#compTable td{padding:.72rem 1.2rem;border-bottom:1px solid var(--border);font-size:.82rem}
+#compTable tr:last-child td{border-bottom:none}
+#compTable tr:hover td{background:rgba(255,255,255,.02)}
+.td-key{color:var(--mist);font-size:.75rem}
+.td-win-a{color:#378ADD;font-weight:600}
+.td-win-b{color:#D85A30;font-weight:600}
+.win-arrow{font-size:.6rem;margin-left:3px;opacity:.7}
+.comp-empty{padding:3rem;text-align:center;color:var(--mist2);font-size:.84rem}
+.comp-empty strong{display:block;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;color:var(--mist);margin-bottom:.4rem}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card2);border:1px solid var(--border2);color:var(--white);padding:.75rem 1.3rem;font-size:.8rem;font-weight:500;z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){nav{padding:0 1.25rem}.nav-links,.btn-nav,.btn-nav-cta{display:none}.burger{display:flex}.selector-grid{grid-template-columns:1fr}.main-wrap{padding:1.25rem}}
+@media(max-width:480px){.main-wrap{padding:1rem}.base-section{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="homepage.html" class="logo">Aircraft2<span>Sell</span></a>
+  <ul class="nav-links">
+    <li><a href="search.html">Annonces</a></li>
+    <li><a href="comparateur.html" class="active">Comparateur</a></li>
+    <li><a href="pricing.html">Tarifs</a></li>
+    <li><a href="guide-acheteur.html">Guide</a></li>
+    <li><a href="contact.html">Contact</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="dashboard.html" class="btn-nav">Mon espace</a>
+    <a href="post-listing.html" class="btn-nav-cta">+ Déposer</a>
+    <button class="burger" id="burger" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="search.html">Annonces</a>
+  <a href="comparateur.html">Comparateur</a>
+  <a href="pricing.html">Tarifs</a>
+  <a href="guide-acheteur.html">Guide acheteur</a>
+  <a href="contact.html">Contact</a>
+</div>
+
+<!-- HERO -->
+<div class="page-hero">
+  <div class="hero-eyebrow">Outil exclusif</div>
+  <div class="hero-title">Comparateur<br>d'<em>aéronefs</em></div>
+  <div class="hero-sub">Comparez les specs et le rayon d'action de n'importe quel avion ou hélicoptère — visualisez en temps réel sur la carte monde.</div>
+</div>
+
+<!-- MAIN -->
+<div class="main-wrap">
+
+  <!-- SÉLECTION DES APPAREILS -->
+  <div class="selector-grid">
+
+    <!-- AÉRONEF A -->
+    <div class="sel-panel">
+      <div class="sel-label sel-label-a"><span class="sel-indicator ind-a"></span>Aéronef A</div>
+      <div class="ac-wrap">
+        <input class="ac-input" id="inpA" type="text" placeholder="Tapez un nom, marque…" autocomplete="off">
+        <div class="ac-list" id="listA"></div>
+      </div>
+      <div id="selA">
+        <div class="placeholder-hint">Recherchez un avion ou hélicoptère parmi 70+ appareils — jets, turboprops, pistons, hélicoptères, avions de ligne.</div>
+      </div>
+    </div>
+
+    <!-- AÉRONEF B -->
+    <div class="sel-panel">
+      <div class="sel-label sel-label-b"><span class="sel-indicator ind-b"></span>Aéronef B</div>
+      <div class="ac-wrap">
+        <input class="ac-input" id="inpB" type="text" placeholder="Tapez un nom, marque…" autocomplete="off">
+        <div class="ac-list" id="listB"></div>
+      </div>
+      <div id="selB">
+        <div class="placeholder-hint">Choisissez un deuxième appareil pour lancer la comparaison.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BASE DE DÉPART -->
+  <div class="base-section">
+    <span class="base-label">Base de départ</span>
+    <div class="base-ac-wrap">
+      <input class="ac-input" id="baseInp" type="text" placeholder="Ville ou code OACI…" autocomplete="off" style="font-size:.8rem;padding:.55rem .9rem">
+      <div class="ac-list" id="baseList"></div>
+    </div>
+    <span class="base-chosen-label" id="baseLbl">Paris CDG (LFPG)</span>
+    <span style="font-size:.66rem;color:var(--mist2)">ou cliquez sur la carte</span>
+  </div>
+
+  <!-- CARTE -->
+  <div class="map-section">
+    <div class="map-wrap">
+      <svg id="wMap" viewBox="0 0 960 480"></svg>
+      <div class="map-hint">Cliquez pour déplacer la base · Points = aéroports</div>
+      <div class="map-legend" id="mapLegend"></div>
+      <div id="mTip"></div>
+    </div>
+  </div>
+
+  <!-- TABLEAU COMPARATIF -->
+  <div class="comp-section">
+    <div class="comp-header">
+      <div class="comp-header-title">Comparaison détaillée</div>
+    </div>
+    <div class="comp-table-wrap">
+      <div class="comp-empty" id="compEmpty">
+        <strong>Aucun appareil sélectionné</strong>
+        Choisissez deux aéronefs ci-dessus pour lancer la comparaison.
+      </div>
+      <table id="compTable" style="display:none"></table>
+    </div>
+  </div>
+
+</div><!-- /main-wrap -->
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+function toggleMenu(){var m=document.getElementById('mobileMenu'),b=document.getElementById('burger'),o=m.classList.toggle('open');b.classList.toggle('open',o);document.body.style.overflow=o?'hidden':'';}
+
+var DB=[
+  {id:'c150',name:'Cessna 150',cat:'Avion léger',range:580,speed:185,seats:2,ceiling:14000,engine:'Continental O-200 (100 ch)',price:'25 000 €'},
+  {id:'c152',name:'Cessna 152',cat:'Avion léger',range:756,speed:196,seats:2,ceiling:14700,engine:'Lycoming O-235 (110 ch)',price:'35 000 €'},
+  {id:'c172',name:'Cessna 172 Skyhawk',cat:'Avion léger',range:1289,speed:226,seats:4,ceiling:14000,engine:'Lycoming IO-360 (180 ch)',price:'85 000 €'},
+  {id:'c182',name:'Cessna 182 Skylane',cat:'Avion léger',range:1480,speed:272,seats:4,ceiling:18100,engine:'Lycoming IO-540 (230 ch)',price:'130 000 €'},
+  {id:'c206',name:'Cessna 206 Stationair',cat:'Avion léger',range:1555,speed:278,seats:6,ceiling:17300,engine:'Continental IO-550 (300 ch)',price:'200 000 €'},
+  {id:'c208',name:'Cessna 208 Caravan',cat:'Turbopropulseur',range:1982,speed:344,seats:9,ceiling:25000,engine:'Pratt & Whitney PT6A-114A',price:'2 200 000 €'},
+  {id:'pa28',name:'Piper PA-28 Archer',cat:'Avion léger',range:1150,speed:232,seats:4,ceiling:14100,engine:'Lycoming O-360 (180 ch)',price:'65 000 €'},
+  {id:'pa34',name:'Piper PA-34 Seneca',cat:'Avion léger',range:1900,speed:306,seats:6,ceiling:25000,engine:'Continental TSIO-360 (2x220 ch)',price:'250 000 €'},
+  {id:'pa46',name:'Piper M600',cat:'Turbopropulseur',range:2804,speed:519,seats:6,ceiling:30000,engine:'Pratt & Whitney PT6A-52',price:'3 800 000 €'},
+  {id:'sr20',name:'Cirrus SR20',cat:'Avion léger',range:1576,speed:300,seats:4,ceiling:17500,engine:'Continental IO-390 (215 ch)',price:'350 000 €'},
+  {id:'sr22',name:'Cirrus SR22T',cat:'Avion léger',range:2100,speed:338,seats:4,ceiling:25000,engine:'Continental TSIO-550 (315 ch)',price:'750 000 €'},
+  {id:'sf50',name:'Cirrus Vision Jet',cat:"Jet d'affaires",range:2778,speed:648,seats:7,ceiling:31000,engine:'Williams FJ33-5A',price:'2 500 000 €'},
+  {id:'da40',name:'Diamond DA40',cat:'Avion léger',range:1575,speed:280,seats:4,ceiling:16400,engine:'Lycoming IO-360 (180 ch)',price:'300 000 €'},
+  {id:'da42',name:'Diamond DA42',cat:'Avion léger',range:1800,speed:336,seats:4,ceiling:18000,engine:'Austro AE 300 diesel (2x170 ch)',price:'550 000 €'},
+  {id:'da62',name:'Diamond DA62',cat:'Avion léger',range:1800,speed:354,seats:7,ceiling:20000,engine:'Austro AE 330 (2x180 ch)',price:'900 000 €'},
+  {id:'tb20',name:'Socata TB20 Trinidad',cat:'Avion léger',range:1650,speed:290,seats:4,ceiling:20000,engine:'Lycoming IO-540 (250 ch)',price:'120 000 €'},
+  {id:'tbm700',name:'TBM 700',cat:'Turbopropulseur',range:2700,speed:555,seats:6,ceiling:31000,engine:'Pratt & Whitney PT6A-64',price:'2 000 000 €'},
+  {id:'tbm960',name:'TBM 960',cat:'Turbopropulseur',range:3060,speed:630,seats:6,ceiling:31000,engine:'Pratt & Whitney PT6E-66XT',price:'4 500 000 €'},
+  {id:'pc12',name:'Pilatus PC-12 NGX',cat:'Turbopropulseur',range:3417,speed:528,seats:9,ceiling:30000,engine:'Pratt & Whitney PT6A-67P',price:'5 500 000 €'},
+  {id:'pc24',name:'Pilatus PC-24',cat:"Jet d'affaires",range:3609,speed:815,seats:10,ceiling:45000,engine:'Williams FJ44-4A (2x)',price:'10 000 000 €'},
+  {id:'b36',name:'Beechcraft G36 Bonanza',cat:'Avion léger',range:1658,speed:307,seats:4,ceiling:18500,engine:'Continental IO-550 (300 ch)',price:'500 000 €'},
+  {id:'b200',name:'Beechcraft King Air B200',cat:'Turbopropulseur',range:3658,speed:536,seats:9,ceiling:35000,engine:'P&W PT6A-52 (2x850 ch)',price:'4 000 000 €'},
+  {id:'b350',name:'Beechcraft King Air 350',cat:'Turbopropulseur',range:3658,speed:577,seats:11,ceiling:35000,engine:'P&W PT6A-60A (2x1050 ch)',price:'7 500 000 €'},
+  {id:'m20',name:'Mooney M20V Acclaim',cat:'Avion léger',range:2400,speed:400,seats:4,ceiling:25000,engine:'Continental TSIO-550 (280 ch)',price:'350 000 €'},
+  {id:'cj4',name:'Citation CJ4',cat:"Jet d'affaires",range:3300,speed:780,seats:9,ceiling:45000,engine:'Williams FJ44-4A (2x)',price:'9 000 000 €'},
+  {id:'cxls',name:'Citation XLS+',cat:"Jet d'affaires",range:3741,speed:833,seats:9,ceiling:45000,engine:'Pratt & Whitney PW545D (2x)',price:'12 000 000 €'},
+  {id:'clat',name:'Citation Latitude',cat:"Jet d'affaires",range:5648,speed:846,seats:9,ceiling:45000,engine:'P&W PW306D1 (2x)',price:'17 000 000 €'},
+  {id:'clon',name:'Citation Longitude',cat:"Jet d'affaires",range:7041,speed:870,seats:12,ceiling:45000,engine:'Honeywell HTF7000 (2x)',price:'27 000 000 €'},
+  {id:'lj75',name:'Learjet 75 Liberty',cat:"Jet d'affaires",range:3779,speed:861,seats:9,ceiling:51000,engine:'Honeywell TFE731-40BR (2x)',price:'10 000 000 €'},
+  {id:'ch350',name:'Challenger 350',cat:"Jet d'affaires",range:6112,speed:870,seats:10,ceiling:41000,engine:'Honeywell HTF7350 (2x)',price:'26 000 000 €'},
+  {id:'ch650',name:'Challenger 650',cat:"Jet d'affaires",range:7408,speed:870,seats:12,ceiling:41000,engine:'GE CF34-3B (2x)',price:'32 000 000 €'},
+  {id:'gl6000',name:'Global 6000',cat:"Jet d'affaires",range:11112,speed:904,seats:13,ceiling:51000,engine:'Rolls-Royce BR710A2-20 (2x)',price:'45 000 000 €'},
+  {id:'gl7500',name:'Global 7500',cat:"Jet d'affaires",range:14260,speed:956,seats:19,ceiling:51000,engine:'GE Passport (2x)',price:'73 000 000 €'},
+  {id:'f7x',name:'Dassault Falcon 7X',cat:"Jet d'affaires",range:11945,speed:900,seats:16,ceiling:51000,engine:'Pratt & Whitney PW307A (3x)',price:'40 000 000 €'},
+  {id:'f8x',name:'Dassault Falcon 8X',cat:"Jet d'affaires",range:13890,speed:900,seats:16,ceiling:51000,engine:'Pratt & Whitney PW307D (3x)',price:'58 000 000 €'},
+  {id:'f6x',name:'Dassault Falcon 6X',cat:"Jet d'affaires",range:11111,speed:900,seats:16,ceiling:51000,engine:'Pratt & Whitney PW812D (2x)',price:'48 000 000 €'},
+  {id:'f2000',name:'Dassault Falcon 2000S',cat:"Jet d'affaires",range:7408,speed:882,seats:10,ceiling:47000,engine:'CFE738-1-1B (2x)',price:'25 000 000 €'},
+  {id:'g280',name:'Gulfstream G280',cat:"Jet d'affaires",range:7041,speed:870,seats:10,ceiling:45000,engine:'Honeywell HTF7250G (2x)',price:'25 000 000 €'},
+  {id:'g550',name:'Gulfstream G550',cat:"Jet d'affaires",range:12501,speed:904,seats:18,ceiling:51000,engine:'Rolls-Royce BR710C4-11 (2x)',price:'45 000 000 €'},
+  {id:'g650',name:'Gulfstream G650ER',cat:"Jet d'affaires",range:13890,speed:956,seats:18,ceiling:51000,engine:'Rolls-Royce BR725A1-12 (2x)',price:'65 000 000 €'},
+  {id:'g700',name:'Gulfstream G700',cat:"Jet d'affaires",range:13890,speed:956,seats:19,ceiling:51000,engine:'Rolls-Royce Pearl 700 (2x)',price:'75 000 000 €'},
+  {id:'ep300',name:'Embraer Phenom 300E',cat:"Jet d'affaires",range:3650,speed:834,seats:9,ceiling:45000,engine:'Williams FJ44-3AP-21 (2x)',price:'9 500 000 €'},
+  {id:'ep100',name:'Embraer Phenom 100EV',cat:"Jet d'affaires",range:2182,speed:737,seats:4,ceiling:41000,engine:'Pratt & Whitney PW617F-E (2x)',price:'4 200 000 €'},
+  {id:'hj',name:'HondaJet Elite II',cat:"Jet d'affaires",range:2661,speed:782,seats:6,ceiling:43000,engine:'GE Honda HF120 (2x)',price:'5 500 000 €'},
+  {id:'pr500',name:'Embraer Praetor 500',cat:"Jet d'affaires",range:5556,speed:870,seats:9,ceiling:45000,engine:'Honeywell HTF7500E (2x)',price:'17 000 000 €'},
+  {id:'pr600',name:'Embraer Praetor 600',cat:"Jet d'affaires",range:7778,speed:870,seats:12,ceiling:45000,engine:'Honeywell HTF7500E (2x)',price:'22 000 000 €'},
+  {id:'atr42',name:'ATR 42-600',cat:'Avion de ligne',range:1326,speed:556,seats:48,ceiling:25000,engine:'Pratt & Whitney PW127M (2x)',price:'25 000 000 €'},
+  {id:'atr72',name:'ATR 72-600',cat:'Avion de ligne',range:1528,speed:556,seats:70,ceiling:25000,engine:'Pratt & Whitney PW127M (2x)',price:'30 000 000 €'},
+  {id:'e175',name:'Embraer E175',cat:'Avion de ligne',range:3735,speed:870,seats:80,ceiling:41000,engine:'GE CF34-8E5 (2x)',price:'50 000 000 €'},
+  {id:'e195',name:'Embraer E195-E2',cat:'Avion de ligne',range:4075,speed:870,seats:146,ceiling:41000,engine:'Pratt & Whitney PW1922G (2x)',price:'65 000 000 €'},
+  {id:'r22',name:'Robinson R22',cat:'Hélicoptère',range:370,speed:177,seats:2,ceiling:14000,engine:'Lycoming O-320 (131 ch)',price:'180 000 €'},
+  {id:'r44',name:'Robinson R44 Raven II',cat:'Hélicoptère',range:640,speed:240,seats:4,ceiling:14000,engine:'Lycoming IO-540 (245 ch)',price:'360 000 €'},
+  {id:'r66',name:'Robinson R66 Turbine',cat:'Hélicoptère',range:645,speed:240,seats:5,ceiling:14000,engine:'Rolls-Royce RR300 (300 ch)',price:'900 000 €'},
+  {id:'bel206',name:'Bell 206 JetRanger',cat:'Hélicoptère',range:682,speed:225,seats:5,ceiling:13500,engine:'Allison 250-C20J (420 ch)',price:'700 000 €'},
+  {id:'bel407',name:'Bell 407GXi',cat:'Hélicoptère',range:683,speed:259,seats:7,ceiling:18700,engine:'Honeywell HTS900 (813 ch)',price:'3 200 000 €'},
+  {id:'bel429',name:'Bell 429',cat:'Hélicoptère',range:722,speed:287,seats:8,ceiling:18400,engine:'Pratt & Whitney PW207D1 (2x)',price:'7 000 000 €'},
+  {id:'bel505',name:'Bell 505 Jet Ranger X',cat:'Hélicoptère',range:660,speed:248,seats:5,ceiling:15000,engine:'Arrius 2R (540 ch)',price:'1 100 000 €'},
+  {id:'ec120',name:'Airbus H120',cat:'Hélicoptère',range:710,speed:220,seats:5,ceiling:16000,engine:'Arrius 2F (504 ch)',price:'1 200 000 €'},
+  {id:'h125',name:'Airbus H125',cat:'Hélicoptère',range:651,speed:287,seats:6,ceiling:23000,engine:'Arriel 2D (918 ch)',price:'2 700 000 €'},
+  {id:'h130',name:'Airbus H130',cat:'Hélicoptère',range:608,speed:278,seats:8,ceiling:18000,engine:'Arriel 2L2 (952 ch)',price:'3 200 000 €'},
+  {id:'h135',name:'Airbus H135',cat:'Hélicoptère',range:643,speed:278,seats:7,ceiling:20000,engine:'Arrius 2B2+ (2x)',price:'5 000 000 €'},
+  {id:'h145',name:'Airbus H145',cat:'Hélicoptère',range:658,speed:268,seats:11,ceiling:20000,engine:'Arriel 2E (2x958 ch)',price:'8 000 000 €'},
+  {id:'h160',name:'Airbus H160',cat:'Hélicoptère',range:850,speed:296,seats:12,ceiling:20000,engine:'Arrano 1A (2x1100 ch)',price:'12 000 000 €'},
+  {id:'h175',name:'Airbus H175',cat:'Hélicoptère',range:650,speed:296,seats:16,ceiling:20000,engine:'Pratt & Whitney PT6C-67E (2x)',price:'18 000 000 €'},
+  {id:'aw109',name:'Leonardo AW109',cat:'Hélicoptère',range:954,speed:311,seats:8,ceiling:20000,engine:'Pratt & Whitney PW207C (2x)',price:'6 500 000 €'},
+  {id:'aw139',name:'Leonardo AW139',cat:'Hélicoptère',range:1061,speed:310,seats:15,ceiling:20000,engine:'Pratt & Whitney PT6C-67C (2x)',price:'15 000 000 €'},
+  {id:'aw169',name:'Leonardo AW169',cat:'Hélicoptère',range:826,speed:306,seats:10,ceiling:20000,engine:'Pratt & Whitney PW210A (2x)',price:'10 000 000 €'},
+  {id:'s76',name:'Sikorsky S-76D',cat:'Hélicoptère',range:833,speed:287,seats:12,ceiling:15000,engine:'Pratt & Whitney PW210S (2x)',price:'12 000 000 €'},
+  {id:'s92',name:'Sikorsky S-92',cat:'Hélicoptère',range:999,speed:280,seats:19,ceiling:15000,engine:'GE CT7-8A (2x)',price:'17 000 000 €'},
+  {id:'g2cab',name:'Guimbal Cabri G2',cat:'Hélicoptère',range:450,speed:185,seats:2,ceiling:16000,engine:'Lycoming O-360 (145 ch)',price:'290 000 €'},
+  {id:'md500',name:'MD Helicopters MD 500E',cat:'Hélicoptère',range:370,speed:248,seats:5,ceiling:16000,engine:'Allison 250-C20B (420 ch)',price:'900 000 €'},
+];
+
+var AIRPORTS=[];
+var AIRPORTS_LOADED=false;
+var TYPE_LABELS={
+  'large_airport':'Grand aéroport',
+  'medium_airport':'Aéroport',
+  'small_airport':'Aérodrome',
+  'heliport':'Héliport',
+  'seaplane_base':'Base hydravions',
+  'balloonport':'Ballon',
+  'closed':'Fermé'
+};
+
+var NOMINATIM_URL='https://nominatim.openstreetmap.org/search';
+var _nomTimer=null;
+
+function loadAirports(){
+  AIRPORTS_LOADED=true;
+  document.getElementById('baseInp').placeholder='Aéroport, héliport, ville, lieu… (monde entier)';
+  refreshMapDots();
+}
+
+async function searchNominatim(q){
+  try{
+    var url=NOMINATIM_URL+'?q='+encodeURIComponent(q)+'&format=json&limit=10&addressdetails=1';
+    var res=await fetch(url,{headers:{'Accept-Language':'fr,en'}});
+    var data=await res.json();
+    return data.map(function(d){
+      var name=d.display_name.split(',').slice(0,3).join(',');
+      var type=d.type||d.class||'lieu';
+      return{
+        code:'',
+        n:name,
+        muni:d.address?(d.address.city||d.address.town||d.address.village||''):'',
+        country:d.address?d.address.country_code:'',
+        type:type,
+        lat:parseFloat(d.lat),
+        lon:parseFloat(d.lon),
+        _osm:true
+      };
+    }).filter(function(d){return!isNaN(d.lat)&&!isNaN(d.lon);});
+  }catch(e){return[];}
+}
+
+var COLORS={A:'#378ADD',B:'#D85A30'};
+var chosen={A:null,B:null};
+var baseCoords=[2.55,49.01];
+var proj,pathFn,svgEl;
+
+/* ── AUTOCOMPLETE AVIONS ── */
+var CATS=['Avion léger','Turbopropulseur',"Jet d'affaires",'Hélicoptère','Avion de ligne'];
+
+function setupAC(inpId,listId,side){
+  var inp=document.getElementById(inpId);
+  var lst=document.getElementById(listId);
+  inp.addEventListener('input',function(){
+    var q=this.value.trim().toLowerCase();
+    if(q.length<1){lst.style.display='none';return;}
+    var html='';
+    CATS.forEach(function(cat){
+      var items=DB.filter(function(p){return p.cat===cat&&(p.name.toLowerCase().includes(q)||cat.toLowerCase().includes(q));});
+      if(!items.length)return;
+      html+='<div class="ac-group-title">'+cat+'</div>';
+      items.forEach(function(p){
+        html+='<div class="ac-item" onmousedown="pickAircraft(\''+side+'\',\''+p.id+'\')">'+p.name+'<span class="ac-item-range">'+p.range.toLocaleString()+' km</span></div>';
+      });
+    });
+    if(!html){lst.style.display='none';return;}
+    lst.innerHTML=html;lst.style.display='block';
+  });
+  inp.addEventListener('blur',function(){setTimeout(function(){lst.style.display='none';},160);});
+  inp.addEventListener('keydown',function(e){if(e.key==='Escape')lst.style.display='none';});
+}
+
+function pickAircraft(side,id){
+  var p=DB.find(function(x){return x.id===id;});
+  if(!p)return;
+  chosen[side]=p;
+  document.getElementById('inp'+side).value=p.name;
+  document.getElementById('list'+side).style.display='none';
+  renderSelChosen(side,p);
+  drawCircles();
+  renderCompTable();
+  updateLegend();
+}
+
+function renderSelChosen(side,p){
+  var col=COLORS[side];
+  var el=document.getElementById('sel'+side);
+  el.innerHTML='<div class="sel-chosen" style="border-color:'+col+'22;background:'+col+'08">'
+    +'<div class="sel-chosen-name" style="color:'+col+'">'+p.name+'</div>'
+    +'<div class="sel-chosen-cat">'+p.cat+'</div>'
+    +'<div class="mini-specs">'
+    +'<div class="mini-spec">Rayon <span>'+p.range.toLocaleString()+' km</span></div>'
+    +'<div class="mini-spec">Vitesse <span>'+p.speed+' km/h</span></div>'
+    +'<div class="mini-spec">Places <span>'+p.seats+'</span></div>'
+    +'<div class="mini-spec">Plafond <span>'+p.ceiling.toLocaleString()+' ft</span></div>'
+    +'</div>'
+    +'<button class="btn-clear" onclick="clearAircraft(\''+side+'\')">Effacer</button>'
+    +'</div>';
+}
+
+function clearAircraft(side){
+  chosen[side]=null;
+  document.getElementById('inp'+side).value='';
+  document.getElementById('sel'+side).innerHTML='<div class="placeholder-hint">Recherchez un appareil…</div>';
+  drawCircles();
+  renderCompTable();
+  updateLegend();
+}
+
+/* ── BASE AÉROPORT ── */
+function typeLabel(t){
+  return{large_airport:'Grand aéroport',medium_airport:'Aéroport',small_airport:'Aérodrome',heliport:'Héliport',seaplane_base:'Hydravions',balloonport:'Ballon'}[t]||t;
+}
+
+function renderSuggList(matches, lst){
+  if(!matches.length){lst.style.display='none';return;}
+  lst.innerHTML=matches.map(function(a){
+    var lbl=a.n;
+    var sub=a.code?(a.code+' · '+typeLabel(a.type)):typeLabel(a.type)||a.type;
+    var sl=lbl.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return'<div class="ac-item" onmousedown="setBase('+a.lon+','+a.lat+',\''+sl+'\')"><span>'+lbl+'</span><span class="ac-item-range">'+sub+'</span></div>';
+  }).join('');
+  lst.style.display='block';
+}
+
+function setupBaseAC(){
+  var inp=document.getElementById('baseInp');
+  var lst=document.getElementById('baseList');
+  inp.addEventListener('input',function(){
+    var q=this.value.trim();
+    if(q.length<2){lst.style.display='none';return;}
+    // Recherche locale sur dataset embarqué d'abord
+    var ql=q.toLowerCase();
+    var exact=[],startCode=[],byMuni=[],byName=[];
+    for(var i=0;i<AIRPORTS.length;i++){
+      var a=AIRPORTS[i];
+      var c=a.code.toLowerCase(),n=a.n.toLowerCase(),m=(a.muni||'').toLowerCase();
+      if(c===ql)exact.push(a);
+      else if(c.startsWith(ql))startCode.push(a);
+      else if(m.startsWith(ql))byMuni.push(a);
+      else if(n.includes(ql)||m.includes(ql))byName.push(a);
+      if(exact.length+startCode.length+byMuni.length+byName.length>=200)break;
+    }
+    var local=exact.concat(startCode).concat(byMuni).concat(byName).slice(0,8);
+    renderSuggList(local,lst);
+    // Nominatim en parallèle (debounce 400ms)
+    clearTimeout(_nomTimer);
+    _nomTimer=setTimeout(function(){
+      lst.innerHTML=(lst.innerHTML||'')+'<div id="nomLoading" class="ac-item" style="color:var(--mist2);font-size:.72rem;">Recherche mondiale…</div>';
+      searchNominatim(q).then(function(results){
+        var nomEl=document.getElementById('nomLoading');
+        if(nomEl)nomEl.remove();
+        if(!results.length)return;
+        var already=local.map(function(a){return a.code;});
+        var extra=results.filter(function(r){return!already.includes(r.code);}).slice(0,6);
+        if(!extra.length)return;
+        var extraHtml=extra.map(function(a){
+          var sl=a.n.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          var sub=a.type||'lieu';
+          return'<div class="ac-item" onmousedown="setBase('+a.lon+','+a.lat+',\''+sl+'\')"><span>'+a.n+'</span><span class="ac-item-range">'+sub+'</span></div>';
+        }).join('');
+        if(local.length){lst.innerHTML=lst.innerHTML+'<div class="ac-group-title" style="border-top:1px solid var(--border2)">Résultats OSM</div>'+extraHtml;}
+        else{lst.innerHTML=extraHtml;}
+        lst.style.display='block';
+      });
+    },400);
+  });
+  inp.addEventListener('blur',function(){setTimeout(function(){lst.style.display='none';},200);});
+  inp.addEventListener('keydown',function(e){
+    if(e.key==='Escape')lst.style.display='none';
+    if(e.key==='Enter'){
+      var first=lst.querySelector('.ac-item');
+      if(first)first.dispatchEvent(new Event('mousedown'));
+    }
+  });
+}
+
+function setBase(lon,lat,label){
+  baseCoords=[lon,lat];
+  document.getElementById('baseLbl').textContent=label;
+  document.getElementById('baseInp').value=label;
+  document.getElementById('baseList').style.display='none';
+  drawCircles();
+  showToast('Base : '+label);
+}
+
+function refreshMapDots(){
+  if(!svgEl||!AIRPORTS_LOADED)return;
+  svgEl.selectAll('.apt').remove();
+  var visible=AIRPORTS.filter(function(a){
+    return a.type==='large_airport'||a.type==='medium_airport';
+  });
+  svgEl.selectAll('.apt')
+    .data(visible).join('circle')
+    .attr('class','apt')
+    .attr('cx',function(d){var p=proj([d.lon,d.lat]);return p?p[0]:null;})
+    .attr('cy',function(d){var p=proj([d.lon,d.lat]);return p?p[1]:null;})
+    .attr('r',1.8)
+    .attr('fill','rgba(180,200,230,.35)')
+    .attr('stroke','none')
+    .style('cursor','pointer')
+    .on('mouseover',function(ev,d){
+      var tt=document.getElementById('mTip');
+      var rect=document.getElementById('wMap').getBoundingClientRect();
+      tt.style.display='block';
+      tt.textContent=d.n+(d.muni?' — '+d.muni:'')+' ('+d.code+')';
+      tt.style.left=(ev.clientX-rect.left+12)+'px';
+      tt.style.top=(ev.clientY-rect.top-38)+'px';
+    })
+    .on('mouseout',function(){document.getElementById('mTip').style.display='none';})
+    .on('click',function(ev,d){ev.stopPropagation();setBase(d.lon,d.lat,d.n+(d.muni&&d.muni!==d.n?' — '+d.muni:'')+' ('+d.code+')');});
+}
+
+/* ── CARTE D3 ── */
+function kmToRad(km){return(km/6371)*(180/Math.PI);}
+
+function drawCircles(){
+  if(!svgEl)return;
+  svgEl.selectAll('.rc,.bd').remove();
+  ['A','B'].forEach(function(side){
+    var p=chosen[side];
+    if(!p)return;
+    var col=COLORS[side];
+    try{
+      var circ=d3.geoCircle().center(baseCoords).radius(kmToRad(p.range))();
+      svgEl.append('path').datum(circ).attr('class','rc')
+        .attr('d',pathFn)
+        .attr('fill',col+'18')
+        .attr('stroke',col)
+        .attr('stroke-width',1.8)
+        .attr('stroke-dasharray','5,3')
+        .style('pointer-events','none');
+    }catch(e){}
+  });
+  var px=proj(baseCoords);
+  if(px){
+    svgEl.append('circle').attr('class','bd').attr('cx',px[0]).attr('cy',px[1]).attr('r',7)
+      .attr('fill',var_css('--white')||'#edf2f8').attr('stroke','#555').attr('stroke-width',1.5).style('pointer-events','none');
+    svgEl.append('circle').attr('class','bd').attr('cx',px[0]).attr('cy',px[1]).attr('r',2.5)
+      .attr('fill','#333').style('pointer-events','none');
+  }
+}
+
+function var_css(v){
+  try{return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}catch(e){return null;}
+}
+
+function updateLegend(){
+  var lg=document.getElementById('mapLegend');
+  var html='';
+  ['A','B'].forEach(function(side){
+    var p=chosen[side];
+    if(!p)return;
+    html+='<div class="legend-item"><div class="legend-dot" style="background:'+COLORS[side]+'"></div>'+p.name+' — '+p.range.toLocaleString()+' km</div>';
+  });
+  lg.innerHTML=html;
+}
+
+function initMap(){
+  svgEl=d3.select('#wMap');
+  proj=d3.geoNaturalEarth1().scale(153).translate([480,240]);
+  pathFn=d3.geoPath(proj);
+
+  d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(function(w){
+    svgEl.selectAll('.country')
+      .data(topojson.feature(w,w.objects.countries).features)
+      .join('path').attr('class','country')
+      .attr('d',pathFn)
+      .attr('fill','#0d1e35')
+      .attr('stroke','#1a2e44')
+      .attr('stroke-width',0.4);
+
+    // Points aéroports chargés dynamiquement après OurAirports
+
+    svgEl.on('click',function(ev){
+      var coords=d3.pointer(ev);
+      var c=proj.invert(coords);
+      if(!c)return;
+      var lon=Math.round(c[0]*10)/10;
+      var lat=Math.round(c[1]*10)/10;
+      var label=(lat>=0?lat+'°N':Math.abs(lat)+'°S')+' '+(lon>=0?lon+'°E':Math.abs(lon)+'°W');
+      setBase(lon,lat,label);
+    });
+
+    drawCircles();
+  });
+}
+
+/* ── TABLEAU COMPARATIF ── */
+function renderCompTable(){
+  var pA=chosen.A,pB=chosen.B;
+  var empty=document.getElementById('compEmpty');
+  var table=document.getElementById('compTable');
+  if(!pA&&!pB){empty.style.display='block';table.style.display='none';return;}
+  empty.style.display='none';table.style.display='table';
+
+  var rows=[
+    {label:'Catégorie',key:null,fn:function(p){return p.cat;}},
+    {label:'Rayon d\'action',key:'range',fn:function(p){return p.range.toLocaleString()+' km';}},
+    {label:'Vitesse de croisière',key:'speed',fn:function(p){return p.speed+' km/h';}},
+    {label:'Passagers',key:'seats',fn:function(p){return p.seats+'';},},
+    {label:'Plafond opérationnel',key:'ceiling',fn:function(p){return p.ceiling.toLocaleString()+' ft';}},
+    {label:'Motorisation',key:null,fn:function(p){return p.engine;}},
+    {label:'Prix indicatif',key:null,fn:function(p){return p.price;}},
+  ];
+
+  var headA=pA?'<th class="col-a"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#378ADD;display:inline-block"></span>'+esc(pA.name)+'</span></th>':'';
+  var headB=pB?'<th class="col-b"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#D85A30;display:inline-block"></span>'+esc(pB.name)+'</span></th>':'';
+
+  var tbody=rows.map(function(r,i){
+    var vA=pA?r.fn(pA):'';
+    var vB=pB?r.fn(pB):'';
+    var winA=false,winB=false;
+    if(pA&&pB&&r.key){
+      var nA=pA[r.key],nB=pB[r.key];
+      if(nA>nB)winA=true;else if(nB>nA)winB=true;
+    }
+    var tdA=pA?'<td class="'+(winA?'td-win-a':'')+'">'+esc(vA)+(winA?'<span class="win-arrow">↑</span>':'')+'</td>':'';
+    var tdB=pB?'<td class="'+(winB?'td-win-b':'')+'">'+esc(vB)+(winB?'<span class="win-arrow">↑</span>':'')+'</td>':'';
+    return'<tr><td class="td-key">'+r.label+'</td>'+tdA+tdB+'</tr>';
+  }).join('');
+
+  table.innerHTML='<thead><tr><th style="width:180px">Spec</th>'+headA+headB+'</tr></thead><tbody>'+tbody+'</tbody>';
+}
+
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* ── TOAST ── */
+var _tt;
+function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2500);}
+
+setupAC('inpA','listA','A');
+setupAC('inpB','listB','B');
+setupBaseAC();
+initMap();
+loadAirports();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>
