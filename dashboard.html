@@ -833,7 +833,25 @@ window.addEventListener('DOMContentLoaded',function(){
   if(hash&&document.getElementById('panel-'+hash))switchTab(hash);
   // Lire annonce depuis session (après post-listing)
   var raw=sessionStorage.getItem('a2s_last_listing');
-  if(raw){try{var d=JSON.parse(raw);if(d&&d.submittedAt){var arr=getListings();arr.unshift(d);localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));sessionStorage.removeItem('a2s_last_listing');renderListings();showToast('✅ Annonce publiée !');}}catch(e){}}
+  if(raw){
+    try{
+      var d=JSON.parse(raw);
+      if(d&&d.submittedAt){
+        sessionStorage.removeItem('a2s_last_listing');
+        // N'ajouter en localStorage QUE si l'annonce n'est pas déjà dans Supabase
+        if(!d._fromSupabase){
+          var arr=getListings();
+          // Éviter les doublons par ID
+          if(!arr.find(function(x){return x.id===d.id;})){
+            arr.unshift(d);
+            localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));
+          }
+        }
+        renderListings();
+        showToast('✅ Annonce soumise — en attente de validation');
+      }
+    }catch(e){}
+  }
 });
 </script>
 <script src="favorites.js"></script>

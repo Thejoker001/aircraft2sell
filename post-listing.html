@@ -592,37 +592,102 @@ async function submitListing(){
   showToast('Publication en cours…');
 
   var now=new Date().toISOString();
-  var listing={
-    id:Date.now(),
+  var sellerName=localStorage.getItem('a2s_user_name')||'';
+  var sellerEmail=localStorage.getItem('a2s_user_email')||'';
+  var tk=sessionStorage.getItem('a2s_auth_token');
+
+  var sbListing={
     make:fMakeEl.value||makeSelVal,
     model:fModelEl.value||'',
-    year:document.getElementById('fYear').value,
-    price:document.getElementById('fPrice').value,
+    year:parseInt(document.getElementById('fYear').value)||null,
+    price:parseFloat(document.getElementById('fPrice').value)||null,
     currency:document.getElementById('fPriceCurr').value||'EUR',
     category:document.getElementById('fCategory').value,
-    airport:document.getElementById('fAirport').value,
+    airport:document.getElementById('fAirport').value.toUpperCase(),
     description:document.getElementById('fDesc').value,
     status:'pending',
-    submittedAt:now,
-    sellerName:localStorage.getItem('a2s_user_name')||'',
-    sellerEmail:localStorage.getItem('a2s_user_email')||'',
-    views:0,enquiries:0
+    submitted_at:now,
+    seller_name:sellerName,
+    seller_email:sellerEmail,
+    views:0,
+    enquiries:0
   };
 
-  // Sauvegarder en localStorage
-  try{
-    var existing=JSON.parse(localStorage.getItem(LS_KEY)||'[]');
-    existing.unshift(listing);
-    localStorage.setItem(LS_KEY,JSON.stringify(existing));
-  }catch(e){console.error(e);}
+  // Champs optionnels
+  var ttVal=document.getElementById('fTT').value;
+  if(ttVal)sbListing.hours=parseInt(ttVal);
+  var smohVal=document.getElementById('fSMOH').value;
+  if(smohVal)sbListing.smoh=parseInt(smohVal);
+  var engVal=document.getElementById('fEngines').value;
+  if(engVal)sbListing.engine=engVal;
+  var seatsVal=document.getElementById('fSeats').value;
+  if(seatsVal)sbListing.seats=parseInt(seatsVal);
+  var rangeVal=document.getElementById('fRange').value;
+  if(rangeVal)sbListing.range=parseInt(rangeVal);
+  var avVal=document.getElementById('fAvionics').value;
+  if(avVal)sbListing.avionics=avVal;
+  var eqVal=document.getElementById('fEquip').value;
+  if(eqVal)sbListing.equipment=eqVal;
+  var serialVal=document.getElementById('fSerial').value;
+  if(serialVal)sbListing.registration=serialVal;
+  var docsVal=document.getElementById('fDocs').value;
+  if(docsVal)sbListing.documents=docsVal;
+  var ptVal=document.getElementById('fPriceType').value;
+  if(ptVal)sbListing.price_type=ptVal;
+  var countryVal=document.getElementById('fCountry').value;
+  if(countryVal)sbListing.country=countryVal;
+  sbListing.ifr=document.getElementById('chkIFR').checked||false;
+  sbListing.rvsm=document.getElementById('chkRVSM').checked||false;
+  sbListing.adsb=document.getElementById('chkADSB').checked||false;
+  sbListing.logs=document.getElementById('chkLogs').checked||false;
 
-  // Sauvegarder en sessionStorage pour page de confirmation
+  // ── Envoyer à Supabase ──
+  var sbId=null;
+  try{
+    var sbRes=await fetch(SB_URL+'/rest/v1/listings',{
+      method:'POST',
+      headers:{
+        'apikey':SB_KEY,
+        'Authorization':'Bearer '+(tk||SB_KEY),
+        'Content-Type':'application/json',
+        'Prefer':'return=representation'
+      },
+      body:JSON.stringify(sbListing)
+    });
+    var sbData=await sbRes.json();
+    if(sbRes.ok&&Array.isArray(sbData)&&sbData[0]){
+      sbId=sbData[0].id;
+    }else if(sbRes.ok&&sbData&&sbData.id){
+      sbId=sbData.id;
+    }
+  }catch(e){console.warn('Supabase unavailable, fallback localStorage:',e);}
+
+  // ── Cache dashboard via sessionStorage uniquement (pas de localStorage ici) ──
+  var listing={
+    id:sbId||Date.now(),
+    make:sbListing.make,
+    model:sbListing.model,
+    year:document.getElementById('fYear').value,
+    price:document.getElementById('fPrice').value,
+    currency:sbListing.currency,
+    category:sbListing.category,
+    airport:sbListing.airport,
+    description:sbListing.description,
+    status:'pending',
+    submittedAt:now,
+    sellerName:sellerName,
+    sellerEmail:sellerEmail,
+    views:0,enquiries:0,
+    _fromSupabase:!!sbId
+  };
   sessionStorage.setItem('a2s_last_listing',JSON.stringify(listing));
 
-  setTimeout(function(){
-    showToast('✅ Annonce publiée !');
-    setTimeout(function(){window.location.href='dashboard.html';},800);
-  },1200);
+  if(sbId){
+    showToast('✅ Annonce envoyée — en attente de validation');
+  }else{
+    showToast('✅ Annonce sauvegardée — synchronisation en cours');
+  }
+  setTimeout(function(){window.location.href='dashboard.html';},1400);
 }
 
 /* ── TOAST ── */
