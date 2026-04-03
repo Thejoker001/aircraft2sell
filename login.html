@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="description" content="Connectez-vous à votre espace Aircraft2Sell ou créez un compte gratuit pour acheter et vendre des aéronefs en Europe.">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Aircraft2Sell — Connexion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -291,7 +292,9 @@ async function handleLogin(){
     var name=(meta&&meta.full_name)||email.split('@')[0];
     localStorage.setItem('a2s_user_name',name);
     var dest=new URLSearchParams(location.search).get('redirect')||'dashboard.html';
-    if(/^(https?:)?\/\/|^javascript:/i.test(dest))dest='dashboard.html';
+    // Whitelist redirects — uniquement les pages internes
+    var ALLOWED=['dashboard.html','post-listing.html','messages.html','pricing.html','search.html','homepage.html'];
+    if(!ALLOWED.some(function(p){return dest===p||dest.startsWith(p+'?');}))dest='dashboard.html';
     window.location.href=dest;
   }catch(e){alert2('login',e.message,'err');document.getElementById('loginPw').value='';}
   finally{btn.disabled=false;btn.querySelector('span').textContent='Se connecter';}
