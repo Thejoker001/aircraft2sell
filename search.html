@@ -323,13 +323,17 @@ function toggleMenu(){var m=document.getElementById('mobileMenu'),b=document.get
 /* Auth */
 (function(){
   var tk=sessionStorage.getItem('a2s_auth_token');
-  if(!tk)return;
-  try{var p=JSON.parse(atob(tk.split('.')[1]));if(p.exp*1000<Date.now())return;
-  var name=(p.user_metadata&&p.user_metadata.full_name)||p.email.split('@')[0];
+  var loggedLs=localStorage.getItem('a2s_logged_in')==='true';
+  if(!tk&&!loggedLs)return;
+  try{
+  var pseudo=localStorage.getItem('a2s_user_pseudo')||'';
+  var nameLs=localStorage.getItem('a2s_user_name')||'';
+  var name=pseudo||nameLs.split(' ')[0]||'Pilote';
+  if(tk){var jp=JSON.parse(atob(tk.split('.')[1]));if(jp.exp*1000<Date.now())return;}
   document.getElementById('btnLogin').style.display='none';
   var nu=document.getElementById('navUser');nu.style.display='flex';
   document.getElementById('navAvatar').textContent=name.charAt(0).toUpperCase();
-  document.getElementById('navUserName').textContent=name.split(' ')[0];}catch(e){}
+  document.getElementById('navUserName').textContent=name;}catch(e){}
 })();
 
 /* Chargement */

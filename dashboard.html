@@ -570,6 +570,11 @@ nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;al
       <div class="set-grid">
         <div class="set-card">
           <div class="set-card-ttl">Profil</div>
+          <div class="set-fg">
+            <label>Pseudo public <span style="color:var(--accent)">★</span></label>
+            <input type="text" class="set-inp" id="setPseudo" placeholder="ex: AvioPilote75" maxlength="30">
+            <div style="font-size:.65rem;color:var(--mist2);margin-top:.3rem">Affiché sur vos annonces à la place de votre email.</div>
+          </div>
           <div class="set-fg"><label>Prénom</label><input type="text" class="set-inp" id="setFirst" placeholder="Votre prénom" autocomplete="given-name"></div>
           <div class="set-fg"><label>Nom</label><input type="text" class="set-inp" id="setLast" placeholder="Votre nom" autocomplete="family-name"></div>
           <div class="set-fg"><label>Email</label><input type="email" class="set-inp" id="setEmail" placeholder="votre@email.com" autocomplete="email"></div>
@@ -624,10 +629,11 @@ var SB_URL='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 
 function applyUserDisplay(name, email){
-  var first=name.split(' ')[0]||email.split('@')[0]||'Pilote';
-  var initials=name.trim().split(/\s+/).map(function(w){return w[0];}).join('').substring(0,2).toUpperCase()||'U';
+  var pseudo=localStorage.getItem('a2s_user_pseudo')||'';
+  var display=pseudo||name.split(' ')[0]||email.split('@')[0]||'Pilote';
+  var initials=(display[0]||'U').toUpperCase();
   var navAv=document.getElementById('navAvatar');if(navAv)navAv.textContent=initials;
-  var navNm=document.getElementById('navUserName');if(navNm)navNm.textContent=first;
+  var navNm=document.getElementById('navUserName');if(navNm)navNm.textContent=display;
   var h=new Date().getHours();
   var greeting=h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
   var icon=h<12?'☀️':h<18?'🌤️':'🌙';
@@ -638,6 +644,7 @@ function applyUserDisplay(name, email){
   if(f1)f1.value=parts[0]||'';
   if(f2)f2.value=parts.slice(1).join(' ')||'';
   if(fe)fe.value=email;
+  var fp=document.getElementById('setPseudo');if(fp)fp.value=localStorage.getItem('a2s_user_pseudo')||'';
 }
 
 async function initAuth(){
@@ -660,11 +667,14 @@ async function initAuth(){
   applyUserDisplay(name,email);
   if(email){
     try{
-      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,plan&limit=1',{
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan&limit=1',{
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}
       });
       var data=await res.json();
       if(data&&data[0]){
+        if(data[0].pseudo){
+          localStorage.setItem('a2s_user_pseudo',data[0].pseudo);
+        }
         if(data[0].name){
           name=data[0].name;
           localStorage.setItem('a2s_user_name',name);
@@ -943,12 +953,36 @@ function updateFavBadge(){var n=window.A2SFavs?window.A2SFavs.count():0;var b=do
 document.addEventListener('a2s:favs-updated',renderFavs);
 
 /* ── PARAMÈTRES ── */
-function saveProfile(){
+async function saveProfile(){
   var first=document.getElementById('setFirst').value.trim();
   var last=document.getElementById('setLast').value.trim();
   var email=document.getElementById('setEmail').value.trim();
+  var pseudo=(document.getElementById('setPseudo')||{value:''}).value.trim();
   if(first||last){var fn=(first+' '+last).trim();localStorage.setItem('a2s_user_name',fn);}
   if(email)localStorage.setItem('a2s_user_email',email);
+  if(pseudo){
+    if(pseudo.length<3||!/^[a-zA-Z0-9_.\-éèàûôîùçëïü]{3,30}$/.test(pseudo)){showToast('⚠ Pseudo invalide');return;}
+    localStorage.setItem('a2s_user_pseudo',pseudo);
+  }
+  // Sync Supabase
+  var userEmail=localStorage.getItem('a2s_user_email')||'';
+  var tk=sessionStorage.getItem('a2s_auth_token')||'';
+  if(userEmail){
+    var payload={};
+    var nm=(first+' '+last).trim();
+    if(nm)payload.name=nm;
+    if(pseudo)payload.pseudo=pseudo;
+    if(Object.keys(payload).length){
+      try{
+        await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(userEmail),{
+          method:'PATCH',
+          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY),'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify(payload)
+        });
+      }catch(e){}
+    }
+  }
+  applyUserDisplay(localStorage.getItem('a2s_user_name')||'',userEmail);
   showToast('✅ Profil mis à jour !');
 }
 

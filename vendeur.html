@@ -388,7 +388,7 @@ async function loadSeller(){
   // Extraire infos vendeur depuis les listings
   var first=listings[0]||{};
   SELLER={
-    name:first.seller_name||SELLER_EMAIL.split('@')[0]||'Vendeur',
+    name:first.seller_pseudo||first.seller_name||SELLER_EMAIL.split('@')[0]||'Vendeur',
     email:SELLER_EMAIL||first.seller_email||'',
     certified:first.seller_certified||false,
     rating:first.seller_rating||0,
@@ -400,6 +400,8 @@ async function loadSeller(){
     var users=await sbGet('users','email=eq.'+encodeURIComponent(SELLER.email)+'&select=*');
     if(users.length){
       var u=users[0];
+      SELLER.pseudo=u.pseudo||'';
+      if(SELLER.pseudo)SELLER.name=SELLER.pseudo;
       SELLER.plan=u.plan||'Essentiel';
       SELLER.certified=u.certified||false;
       SELLER.rating=u.rating||0;

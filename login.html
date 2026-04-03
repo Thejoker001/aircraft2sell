@@ -218,6 +218,11 @@ nav{height:64px;padding:0 2rem;display:flex;align-items:center;justify-content:s
           </div>
         </div>
         <div class="fld">
+          <label>Pseudo public <span style="color:var(--accent)">*</span></label>
+          <input type="text" class="inp" id="regPseudo" placeholder="ex: AvioPilote75" maxlength="30" oninput="checkPseudo(this.value)">
+          <div style="font-size:.65rem;color:var(--mist2);margin-top:.35rem" id="pseudoHint">Affiché sur vos annonces — entre 3 et 30 caractères (lettres, chiffres, _ - .)</div>
+        </div>
+        <div class="fld">
           <label>Adresse email</label>
           <input type="email" class="inp" id="regEmail" placeholder="vous@example.com" autocomplete="email">
         </div>
@@ -297,14 +302,25 @@ async function handleLogin(){
   finally{btn.disabled=false;btn.querySelector('span').textContent='Se connecter';}
 }
 
+function checkPseudo(v){
+  var hint=document.getElementById('pseudoHint');
+  var inp=document.getElementById('regPseudo');
+  if(!v){hint.textContent='Affiché sur vos annonces — entre 3 et 30 caractères.';hint.style.color='var(--mist2)';inp.classList.remove('err');return;}
+  var ok=/^[a-zA-Z0-9_.\-éèàûôîùçëïü]{3,30}$/.test(v);
+  hint.textContent=ok?'✓ Pseudo valide':'⚠ Uniquement lettres, chiffres, _ - .';
+  hint.style.color=ok?'var(--green)':'var(--red)';
+  inp.classList.toggle('err',!ok);
+}
 async function handleRegister(){
   clearAlert('register');
   var first=document.getElementById('regFirst').value.trim();
   var last=document.getElementById('regLast').value.trim();
+  var pseudo=document.getElementById('regPseudo').value.trim();
   var email=document.getElementById('regEmail').value.trim().toLowerCase();
   var pw=document.getElementById('regPw').value;
   var pwc=document.getElementById('regPwConf').value;
-  if(!first||!last||!email||!pw){alert2('register','Remplissez tous les champs.','err');return;}
+  if(!first||!last||!pseudo||!email||!pw){alert2('register','Remplissez tous les champs, y compris votre pseudo.','err');return;}
+  if(pseudo.length<3||!/^[a-zA-Z0-9_.\-éèàûôîùçëïü]{3,30}$/.test(pseudo)){alert2('register','Pseudo invalide (3-30 caractères, lettres/chiffres/_ - .).','err');return;}
   if(pw.length<8){alert2('register','Le mot de passe doit faire au moins 8 caractères.','err');return;}
   if(pw!==pwc){alert2('register','Les mots de passe ne correspondent pas.','err');return;}
   if(!document.getElementById('regTerms').checked){alert2('register','Acceptez les conditions pour continuer.','err');return;}
@@ -319,7 +335,8 @@ async function handleRegister(){
       localStorage.setItem('a2s_logged_in','true');
       localStorage.setItem('a2s_user_email',email);
       localStorage.setItem('a2s_user_name',fullName);
-      await fetch(SB+'/rest/v1/users',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({id:Date.now(),name:fullName,email:email,plan:'Essentiel',status:'active',registered_at:new Date().toISOString()})});
+      localStorage.setItem('a2s_user_pseudo',pseudo);
+      await fetch(SB+'/rest/v1/users',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({id:Date.now(),name:fullName,pseudo:pseudo,email:email,plan:'Essentiel',status:'active',registered_at:new Date().toISOString()})});
       window.location.href='onboarding.html';
     }else{
       alert2('register','✅ Compte créé ! Vérifiez votre email pour confirmer votre adresse.','ok');
