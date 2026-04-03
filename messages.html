@@ -10,7 +10,7 @@
 <style>
 :root{--bg:#05080f;--deep:#030610;--surface:#0a1020;--card:#0c1428;--card2:#0f1830;--border:rgba(180,200,230,.08);--border2:rgba(180,200,230,.14);--accent:#e8a020;--gold:#f5c518;--mist:#7a93aa;--mist2:#3d5468;--white:#edf2f8;--dim:#c8d8e8;--green:#22c55e;--red:#ef4444}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
+html,body{height:100%overflow-x:hidden;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-webkit-font-smoothing:antialiased;overflow:hidden;display:flex;flex-direction:column}
 
 /* ── NAV ── */
@@ -134,6 +134,10 @@ nav{height:64px;padding:0 2rem;display:flex;align-items:center;justify-content:s
 .toast.show{opacity:1;transform:translateY(0)}
 
 /* ── RESPONSIVE ── */
+@media(max-width:960px){
+  .msg-layout{grid-template-columns:280px 1fr}
+  .msg-sidebar{min-width:0}
+}
 @media(max-width:768px){
   nav{padding:0 1.25rem;height:56px}
   .nav-links,.btn-nav,.btn-post-nav{display:none}
@@ -145,6 +149,7 @@ nav{height:64px;padding:0 2rem;display:flex;align-items:center;justify-content:s
   .chat-header-actions{display:none}
 }
 @media(max-width:480px){
+a,button{min-height:44px}
   input,select,textarea,button{font-size:16px !important}
   .msg-bubble{max-width:85%}
   .msg-sidebar{height:40vh}
@@ -219,21 +224,72 @@ function toggleMenu(){
 }
 
 /* ── DONNÉES DEMO ── */
-var CONVS = [];
+var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+var ME=localStorage.getItem('a2s_user_email')||'';
+var ME_NAME=localStorage.getItem('a2s_user_name')||'Moi';
+var AUTH_TOKEN=sessionStorage.getItem('a2s_auth_token')||SK;
+var CONVS=[];
+var activeConv=null;
+var pollTimer=null;
 
-/* Charger depuis sessionStorage si dispo (venant d'une annonce) */
-(function(){
+async function sbGet(path,params){
+  try{var url=SB+'/rest/v1/'+path+(params?'?'+params:'');var r=await fetch(url,{headers:{'apikey':SK,'Authorization':'Bearer '+AUTH_TOKEN}});return r.ok?await r.json():[];}catch(e){return[];}
+}
+async function sbPost(path,body){
+  try{var r=await fetch(SB+'/rest/v1/'+path,{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+AUTH_TOKEN,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});return r.ok?await r.json():null;}catch(e){return null;}
+}
+
+function formatTime(iso){
+  if(!iso)return'';var d=new Date(iso);var now=new Date();
+  if(d.toDateString()===now.toDateString())return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+}
+
+async function loadConversations(){
+  if(!ME){renderConvList();return;}
+  var threads=await sbGet('messages','select=thread_id,listing_id,sender_email,receiver_email,content,created_at,read&or=(sender_email.eq.'+encodeURIComponent(ME)+',receiver_email.eq.'+encodeURIComponent(ME)+')&order=created_at.desc&limit=200');
+  var threadMap={};
+  threads.forEach(function(m){
+    var tid=m.thread_id||(m.listing_id+'-'+[m.sender_email,m.receiver_email].sort().join('-'));
+    if(!threadMap[tid]){var other=m.sender_email===ME?m.receiver_email:m.sender_email;threadMap[tid]={id:tid,listingId:m.listing_id,name:other,aircraft:'Annonce #'+m.listing_id,avatar:'✈',price:'',time:'',messages:[],unread:0};}
+    threadMap[tid].messages.push({from:m.sender_email===ME?'me':'them',text:m.content,time:formatTime(m.created_at),read:m.read,_raw_time:m.created_at});
+    if(m.sender_email!==ME&&!m.read)threadMap[tid].unread++;
+    threadMap[tid].time=m.created_at;
+  });
+  var listingIds=[...new Set(Object.values(threadMap).map(function(t){return t.listingId;}))].filter(Boolean);
+  if(listingIds.length){
+    var listings=await sbGet('listings','id=in.('+listingIds.join(',')+')'+'&select=id,make,model,year,price,currency');
+    listings.forEach(function(l){Object.values(threadMap).forEach(function(t){if(String(t.listingId)===String(l.id)){t.aircraft=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Aéronef';var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';t.price=l.price?sym+Number(l.price).toLocaleString('fr-FR'):'';}});});
+  }
+  CONVS=Object.values(threadMap).sort(function(a,b){return b.time>a.time?1:-1;});
   try{
-    var raw = sessionStorage.getItem('a2s_open_conv');
-    if(raw){
-      var c = JSON.parse(raw);
-      CONVS.push(c);
-      sessionStorage.removeItem('a2s_open_conv');
-    }
+    var raw=sessionStorage.getItem('a2s_open_conv');
+    if(raw){var c=JSON.parse(raw);sessionStorage.removeItem('a2s_open_conv');var existing=CONVS.find(function(x){return x.listingId===c.listingId&&x.name===c.sellerEmail;});if(!existing){var nt={id:c.listingId+'-'+[ME,c.sellerEmail||''].sort().join('-'),listingId:c.listingId,name:c.sellerEmail||'Vendeur',aircraft:c.aircraft||'Aéronef',avatar:'✈',price:c.price||'',time:'',messages:[],unread:0};CONVS.unshift(nt);renderConvList();openConv(nt.id);return;}renderConvList();openConv(existing.id);return;}
   }catch(e){}
-})();
+  renderConvList();
+  if(CONVS.length)openConv(CONVS[0].id);
+}
 
-var activeConv = null;
+async function pollMessages(){
+  if(!activeConv)return;
+  var conv=CONVS.find(function(c){return c.id===activeConv;});
+  if(!conv)return;
+  var msgs=conv.messages.filter(function(m){return m._raw_time;});
+  var lastTime=msgs.length?msgs[msgs.length-1]._raw_time:'1970-01-01T00:00:00Z';
+  var newMsgs=await sbGet('messages','thread_id=eq.'+encodeURIComponent(conv.id)+'&created_at=gt.'+encodeURIComponent(lastTime)+'&order=created_at.asc');
+  if(newMsgs.length){
+    var wrap=document.getElementById('msgsWrap');
+    newMsgs.forEach(function(m){
+      if(m.sender_email===ME)return;
+      var div=document.createElement('div');div.className='msg-group theirs';
+      div.innerHTML='<div class="msg-bubble">'+esc(m.content)+'</div><div class="msg-meta"><span>'+formatTime(m.created_at)+'</span></div>';
+      if(wrap)wrap.appendChild(div);
+      conv.messages.push({from:'them',text:m.content,time:formatTime(m.created_at),_raw_time:m.created_at});
+    });
+    scrollToBottom();
+  }
+}
 
 /* ── LISTE CONVERSATIONS ── */
 function renderConvList(filter){
@@ -307,22 +363,47 @@ function openConv(id){
 }
 
 /* ── ENVOI MESSAGE ── */
-function sendMsg(){
-  var inp = document.getElementById('msgInput');
-  if(!inp) return;
-  var text = inp.value.trim();
-  if(!text) return;
-  var wrap = document.getElementById('msgsWrap');
-  var now = new Date();
-  var time = now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
-  var div = document.createElement('div');
-  div.className = 'msg-group mine';
-  div.innerHTML = '<div class="msg-bubble">'+esc(text)+'</div><div class="msg-meta"><span>'+time+'</span><span class="msg-read">✓</span></div>';
-  wrap.appendChild(div);
-  inp.value = '';
-  inp.style.height = '44px';
+async function sendMsg(){
+  var inp=document.getElementById('msgInput');
+  if(!inp)return;
+  var text=inp.value.trim();
+  if(!text)return;
+  var conv=CONVS.find(function(c){return c.id===activeConv;});
+  if(!conv)return;
+
+  /* Affichage immédiat */
+  var wrap=document.getElementById('msgsWrap');
+  var now=new Date();
+  var time=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  var div=document.createElement('div');
+  div.className='msg-group mine';
+  div.innerHTML='<div class="msg-bubble">'+esc(text)+'</div><div class="msg-meta"><span>'+time+'</span><span class="msg-read">✓</span></div>';
+  if(wrap)wrap.appendChild(div);
+  inp.value='';inp.style.height='44px';
   scrollToBottom();
-  showToast('Message envoyé ✓');
+
+  /* Envoi Supabase */
+  var msgRow={
+    thread_id:conv.id,
+    listing_id:conv.listingId||null,
+    sender_email:ME||'anonymous',
+    receiver_email:conv.name,
+    content:text,
+    read:false
+  };
+  var result=await sbPost('messages',msgRow);
+  if(result){
+    var rawTime=(Array.isArray(result)?result[0]:result).created_at||now.toISOString();
+    conv.messages.push({from:'me',text:text,time:time,read:false,_raw_time:rawTime});
+    /* Marquer ✓✓ si envoyé */
+    var meta=div.querySelector('.msg-read');
+    if(meta)meta.textContent='✓✓';
+    showToast('Message envoyé ✓');
+  }else{
+    /* Fallback si Supabase KO */
+    conv.messages.push({from:'me',text:text,time:time,read:false});
+    showToast('Message envoyé (hors ligne)');
+  }
 }
 
 function setQuick(btn){ var i=document.getElementById('msgInput');if(i){i.value=btn.textContent;i.focus();autoResize(i);} }
@@ -340,26 +421,12 @@ function showToast(msg){
 }
 
 /* ── BOOT ── */
-renderConvList();
-
-/* Auth check */
 (function(){
-  var logged = localStorage.getItem('a2s_logged_in');
-  if(!logged){
-    window.location.href='login.html?redirect=messages.html';
-  }
-  var name = localStorage.getItem('a2s_user_name')||'';
-  var email = localStorage.getItem('a2s_user_email')||'';
-  if(name){
-    var nu = document.getElementById('navUser');
-    var na = document.getElementById('navAvatar');
-    var nn = document.getElementById('navUserName');
-    if(nu&&na&&nn){
-      nu.style.display='flex';
-      na.textContent=name[0].toUpperCase();
-      nn.textContent=name.split(' ')[0];
-    }
-  }
+  var logged=localStorage.getItem('a2s_logged_in');
+  if(!logged){window.location.href='login.html?redirect=messages.html';return;}
+  loadConversations();
+  /* Polling toutes les 8 secondes pour les nouveaux messages */
+  pollTimer=setInterval(pollMessages,8000);
 })();
 </script>
 
