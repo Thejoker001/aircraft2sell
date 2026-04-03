@@ -651,6 +651,31 @@ async function submitListing(){
   sbListing.adsb=document.getElementById('chkADSB').checked||false;
   sbListing.logs=document.getElementById('chkLogs').checked||false;
 
+  // ── Upload photos vers Supabase Storage ──
+  var uploadedPhotoUrls=[];
+  if(photos.length>0){
+    showToast('📸 Upload des photos en cours…');
+    for(var pi=0;pi<photos.length;pi++){
+      try{
+        var f=photos[pi].file;
+        var ext=f.name.split('.').pop().toLowerCase();
+        var fname='listings/'+Date.now()+'-'+pi+'.'+ext;
+        var uploadRes=await fetch(SB_URL+'/storage/v1/object/photos/'+fname,{
+          method:'POST',
+          headers:{'apikey':SB_SERVICE,'Authorization':'Bearer '+SB_SERVICE,'Content-Type':f.type,'x-upsert':'true'},
+          body:f
+        });
+        if(uploadRes.ok){
+          var pubUrl=SB_URL+'/storage/v1/object/public/photos/'+fname;
+          uploadedPhotoUrls.push(pubUrl);
+        }
+      }catch(e){}
+    }
+    if(uploadedPhotoUrls.length>0){
+      sbListing.photos=uploadedPhotoUrls;
+    }
+  }
+
   // ── Envoyer à Supabase (service role pour bypasser RLS) ──
   var sbId=null;
   try{

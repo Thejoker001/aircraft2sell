@@ -136,6 +136,10 @@ nav.scrolled{background:rgba(3,6,16,.97)}
 .pgbtn.active{background:var(--accent);border-color:var(--accent);color:var(--deep);font-weight:600}
 .pgbtn-prev,.pgbtn-next{width:auto;padding:0 .9rem;font-size:.72rem;font-weight:500;white-space:nowrap}
 
+.chk-row{display:flex;align-items:center;gap:.55rem;font-size:.78rem;color:var(--mist);cursor:pointer}
+.chk-row input{accent-color:var(--accent);width:14px;height:14px;flex-shrink:0;cursor:pointer}
+.chk-row:hover span{color:var(--white)}
+
 /* Mobile filter btn */
 .mob-filter-btn{display:none;width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--dim);padding:.65rem 1rem;font-family:'DM Sans',sans-serif;font-size:.8rem;cursor:pointer;margin-bottom:1rem;align-items:center;gap:.5rem}
 
@@ -200,6 +204,8 @@ nav.scrolled{background:rgba(3,6,16,.97)}
       <option value="recent">Plus récentes</option>
       <option value="price_asc">Prix croissant</option>
       <option value="price_desc">Prix décroissant</option>
+      <option value="year_desc">Année (récent d'abord)</option>
+      <option value="hours_asc">Heures (moins d'abord)</option>
     </select>
     <div class="view-btns">
       <button class="vbtn active" id="gridBtn" onclick="setView('grid')" title="Grille">⊞</button>
@@ -230,17 +236,51 @@ nav.scrolled{background:rgba(3,6,16,.97)}
       <div class="filter-group">
         <div class="fg-title">Budget (EUR)</div>
         <div class="range-row">
-          <input type="number" class="range-inp" id="minPrice" placeholder="Min">
+          <input type="number" class="range-inp" id="minPrice" placeholder="Min" onchange="applyFilters()">
           <span class="range-sep">—</span>
-          <input type="number" class="range-inp" id="maxPrice" placeholder="Max">
+          <input type="number" class="range-inp" id="maxPrice" placeholder="Max" onchange="applyFilters()">
         </div>
       </div>
       <div class="filter-group">
-        <div class="fg-title">Année</div>
+        <div class="fg-title">Année de construction</div>
         <div class="range-row">
-          <input type="number" class="range-inp" id="minYear" placeholder="Depuis" min="1940" max="2026">
+          <input type="number" class="range-inp" id="minYear" placeholder="Depuis" min="1940" max="2026" onchange="applyFilters()">
           <span class="range-sep">—</span>
-          <input type="number" class="range-inp" id="maxYear" placeholder="Jusqu'à" min="1940" max="2026">
+          <input type="number" class="range-inp" id="maxYear" placeholder="Jusqu'à" min="1940" max="2026" onchange="applyFilters()">
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="fg-title">Heures totales (TT)</div>
+        <div class="range-row">
+          <input type="number" class="range-inp" id="minHours" placeholder="Min" onchange="applyFilters()">
+          <span class="range-sep">—</span>
+          <input type="number" class="range-inp" id="maxHours" placeholder="Max" onchange="applyFilters()">
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="fg-title">Pays</div>
+        <select class="range-inp" id="filterCountry" style="width:100%" onchange="applyFilters()">
+          <option value="">Tous les pays</option>
+          <option value="France">France</option>
+          <option value="Allemagne">Allemagne</option>
+          <option value="Royaume-Uni">Royaume-Uni</option>
+          <option value="Espagne">Espagne</option>
+          <option value="Italie">Italie</option>
+          <option value="Suisse">Suisse</option>
+          <option value="Belgique">Belgique</option>
+          <option value="Pays-Bas">Pays-Bas</option>
+          <option value="Portugal">Portugal</option>
+          <option value="USA">USA</option>
+          <option value="Canada">Canada</option>
+          <option value="Australie">Australie</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <div class="fg-title">Équipements</div>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          <label class="chk-row"><input type="checkbox" id="fIFR" onchange="applyFilters()"><span>IFR certifié</span></label>
+          <label class="chk-row"><input type="checkbox" id="fRVSM" onchange="applyFilters()"><span>RVSM approuvé</span></label>
+          <label class="chk-row"><input type="checkbox" id="fADSB" onchange="applyFilters()"><span>ADS-B équipé</span></label>
         </div>
       </div>
       <button class="btn-apply" onclick="applyFilters()">Appliquer les filtres</button>
@@ -298,7 +338,8 @@ async function load(){
   var rows=await sbGet('listings','status=eq.live&order=submitted_at.desc&limit=200');
   ALL=rows.map(function(r){
     var pn=r.price&&!isNaN(Number(r.price))?Number(r.price):null;
-    return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'',priceNum:pn,currency:r.currency||'EUR',category:r.category||'',airport:r.airport||'',country:r.country||'',hours:r.hours||'',title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'Sans titre',desc:r.description||''};
+    var hn=r.hours&&!isNaN(Number(r.hours))?Number(r.hours):null;
+    return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'',priceNum:pn,currency:r.currency||'EUR',category:r.category||'',airport:r.airport||'',country:r.country||'',hours:r.hours||'',hoursNum:hn,ifr:!!r.ifr,rvsm:!!r.rvsm,adsb:!!r.adsb,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'Sans titre',desc:r.description||'',photos:r.photos||[]};
   });
   var cAll=document.getElementById('cnt-all');if(cAll)cAll.textContent=ALL.length;
   ['light','jet','turbo','heli','ulm','airliner'].forEach(function(c){var el=document.getElementById('cnt-'+c);if(el)el.textContent=ALL.filter(function(x){return x.category===c;}).length;});
@@ -312,14 +353,31 @@ function applyFilters(){
   var minY=parseInt(document.getElementById('minYear').value)||0;
   var maxY=parseInt(document.getElementById('maxYear').value)||9999;
   var sort=document.getElementById('sortSel').value;
+  var filterCountry=document.getElementById('filterCountry').value;
+  var minH=parseFloat(document.getElementById('minHours').value)||0;
+  var maxH=parseFloat(document.getElementById('maxHours').value)||Infinity;
+  var fIFR=document.getElementById('fIFR').checked;
+  var fRVSM=document.getElementById('fRVSM').checked;
+  var fADSB=document.getElementById('fADSB').checked;
   FILTERED=ALL.filter(function(l){
     if(selCat&&l.category!==selCat)return false;
-    if(q){var t=(l.title+' '+esc(l.make)+' '+esc(l.model)+' '+esc(l.airport)+' '+l.country).toLowerCase();if(!t.includes(q))return false;}
+    if(q){var t=(l.title+' '+l.make+' '+l.model+' '+l.airport+' '+l.country).toLowerCase();if(!t.includes(q))return false;}
     if(l.priceNum!==null){if(l.priceNum<minP||l.priceNum>maxP)return false;}
     if(l.year){var y=parseInt(l.year);if(y&&(y<minY||y>maxY))return false;}
+    if(l.hoursNum!==null&&l.hoursNum!==undefined){if(l.hoursNum<minH||l.hoursNum>maxH)return false;}
+    if(filterCountry&&l.country!==filterCountry)return false;
+    if(fIFR&&!l.ifr)return false;
+    if(fRVSM&&!l.rvsm)return false;
+    if(fADSB&&!l.adsb)return false;
     return true;
   });
-  FILTERED.sort(function(a,b){if(sort==='price_asc')return(a.priceNum||Infinity)-(b.priceNum||Infinity);if(sort==='price_desc')return(b.priceNum||0)-(a.priceNum||0);return 0;});
+  FILTERED.sort(function(a,b){
+    if(sort==='price_asc')return(a.priceNum||Infinity)-(b.priceNum||Infinity);
+    if(sort==='price_desc')return(b.priceNum||0)-(a.priceNum||0);
+    if(sort==='year_desc')return(parseInt(b.year)||0)-(parseInt(a.year)||0);
+    if(sort==='hours_asc')return(a.hoursNum||Infinity)-(b.hoursNum||Infinity);
+    return 0;
+  });
   curPage=1;render();
 }
 
@@ -329,6 +387,11 @@ function resetFilters(){
   document.getElementById('navSearchInp').value='';
   document.getElementById('minPrice').value='';document.getElementById('maxPrice').value='';
   document.getElementById('minYear').value='';document.getElementById('maxYear').value='';
+  document.getElementById('minHours').value='';document.getElementById('maxHours').value='';
+  document.getElementById('filterCountry').value='';
+  document.getElementById('fIFR').checked=false;
+  document.getElementById('fRVSM').checked=false;
+  document.getElementById('fADSB').checked=false;
   document.getElementById('sortSel').value='recent';
   applyFilters();
 }
@@ -357,11 +420,17 @@ function makeCard(l){
   var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
   var pr=l.priceNum?sym+l.priceNum.toLocaleString('fr-FR'):(l.price||'—');
   var cat={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'}[l.category]||esc(l.category);
+  var isFav=FAVS.has(String(l.id));
+  var thumb=l.photos&&l.photos.length?'<img src="'+esc(l.photos[0])+'" alt="'+esc(l.title)+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">':'<div class="rc-plane">✈</div>';
+  var badges='';
+  if(l.ifr)badges+='<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(59,130,246,.85);color:#fff;font-size:.52rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.15rem .45rem;z-index:2">IFR</span>';
+  if(l.rvsm)badges+='<span style="position:absolute;bottom:.5rem;left:'+(l.ifr?'2.8rem':'0.5rem')+'background:rgba(139,92,246,.85);color:#fff;font-size:.52rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.15rem .45rem;z-index:2">RVSM</span>';
   var d=document.createElement('div');d.className='rc';
   d.onclick=function(){window.location.href='listing.html?id='+encodeURIComponent(l.id);};
-  d.innerHTML='<div class="rc-img"><div class="rc-plane">✈</div><button class="rc-fav" onclick="event.stopPropagation();toggleFav(this)" aria-label="Favori">♡</button></div>'
+  d.innerHTML='<div class="rc-img" style="position:relative">'+thumb+badges
+    +'<button class="rc-fav'+(isFav?' liked':'')+'" onclick="event.stopPropagation();toggleFav(this,\''+l.id+'\')" aria-label="Favori">'+(isFav?'♥':'♡')+'</button></div>'
     +'<div class="rc-body"><div class="rc-cat">'+esc(cat)+'</div><div class="rc-title">'+esc(l.title)+'</div>'
-    +'<div class="rc-specs">'+(l.year?'<span class="rc-spec">'+esc(l.year)+'</span>':'')+(l.hours?'<span class="rc-spec">'+esc(l.hours)+'h TT</span>':'')+'</div>'
+    +'<div class="rc-specs">'+(l.year?'<span class="rc-spec">📅 '+esc(l.year)+'</span>':'')+(l.hours?'<span class="rc-spec">⏱ '+esc(l.hours)+'h TT</span>':'')+(l.photos&&l.photos.length?'<span class="rc-spec">📸 '+l.photos.length+'</span>':'')+'</div>'
     +'<div class="rc-trust">Vendeur vérifié</div>'
     +'<div class="rc-ft"><div class="rc-price">'+esc(pr)+'</div><div class="rc-loc">📍 '+esc(l.airport||l.country||'—')+'</div></div></div>';
   return d;
@@ -387,7 +456,27 @@ function showSkeletons(){
   for(var i=0;i<9;i++){var sk=document.createElement('div');sk.style.background='var(--card)';sk.innerHTML='<div style="aspect-ratio:16/9" class="skel"></div><div style="padding:.9rem 1rem"><div style="height:9px;width:40%;margin-bottom:.7rem;border-radius:2px" class="skel"></div><div style="height:13px;width:78%;margin-bottom:.5rem;border-radius:2px" class="skel"></div><div style="height:9px;width:55%;border-radius:2px" class="skel"></div></div>';grid.appendChild(sk);}
 }
 
-function toggleFav(btn){btn.classList.toggle('liked');btn.textContent=btn.classList.contains('liked')?'♥':'♡';showToast(btn.classList.contains('liked')?'♥ Ajouté aux favoris':'Retiré des favoris');}
+function toggleFav(btn,id){
+  btn.classList.toggle('liked');
+  var liked=btn.classList.contains('liked');
+  btn.textContent=liked?'♥':'♡';
+  if(liked){FAVS.add(String(id));}else{FAVS.delete(String(id));}
+  saveFavs();
+  showToast(liked?'♥ Ajouté aux favoris':'Retiré des favoris');
+}
+
+/* Favoris — localStorage + sync Supabase si connecté */
+var FAVS=new Set();
+function loadFavs(){
+  try{var f=JSON.parse(localStorage.getItem('a2s_favs')||'[]');FAVS=new Set(f.map(String));}catch(e){FAVS=new Set();}
+}
+function saveFavs(){
+  localStorage.setItem('a2s_favs',JSON.stringify([...FAVS]));
+  /* SUPABASE: sync si connecté
+  var tk=sessionStorage.getItem('a2s_auth_token');
+  if(tk) fetch(SB+'/rest/v1/favorites',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify({listing_ids:[...FAVS]})}).catch(()=>{}); */
+}
+loadFavs();
 var _tt;
 function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2800);}
 

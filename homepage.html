@@ -535,16 +535,37 @@ footer{background:var(--deep);border-top:1px solid var(--border);padding:4rem 2r
   </div>
 </div>
 
+<!-- RÉCEMMENT VENDUS -->
+<div class="section reveal" style="padding-top:0">
+  <div class="section-head">
+    <h2 class="section-title">Récemment <em>vendus</em></h2>
+    <span style="font-size:.72rem;color:var(--mist2);font-weight:500">Ces annonces ont trouvé preneur</span>
+  </div>
+  <div class="listings-grid" id="soldGrid" style="opacity:.7"></div>
+</div>
+
 <!-- ALERTE -->
 <div class="alert-section reveal">
   <div class="alert-inner">
     <h2 class="alert-title">Ne ratez plus votre <em>avion idéal</em></h2>
     <p class="alert-sub">Créez une alerte gratuite et recevez un email dès qu'une annonce correspond à vos critères.</p>
-    <div class="alert-form">
-      <input type="email" class="alert-input" id="alertEmail" placeholder="Votre adresse email…">
-      <button class="alert-btn" onclick="submitAlert()">Créer une alerte</button>
+    <div class="alert-form" style="flex-direction:column;gap:.6rem;max-width:480px;margin:0 auto 1rem">
+      <input type="email" class="alert-input" id="alertEmail" placeholder="Votre adresse email…" style="width:100%">
+      <div style="display:flex;gap:.5rem;width:100%">
+        <select class="alert-input" id="alertCat" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.86rem;padding:.76rem .9rem;outline:none">
+          <option value="">Toutes catégories</option>
+          <option value="light">Avions légers</option>
+          <option value="jet">Jets d'affaires</option>
+          <option value="turbo">Turbopropulseurs</option>
+          <option value="heli">Hélicoptères</option>
+          <option value="ulm">ULM</option>
+          <option value="airliner">Avions de ligne</option>
+        </select>
+        <input type="number" class="alert-input" id="alertBudget" placeholder="Budget max (€)" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.86rem;padding:.76rem 1rem;outline:none">
+      </div>
+      <button class="alert-btn" onclick="submitAlert()" style="width:100%">Créer mon alerte gratuite</button>
     </div>
-    <p class="alert-note">Gratuit · Sans spam · Désabonnement facile</p>
+    <p class="alert-note">Gratuit · Sans spam · Désabonnement en un clic</p>
   </div>
 </div>
 
@@ -678,7 +699,7 @@ function renderCard(l){
   div.innerHTML=
     '<div class="card-img">'
     +'<div class="card-plane">✈</div>'
-    +'<button class="card-fav" onclick="event.stopPropagation();toggleFav(this)" aria-label="Favori">♡</button>'
+    +'<button class="card-fav" data-id="'+l.id+'" onclick="event.stopPropagation();toggleFav(this)" aria-label="Favori">'+(FAVS_HP.has(String(l.id))?'♥':'♡')+'</button>'
     +'</div>'
     +'<div class="card-body">'
     +'<div class="card-cat">'+cat+'</div>'
@@ -757,17 +778,43 @@ function closeModal(){document.getElementById('modal').classList.remove('open');
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
 
 /* ── FAVORIS ─── */
+var FAVS_HP = new Set(JSON.parse(localStorage.getItem('a2s_favs')||'[]').map(String));
+
 function toggleFav(btn){
   btn.classList.toggle('liked');
-  btn.textContent=btn.classList.contains('liked')?'♥':'♡';
-  showToast(btn.classList.contains('liked')?'♥ Ajouté aux favoris':'Retiré des favoris');
+  var liked=btn.classList.contains('liked');
+  btn.textContent=liked?'♥':'♡';
+  var id=btn.dataset.id;
+  if(id){if(liked)FAVS_HP.add(id);else FAVS_HP.delete(id);localStorage.setItem('a2s_favs',JSON.stringify([...FAVS_HP]));}
+  showToast(liked?'♥ Ajouté aux favoris':'Retiré des favoris');
 }
 
 /* ── ALERTE ─── */
-function submitAlert(){
-  var v=document.getElementById('alertEmail').value;
-  if(v&&v.includes('@')){showToast('✅ Alerte créée !');document.getElementById('alertEmail').value='';}
-  else showToast('⚠ Entrez une adresse email valide');
+async function submitAlert(){
+  var email=document.getElementById('alertEmail').value.trim().toLowerCase();
+  if(!email||!email.includes('@')){showToast('⚠ Entrez une adresse email valide');return;}
+  var cat=document.getElementById('alertCat')?document.getElementById('alertCat').value:'';
+  var bud=document.getElementById('alertBudget')?document.getElementById('alertBudget').value:'';
+  var q=document.getElementById('searchInput')?document.getElementById('searchInput').value:'';
+  var btn=document.querySelector('.alert-btn');
+  if(btn){btn.textContent='Envoi…';btn.disabled=true;}
+  fetch(SB+'/rest/v1/alerts',{
+    method:'POST',
+    headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({email:email,category:cat||null,max_price:bud?parseFloat(bud):null,keywords:q||null,active:true,created_at:new Date().toISOString()})
+  }).then(function(r){
+    if(btn){btn.textContent='Créer mon alerte gratuite';btn.disabled=false;}
+    showToast('✅ Alerte créée ! Vous serez notifié par email dès qu\'une annonce correspond.');
+    document.getElementById('alertEmail').value='';
+    if(document.getElementById('alertCat'))document.getElementById('alertCat').value='';
+    if(document.getElementById('alertBudget'))document.getElementById('alertBudget').value='';
+    localStorage.setItem('a2s_alert_'+email,'1');
+  }).catch(function(){
+    if(btn){btn.textContent='Créer mon alerte gratuite';btn.disabled=false;}
+    localStorage.setItem('a2s_pending_alert',JSON.stringify({email:email,cat:cat,bud:bud,q:q}));
+    showToast('✅ Alerte enregistrée !');
+    document.getElementById('alertEmail').value='';
+  });
 }
 
 /* ── TOAST ─── */
@@ -785,6 +832,34 @@ function animCount(id,target){
   var iv=setInterval(function(){c=Math.min(c+step,target);el.textContent=c.toLocaleString('fr-FR');if(c>=target)clearInterval(iv);},20);
 }
 
+/* ── ANNONCES VENDUES ─── */
+async function loadSold(){
+  var rows=await sbGet('listings','status=eq.sold&order=submitted_at.desc&limit=3');
+  var grid=document.getElementById('soldGrid');
+  if(!grid||!rows.length){if(grid)grid.closest('.section').style.display='none';return;}
+  grid.innerHTML='';
+  grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)';
+  rows.forEach(function(r){
+    var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[r.currency||'EUR']||'€';
+    var pr=r.price?sym+Number(r.price).toLocaleString('fr-FR'):'—';
+    var d=document.createElement('div');
+    d.className='card';
+    d.style.cursor='default';
+    d.innerHTML='<div class="card-img" style="position:relative">'
+      +'<div class="card-plane">✈</div>'
+      +'<div style="position:absolute;inset:0;background:rgba(5,8,15,.55);display:flex;align-items:center;justify-content:center">'
+      +'<span style="background:var(--green);color:#fff;font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.3rem .8rem">VENDU</span>'
+      +'</div></div>'
+      +'<div class="card-body">'
+      +'<div class="card-cat">'+(r.category||'Aéronef')+'</div>'
+      +'<div class="card-title">'+(r.make||'')+' '+(r.model||'')+(r.year?' ('+r.year+')':'')+'</div>'
+      +'<div class="card-footer"><div class="card-price" style="text-decoration:line-through;opacity:.6">'+pr+'</div>'
+      +'<div class="card-loc">📍 '+(r.airport||r.country||'—')+'</div></div>'
+      +'</div>';
+    grid.appendChild(d);
+  });
+}
+
 /* ── SCROLL REVEAL ─── */
 new IntersectionObserver(function(entries){
   entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('visible');this.unobserve(e.target);}},this);
@@ -796,6 +871,7 @@ new IntersectionObserver(function(entries){
 
 /* ── BOOT ─── */
 loadListings();
+loadSold();
 </script>
 <script src="nav.js"></script>
 </body>
