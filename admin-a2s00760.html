@@ -806,7 +806,7 @@ function updateDashboard(){
   var duEl=sel('d-users-list');
   if(duEl){
     if(!_allUsers.length){duEl.innerHTML='<div class="empty-s"><div class="es-ic">👥</div><div class="es-t">Aucun membre</div></div>';}
-    else{duEl.innerHTML='<div class="mini-list">'+_allUsers.slice(0,5).map(function(u){return'<div class="ml-item" onclick="editUser('+u.id+')">'+'<div class="ml-av">'+ini(u.name,u.email)+'</div><div class="ml-info"><div class="ml-name">'+esc(u.name||u.email||'--')+'</div><div class="ml-sub">'+esc(u.email||'')+'</div></div>'+'<div class="ml-right">'+planPill(u.plan)+'</div></div>';}).join('')+'</div>';}
+    else{duEl.innerHTML='<div class="mini-list">'+_allUsers.slice(0,5).map(function(u){return'<div class="ml-item" onclick="editUser('+u.id+')">'+'<div class="ml-av">'+ini(u.name,u.email)+'</div><div class="ml-info"><div class="ml-name">'<span style="cursor:pointer;text-decoration:underline;text-decoration-color:rgba(180,200,230,.2)" onclick="viewSellerListings('"+esc(u.email)+"')" title="Voir les annonces">'+esc(u.name||u.email||'--')+'</span></div><div class="ml-sub">'+esc(u.email||'')+'</div></div>'+'<div class="ml-right">'+planPill(u.plan)+'</div></div>';}).join('')+'</div>';}
   }
 }
 
@@ -831,12 +831,12 @@ async function approveAll(){var pending=_allListings.filter(function(l){return l
 /* ── LISTE ANNONCES ── */
 function renderList(){
   var q=(sel('ls-q')||{}).value||'';var st=(sel('ls-st')||{}).value||'';
-  var filtered=_allListings.filter(function(l){if(st&&l.status!==st)return false;if(q){var t=ltitle(l)+' '+(l.sellerName||'');if(!t.toLowerCase().includes(q.toLowerCase()))return false;}return true;});
+  var filtered=_allListings.filter(function(l){if(st&&l.status!==st)return false;if(q){var t=ltitle(l)+' '+(l.sellerName||'')+' '+(l.sellerEmail||'');if(!t.toLowerCase().includes(q.toLowerCase()))return false;}return true;});
   setText('ls-total',_allListings.length);setText('ls-live',_allListings.filter(function(l){return l.status==='live';}).length);setText('ls-pend',_allListings.filter(function(l){return l.status==='pending';}).length);setText('ls-rejt',_allListings.filter(function(l){return l.status==='rejected';}).length);
   var tb=sel('list-body');if(!tb)return;
   if(!filtered.length){tb.innerHTML='<tr><td colspan="6" class="loading-row">'+(filtered.length<_allListings.length?'Aucun résultat':'Aucune annonce dans Supabase')+'</td></tr>';return;}
   tb.innerHTML=filtered.map(function(l){
-    return'<tr><td style="color:var(--white);font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ltitle(l)+'</td><td>'+esc(l.sellerName||'--')+'</td><td style="color:var(--accent);font-family:Bebas Neue,sans-serif">'+(l.price?cur(l.currency)+Number(l.price).toLocaleString():'--')+'</td><td>'+statusPill(l.status)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(l.submittedAt)+'</td><td><div class="acts">'+(l.status==='pending'?'<button class="act ap" onclick="approve('+l.id+')">✓</button>':'')+(l.status==='live'?'<button class="act rj" onclick="doReject('+l.id+')">⊘</button>':'')+'<button class="act" onclick="viewListing('+l.id+')">🔍</button><button class="act" onclick="editListing('+l.id+')">✏</button><button class="act rj" onclick="delListing('+l.id+')">✕</button></div></td></tr>';
+    return'<tr><td style="color:var(--white);font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ltitle(l)+'</td><td>'<span style="cursor:pointer;text-decoration:underline;text-decoration-color:rgba(180,200,230,.2)" onclick="viewSellerListings('"+esc(l.sellerEmail)+"')" title="Voir toutes les annonces de ce vendeur">'+esc(l.sellerName||'--')+'</span></td><td style="color:var(--accent);font-family:Bebas Neue,sans-serif">'+(l.price?cur(l.currency)+Number(l.price).toLocaleString():'--')+'</td><td>'+statusPill(l.status)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(l.submittedAt)+'</td><td><div class="acts">'+(l.status==='pending'?'<button class="act ap" onclick="approve('+l.id+')">✓</button>':'')+(l.status==='live'?'<button class="act rj" onclick="doReject('+l.id+')">⊘</button>':'')+'<button class="act" onclick="viewListing('+l.id+')">🔍</button><button class="act" onclick="editListing('+l.id+')">✏</button><button class="act rj" onclick="delListing('+l.id+')">✕</button></div></td></tr>';
   }).join('');
 }
 
@@ -848,7 +848,7 @@ function filterUsers(){
   var tb=sel('users-body');if(!tb)return;
   if(!filtered.length){tb.innerHTML='<tr><td colspan="6" class="loading-row">Aucun résultat</td></tr>';return;}
   tb.innerHTML=filtered.map(function(u,i){
-    return'<tr><td style="color:var(--mist2);font-size:.65rem">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--white)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="editUser('+u.id+')">✏ Modifier</button><button class="act rj" onclick="delUser('+u.id+')">✕</button></div></td></tr>';
+    return'<tr><td style="color:var(--mist2);font-size:.65rem">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--white)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings('"+esc(u.email)+"')" title="Voir les annonces">📋</button><button class="act" onclick="editUser('+u.id+')">✏ Modifier</button><button class="act rj" onclick="delUser('+u.id+')">✕</button></div></td></tr>';
   }).join('');
 }
 
@@ -869,6 +869,35 @@ async function delListingM(){var id=sel('ml-id').value;if(!id||!confirm('Supprim
 async function deleteAllListings(){try{await sb('DELETE','listings','id=gt.0');await refreshAll();showToast('Toutes les annonces supprimées');}catch(e){showToast('Erreur : '+e.message);}}
 
 /* ── USER EDIT ── */
+function viewSellerListings(email){
+  if(!email)return;
+  // Basculer sur l'onglet Annonces
+  switchTab('list');
+  // Attendre que l'onglet soit rendu puis filtrer par email vendeur
+  setTimeout(function(){
+    var q=sel('ls-q');
+    if(q){q.value=email;renderList();}
+    // Mettre en surbrillance
+    var info=sel('ls-info');
+    if(!info){
+      var hd=sel('ls-header');
+      if(hd){
+        info=document.createElement('div');
+        info.id='ls-info';
+        info.style.cssText='background:rgba(232,160,32,.08);border:1px solid rgba(232,160,32,.2);padding:.6rem 1rem;font-size:.78rem;color:var(--accent);margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between;';
+        info.innerHTML='<span>Filtré par vendeur : <strong>'+esc(email)+'</strong></span><button onclick="clearSellerFilter()" style="background:none;border:none;color:var(--mist);cursor:pointer;font-size:.8rem">✕ Effacer</button>';
+        hd.parentNode.insertBefore(info,hd.nextSibling);
+      }
+    } else {
+      info.innerHTML='<span>Filtré par vendeur : <strong>'+esc(email)+'</strong></span><button onclick="clearSellerFilter()" style="background:none;border:none;color:var(--mist);cursor:pointer;font-size:.8rem">✕ Effacer</button>';
+    }
+  },100);
+}
+function clearSellerFilter(){
+  var q=sel('ls-q');if(q)q.value='';
+  var info=sel('ls-info');if(info)info.remove();
+  renderList();
+}
 function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;var r=parseInt(u.rating)||0;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=r?'#f5c518':'rgba(200,220,240,.2)';});openM('mUser');}
 async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var body={name:sel('mu-name').value,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked};try{await sb('PATCH','users','id=eq.'+id,body);var uEmail=sel('mu-email').value;if(uEmail)await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked});closeM('mUser');await refreshAll();showToast('Membre mis à jour');}catch(e){showToast('Erreur : '+e.message);}}
 async function delUser(id){if(!confirm('Supprimer ce membre ?'))return;try{await sb('DELETE','users','id=eq.'+id);await refreshAll();showToast('Membre supprimé');}catch(e){showToast('Erreur : '+e.message);}}
