@@ -629,9 +629,9 @@ var SB_URL='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 
 function applyUserDisplay(name, email){
-  var pseudo=localStorage.getItem('a2s_user_pseudo')||'';
-  var display=pseudo||name.split(' ')[0]||email.split('@')[0]||'Pilote';
-  var initials=(display[0]||'U').toUpperCase();
+  var first=name.split(' ')[0]||email.split('@')[0]||'Pilote';
+  var display=first;
+  var initials=(first[0]||'U').toUpperCase();
   var navAv=document.getElementById('navAvatar');if(navAv)navAv.textContent=initials;
   var navNm=document.getElementById('navUserName');if(navNm)navNm.textContent=display;
   var h=new Date().getHours();
@@ -992,6 +992,16 @@ function showToast(msg){var el=document.getElementById('toast');el.textContent=m
 
 /* ── BOOT ── */
 window.addEventListener('DOMContentLoaded',function(){
+  // Afficher le prénom immédiatement depuis localStorage (avant Supabase)
+  var nameLocal = localStorage.getItem('a2s_user_name')||'';
+  var firstLocal = nameLocal.split(' ')[0]||'';
+  if(firstLocal){
+    var ovG=document.getElementById('ovGreeting');
+    var h=new Date().getHours();
+    var greeting=h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
+    var icon=h<12?'☀️':h<18?'🌤️':'🌙';
+    if(ovG)ovG.innerHTML=greeting+', <em>'+firstLocal+'</em> '+icon;
+  }
   initAuth();
   renderListings();
   renderChart(7);
