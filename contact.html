@@ -177,6 +177,39 @@ nav.scrolled{background:rgba(3,6,16,.97)}
 @supports(padding-bottom:env(safe-area-inset-bottom)){
   .mobile-menu{padding-bottom:calc(2rem + env(safe-area-inset-bottom))}
 }
+
+/* ── CONVERTISSEUR DEVISE NAV ── */
+.nav-currency{position:relative;display:flex;align-items:center;height:64px}
+.nav-currency-btn{display:flex;align-items:center;gap:.4rem;height:64px;padding:0 .9rem;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;transition:color .2s;white-space:nowrap}
+.nav-currency-btn:hover{color:var(--white)}
+.nav-currency-btn .cv-icon{font-size:.82rem;font-weight:700;color:var(--accent);min-width:10px}
+.nav-currency-btn .cv-arrow{font-size:.55rem;opacity:.5;transition:transform .2s}
+.nav-currency.open .cv-arrow{transform:rotate(180deg)}
+.nav-currency.open .nav-currency-btn{color:var(--white)}
+.cv-dropdown{position:absolute;top:calc(100% + 1px);left:50%;transform:translateX(-50%) translateY(-6px);width:284px;background:rgba(3,6,16,.98);backdrop-filter:blur(28px);border:1px solid var(--border2);z-index:500;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s}
+.nav-currency.open .cv-dropdown{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.cv-drop-head{padding:.6rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.cv-drop-title{font-size:.58rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--mist2)}
+.cv-live{display:flex;align-items:center;gap:.35rem;font-size:.58rem;color:var(--green)}
+.cv-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:cvpulse 2s infinite;flex-shrink:0}
+@keyframes cvpulse{0%,100%{opacity:1}50%{opacity:.3}}
+.cv-body{padding:.85rem 1rem}
+.cv-row{display:flex;gap:.4rem;margin-bottom:.4rem;align-items:center}
+.cv-inp-wrap{flex:1;display:flex;border:1px solid var(--border2);overflow:hidden;min-width:0}
+.cv-inp{flex:1;background:rgba(255,255,255,.04);border:none;color:var(--white);font-family:'DM Sans',sans-serif;font-size:.92rem;padding:.55rem .7rem;outline:none;min-width:0}
+.cv-sel{background:rgba(232,160,32,.08);border:none;border-left:1px solid var(--border2);color:var(--accent);font-family:'DM Sans',sans-serif;font-size:.7rem;font-weight:600;padding:.3rem .4rem;cursor:pointer;outline:none;flex-shrink:0}
+.cv-sel option{background:var(--deep);color:var(--white)}
+.cv-swap-btn{background:none;border:1px solid var(--border2);color:var(--mist);width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;transition:all .15s;flex-shrink:0}
+.cv-swap-btn:hover{color:var(--accent);border-color:rgba(232,160,32,.3)}
+.cv-result-box{background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.15);padding:.55rem .85rem;display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem}
+.cv-result-val{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.04em;color:var(--accent)}
+.cv-to-sel{background:none;border:none;color:var(--accent);font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;outline:none;padding:0}
+.cv-to-sel option{background:var(--deep);color:var(--white)}
+.cv-rate-txt{font-size:.61rem;color:var(--mist2);text-align:center;padding:.2rem 0;border-top:1px solid var(--border)}
+.cv-rate-txt span{color:var(--mist)}
+.cv-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:.45rem}
+.cv-qb{background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--mist);padding:.27rem .2rem;font-size:.61rem;font-weight:600;cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .12s;font-family:'DM Sans',sans-serif}
+.cv-qb:hover,.cv-qb.on{border-color:rgba(232,160,32,.3);color:var(--accent);background:rgba(232,160,32,.05)}
 </style>
 <link rel="canonical" href="https://aircraft2sell.com/contact.html">
 </head>
@@ -190,6 +223,72 @@ nav.scrolled{background:rgba(3,6,16,.97)}
     <li><a href="search.html?cat=light">Avions</a></li>
     <li><a href="search.html?cat=heli">Hélicoptères</a></li>
     <li><a href="comparateur.html">Comparateur</a></li>
+<li class="nav-currency" id="navCurrency">
+      <button class="nav-currency-btn" onclick="toggleCv(event)" aria-label="Convertisseur de devises">
+        <span class="cv-icon" id="cvNavIcon">€</span>
+        <span>Devises</span>
+        <span class="cv-arrow">▾</span>
+      </button>
+      <div class="cv-dropdown">
+        <div class="cv-drop-head">
+          <span class="cv-drop-title">Convertisseur</span>
+          <span class="cv-live" id="cvLiveTime">En direct</span>
+        </div>
+        <div class="cv-body">
+          <div class="cv-row">
+            <div class="cv-inp-wrap">
+              <input class="cv-inp" type="number" id="cvAmount" value="100000" min="0" oninput="cvCompute()">
+              <select class="cv-sel" id="cvFrom" onchange="cvFetch()">
+                <option value="EUR">€ EUR</option>
+                <option value="USD">$ USD</option>
+                <option value="GBP">£ GBP</option>
+                <option value="CHF">Fr CHF</option>
+                <option value="CAD">CA$ CAD</option>
+                <option value="AUD">AU$ AUD</option>
+                <option value="JPY">¥ JPY</option>
+                <option value="SEK">kr SEK</option>
+                <option value="NOK">kr NOK</option>
+                <option value="DKK">kr DKK</option>
+                <option value="PLN">zł PLN</option>
+                <option value="AED">AED</option>
+              </select>
+            </div>
+            <button class="cv-swap-btn" onclick="cvSwap()" title="Inverser">⇅</button>
+          </div>
+          <div class="cv-result-box">
+            <div>
+              <div class="cv-result-val" id="cvResult">…</div>
+              <div style="font-size:.57rem;color:var(--mist2);margin-top:.1rem">Taux indicatif BCE</div>
+            </div>
+            <select class="cv-to-sel" id="cvTo" onchange="cvFetch()">
+              <option value="EUR">EUR €</option>
+              <option value="USD" selected>USD $</option>
+              <option value="GBP">GBP £</option>
+              <option value="CHF">CHF Fr</option>
+              <option value="CAD">CAD $</option>
+              <option value="AUD">AUD $</option>
+              <option value="JPY">JPY ¥</option>
+              <option value="SEK">SEK kr</option>
+              <option value="NOK">NOK kr</option>
+              <option value="DKK">DKK kr</option>
+              <option value="PLN">PLN zł</option>
+              <option value="AED">AED</option>
+            </select>
+          </div>
+          <div class="cv-rate-txt" id="cvRateTxt"><span>—</span></div>
+          <div class="cv-quick">
+            <button class="cv-qb" onclick="cvSetTo('USD')">USD</button>
+            <button class="cv-qb" onclick="cvSetTo('GBP')">GBP</button>
+            <button class="cv-qb" onclick="cvSetTo('CHF')">CHF</button>
+            <button class="cv-qb" onclick="cvSetTo('CAD')">CAD</button>
+            <button class="cv-qb" onclick="cvSetTo('AUD')">AUD</button>
+            <button class="cv-qb" onclick="cvSetTo('JPY')">JPY</button>
+            <button class="cv-qb" onclick="cvSetTo('AED')">AED</button>
+            <button class="cv-qb" onclick="cvSetTo('EUR')">EUR</button>
+          </div>
+        </div>
+      </div>
+    </li>
     <li><a href="guide-acheteur.html">Guide</a></li>
     <li><a href="contact.html" class="active">Contact</a></li>
   </ul>
