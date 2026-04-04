@@ -22,10 +22,13 @@ nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;al
 .nav-center a{display:flex;align-items:center;height:64px;padding:0 .9rem;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);text-decoration:none;transition:color .2s;white-space:nowrap}
 .nav-center a:hover{color:var(--white)}
 .nav-right{display:flex;align-items:center;gap:.65rem;flex-shrink:0}
-.nav-user-wrap{display:flex;align-items:center;gap:.55rem;padding:.3rem .7rem;border:1px solid var(--border2);cursor:default;transition:border-color .2s}
-.nav-avatar{width:28px;height:28px;background:rgba(232,160,32,.15);border:1px solid rgba(232,160,32,.3);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--accent);flex-shrink:0}
-.nav-user-name{font-size:.75rem;font-weight:500;color:var(--white)}
-.nav-user-plan{font-size:.56rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.nav-user-wrap{display:flex;align-items:center;cursor:pointer;position:relative}
+.nav-user-wrap:hover .nav-tooltip{opacity:1;pointer-events:auto;transform:translateY(0)}
+.nav-avatar{width:34px;height:34px;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.3);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:var(--accent);transition:border-color .2s;flex-shrink:0}
+.nav-user-wrap:hover .nav-avatar{border-color:var(--accent)}
+.nav-user-name{display:none}
+.nav-tooltip{position:absolute;top:calc(100% + 8px);right:0;background:var(--card2);border:1px solid var(--border2);padding:.5rem .85rem;font-size:.72rem;color:var(--white);white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(-4px);transition:all .18s;z-index:400}
+.nav-tooltip::before{content:'';position:absolute;top:-5px;right:10px;width:8px;height:8px;background:var(--card2);border-top:1px solid var(--border2);border-left:1px solid var(--border2);transform:rotate(45deg)}
 .btn-post-nav{background:var(--accent);color:var(--deep);border:none;padding:.45rem 1.2rem;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:700;text-transform:uppercase;text-decoration:none;transition:background .2s;display:inline-flex;align-items:center}
 .btn-post-nav:hover{background:var(--gold)}
 .btn-logout{background:transparent;border:1px solid var(--border);color:var(--mist);padding:.38rem .85rem;font-family:'DM Sans',sans-serif;font-size:.7rem;cursor:pointer;transition:all .2s}
@@ -286,12 +289,9 @@ nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;al
   </ul>
   <div class="nav-right">
     <a href="post-listing.html" class="btn-post-nav">+ Déposer</a>
-    <div class="nav-user-wrap">
+    <div class="nav-user-wrap" onclick="switchTab('settings')" title="Mon profil">
       <div class="nav-avatar" id="navAvatar">U</div>
-      <div>
-        <div class="nav-user-name" id="navUserName">Mon compte</div>
-        <div class="nav-user-plan" id="navUserPlan">Essentiel</div>
-      </div>
+      <span class="nav-user-name" id="navUserName">Mon compte</span>
     </div>
     <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
     <button class="burger" id="burger" onclick="toggleMobile()" aria-label="Menu"><span></span><span></span><span></span></button>
@@ -682,7 +682,7 @@ async function initAuth(){
         }
         if(data[0].plan){
           _userPlan=data[0].plan;
-          var planEl=document.getElementById('navUserPlan');if(planEl)planEl.textContent=data[0].plan;
+          /* plan stored in localStorage */ localStorage.setItem('a2s_user_plan',data[0].plan||'Essentiel');
           var sbPlan=document.getElementById('sbPlanName');if(sbPlan)sbPlan.textContent=data[0].plan.toUpperCase();
           renderListings();
         }

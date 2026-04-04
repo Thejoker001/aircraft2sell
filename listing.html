@@ -188,6 +188,12 @@ textarea.inp{resize:vertical;min-height:110px;line-height:1.65}
 @media(max-width:600px){.listing-wrap{padding:1rem}.gallery-thumbs{display:none}.similar-grid{grid-template-columns:1fr}}
 @media(max-width:480px){
   a,button{min-height:44px;display:inline-flex;align-items:center;justify-content:center}input,select,textarea,button{font-size:16px !important}}
+.nav-user{display:none;align-items:center;cursor:pointer;position:relative}
+.nav-user:hover .nav-tooltip{opacity:1;pointer-events:auto;transform:translateY(0)}
+.nav-avatar{width:34px;height:34px;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.3);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:var(--accent);transition:border-color .2s;flex-shrink:0}
+.nav-user:hover .nav-avatar{border-color:var(--accent)}
+.nav-tooltip{position:absolute;top:calc(100% + 8px);right:0;background:var(--card2);border:1px solid var(--border2);padding:.5rem .85rem;font-size:.72rem;color:var(--white);white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(-4px);transition:all .18s;z-index:400}
+.nav-tooltip::before{content:'';position:absolute;top:-5px;right:10px;width:8px;height:8px;background:var(--card2);border-top:1px solid var(--border2);border-left:1px solid var(--border2);transform:rotate(45deg)}
 </style>
 <link rel="canonical" href="https://aircraft2sell.com/listing.html">
 </head>
@@ -205,6 +211,10 @@ textarea.inp{resize:vertical;min-height:110px;line-height:1.65}
   <div class="nav-right">
     <a href="search.html" class="btn-back">← Retour</a>
     <a href="post-listing.html" class="btn-post-nav">+ Déposer</a>
+    <div class="nav-user" id="navUser" style="display:none" onclick="window.location.href='dashboard.html'">
+      <div class="nav-avatar" id="navAvatar">U</div>
+      <div class="nav-tooltip">Mon espace →</div>
+    </div>
     <button class="burger" id="burger" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
   </div>
 </nav>
@@ -573,5 +583,18 @@ function showToast(msg){var el=document.getElementById('toast');el.textContent=m
 load();
 </script>
 <script src="nav.js"></script>
+
+/* ── Auth nav ── */
+(function(){
+  if(localStorage.getItem('a2s_logged_in')!=='true')return;
+  var name=localStorage.getItem('a2s_user_name')||'';
+  var first=name.split(' ')[0]||'';
+  var nu=document.getElementById('navUser');
+  var av=document.getElementById('navAvatar');
+  var tt=document.querySelector('.nav-tooltip');
+  if(nu)nu.style.display='flex';
+  if(av)av.textContent=(first[0]||'U').toUpperCase();
+  if(tt&&first)tt.textContent=first+' — Mon espace →';
+})();
 </body>
 </html>
