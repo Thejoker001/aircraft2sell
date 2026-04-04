@@ -806,7 +806,7 @@ function updateDashboard(){
   var duEl=sel('d-users-list');
   if(duEl){
     if(!_allUsers.length){duEl.innerHTML='<div class="empty-s"><div class="es-ic">👥</div><div class="es-t">Aucun membre</div></div>';}
-    else{duEl.innerHTML='<div class="mini-list">'+_allUsers.slice(0,5).map(function(u){return'<div class="ml-item" onclick="editUser('+u.id+')">'+'<div class="ml-av">'+ini(u.name,u.email)+'</div><div class="ml-info"><div class="ml-name">'<span style="cursor:pointer;text-decoration:underline;text-decoration-color:rgba(180,200,230,.2)" onclick="viewSellerListings('"+esc(u.email)+"')" title="Voir les annonces">'+esc(u.name||u.email||'--')+'</span></div><div class="ml-sub">'+esc(u.email||'')+'</div></div>'+'<div class="ml-right">'+planPill(u.plan)+'</div></div>';}).join('')+'</div>';}
+    else{duEl.innerHTML='<div class="mini-list">'+_allUsers.slice(0,5).map(function(u){return'<div class="ml-item" onclick="editUser('+u.id+')">'+'<div class="ml-av">'+ini(u.name,u.email)+'</div><div class="ml-info"><div class="ml-name">'+'\'<span class="seller-link" data-email="'+esc(u.email)+'">'+esc(u.name||u.email||'--')+'</span></div><div class="ml-sub">'+esc(u.email||'')+'</div></div>'+'<div class="ml-right">'+planPill(u.plan)+'</div></div>';}).join('')+'</div>';}
   }
 }
 
@@ -836,7 +836,7 @@ function renderList(){
   var tb=sel('list-body');if(!tb)return;
   if(!filtered.length){tb.innerHTML='<tr><td colspan="6" class="loading-row">'+(filtered.length<_allListings.length?'Aucun résultat':'Aucune annonce dans Supabase')+'</td></tr>';return;}
   tb.innerHTML=filtered.map(function(l){
-    return'<tr><td style="color:var(--white);font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ltitle(l)+'</td><td>'<span style="cursor:pointer;text-decoration:underline;text-decoration-color:rgba(180,200,230,.2)" onclick="viewSellerListings('"+esc(l.sellerEmail)+"')" title="Voir toutes les annonces de ce vendeur">'+esc(l.sellerName||'--')+'</span></td><td style="color:var(--accent);font-family:Bebas Neue,sans-serif">'+(l.price?cur(l.currency)+Number(l.price).toLocaleString():'--')+'</td><td>'+statusPill(l.status)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(l.submittedAt)+'</td><td><div class="acts">'+(l.status==='pending'?'<button class="act ap" onclick="approve('+l.id+')">✓</button>':'')+(l.status==='live'?'<button class="act rj" onclick="doReject('+l.id+')">⊘</button>':'')+'<button class="act" onclick="viewListing('+l.id+')">🔍</button><button class="act" onclick="editListing('+l.id+')">✏</button><button class="act rj" onclick="delListing('+l.id+')">✕</button></div></td></tr>';
+    return'<tr><td style="color:var(--white);font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ltitle(l)+'</td><td>'+'<span class="seller-link" data-email="'+esc(l.sellerEmail||'')+'">'+esc(l.sellerName||'--')+'</span></td><td style="color:var(--accent);font-family:Bebas Neue,sans-serif">'+(l.price?cur(l.currency)+Number(l.price).toLocaleString():'--')+'</td><td>'+statusPill(l.status)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(l.submittedAt)+'</td><td><div class="acts">'+(l.status==='pending'?'<button class="act ap" onclick="approve('+l.id+')">✓</button>':'')+(l.status==='live'?'<button class="act rj" onclick="doReject('+l.id+')">⊘</button>':'')+'<button class="act" onclick="viewListing('+l.id+')">🔍</button><button class="act" onclick="editListing('+l.id+')">✏</button><button class="act rj" onclick="delListing('+l.id+')">✕</button></div></td></tr>';
   }).join('');
 }
 
@@ -848,7 +848,7 @@ function filterUsers(){
   var tb=sel('users-body');if(!tb)return;
   if(!filtered.length){tb.innerHTML='<tr><td colspan="6" class="loading-row">Aucun résultat</td></tr>';return;}
   tb.innerHTML=filtered.map(function(u,i){
-    return'<tr><td style="color:var(--mist2);font-size:.65rem">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--white)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings('"+esc(u.email)+"')" title="Voir les annonces">📋</button><button class="act" onclick="editUser('+u.id+')">✏ Modifier</button><button class="act rj" onclick="delUser('+u.id+')">✕</button></div></td></tr>';
+    return'<tr><td style="color:var(--mist2);font-size:.65rem">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--white)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings(this.dataset.email)" data-email="'+esc(u.email)+'" title="Voir les annonces">📋</button><button class="act" onclick="editUser('+u.id+')">✏ Modifier</button><button class="act rj" onclick="delUser('+u.id+')">✕</button></div></td></tr>';
   }).join('');
 }
 
