@@ -857,87 +857,86 @@ loadListings();
 <script>
 /* ── CONVERTISSEUR DEVISE NAV ── */
 ;(function(){
-  var _rate=null,_busy=false,_from='EUR',_to='USD';
+  var _rates={EUR:1},_busy=false;
   var SYMS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',PLN:'zł',AED:'AED'};
+  var FALLBACK={USD:1.0812,GBP:0.8563,CHF:0.9601,CAD:1.4721,AUD:1.6534,JPY:161.84,SEK:11.12,NOK:11.52,DKK:7.461,PLN:4.272,AED:3.971};
+
+  function getFrom(){var f=document.getElementById('cvFrom');return f?f.value:'EUR';}
+  function getTo(){var t=document.getElementById('cvTo');return t?t.value:'USD';}
+  function setLive(txt){var lv=document.getElementById('cvLiveTime');if(lv)lv.textContent=txt;}
+
+  function fetchAll(){
+    if(_busy)return;
+    _busy=true;
+    setLive('Chargement…');
+    var urls=[
+      'https://api.frankfurter.dev/v2/rates?base=EUR',
+      'https://api.frankfurter.app/latest?base=EUR'
+    ];
+    var tried=0;
+    function tryNext(){
+      if(tried>=urls.length){
+        _busy=false;
+        _rates=Object.assign({EUR:1},FALLBACK);
+        setLive('Taux indicatifs (hors ligne)');
+        window.cvCompute();
+        return;
+      }
+      var url=urls[tried++];
+      fetch(url)
+        .then(function(r){return r.json();})
+        .then(function(d){
+          _busy=false;
+          var rates=d.rates||d;
+          if(rates&&typeof rates==='object'&&rates.USD){
+            _rates=Object.assign({EUR:1},rates);
+            var ts=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+            setLive('En direct · '+ts);
+          } else {
+            _rates=Object.assign({EUR:1},FALLBACK);
+            setLive('Taux indicatifs');
+          }
+          window.cvCompute();
+        })
+        .catch(function(){tryNext();});
+    }
+    tryNext();
+  }
 
   window.toggleCv=function(e){
     e.stopPropagation();
     var nav=document.getElementById('navCurrency');
     if(!nav)return;
-    var isOpen=nav.classList.toggle('open');
-    if(isOpen){
-      setTimeout(function(){
-        document.addEventListener('click',function cl(ev){
-          if(!nav.contains(ev.target)){nav.classList.remove('open');document.removeEventListener('click',cl);}
-        });
-      },0);
-    }
+    nav.classList.toggle('open');
+    setTimeout(function(){
+      document.addEventListener('click',function cl(ev){
+        if(!nav.contains(ev.target)){nav.classList.remove('open');document.removeEventListener('click',cl);}
+      });
+    },0);
   };
 
-  window.cvFetch=function(){
-    var f=document.getElementById('cvFrom');
-    var t=document.getElementById('cvTo');
-    if(!f||!t)return;
-    _from=f.value;_to=t.value;
-    if(_from===_to){_rate=1;window.cvCompute();return;}
-    if(_busy)return;
-    _busy=true;
-    var lv=document.getElementById('cvLiveTime');
-    if(lv)lv.textContent='Chargement…';
-    fetch('https://api.frankfurter.app/latest?base='+_from)
-      .then(function(r){return r.json();})
-      .then(function(d){
-        if(d.rates&&d.rates[_to]){
-          _rate=d.rates[_to];
-        } else {
-          _rate=null;
-        }
-        var ts=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-        if(lv)lv.textContent='En direct · '+ts;
-        _busy=false;
-        window.cvCompute();
-      }).catch(function(){
-        _busy=false;
-        _rate=null;
-        if(lv)lv.textContent='Erreur réseau';
-        window.cvCompute();
-      });
-  };
+  window.cvFetch=function(){window.cvCompute();};
 
   window.cvCompute=function(){
     var amtEl=document.getElementById('cvAmount');
     var resEl=document.getElementById('cvResult');
     var rateEl=document.getElementById('cvRateTxt');
-    var fEl=document.getElementById('cvFrom');
-    var tEl=document.getElementById('cvTo');
     if(!amtEl||!resEl)return;
     var amt=parseFloat(amtEl.value)||0;
-    var from=fEl?fEl.value:'EUR';
-    var to=tEl?tEl.value:'USD';
-    var symTo=SYMS[to]||to;
-    var symFrom=SYMS[from]||from;
-    if(_rate===null){
-      resEl.textContent='—';
-      if(rateEl)rateEl.innerHTML='<span>Taux indisponible</span>';
-      return;
-    }
-    var result=amt*_rate;
+    var from=getFrom();
+    var to=getTo();
+    var rFrom=_rates[from]||1;
+    var rTo=_rates[to]||1;
+    var rate=(1/rFrom)*rTo;
+    if(from===to)rate=1;
+    var result=amt*rate;
     var fmt=result>=1000
       ?result.toLocaleString('fr-FR',{maximumFractionDigits:0})
       :result.toFixed(2);
-    resEl.textContent=symTo+fmt;
-    var rateDisplay=_rate>=1
-      ?_rate.toLocaleString('fr-FR',{minimumFractionDigits:4,maximumFractionDigits:4})
-      :(1/_rate).toLocaleString('fr-FR',{minimumFractionDigits:4,maximumFractionDigits:4});
-    if(rateEl){
-      if(_rate>=1){
-        rateEl.innerHTML='<span>1 '+from+' = '+_rate.toFixed(4)+' '+to+'</span>';
-      } else {
-        rateEl.innerHTML='<span>1 '+to+' = '+(1/_rate).toFixed(4)+' '+from+'</span>';
-      }
-    }
+    resEl.textContent=(SYMS[to]||to)+fmt;
+    if(rateEl)rateEl.innerHTML='<span>1 '+from+' = '+rate.toFixed(4)+' '+to+'</span>';
     document.querySelectorAll('.cv-qb').forEach(function(b){
-      b.classList.toggle('on',b.dataset.cur===to);
+      b.classList.toggle('on',b.dataset&&b.dataset.cur===to);
     });
   };
 
@@ -945,19 +944,16 @@ loadListings();
     var f=document.getElementById('cvFrom'),t=document.getElementById('cvTo');
     if(!f||!t)return;
     var tmp=f.value;f.value=t.value;t.value=tmp;
-    window.cvFetch();
+    window.cvCompute();
   };
 
   window.cvSetTo=function(c){
     var t=document.getElementById('cvTo');
-    if(t){t.value=c;}
-    window.cvFetch();
+    if(t)t.value=c;
+    window.cvCompute();
   };
 
-  // Charger le taux dès le chargement de la page
-  document.addEventListener('DOMContentLoaded',function(){
-    window.cvFetch();
-  });
+  fetchAll();
 })();
 </script>
 
