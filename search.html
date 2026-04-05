@@ -193,6 +193,12 @@ nav.scrolled{background:rgba(3,6,16,.97)}
 .cv-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:.45rem}
 .cv-qb{background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--mist);padding:.27rem .2rem;font-size:.61rem;font-weight:600;cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .12s;font-family:'DM Sans',sans-serif}
 .cv-qb:hover,.cv-qb.on{border-color:rgba(232,160,32,.3);color:var(--accent);background:rgba(232,160,32,.05)}
+
+/* ── BADGES ÉQUIPEMENTS ── */
+.badge-ifr,.badge-rvsm,.badge-adsb{position:absolute;bottom:.5rem;font-size:.52rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .5rem;z-index:2;color:#fff}
+.badge-ifr{left:.5rem;background:rgba(59,130,246,.9)}
+.badge-rvsm{background:rgba(139,92,246,.9)}
+.badge-adsb{background:rgba(16,185,129,.9)}
 </style>
 <link rel="canonical" href="https://aircraft2sell.com/search.html">
 </head>
@@ -310,6 +316,15 @@ nav.scrolled{background:rgba(3,6,16,.97)}
       <option value="year_desc">Année (récent d'abord)</option>
       <option value="hours_asc">Heures (moins d'abord)</option>
     </select>
+    <span style="font-size:.62rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mist2)">Devise ↓</span>
+    <select id="displayCurrency" onchange="onDisplayCurrencyChange()" style="background:var(--card2);border:1px solid var(--border2);color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.72rem;padding:.38rem .6rem;cursor:pointer;outline:none;height:32px">
+      <option value="EUR">€ EUR</option>
+      <option value="USD">$ USD</option>
+      <option value="GBP">£ GBP</option>
+      <option value="CHF">Fr CHF</option>
+      <option value="CAD">CA$ CAD</option>
+      <option value="AUD">AU$ AUD</option>
+    </select>
     <div class="view-btns">
       <button class="vbtn active" id="gridBtn" onclick="setView('grid')" title="Grille">⊞</button>
       <button class="vbtn" id="listBtn" onclick="setView('list')" title="Liste">☰</button>
@@ -337,12 +352,22 @@ nav.scrolled{background:rgba(3,6,16,.97)}
         </div>
       </div>
       <div class="filter-group">
-        <div class="fg-title">Budget (EUR)</div>
+        <div class="fg-title">Budget
+          <select id="budgetCurrency" onchange="onBudgetCurrencyChange()" style="float:right;background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.25);color:var(--accent);font-family:'DM Sans',sans-serif;font-size:.65rem;font-weight:700;padding:.18rem .35rem;cursor:pointer;outline:none">
+            <option value="EUR">€ EUR</option>
+            <option value="USD">$ USD</option>
+            <option value="GBP">£ GBP</option>
+            <option value="CHF">Fr CHF</option>
+            <option value="CAD">CA$ CAD</option>
+            <option value="AUD">AU$ AUD</option>
+          </select>
+        </div>
         <div class="range-row">
           <input type="number" class="range-inp" id="minPrice" placeholder="Min" onchange="applyFilters()">
           <span class="range-sep">—</span>
           <input type="number" class="range-inp" id="maxPrice" placeholder="Max" onchange="applyFilters()">
         </div>
+        <div id="budgetRateNote" style="font-size:.62rem;color:var(--mist2);margin-top:.35rem;line-height:1.5"></div>
       </div>
       <div class="filter-group">
         <div class="fg-title">Année de construction</div>
@@ -358,6 +383,14 @@ nav.scrolled{background:rgba(3,6,16,.97)}
           <input type="number" class="range-inp" id="minHours" placeholder="Min" onchange="applyFilters()">
           <span class="range-sep">—</span>
           <input type="number" class="range-inp" id="maxHours" placeholder="Max" onchange="applyFilters()">
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="fg-title">SMOH — Heures moteur depuis révision</div>
+        <div class="range-row">
+          <input type="number" class="range-inp" id="minSmoh" placeholder="Min" onchange="applyFilters()">
+          <span class="range-sep">—</span>
+          <input type="number" class="range-inp" id="maxSmoh" placeholder="Max" onchange="applyFilters()">
         </div>
       </div>
       <div class="filter-group">
@@ -408,14 +441,7 @@ async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{h
 
 var ALL=[],FILTERED=[],viewMode='grid',selCat='',curPage=1,PER_PAGE=12;
 
-/* Lire params URL */
-(function(){
-  var p=new URLSearchParams(location.search);
-  var q=p.get('q')||'';
-  var cat=p.get('cat')||'';
-  if(q)document.getElementById('navSearchInp').value=q;
-  if(cat){selCat=cat;document.querySelectorAll('.fcat').forEach(function(el){el.classList.toggle('active',el.dataset.cat===cat);});}
-})();
+/* URL restaurée par restoreFromURL() */
 
 /* Nav scroll */
 window.addEventListener('scroll',function(){document.getElementById('mainNav').classList.toggle('scrolled',window.scrollY>40);},{passive:true});
@@ -442,11 +468,12 @@ function toggleMenu(){var m=document.getElementById('mobileMenu'),b=document.get
 /* Chargement */
 async function load(){
   showSkeletons();
-  var rows=await sbGet('listings','status=eq.live&order=submitted_at.desc&limit=200');
+  var rows=await sbGet('listings','status=eq.live&order=submitted_at.desc&limit=200&select=id,make,model,year,price,currency,category,airport,country,hours,smoh,ifr,rvsm,adsb,description,photos,submitted_at');
   ALL=rows.map(function(r){
     var pn=r.price&&!isNaN(Number(r.price))?Number(r.price):null;
     var hn=r.hours&&!isNaN(Number(r.hours))?Number(r.hours):null;
-    return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'',priceNum:pn,currency:r.currency||'EUR',category:r.category||'',airport:r.airport||'',country:r.country||'',hours:r.hours||'',hoursNum:hn,ifr:!!r.ifr,rvsm:!!r.rvsm,adsb:!!r.adsb,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'Sans titre',desc:r.description||'',photos:r.photos||[]};
+    var sn=r.smoh&&!isNaN(Number(r.smoh))?Number(r.smoh):null;
+    return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'',priceNum:pn,currency:r.currency||'EUR',category:r.category||'',airport:r.airport||'',country:r.country||'',hours:r.hours||'',hoursNum:hn,smoh:sn,ifr:!!r.ifr,rvsm:!!r.rvsm,adsb:!!r.adsb,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'Sans titre',desc:r.description||'',photos:r.photos||[]};
   });
   var cAll=document.getElementById('cnt-all');if(cAll)cAll.textContent=ALL.length;
   ['light','jet','turbo','heli','ulm','airliner'].forEach(function(c){var el=document.getElementById('cnt-'+c);if(el)el.textContent=ALL.filter(function(x){return x.category===c;}).length;});
@@ -455,14 +482,21 @@ async function load(){
 
 function applyFilters(){
   var q=(document.getElementById('navSearchInp').value||'').trim().toLowerCase();
-  var minP=parseFloat(document.getElementById('minPrice').value)||0;
-  var maxP=parseFloat(document.getElementById('maxPrice').value)||Infinity;
+  var budgetCur=document.getElementById('budgetCurrency').value||'EUR';
+  var budgetRate=RATES[budgetCur]||1;
+  var minPraw=parseFloat(document.getElementById('minPrice').value)||0;
+  var maxPraw=parseFloat(document.getElementById('maxPrice').value)||Infinity;
+  // Convertir les bornes budget en EUR pour comparaison (tout est stocké en EUR)
+  var minP=minPraw>0?minPraw/budgetRate:0;
+  var maxP=isFinite(maxPraw)?maxPraw/budgetRate:Infinity;
   var minY=parseInt(document.getElementById('minYear').value)||0;
   var maxY=parseInt(document.getElementById('maxYear').value)||9999;
   var sort=document.getElementById('sortSel').value;
   var filterCountry=document.getElementById('filterCountry').value;
   var minH=parseFloat(document.getElementById('minHours').value)||0;
   var maxH=parseFloat(document.getElementById('maxHours').value)||Infinity;
+  var minSmoh=parseFloat(document.getElementById('minSmoh').value)||0;
+  var maxSmoh=parseFloat(document.getElementById('maxSmoh').value)||Infinity;
   var fIFR=document.getElementById('fIFR').checked;
   var fRVSM=document.getElementById('fRVSM').checked;
   var fADSB=document.getElementById('fADSB').checked;
@@ -472,6 +506,7 @@ function applyFilters(){
     if(l.priceNum!==null){if(l.priceNum<minP||l.priceNum>maxP)return false;}
     if(l.year){var y=parseInt(l.year);if(y&&(y<minY||y>maxY))return false;}
     if(l.hoursNum!==null&&l.hoursNum!==undefined){if(l.hoursNum<minH||l.hoursNum>maxH)return false;}
+    if(l.smoh!==null&&l.smoh!==undefined&&(minSmoh>0||isFinite(maxSmoh))){if(l.smoh<minSmoh||l.smoh>maxSmoh)return false;}
     if(filterCountry&&l.country!==filterCountry)return false;
     if(fIFR&&!l.ifr)return false;
     if(fRVSM&&!l.rvsm)return false;
@@ -486,6 +521,7 @@ function applyFilters(){
     return 0;
   });
   curPage=1;render();
+  pushURL();
 }
 
 function resetFilters(){
@@ -499,6 +535,10 @@ function resetFilters(){
   document.getElementById('fIFR').checked=false;
   document.getElementById('fRVSM').checked=false;
   document.getElementById('fADSB').checked=false;
+  document.getElementById('minSmoh').value='';
+  document.getElementById('maxSmoh').value='';
+  document.getElementById('budgetCurrency').value='EUR';
+  updateBudgetNote();
   document.getElementById('sortSel').value='recent';
   applyFilters();
 }
@@ -524,14 +564,28 @@ function render(){
 }
 
 function makeCard(l){
-  var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
-  var pr=l.priceNum?sym+l.priceNum.toLocaleString('fr-FR'):(l.price||'—');
+  // Prix affiché dans la devise sélectionnée par l'utilisateur
+  var dispCur = DISPLAY_CUR || 'EUR';
+  var sym = SYMS_SEARCH[dispCur] || dispCur;
+  var pr;
+  if(l.priceNum){
+    var rate = RATES[dispCur] || 1;
+    // Convertir depuis EUR (stockage) vers devise affichage
+    // Si l'annonce est dans une devise différente, on approxime via EUR
+    var priceEur = l.priceNum; // stocké en EUR côté Supabase
+    var dispPrice = Math.round(priceEur * rate);
+    pr = sym + dispPrice.toLocaleString('fr-FR');
+    if(dispCur !== 'EUR') pr += ' <span style="font-size:.6em;opacity:.6">~</span>';
+  } else {
+    pr = l.price || '—';
+  }
   var cat={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'}[l.category]||esc(l.category);
   var isFav=FAVS.has(String(l.id));
   var thumb=l.photos&&l.photos.length?'<img src="'+esc(l.photos[0])+'" alt="'+esc(l.title)+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">':'<div class="rc-plane">✈</div>';
   var badges='';
-  if(l.ifr)badges+='<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(59,130,246,.85);color:#fff;font-size:.52rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.15rem .45rem;z-index:2">IFR</span>';
-  if(l.rvsm)badges+='<span style="position:absolute;bottom:.5rem;left:'+(l.ifr?'2.8rem':'0.5rem')+'background:rgba(139,92,246,.85);color:#fff;font-size:.52rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.15rem .45rem;z-index:2">RVSM</span>';
+  if(l.ifr)badges+='<span class="badge-ifr">IFR</span>';
+  if(l.rvsm)badges+='<span class="badge-rvsm" style="left:'+(l.ifr?'2.8rem':'0.5rem')+'">RVSM</span>';
+  if(l.adsb)badges+='<span class="badge-adsb" style="left:'+(l.ifr&&l.rvsm?'5.1rem':l.ifr||l.rvsm?'2.8rem':'0.5rem')+'">ADS-B</span>';
   var d=document.createElement('div');d.className='rc';
   d.onclick=function(){window.location.href='listing.html?id='+encodeURIComponent(l.id);};
   d.innerHTML='<div class="rc-img" style="position:relative">'+thumb+badges
@@ -587,6 +641,105 @@ loadFavs();
 var _tt;
 function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2800);}
 
+/* ── DEVISE & TAUX ── */
+var RATES = {EUR:1}; // mis à jour dynamiquement
+var DISPLAY_CUR = 'EUR';
+var SYMS_SEARCH = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$'};
+
+function fetchRates(){
+  fetch('https://api.frankfurter.app/latest?base=EUR&symbols=USD,GBP,CHF,CAD,AUD')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.rates){
+        RATES = Object.assign({EUR:1}, d.rates);
+        updateBudgetNote();
+        // Re-render si une devise d'affichage est active
+        if(DISPLAY_CUR!=='EUR') render();
+      }
+    }).catch(function(){});
+}
+
+function updateBudgetNote(){
+  var sel = document.getElementById('budgetCurrency');
+  var note = document.getElementById('budgetRateNote');
+  if(!sel||!note) return;
+  var cur = sel.value;
+  if(cur==='EUR'){ note.textContent=''; return; }
+  var rate = RATES[cur]||null;
+  if(!rate){ note.textContent='Taux en cours de chargement…'; return; }
+  note.textContent = '1 EUR = '+rate.toFixed(4)+' '+cur+' (BCE)';
+}
+
+function onBudgetCurrencyChange(){
+  updateBudgetNote();
+  applyFilters();
+}
+
+function onDisplayCurrencyChange(){
+  var sel = document.getElementById('displayCurrency');
+  DISPLAY_CUR = sel ? sel.value : 'EUR';
+  render();
+}
+
+/* ── SAUVEGARDE URL ── */
+function pushURL(){
+  var p = new URLSearchParams();
+  var q = (document.getElementById('navSearchInp').value||'').trim();
+  if(q) p.set('q', q);
+  if(selCat) p.set('cat', selCat);
+  var minP = document.getElementById('minPrice').value;
+  var maxP = document.getElementById('maxPrice').value;
+  var budCur = document.getElementById('budgetCurrency').value;
+  if(minP) p.set('minP', minP);
+  if(maxP) p.set('maxP', maxP);
+  if(budCur && budCur!=='EUR') p.set('budCur', budCur);
+  var minY = document.getElementById('minYear').value;
+  var maxY = document.getElementById('maxYear').value;
+  if(minY) p.set('minY', minY);
+  if(maxY) p.set('maxY', maxY);
+  var minH = document.getElementById('minHours').value;
+  var maxH = document.getElementById('maxHours').value;
+  if(minH) p.set('minH', minH);
+  if(maxH) p.set('maxH', maxH);
+  var country = document.getElementById('filterCountry').value;
+  if(country) p.set('country', country);
+  if(document.getElementById('fIFR').checked) p.set('ifr','1');
+  if(document.getElementById('fRVSM').checked) p.set('rvsm','1');
+  if(document.getElementById('fADSB').checked) p.set('adsb','1');
+  var sort = document.getElementById('sortSel').value;
+  if(sort && sort!=='recent') p.set('sort', sort);
+  var str = p.toString();
+  history.replaceState(null,'', str ? '?'+str : location.pathname);
+}
+
+/* ── RESTORE URL ── */
+function restoreFromURL(){
+  var p = new URLSearchParams(location.search);
+  var q=p.get('q')||''; if(q) document.getElementById('navSearchInp').value=q;
+  var cat=p.get('cat')||'';
+  if(cat){selCat=cat;document.querySelectorAll('.fcat').forEach(function(el){el.classList.toggle('active',el.dataset.cat===cat);});}
+  if(p.get('minP')) document.getElementById('minPrice').value=p.get('minP');
+  if(p.get('maxP')) document.getElementById('maxPrice').value=p.get('maxP');
+  if(p.get('budCur')){document.getElementById('budgetCurrency').value=p.get('budCur');updateBudgetNote();}
+  if(p.get('minY')) document.getElementById('minYear').value=p.get('minY');
+  if(p.get('maxY')) document.getElementById('maxYear').value=p.get('maxY');
+  if(p.get('minH')) document.getElementById('minHours').value=p.get('minH');
+  if(p.get('maxH')) document.getElementById('maxHours').value=p.get('maxH');
+  if(p.get('country')) document.getElementById('filterCountry').value=p.get('country');
+  if(p.get('ifr')==='1') document.getElementById('fIFR').checked=true;
+  if(p.get('rvsm')==='1') document.getElementById('fRVSM').checked=true;
+  if(p.get('adsb')==='1') document.getElementById('fADSB').checked=true;
+  if(p.get('sort')) document.getElementById('sortSel').value=p.get('sort');
+  if(p.get('displayCur')){
+    DISPLAY_CUR=p.get('displayCur');
+    var ds=document.getElementById('displayCurrency');
+    if(ds) ds.value=DISPLAY_CUR;
+  }
+}
+
+
+restoreFromURL();
+fetchRates();
 load();
 </script>
 <script src="nav.js"></script>
