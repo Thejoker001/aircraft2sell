@@ -9,12 +9,14 @@
 <title>Aircraft2Sell — Détail annonce</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#e8a020">
 <style>
 :root{--bg:#05080f;--deep:#030610;--surface:#0a1020;--card:#0c1428;--card2:#0f1830;--border:rgba(180,200,230,.08);--border2:rgba(180,200,230,.14);--accent:#e8a020;--gold:#f5c518;--mist:#7a93aa;--mist2:#3d5468;--white:#edf2f8;--dim:#c8d8e8;--green:#22c55e;--red:#ef4444}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
-/* NAV */
+/* ── NAV ── */
 nav{position:sticky;top:0;z-index:300;height:60px;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;background:rgba(3,6,16,.9);backdrop-filter:blur(24px);border-bottom:1px solid var(--border)}
 .logo{font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:.12em;color:var(--white);text-decoration:none}
 .logo span{color:var(--accent)}
@@ -24,10 +26,9 @@ nav{position:sticky;top:0;z-index:300;height:60px;padding:0 2rem;display:flex;al
 .btn-post{background:var(--accent);color:var(--deep);border:none;padding:.42rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.74rem;font-weight:700;text-decoration:none;cursor:pointer;transition:background .2s}
 .btn-post:hover{background:var(--gold)}
 
-/* LAYOUT */
+/* ── LAYOUT ── */
 .listing-wrap{max-width:1200px;margin:0 auto;padding:2rem;display:grid;grid-template-columns:1fr 360px;gap:2rem;align-items:start}
 
-/* ── COLONNE GAUCHE ── */
 /* Breadcrumb */
 .breadcrumb{display:flex;align-items:center;gap:.5rem;font-size:.7rem;color:var(--mist2);margin-bottom:1.5rem;flex-wrap:wrap}
 .breadcrumb a{color:var(--mist);text-decoration:none;transition:color .2s}
@@ -39,43 +40,20 @@ nav{position:sticky;top:0;z-index:300;height:60px;padding:0 2rem;display:flex;al
 .listing-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,4vw,3.2rem);letter-spacing:.04em;line-height:.96;margin-bottom:1rem}
 .listing-meta{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
 .listing-meta-item{display:flex;align-items:center;gap:.4rem;font-size:.74rem;color:var(--mist)}
-.listing-status{font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.2rem .65rem;border-radius:0}
+.listing-status{font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.2rem .65rem}
 .status-live{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:var(--green)}
 
 /* Galerie */
 .gallery{margin-bottom:1.5rem}
+.gallery-main{aspect-ratio:16/9;background:linear-gradient(135deg,var(--surface),rgba(13,40,71,.7));display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:4px;overflow:hidden;cursor:zoom-in}
+.gallery-plane{font-size:10rem;opacity:.08;filter:blur(1px)}
+.gallery-count{position:absolute;bottom:.8rem;right:.8rem;background:rgba(5,8,15,.7);border:1px solid var(--border2);font-size:.66rem;color:var(--mist);padding:.2rem .6rem}
+.gallery-thumbs{display:flex;gap:4px}
+.gallery-thumb{aspect-ratio:16/9;flex:1;background:linear-gradient(135deg,var(--surface),rgba(13,40,71,.5));display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .15s;opacity:.45}
+.gallery-thumb:hover,.gallery-thumb.active{opacity:1}
+.gallery-thumb span{font-size:1.5rem;opacity:.2}
 
-
-/* ── IMAGES WEBP SUPABASE ── */
-function optimizeSupabaseImg(url, width, height){
-  if(!url) return url;
-  // Ajouter paramètres de transformation Supabase Storage
-  var sep = url.includes('?') ? '&' : '?';
-  var params = 'width=' + (width||800) + '&quality=80&format=webp';
-  return url + sep + params;
-}
-function setMainPhoto(idx,url){
-  _lbIdx=idx;
-  var main=document.getElementById('galleryMain');
-  if(!main)return;
-  // Mettre à jour image principale
-  var img=main.querySelector('img');
-  if(img)img.src=url;
-  // Mettre à jour thumbs actifs
-  document.querySelectorAll('.gallery-thumb').forEach(function(t,i){t.classList.toggle('active',i===idx);});
-}
-
-/* ── WHATSAPP & PARTAGE ── */
-function shareWhatsApp(){
-  var title=document.getElementById('lTitle')?document.getElementById('lTitle').textContent:'Annonce Aircraft2Sell';
-  var price=document.getElementById('lPrice')?document.getElementById('lPrice').textContent:'';
-  var url=window.location.href;
-  var text=encodeURIComponent(title+(price?' — '+price:'')+'
-'+url);
-  window.open('https://wa.me/?text='+text,'_blank');
-}
-
-/* ── LIGHTBOX ── */
+/* Lightbox */
 .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:900;align-items:center;justify-content:center;flex-direction:column}
 .lightbox.open{display:flex}
 .lb-img{max-width:90vw;max-height:80vh;object-fit:contain;user-select:none}
@@ -91,15 +69,8 @@ function shareWhatsApp(){
 .lb-thumb{width:56px;height:40px;object-fit:cover;cursor:pointer;opacity:.5;transition:opacity .15s;flex-shrink:0;border:1px solid transparent}
 .lb-thumb.active,.lb-thumb:hover{opacity:1;border-color:var(--accent)}
 .lb-thumb-plane{width:56px;height:40px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1.2rem;opacity:.4;flex-shrink:0}
-.gallery-main{aspect-ratio:16/9;background:linear-gradient(135deg,var(--surface),rgba(13,40,71,.7));display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:4px;overflow:hidden;cursor:pointer}
-.gallery-plane{font-size:10rem;opacity:.08;filter:blur(1px)}
-.gallery-count{position:absolute;bottom:.8rem;right:.8rem;background:rgba(5,8,15,.7);border:1px solid var(--border2);font-size:.66rem;color:var(--mist);padding:.2rem .6rem}
-.gallery-thumbs{display:flex;gap:4px}
-.gallery-thumb{aspect-ratio:16/9;flex:1;background:linear-gradient(135deg,var(--surface),rgba(13,40,71,.5));display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .15s;opacity:.45}
-.gallery-thumb:hover,.gallery-thumb.active{opacity:1}
-.gallery-thumb span{font-size:1.5rem;opacity:.2}
 
-/* Specs grid */
+/* Specs */
 .specs-section{margin-bottom:1.5rem}
 .section-label{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mist2);margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
 .specs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
@@ -125,7 +96,7 @@ function shareWhatsApp(){
 .seller-verified::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green)}
 .seller-body{padding:1rem 1.25rem;font-size:.8rem;color:var(--mist);line-height:1.6}
 
-/* Actions STICKY SIDEBAR */
+/* Sidebar */
 .listing-sidebar{position:sticky;top:76px}
 .price-card{background:var(--card);border:1px solid var(--border2);padding:1.5rem;margin-bottom:1rem}
 .price-badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem}
@@ -148,7 +119,7 @@ function shareWhatsApp(){
 .info-key{color:var(--mist2)}
 .info-val{color:var(--white);font-weight:500;text-align:right}
 
-/* Similar listings */
+/* Similar */
 .similar-title{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;margin:2.5rem 0 1rem}
 .similar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
 .sc{background:var(--card);cursor:pointer;transition:background .2s}
@@ -159,7 +130,7 @@ function shareWhatsApp(){
 .sc-title{font-size:.8rem;font-weight:600;color:var(--white);margin-bottom:.3rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sc-price{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--accent)}
 
-/* Contact form (modal) */
+/* Contact modal */
 .msg-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);z-index:800;align-items:center;justify-content:center;padding:1.5rem}
 .msg-overlay.open{display:flex}
 .msg-box{background:var(--card);border:1px solid var(--border2);width:100%;max-width:480px}
@@ -178,36 +149,17 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
 .btn-send:hover{background:var(--gold)}
 .msg-note{font-size:.7rem;color:var(--mist2);text-align:center;margin-top:.75rem;line-height:1.5}
 
-/* SKELETON */
+/* Skeleton / Toast */
 @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
 .skel{background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:shimmer 1.6s infinite}
-
-/* TOAST */
 .toast{position:fixed;bottom:2rem;right:2rem;background:var(--card2);border:1px solid var(--border2);color:var(--white);padding:.75rem 1.3rem;font-size:.8rem;z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
 
-/* RESPONSIVE */
-@media(max-width:960px){
-  .listing-wrap{grid-template-columns:1fr;padding:1.25rem}
-  .listing-sidebar{position:static}
-  .similar-grid{grid-template-columns:repeat(2,1fr)}
-}
-@media(max-width:600px){
-  nav{padding:0 1rem}
-  .listing-wrap{padding:1rem}
-  .specs-grid{grid-template-columns:repeat(2,1fr)}
-  .gallery-thumbs{display:none}
-  .similar-grid{grid-template-columns:1fr}
-}
+/* Responsive */
+@media(max-width:960px){.listing-wrap{grid-template-columns:1fr;padding:1.25rem}.listing-sidebar{position:static}.similar-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){nav{padding:0 1rem}.listing-wrap{padding:1rem}.specs-grid{grid-template-columns:repeat(2,1fr)}.gallery-thumbs{display:none}.similar-grid{grid-template-columns:1fr}}
 @media(max-width:480px){input,select,textarea,button{font-size:16px !important}}
 </style>
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#e8a020">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Aircraft2Sell">
-<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -220,7 +172,6 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
 </nav>
 
 <div class="listing-wrap" id="listingWrap">
-  <!-- Chargé dynamiquement -->
   <div id="mainCol">
     <div class="breadcrumb" id="breadcrumb">
       <a href="homepage.html">Accueil</a><span>›</span>
@@ -258,9 +209,9 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
       <div class="price-sub" id="lPriceSub">Négociable sur demande</div>
       <div class="urg-strip" id="urgStrip" style="display:none">
         <div class="urg-item"><div class="urg-dot"></div><span id="urgViews">0 vues</span></div>
-        <div class="urg-item"><div class="urg-dot"></div><span id="urgFavs">0 favoris</span></div>
+        <div class="urg-item"><div class="urg-dot"></div><span id="urgEnq">0 contacts</span></div>
       </div>
-      <a href="#" class="btn-contact" id="contactBtn" onclick="openMsgForm()">Contacter le vendeur</a>
+      <a href="#" class="btn-contact" id="contactBtn" onclick="openMsgForm();return false;">Contacter le vendeur</a>
       <button onclick="shareWhatsApp()" style="width:100%;margin-top:.4rem;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.3);color:#25d366;padding:.72rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:background .2s">
         <span>💬</span> Partager sur WhatsApp
       </button>
@@ -274,6 +225,17 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
   </div>
 </div>
 
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" onclick="closeLightbox()">✕</button>
+  <button class="lb-nav lb-prev" onclick="lbNav(-1)">‹</button>
+  <img class="lb-img" id="lbImg" src="" alt="" style="display:none">
+  <div class="lb-plane-big" id="lbPlane" style="display:none">✈</div>
+  <button class="lb-nav lb-next" onclick="lbNav(1)">›</button>
+  <div class="lb-counter" id="lbCounter"></div>
+  <div class="lb-thumbs" id="lbThumbs"></div>
+</div>
+
 <!-- MODAL MESSAGE -->
 <div class="msg-overlay" id="msgOverlay" onclick="if(event.target===this)closeMsgForm()">
   <div class="msg-box">
@@ -285,6 +247,7 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
       <div id="msgAlert" style="display:none;padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem"></div>
       <div class="fld"><label>Votre nom</label><input type="text" class="inp" id="msgName" placeholder="Jean Dupont" autocomplete="name"></div>
       <div class="fld"><label>Votre email</label><input type="email" class="inp" id="msgEmail" placeholder="vous@example.com" autocomplete="email"></div>
+      <div class="fld"><label>Votre téléphone (optionnel)</label><input type="tel" class="inp" id="msgPhone" placeholder="+33 6 00 00 00 00" autocomplete="tel"></div>
       <div class="fld"><label>Votre message</label><textarea class="inp" id="msgText" placeholder="Bonjour, je suis intéressé par cette annonce…"></textarea></div>
       <button class="btn-send" onclick="sendMsg()">Envoyer le message</button>
       <div class="msg-note">Votre message sera transmis directement au vendeur. Aircraft2Sell ne divulgue pas vos coordonnées sans votre accord.</div>
@@ -302,34 +265,74 @@ async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{h
 
 var LISTING=null;
 
+/* ── IMAGES WEBP SUPABASE ── */
+function optimizeSupabaseImg(url,width){
+  if(!url)return url;
+  var sep=url.includes('?')?'&':'?';
+  return url+sep+'width='+(width||800)+'&quality=80&format=webp';
+}
+
+/* ── WHATSAPP ── */
+function shareWhatsApp(){
+  var title=document.getElementById('lTitle')?document.getElementById('lTitle').textContent:'Annonce Aircraft2Sell';
+  var price=document.getElementById('lPrice')?document.getElementById('lPrice').textContent:'';
+  var text=encodeURIComponent(title+(price?' — '+price:'')+'\n'+window.location.href);
+  window.open('https://wa.me/?text='+text,'_blank');
+}
+
+/* ── LIGHTBOX ── */
+var _lbPhotos=[],_lbIdx=0;
+function openLightbox(idx){
+  var lb=document.getElementById('lightbox');if(!lb)return;
+  lb.classList.add('open');document.body.style.overflow='hidden';
+  _lbIdx=idx||0;renderLb();
+  var thumbs=document.getElementById('lbThumbs');
+  if(thumbs)thumbs.innerHTML=_lbPhotos.map(function(p,i){return p?'<img class="lb-thumb'+(i===_lbIdx?' active':'')+'" src="'+p+'" onclick="lbGo('+i+')" loading="lazy">':'<div class="lb-thumb-plane">✈</div>';}).join('');
+}
+function closeLightbox(){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('open');document.body.style.overflow='';}
+function renderLb(){
+  var img=document.getElementById('lbImg'),plane=document.getElementById('lbPlane'),ctr=document.getElementById('lbCounter');
+  var photo=_lbPhotos[_lbIdx];
+  if(img&&plane){if(photo){img.src=photo;img.style.display='block';plane.style.display='none';}else{img.style.display='none';plane.style.display='block';}}
+  if(ctr)ctr.textContent=(_lbIdx+1)+' / '+_lbPhotos.length;
+  document.querySelectorAll('.lb-thumb').forEach(function(t,i){t.classList.toggle('active',i===_lbIdx);});
+}
+function lbNav(dir){_lbIdx=(_lbIdx+dir+_lbPhotos.length)%_lbPhotos.length;renderLb();}
+function lbGo(i){_lbIdx=i;renderLb();}
+function setMainPhoto(idx,url){_lbIdx=idx;var main=document.getElementById('galleryMain');if(!main)return;var img=main.querySelector('img');if(img)img.src=url;document.querySelectorAll('.gallery-thumb').forEach(function(t,i){t.classList.toggle('active',i===idx);});}
+document.addEventListener('keydown',function(e){
+  var lb=document.getElementById('lightbox');if(!lb||!lb.classList.contains('open'))return;
+  if(e.key==='ArrowLeft')lbNav(-1);if(e.key==='ArrowRight')lbNav(1);if(e.key==='Escape')closeLightbox();
+});
+(function(){
+  var lb=document.getElementById('lightbox');if(!lb)return;
+  var sx=0;
+  lb.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;},{passive:true});
+  lb.addEventListener('touchend',function(e){var dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>50)lbNav(dx<0?1:-1);},{passive:true});
+})();
+
+/* ── CHARGEMENT ── */
+var CAT_NAMES={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
+var COUNTRY_NAMES={FR:'France',DE:'Allemagne',ES:'Espagne',IT:'Italie',BE:'Belgique',NL:'Pays-Bas',CH:'Suisse',GB:'Royaume-Uni',PT:'Portugal',AT:'Autriche',LU:'Luxembourg',US:'USA',CA:'Canada',AU:'Australie',SE:'Suède',NO:'Norvège',DK:'Danemark',PL:'Pologne',AE:'Émirats arabes unis'};
+var COUNTRY_FLAGS={FR:'🇫🇷',DE:'🇩🇪',ES:'🇪🇸',IT:'🇮🇹',BE:'🇧🇪',NL:'🇳🇱',CH:'🇨🇭',GB:'🇬🇧',PT:'🇵🇹',AT:'🇦🇹',LU:'🇱🇺',US:'🇺🇸',CA:'🇨🇦',AU:'🇦🇺',SE:'🇸🇪',NO:'🇳🇴',DK:'🇩🇰',PL:'🇵🇱',AE:'🇦🇪'};
+function countryLabel(code){if(!code)return'';return(COUNTRY_FLAGS[code]||'')+' '+(COUNTRY_NAMES[code]||code);}
+
 async function load(){
   var id=new URLSearchParams(location.search).get('id');
   if(!id){showError('Annonce introuvable.');return;}
   var rows=await sbGet('listings','id=eq.'+encodeURIComponent(id)+'&select=*');
-  if(!rows||!rows.length){showError('Cette annonce n\'existe pas ou n\'est plus disponible.');return;}
+  if(!rows||!rows.length){showError("Cette annonce n'existe pas ou n'est plus disponible.");return;}
   LISTING=rows[0];
   render(LISTING);
-  // Incrémenter les vues (silencieusement)
   var newViews=(LISTING.views||0)+1;
-  fetch(SB+'/rest/v1/listings?id=eq.'+encodeURIComponent(id),{
-    method:'PATCH',
-    headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body:JSON.stringify({views:newViews})
-  }).catch(function(){});
-  // Afficher le compteur de vues
+  fetch(SB+'/rest/v1/listings?id=eq.'+encodeURIComponent(id),{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({views:newViews})}).catch(function(){});
   var urgStrip=document.getElementById('urgStrip');
-  var urgViews=document.getElementById('urgViews');
-  var urgEnq=document.getElementById('urgEnq');
-  // Toujours afficher le bandeau d'urgence
   if(urgStrip){
     urgStrip.style.display='flex';
-    urgStrip.style.display='flex';
-    if(urgViews)urgViews.textContent=newViews+' vue'+(newViews>1?'s':'');
-    if(urgEnq&&LISTING.enquiries)urgEnq.textContent=LISTING.enquiries+' contact'+(LISTING.enquiries>1?'s':'');
+    var urgViews=document.getElementById('urgViews');if(urgViews)urgViews.textContent=newViews+' vue'+(newViews>1?'s':'');
+    var urgEnq=document.getElementById('urgEnq');if(urgEnq&&LISTING.enquiries)urgEnq.textContent=LISTING.enquiries+' contact'+(LISTING.enquiries>1?'s':'');
   }
 }
-
-var CAT_NAMES={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
 
 function render(l){
   var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[l.currency||'EUR']||'€';
@@ -337,82 +340,61 @@ function render(l){
   var pr=pn?sym+pn.toLocaleString('fr-FR'):(l.price||'Prix sur demande');
   var title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Annonce sans titre';
   var cat=CAT_NAMES[l.category]||l.category||'Aéronef';
-  var loc=l.airport||(l.country?l.country:'—');
+  var loc=l.airport?esc(l.airport)+(l.country?' — '+countryLabel(l.country):''):countryLabel(l.country)||'—';
 
-  document.title='Aircraft2Sell — '+esc(title);
-  // Mise à jour des meta OG dynamiques pour le partage
-  var setMeta = function(p, v) {
-    var el = document.querySelector('meta[property="'+p+'"]') || document.querySelector('meta[name="'+p+'"]');
-    if (!el) { el = document.createElement('meta'); el.setAttribute('property', p); document.head.appendChild(el); }
-    el.setAttribute('content', v);
-  };
-  setMeta('og:title', title + ' — Aircraft2Sell');
-  setMeta('og:description', 'À vendre : ' + title + (pr ? ' — ' + pr : '') + (loc ? ' · ' + loc : '') + '. Marketplace aéronautique européenne sans commission.');
-  setMeta('og:url', 'https://aircraft2sell.eu/listing.html?id=' + (l.id || ''));
-  setMeta('og:type', 'product');
-  var canon = document.querySelector('link[rel="canonical"]');
-  if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.appendChild(canon); }
-  canon.href = 'https://aircraft2sell.eu/listing.html?id=' + (l.id || '');
+  document.title='Aircraft2Sell — '+title;
+  var setMeta=function(p,v){var el=document.querySelector('meta[property="'+p+'"]')||document.querySelector('meta[name="'+p+'"]');if(!el){el=document.createElement('meta');el.setAttribute('property',p);document.head.appendChild(el);}el.setAttribute('content',v);};
+  setMeta('og:title',title+' — Aircraft2Sell');
+  setMeta('og:description','À vendre : '+title+(pr?' — '+pr:'')+(loc?' · '+loc:'')+'. Marketplace aéronautique européenne sans commission.');
+  setMeta('og:url','https://aircraft2sell.eu/listing.html?id='+(l.id||''));
 
-  // Breadcrumb
   document.getElementById('bcTitle').className='';
   document.getElementById('bcTitle').textContent=title;
-
-  // Header
   document.getElementById('lCat').textContent=cat;
   document.getElementById('lTitle').textContent=title;
 
-  // Galerie avec photos réelles + lightbox
+  // Galerie
   var photos=l.photos&&Array.isArray(l.photos)&&l.photos.length?l.photos:[];
+  var photosOpt=photos.map(function(p){return optimizeSupabaseImg(p,1200);});
+  var photosThumb=photos.map(function(p){return optimizeSupabaseImg(p,300);});
   _lbPhotos=photos.length?photosOpt:[null];
-  // Optimiser les URLs pour WebP
-  var photosOpt=photos.map(function(p){return optimizeSupabaseImg(p,1200,800);});
-  var photosThumb=photos.map(function(p){return optimizeSupabaseImg(p,300,200);});
   var mainHtml=photos.length
-    ?'<img src="'+photosOpt[0]+'" alt="'+title+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" loading="eager">'
-    :'<div class="gallery-plane">✈</div><div class="gallery-count">Photos disponibles sur demande</div>';
+    ?'<img src="'+photosOpt[0]+'" alt="'+esc(title)+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" loading="eager">'
+    :'<div class="gallery-plane">✈</div>';
   var thumbsHtml=photos.length
-    ?photosThumb.slice(0,5).map(function(p,i){return'<div class="gallery-thumb'+(i===0?' active':'')+'" onclick="setMainPhoto('+i+',\''+photosOpt[i]+'\')" style="background:url(\''+p+'\') center/cover;background-size:cover"></div>';}).join('')
+    ?photosThumb.slice(0,5).map(function(p,i){return'<div class="gallery-thumb'+(i===0?' active':'')+'" onclick="setMainPhoto('+i+',\''+photosOpt[i]+'\')" style="background:url(\''+p+'\') center/cover"></div>';}).join('')
     :'<div class="gallery-thumb active"><span>✈</span></div><div class="gallery-thumb"><span>✈</span></div><div class="gallery-thumb"><span>✈</span></div>';
   if(photos.length>1)thumbsHtml+='<div class="gallery-thumb" onclick="openLightbox(0)" style="background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--mist)">+'+photos.length+' 🔍</div>';
-  document.getElementById('gallery').innerHTML=
-    '<div class="gallery-main" id="galleryMain" onclick="openLightbox(0)" style="cursor:zoom-in;position:relative" title="Cliquer pour agrandir">'+mainHtml+'</div>'
-    +'<div class="gallery-thumbs">'+thumbsHtml+'</div>';
+  document.getElementById('gallery').innerHTML='<div class="gallery-main" id="galleryMain" onclick="openLightbox(0)" style="cursor:zoom-in;position:relative" title="Cliquer pour agrandir">'+mainHtml+'</div><div class="gallery-thumbs">'+thumbsHtml+'</div>';
 
   // Specs
   var specs=[
     {label:'Marque',val:l.make||'—'},{label:'Modèle',val:l.model||'—'},{label:'Année',val:l.year||'—'},
     {label:'Heures totales',val:l.hours?(l.hours+'h TT'):'—'},{label:'Moteur',val:l.engine||'—'},{label:'Immatriculation',val:l.registration||'—'},
-    {label:'Localisation',val:loc},{label:'Documents',val:l.documents||'—'},{label:'TTAF',val:l.ttaf?l.ttaf+'h':'—'}
+    {label:'Localisation',val:loc},{label:'Documents',val:l.documents||'—'},{label:'SMOH',val:l.smoh?(l.smoh+'h'):'—'}
   ];
   document.getElementById('specsGrid').innerHTML=specs.map(function(s){return'<div class="spec-item"><div class="spec-label">'+esc(s.label)+'</div><div class="spec-val">'+esc(s.val)+'</div></div>';}).join('');
 
-  // Description
   document.getElementById('lDesc').textContent=l.description||'Aucune description fournie.';
 
   // Vendeur
-  var initials=(l.seller_name||'Vendeur').charAt(0).toUpperCase();
-  document.getElementById('sellerAvatar').textContent=initials;
-  document.getElementById('sellerName').textContent=esc(l.seller_name||'Vendeur privé');
-  var since=l.submitted_at?'Membre depuis '+new Date(l.submitted_at).toLocaleDateString('fr-FR',{month:'long',year:'numeric'}):'';
-  document.getElementById('sellerSince').textContent=since;
+  document.getElementById('sellerAvatar').textContent=(l.seller_name||'V').charAt(0).toUpperCase();
+  document.getElementById('sellerName').textContent=l.seller_pseudo||l.seller_name||'Vendeur privé';
+  document.getElementById('sellerSince').textContent=l.submitted_at?'Membre depuis '+new Date(l.submitted_at).toLocaleDateString('fr-FR',{month:'long',year:'numeric'}):'';
   document.getElementById('sellerSection').querySelector('.seller-head').insertAdjacentHTML('beforeend',
-    '<div><div class="seller-verified">Vendeur vérifié</div><div class="seller-verified" style="background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3);color:#60a5fa;margin-top:.3rem">✓ Annonce vérifiée</div></div>');
+    '<div><div class="seller-verified">Vendeur vérifié</div></div>');
 
-  // Prix sidebar
+  // Sidebar
   document.getElementById('lPrice').textContent=pr;
-  if(pn) document.getElementById('lPriceSub').textContent='Soit env. $'+Math.round(pn*1.08).toLocaleString('fr-FR')+' USD';
-
-  // Infos sidebar
+  if(pn)document.getElementById('lPriceSub').textContent='Soit env. $'+Math.round(pn*1.08).toLocaleString('fr-FR')+' USD';
   document.getElementById('iRef').textContent='#'+String(l.id||'').substring(0,8).toUpperCase();
   document.getElementById('iLoc').textContent=loc;
   document.getElementById('iDate').textContent=l.submitted_at?new Date(l.submitted_at).toLocaleDateString('fr-FR'):'—';
 
-  // Pré-remplir le form
+  // Pré-remplir form si connecté
   var token=sessionStorage.getItem('a2s_auth_token');
   if(token){try{var p=JSON.parse(atob(token.split('.')[1]));document.getElementById('msgEmail').value=p.email||'';}catch(e){}}
 
-  // Similaires
   loadSimilar(l.category,l.id);
 }
 
@@ -421,32 +403,33 @@ async function loadSimilar(cat,excludeId){
   if(!rows)return;
   rows=rows.filter(function(r){return r.id!==excludeId;}).slice(0,3);
   if(!rows.length)return;
-  var sym2={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
   var html='<div class="similar-title">Annonces similaires</div><div class="similar-grid">';
   rows.forEach(function(r){
-    var s=sym2[r.currency||'EUR']||'€';
+    var s={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[r.currency||'EUR']||'€';
     var pn=r.price&&!isNaN(Number(r.price))?Number(r.price):null;
     var pr=pn?s+pn.toLocaleString('fr-FR'):'—';
     var t=[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'Annonce';
-    html+='<div class="sc" onclick="window.location.href=\'listing.html?id='+encodeURIComponent(r.id)+'\'"><div class="sc-img"><span class="sc-plane">✈</span></div><div class="sc-body"><div class="sc-title">'+esc(t)+'</div><div class="sc-price">'+esc(pr)+'</div></div></div>';
+    var img=r.photos&&r.photos[0]?'<div class="sc-img" style="background:url(\''+optimizeSupabaseImg(r.photos[0],400)+'\') center/cover"></div>':'<div class="sc-img"><span class="sc-plane">✈</span></div>';
+    html+='<div class="sc" onclick="window.location.href=\'listing.html?id='+encodeURIComponent(r.id)+'\'">'+img+'<div class="sc-body"><div class="sc-title">'+esc(t)+'</div><div class="sc-price">'+esc(pr)+'</div></div></div>';
   });
   html+='</div>';
   document.getElementById('similarSection').innerHTML=html;
 }
 
-function showError(msg){
-  document.getElementById('mainCol').innerHTML='<div style="padding:4rem 0;text-align:center"><div style="font-size:2.5rem;opacity:.1;margin-bottom:1rem">✈</div><div style="font-family:Bebas Neue,sans-serif;font-size:1.6rem;margin-bottom:.5rem">'+esc(msg)+'</div><a href="search.html" style="color:var(--accent);font-size:.8rem">← Retour aux annonces</a></div>';
-}
+function showError(msg){document.getElementById('mainCol').innerHTML='<div style="padding:4rem 0;text-align:center"><div style="font-size:2.5rem;opacity:.1;margin-bottom:1rem">✈</div><div style="font-family:Bebas Neue,sans-serif;font-size:1.6rem;margin-bottom:.5rem">'+esc(msg)+'</div><a href="search.html" style="color:var(--accent);font-size:.8rem">← Retour aux annonces</a></div>';}
 
-// FAV
+/* ── FAV ── */
 function toggleFav(){
   var btn=document.getElementById('favBtn');
-  btn.classList.toggle('liked');
-  btn.textContent=btn.classList.contains('liked')?'♥ Retiré des favoris':'♡ Ajouter aux favoris';
-  showToast(btn.classList.contains('liked')?'♥ Annonce sauvegardée':'Retiré des favoris');
+  var id=LISTING?String(LISTING.id):'';
+  var favs=[];try{favs=JSON.parse(localStorage.getItem('a2s_favs')||'[]');}catch(e){}
+  if(favs.indexOf(id)!==-1){favs=favs.filter(function(x){return x!==id;});btn.classList.remove('liked');btn.textContent='♡ Ajouter aux favoris';showToast('Retiré des favoris');}
+  else{if(id)favs.push(id);btn.classList.add('liked');btn.textContent='♥ Retiré des favoris';showToast('♥ Annonce sauvegardée');}
+  localStorage.setItem('a2s_favs',JSON.stringify(favs));
+  document.dispatchEvent(new Event('a2s:favs-updated'));
 }
 
-// MSG FORM
+/* ── MSG FORM ── */
 function openMsgForm(){document.getElementById('msgOverlay').classList.add('open');document.body.style.overflow='hidden';}
 function closeMsgForm(){document.getElementById('msgOverlay').classList.remove('open');document.body.style.overflow='';}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMsgForm();});
@@ -454,299 +437,67 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMsgForm
 async function sendMsg(){
   var name=document.getElementById('msgName').value.trim();
   var email=document.getElementById('msgEmail').value.trim().toLowerCase();
+  var phone=(document.getElementById('msgPhone')||{value:''}).value.trim();
   var msg=document.getElementById('msgText').value.trim();
   var alertEl=document.getElementById('msgAlert');
-  if(!name||!email||!msg){alertEl.style.display='block';alertEl.style.cssText='display:block;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--red);padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem';alertEl.textContent='Remplissez tous les champs.';return;}
-  if(!email.includes('@')){alertEl.style.display='block';alertEl.textContent='Email invalide.';return;}
-  // En production : insérer dans la table messages de Supabase
-  // await sbPost('messages',{listing_id:LISTING.id,sender_name:name,sender_email:email,content:msg});
+  if(!name||!email||!msg){alertEl.style.cssText='display:block;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--red);padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem';alertEl.textContent='Remplissez tous les champs.';return;}
+  if(!email.includes('@')){alertEl.style.cssText='display:block;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--red);padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem';alertEl.textContent='Email invalide.';return;}
   alertEl.style.cssText='display:block;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:var(--green);padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem';
-  // Emails transactionnels Brevo
+  alertEl.textContent='✅ Message envoyé ! Le vendeur vous répondra par email.';
   var _t=LISTING&&LISTING.make?(LISTING.make+' '+(LISTING.model||'')).trim():'Annonce A2S';
   var _ve=LISTING?LISTING.seller_email:'';
   var _vn=LISTING?(LISTING.seller_pseudo||LISTING.seller_name||'Vendeur'):'Vendeur';
-  var _ph=(document.getElementById('msgPhone')||{value:''}).value.trim();
   var _lid=LISTING?String(LISTING.id):'';
-  if(_ve)emailNouveauMessage(_ve,_vn,name,email,_ph,_t,msg,_lid).catch(function(){});
+  if(_ve)emailNouveauMessage(_ve,_vn,name,email,phone,_t,msg,_lid).catch(function(){});
   emailConfirmationAcheteur(email,name,_t,_vn,_lid).catch(function(){});
-  alertEl.textContent='✅ Message envoyé ! Le vendeur vous répondra par email.';
   document.getElementById('msgText').value='';
   setTimeout(closeMsgForm,2500);
 }
 
+/* ── TOAST ── */
 var _tt;
 function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2800);}
 
+/* ── AUTH NAV ── */
+(function(){
+  var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
+  var tk=sessionStorage.getItem('a2s_auth_token');
+  var btn=document.getElementById('btnLogin');
+  if((loggedIn||tk)&&btn){btn.textContent='Mon espace';btn.href='dashboard.html';}
+})();
+
 load();
 </script>
+
 <script>
-
-/* ══════════════════════════════════════════════════════
-   BREVO — Emails transactionnels Aircraft2Sell
-   Remplacer /* BREVO_API_KEY - utiliser Edge Function en production */ par votre clé API Brevo
-   Paramètres → Clés API → Créer une clé (gratuit)
-   ══════════════════════════════════════════════════════ */
-var BREVO_KEY = ''; /* TODO: remplacer par ta clé Brevo — ne jamais l'exposer en production, utiliser l'Edge Function send-contact-email à la place */
-var BREVO_SENDER = {name:'Aircraft2Sell', email:'contact.aircraft2sell@gmail.com'};
-
-async function sendBrevoEmail(to, subject, htmlContent, replyTo) {
-  if (!BREVO_KEY || BREVO_KEY === '/* BREVO_API_KEY - utiliser Edge Function en production */') return false;
-  try {
-    var payload = {
-      sender: BREVO_SENDER,
-      to: Array.isArray(to) ? to : [{email: to}],
-      subject: subject,
-      htmlContent: htmlContent
-    };
-    if (replyTo) payload.replyTo = {email: replyTo};
-    var r = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'api-key': BREVO_KEY,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+/* ── BREVO EMAILS ── */
+var BREVO_KEY='';
+var BREVO_SENDER={name:'Aircraft2Sell',email:'contact@aircraft2sell.eu'};
+async function sendBrevoEmail(to,subject,htmlContent,replyTo){
+  if(!BREVO_KEY)return false;
+  try{
+    var payload={sender:BREVO_SENDER,to:Array.isArray(to)?to:[{email:to}],subject:subject,htmlContent:htmlContent};
+    if(replyTo)payload.replyTo={email:replyTo};
+    var r=await fetch('https://api.brevo.com/v3/smtp/email',{method:'POST',headers:{'api-key':BREVO_KEY,'Content-Type':'application/json'},body:JSON.stringify(payload)});
     return r.ok;
-  } catch(e) { return false; }
+  }catch(e){return false;}
 }
-function emailWelcome(prenom, email) {
-  return sendBrevoEmail(
-    email,
-    'Bienvenue sur Aircraft2Sell, ' + prenom + ' !',
-    `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f4;font-family:"DM Sans",Helvetica,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px">
-<table width="560" cellpadding="0" cellspacing="0" style="background:#0c1428;border:1px solid rgba(180,200,230,.14)">
-  <tr><td style="padding:32px 40px 24px;border-bottom:1px solid rgba(180,200,230,.08)">
-    <span style="font-family:"Bebas Neue",Georgia,serif;font-size:26px;letter-spacing:.1em;color:#edf2f8">AIRCRAFT2<span style="color:#e8a020">SELL</span></span>
-  </td></tr>
-  <tr><td style="padding:32px 40px">
-    <h1 style="margin:0 0 12px;font-size:22px;color:#edf2f8;font-weight:600">Bienvenue, ${prenom} ! ✈</h1>
-    <p style="margin:0 0 20px;color:#7a93aa;font-size:15px;line-height:1.7">Votre compte Aircraft2Sell est créé. Vous pouvez dès maintenant déposer vos annonces et accéder à des centaines d'aéronefs disponibles en Europe.</p>
-    <table cellpadding="0" cellspacing="0"><tr><td style="background:#e8a020;padding:0">
-      <a href="https://aircraft2sell.eu/post-listing.html" style="display:block;padding:14px 32px;font-family:"Bebas Neue",Georgia,serif;font-size:16px;letter-spacing:.1em;color:#030610;text-decoration:none">DÉPOSER MA PREMIÈRE ANNONCE</a>
-    </td></tr></table>
-    <p style="margin:24px 0 0;color:#3d5468;font-size:12px">Vous recevez cet email car vous venez de créer un compte sur aircraft2sell.eu</p>
-  </td></tr>
-  <tr><td style="padding:16px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610">
-    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p>
-  </td></tr>
-</table></td></tr></table>
-<!-- LIGHTBOX -->
-<div class="lightbox" id="lightbox">
-  <button class="lb-close" onclick="closeLightbox()">✕</button>
-  <button class="lb-nav lb-prev" onclick="lbNav(-1)">‹</button>
-  <img class="lb-img" id="lbImg" src="" alt="" style="display:none">
-  <div class="lb-plane-big" id="lbPlane" style="display:none">✈</div>
-  <button class="lb-nav lb-next" onclick="lbNav(1)">›</button>
-  <div class="lb-counter" id="lbCounter"></div>
-  <div class="lb-thumbs" id="lbThumbs"></div>
-</div>
-<script>
-/* ── LIGHTBOX ── */
-var _lbPhotos=[],_lbIdx=0;
-function openLightbox(idx){
-  var lb=document.getElementById('lightbox');
-  if(!lb)return;
-  lb.classList.add('open');
-  document.body.style.overflow='hidden';
-  _lbIdx=idx||0;
-  renderLb();
-  // Thumbs
-  var thumbs=document.getElementById('lbThumbs');
-  if(thumbs){
-    thumbs.innerHTML=_lbPhotos.map(function(p,i){
-      return p
-        ?'<img class="lb-thumb'+(i===_lbIdx?' active':'')+'" src="'+p+'" onclick="lbGo('+i+')">'
-        :'<div class="lb-thumb-plane">✈</div>';
-    }).join('');
-  }
+function emailNouveauMessage(vendeurEmail,vendeurPrenom,acheteurNom,acheteurEmail,acheteurTel,annonceTitle,messageTexte,listingId){
+  var telLine=acheteurTel?'<p style="margin:0 0 8px;color:#c8d8e8;font-size:14px"><strong style="color:#7a93aa">Téléphone :</strong> '+acheteurTel+'</p>':'';
+  return sendBrevoEmail(vendeurEmail,'✉ Nouveau message — '+annonceTitle,
+    '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f4;font-family:sans-serif"><table width="100%"><tr><td align="center" style="padding:40px 20px"><table width="560" style="background:#0c1428;border:1px solid rgba(180,200,230,.14)"><tr><td style="padding:28px 40px;border-bottom:1px solid rgba(180,200,230,.08)"><span style="font-family:Georgia,serif;font-size:24px;letter-spacing:.1em;color:#edf2f8">AIRCRAFT2<span style="color:#e8a020">SELL</span></span></td></tr><tr><td style="padding:28px 40px"><h2 style="margin:0 0 6px;font-size:18px;color:#edf2f8">Vous avez reçu un message</h2><p style="margin:0 0 24px;color:#7a93aa;font-size:13px">Pour votre annonce : <strong style="color:#e8a020">'+annonceTitle+'</strong></p><div style="background:#0f1830;border-left:3px solid #e8a020;padding:16px 20px;margin-bottom:20px"><p style="margin:0 0 8px;color:#c8d8e8;font-size:14px"><strong style="color:#7a93aa">De :</strong> '+acheteurNom+'</p><p style="margin:0 0 8px;color:#c8d8e8;font-size:14px"><strong style="color:#7a93aa">Email :</strong> '+acheteurEmail+'</p>'+telLine+'<p style="margin:16px 0 6px;color:#7a93aa;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em">Message :</p><p style="margin:0;color:#edf2f8;font-size:14px;line-height:1.7;white-space:pre-wrap">'+messageTexte+'</p></div></td></tr><tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610"><p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p></td></tr></table></td></tr></table></body></html>',
+    acheteurEmail);
 }
-function closeLightbox(){
-  var lb=document.getElementById('lightbox');
-  if(lb)lb.classList.remove('open');
-  document.body.style.overflow='';
-}
-function renderLb(){
-  var img=document.getElementById('lbImg');
-  var plane=document.getElementById('lbPlane');
-  var ctr=document.getElementById('lbCounter');
-  var photo=_lbPhotos[_lbIdx];
-  if(img&&plane){
-    if(photo){img.src=photo;img.style.display='block';plane.style.display='none';}
-    else{img.style.display='none';plane.style.display='block';}
-  }
-  if(ctr)ctr.textContent=(_lbIdx+1)+' / '+_lbPhotos.length;
-  document.querySelectorAll('.lb-thumb').forEach(function(t,i){t.classList.toggle('active',i===_lbIdx);});
-}
-function lbNav(dir){_lbIdx=(_lbIdx+dir+_lbPhotos.length)%_lbPhotos.length;renderLb();}
-function lbGo(i){_lbIdx=i;renderLb();}
-document.addEventListener('keydown',function(e){
-  var lb=document.getElementById('lightbox');
-  if(!lb||!lb.classList.contains('open'))return;
-  if(e.key==='ArrowLeft')lbNav(-1);
-  if(e.key==='ArrowRight')lbNav(1);
-  if(e.key==='Escape')closeLightbox();
-});
-// Swipe mobile
-(function(){
-  var lb=document.getElementById('lightbox');
-  if(!lb)return;
-  var sx=0;
-  lb.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;},{passive:true});
-  lb.addEventListener('touchend',function(e){
-    var dx=e.changedTouches[0].clientX-sx;
-    if(Math.abs(dx)>50)lbNav(dx<0?1:-1);
-  },{passive:true});
-})();
-</script>
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',function(){
-    navigator.serviceWorker.register('/sw.js').catch(function(){});
-  });
+function emailConfirmationAcheteur(acheteurEmail,acheteurNom,annonceTitle,vendeurNom,listingId){
+  return sendBrevoEmail(acheteurEmail,'Votre message a été envoyé — '+annonceTitle,
+    '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f4;font-family:sans-serif"><table width="100%"><tr><td align="center" style="padding:40px 20px"><table width="560" style="background:#0c1428;border:1px solid rgba(180,200,230,.14)"><tr><td style="padding:28px 40px;border-bottom:1px solid rgba(180,200,230,.08)"><span style="font-family:Georgia,serif;font-size:24px;letter-spacing:.1em;color:#edf2f8">AIRCRAFT2<span style="color:#e8a020">SELL</span></span></td></tr><tr><td style="padding:28px 40px"><h2 style="margin:0 0 12px;font-size:18px;color:#edf2f8">✅ Message envoyé avec succès</h2><p style="margin:0 0 16px;color:#7a93aa;font-size:14px;line-height:1.7">Votre message concernant <strong style="color:#edf2f8">'+annonceTitle+'</strong> a bien été transmis au vendeur <strong style="color:#edf2f8">'+vendeurNom+'</strong>.</p><p style="margin:0 0 24px;color:#7a93aa;font-size:14px;line-height:1.7">Le vendeur vous répondra directement par email. Pensez à vérifier vos spams.</p><table><tr><td style="background:#e8a020"><a href="https://aircraft2sell.eu/listing.html?id='+listingId+'" style="display:block;padding:12px 28px;font-family:Georgia,serif;font-size:15px;letter-spacing:.1em;color:#030610;text-decoration:none">VOIR L\'ANNONCE</a></td></tr></table></td></tr><tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610"><p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p></td></tr></table></td></tr></table></body></html>');
 }
 </script>
 
-</body></html>`.replace('${prenom}', prenom)
-  );
-}
-function emailNouveauMessage(vendeurEmail, vendeurPrenom, acheteurNom, acheteurEmail, acheteurTel, annonceTitle, messageTexte, listingId) {
-  var telLine = acheteurTel ? '<p style="margin:0 0 8px;color:#c8d8e8;font-size:14px"><strong style="color:#7a93aa">Téléphone :</strong> ' + acheteurTel + '</p>' : '';
-  return sendBrevoEmail(
-    vendeurEmail,
-    '✉ Nouveau message — ' + annonceTitle,
-    `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f4;font-family:"DM Sans",Helvetica,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px">
-<table width="560" cellpadding="0" cellspacing="0" style="background:#0c1428;border:1px solid rgba(180,200,230,.14)">
-  <tr><td style="padding:28px 40px 20px;border-bottom:1px solid rgba(180,200,230,.08)">
-    <span style="font-family:"Bebas Neue",Georgia,serif;font-size:24px;letter-spacing:.1em;color:#edf2f8">AIRCRAFT2<span style="color:#e8a020">SELL</span></span>
-    <span style="margin-left:12px;background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.25);color:#e8a020;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px">Nouveau message</span>
-  </td></tr>
-  <tr><td style="padding:28px 40px">
-    <h2 style="margin:0 0 6px;font-size:18px;color:#edf2f8">Vous avez reçu un message</h2>
-    <p style="margin:0 0 24px;color:#7a93aa;font-size:13px">Pour votre annonce : <strong style="color:#e8a020">${annonceTitle}</strong></p>
-    <div style="background:#0f1830;border-left:3px solid #e8a020;padding:16px 20px;margin-bottom:20px">
-      <p style="margin:0 0 8px;color:#c8d8e8;font-size:14px"><strong style="color:#7a93aa">De :</strong> ${acheteurNom}</p>
-      <p style="margin:0 0 8px;color:#c8d8e8;font-size:14px"><strong style="color:#7a93aa">Email :</strong> ${acheteurEmail}</p>
-      ${telLine}
-      <p style="margin:16px 0 6px;color:#7a93aa;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em">Message :</p>
-      <p style="margin:0;color:#edf2f8;font-size:14px;line-height:1.7;white-space:pre-wrap">${messageTexte}</p>
-    </div>
-    <table cellpadding="0" cellspacing="0"><tr><td style="background:#e8a020">
-      <a href="/cdn-cgi/l/email-protection#496d32282a212c3d2c3c3b0c2428202534763a3c2b232c2a3d741b2c73696d3228272726272a2c1d203d252c34" style="display:block;padding:12px 28px;font-family:" Bebas Neue",Georgia,serif;font-size:15px;letter-spacing:.1em;color:#030610;text-decoration:none">RÉPONDRE À ${acheteurNom}</a>
-    </td></tr></table>
-  </td></tr>
-  <tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610">
-    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p>
-  </td></tr>
-</table></td></tr></table><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
-
-</body></html>`
-    .replace(/\${acheteurNom}/g, acheteurNom)
-    .replace(/\${acheteurEmail}/g, acheteurEmail)
-    .replace(/\${annonceTitle}/g, annonceTitle)
-    .replace(/\${messageTexte}/g, messageTexte)
-    .replace('${telLine}', telLine),
-    acheteurEmail
-  );
-}
-function emailConfirmationAcheteur(acheteurEmail, acheteurNom, annonceTitle, vendeurNom, listingId) {
-  return sendBrevoEmail(
-    acheteurEmail,
-    'Votre message a été envoyé — ' + annonceTitle,
-    `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f4;font-family:"DM Sans",Helvetica,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px">
-<table width="560" cellpadding="0" cellspacing="0" style="background:#0c1428;border:1px solid rgba(180,200,230,.14)">
-  <tr><td style="padding:28px 40px 20px;border-bottom:1px solid rgba(180,200,230,.08)">
-    <span style="font-family:"Bebas Neue",Georgia,serif;font-size:24px;letter-spacing:.1em;color:#edf2f8">AIRCRAFT2<span style="color:#e8a020">SELL</span></span>
-  </td></tr>
-  <tr><td style="padding:28px 40px">
-    <h2 style="margin:0 0 12px;font-size:18px;color:#edf2f8">✅ Message envoyé avec succès</h2>
-    <p style="margin:0 0 16px;color:#7a93aa;font-size:14px;line-height:1.7">Votre message concernant <strong style="color:#edf2f8">${annonceTitle}</strong> a bien été transmis au vendeur <strong style="color:#edf2f8">${vendeurNom}</strong>.</p>
-    <p style="margin:0 0 24px;color:#7a93aa;font-size:14px;line-height:1.7">Le vendeur vous répondra directement par email. Pensez à vérifier vos spams si vous ne recevez pas de réponse sous 48h.</p>
-    <table cellpadding="0" cellspacing="0"><tr><td style="background:#e8a020">
-      <a href="https://aircraft2sell.eu/listing.html?id=${listingId}" style="display:block;padding:12px 28px;font-family:"Bebas Neue",Georgia,serif;font-size:15px;letter-spacing:.1em;color:#030610;text-decoration:none">VOIR L'ANNONCE</a>
-    </td></tr></table>
-  </td></tr>
-  <tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610">
-    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p>
-  </td></tr>
-</table></td></tr></table>
-
-</body></html>`
-    .replace(/\${annonceTitle}/g, annonceTitle)
-    .replace(/\${vendeurNom}/g, vendeurNom)
-    .replace(/\${listingId}/g, listingId)
-  );
-}
-function emailAnnonceApprouvee(vendeurEmail, vendeurPrenom, annonceTitle, listingId) {
-  return sendBrevoEmail(
-    vendeurEmail,
-    '🎉 Votre annonce est en ligne — ' + annonceTitle,
-    `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f4;font-family:"DM Sans",Helvetica,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px">
-<table width="560" cellpadding="0" cellspacing="0" style="background:#0c1428;border:1px solid rgba(180,200,230,.14)">
-  <tr><td style="padding:28px 40px 20px;border-bottom:1px solid rgba(180,200,230,.08)">
-    <span style="font-family:"Bebas Neue",Georgia,serif;font-size:24px;letter-spacing:.1em;color:#edf2f8">AIRCRAFT2<span style="color:#e8a020">SELL</span></span>
-    <span style="margin-left:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#22c55e;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px">En ligne ✓</span>
-  </td></tr>
-  <tr><td style="padding:32px 40px">
-    <h1 style="margin:0 0 12px;font-size:22px;color:#edf2f8">Votre annonce est publiée ! 🎉</h1>
-    <p style="margin:0 0 8px;color:#7a93aa;font-size:14px;line-height:1.7">Bonjour <strong style="color:#edf2f8">${vendeurPrenom}</strong>,</p>
-    <p style="margin:0 0 24px;color:#7a93aa;font-size:14px;line-height:1.7">Votre annonce <strong style="color:#e8a020">${annonceTitle}</strong> a été validée et est maintenant visible par tous les acheteurs sur Aircraft2Sell.</p>
-    <div style="background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.2);padding:16px 20px;margin-bottom:24px">
-      <p style="margin:0;color:#c8d8e8;font-size:13px;line-height:1.7">💡 <strong>Conseils pour maximiser vos chances :</strong><br>
-      · Répondez rapidement aux messages des acheteurs<br>
-      · Ajoutez des photos supplémentaires si possible<br>
-      · Mettez votre annonce à jour si le prix change</p>
-    </div>
-    <table cellpadding="0" cellspacing="0"><tr><td style="background:#e8a020">
-      <a href="https://aircraft2sell.eu/listing.html?id=${listingId}" style="display:block;padding:14px 32px;font-family:"Bebas Neue",Georgia,serif;font-size:16px;letter-spacing:.1em;color:#030610;text-decoration:none">VOIR MON ANNONCE EN LIGNE</a>
-    </td></tr></table>
-  </td></tr>
-  <tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610">
-    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p>
-  </td></tr>
-</table></td></tr></table>
-
-</body></html>`
-    .replace(/\${vendeurPrenom}/g, vendeurPrenom)
-    .replace(/\${annonceTitle}/g, annonceTitle)
-    .replace(/\${listingId}/g, String(listingId))
-  );
-}
-function emailAnnonceRejetee(vendeurEmail, vendeurPrenom, annonceTitle, motif) {
-  var motifHtml = motif ? '<p style="margin:0;color:#7a93aa;font-size:14px;line-height:1.7"><strong>Motif :</strong> ' + motif + '</p>' : '';
-  return sendBrevoEmail(
-    vendeurEmail,
-    "Votre annonce n'a pas été validée — " + annonceTitle,
-    `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f4;font-family:"DM Sans",Helvetica,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px">
-<table width="560" cellpadding="0" cellspacing="0" style="background:#0c1428;border:1px solid rgba(180,200,230,.14)">
-  <tr><td style="padding:28px 40px 20px;border-bottom:1px solid rgba(180,200,230,.08)">
-    <span style="font-family:"Bebas Neue",Georgia,serif;font-size:24px;letter-spacing:.1em;color:#edf2f8">AIRCRAFT2<span style="color:#e8a020">SELL</span></span>
-  </td></tr>
-  <tr><td style="padding:32px 40px">
-    <h2 style="margin:0 0 12px;font-size:18px;color:#edf2f8">Annonce non validée</h2>
-    <p style="margin:0 0 8px;color:#7a93aa;font-size:14px">Bonjour <strong style="color:#edf2f8">${vendeurPrenom}</strong>,</p>
-    <p style="margin:0 0 20px;color:#7a93aa;font-size:14px;line-height:1.7">Votre annonce <strong style="color:#edf2f8">${annonceTitle}</strong> n'a pas pu être validée en l'état.</p>
-    <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);padding:16px 20px;margin-bottom:24px">
-      ${motifHtml}
-      <p style="margin:8px 0 0;color:#7a93aa;font-size:13px">Corrigez votre annonce et soumettez-la à nouveau depuis votre tableau de bord.</p>
-    </div>
-    <table cellpadding="0" cellspacing="0"><tr><td style="background:#e8a020">
-      <a href="https://aircraft2sell.eu/dashboard.html" style="display:block;padding:12px 28px;font-family:"Bebas Neue",Georgia,serif;font-size:15px;letter-spacing:.1em;color:#030610;text-decoration:none">MON TABLEAU DE BORD</a>
-    </td></tr></table>
-  </td></tr>
-  <tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610">
-    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p>
-  </td></tr>
-</table></td></tr></table>
-
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}
+</script>
 <script src="rgpd-consent.js" defer></script>
-
-</script>
 <script src="nav.js"></script>
-</body></ht
+</body>
+</html>

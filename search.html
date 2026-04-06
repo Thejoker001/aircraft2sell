@@ -157,12 +157,109 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-w
 .badge-ifr{left:.5rem;background:rgba(59,130,246,.9)}
 .badge-rvsm{background:rgba(139,92,246,.9)}
 .badge-adsb{background:rgba(16,185,129,.9)}
+
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;background:rgba(3,6,16,.92);backdrop-filter:blur(28px);border-bottom:1px solid var(--border)}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.75rem;letter-spacing:.12em;color:var(--white);text-decoration:none;flex-shrink:0}
+.logo span{color:var(--accent)}
+.nav-links{display:flex;list-style:none;align-items:center;gap:.1rem;height:64px}
+.nav-links a{display:flex;align-items:center;height:64px;padding:0 .9rem;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);text-decoration:none;transition:color .2s;white-space:nowrap}
+.nav-links a:hover{color:var(--white)}
+.nav-right{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
+.btn-nav-login{background:transparent;border:1px solid var(--border2);color:var(--dim);padding:.44rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center}
+.btn-nav-login:hover{border-color:var(--accent);color:var(--accent)}
+.nav-user{display:none;align-items:center;cursor:pointer;position:relative}
+.nav-user:hover .nav-tooltip{opacity:1;pointer-events:auto;transform:translateY(0)}
+.nav-avatar{width:34px;height:34px;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.3);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:var(--accent);transition:border-color .2s;flex-shrink:0}
+.nav-user:hover .nav-avatar{border-color:var(--accent)}
+.nav-tooltip{position:absolute;top:calc(100% + 8px);right:0;background:var(--card2);border:1px solid var(--border2);padding:.5rem .85rem;font-size:.72rem;color:var(--white);white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(-4px);transition:all .18s;z-index:400}
+.nav-tooltip::before{content:'';position:absolute;top:-5px;right:10px;width:8px;height:8px;background:var(--card2);border-top:1px solid var(--border2);border-left:1px solid var(--border2);transform:rotate(45deg)}
+.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:.5rem}
+.burger span{display:block;width:22px;height:2px;background:var(--white);border-radius:1px;transition:all .25s}
+.burger.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+.burger.open span:nth-child(2){opacity:0}
+.burger.open span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
+.mobile-menu{display:none;position:fixed;inset:0;background:rgba(3,6,16,.98);backdrop-filter:blur(20px);z-index:490;flex-direction:column;padding:5rem 2rem 2rem;overflow-y:auto}
+.mobile-menu.open{display:flex}
+.mobile-menu a{padding:1rem 0;font-size:.9rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-decoration:none;border-bottom:1px solid var(--border);display:block;transition:color .2s}
+.mobile-menu a:hover{color:var(--accent)}
+.mm-cta{margin-top:2rem;background:var(--accent);color:var(--deep);text-align:center;padding:1rem;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.1em;text-decoration:none;display:block}
 </style>
-<link rel="canonical" href="https://aircraft2sell.eu/search.html">
-<link rel="stylesheet" href="styles.css">
-</head>
 <body>
 
+<!-- NAV -->
+<nav id="mainNav">
+  <a href="homepage.html" class="logo">Aircraft2<span>Sell</span></a>
+  <ul class="nav-links">
+    <li><a href="search.html">Annonces</a></li>
+    <li><a href="comparateur.html">Comparateur</a></li>
+    <li class="nav-currency" id="navCurrency">
+      <button class="nav-currency-btn" onclick="toggleCv(event)" aria-label="Convertisseur de devises">
+        <span class="cv-icon" id="cvNavIcon">€</span>
+        <span>Devises</span>
+        <span class="cv-arrow">▾</span>
+      </button>
+      <div class="cv-dropdown">
+        <div class="cv-drop-head">
+          <span class="cv-drop-title">Convertisseur</span>
+          <span class="cv-live" id="cvLiveTime">En direct</span>
+        </div>
+        <div class="cv-body">
+          <div class="cv-row">
+            <div class="cv-inp-wrap">
+              <input class="cv-inp" type="number" id="cvAmount" value="100000" min="0" oninput="cvCompute()">
+              <select class="cv-sel" id="cvFrom" onchange="cvFetch()">
+                <option value="EUR">€ EUR</option><option value="USD">$ USD</option><option value="GBP">£ GBP</option>
+                <option value="CHF">Fr CHF</option><option value="CAD">CA$ CAD</option><option value="AUD">AU$ AUD</option>
+                <option value="JPY">¥ JPY</option><option value="SEK">kr SEK</option><option value="NOK">kr NOK</option>
+                <option value="DKK">kr DKK</option><option value="PLN">zł PLN</option><option value="AED">AED</option>
+              </select>
+            </div>
+            <button class="cv-swap-btn" onclick="cvSwap()" title="Inverser">⇅</button>
+          </div>
+          <div class="cv-result-box">
+            <div>
+              <div class="cv-result-val" id="cvResult">…</div>
+              <div style="font-size:.57rem;color:var(--mist2);margin-top:.1rem">Taux indicatif BCE</div>
+            </div>
+            <select class="cv-to-sel" id="cvTo" onchange="cvFetch()">
+              <option value="EUR">EUR €</option><option value="USD" selected>USD $</option><option value="GBP">GBP £</option>
+              <option value="CHF">CHF Fr</option><option value="CAD">CAD $</option><option value="AUD">AUD $</option>
+              <option value="JPY">JPY ¥</option><option value="SEK">SEK kr</option><option value="NOK">NOK kr</option>
+              <option value="DKK">DKK kr</option><option value="PLN">PLN zł</option><option value="AED">AED</option>
+            </select>
+          </div>
+          <div class="cv-rate-txt" id="cvRateTxt"><span>—</span></div>
+          <div class="cv-quick">
+            <button class="cv-qb" onclick="cvSetTo('USD')">USD</button><button class="cv-qb" onclick="cvSetTo('GBP')">GBP</button>
+            <button class="cv-qb" onclick="cvSetTo('CHF')">CHF</button><button class="cv-qb" onclick="cvSetTo('CAD')">CAD</button>
+            <button class="cv-qb" onclick="cvSetTo('AUD')">AUD</button><button class="cv-qb" onclick="cvSetTo('JPY')">JPY</button>
+            <button class="cv-qb" onclick="cvSetTo('AED')">AED</button><button class="cv-qb" onclick="cvSetTo('EUR')">EUR</button>
+          </div>
+        </div>
+      </div>
+    </li>
+    <li><a href="guide-acheteur.html">Guide</a></li>
+    <li><a href="contact.html">Contact</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="post-listing.html" class="btn-nav-login">+ Déposer</a>
+    <div class="nav-user" id="navUser" style="display:none" onclick="window.location.href='dashboard.html'">
+      <div class="nav-avatar" id="navAvatar">U</div>
+      <div class="nav-tooltip">Mon espace →</div>
+    </div>
+    <button class="burger" id="burger" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="search.html">Annonces</a>
+  <a href="comparateur.html">Comparateur</a>
+  <a href="guide-acheteur.html">Guide acheteur</a>
+  <a href="contact.html">Contact</a>
+  <a href="post-listing.html">Déposer une annonce</a>
+  <a href="dashboard.html" class="mm-cta">Mon espace</a>
+</div>
 
 <!-- SEARCH HEADER -->
 <div class="search-header">
@@ -299,17 +396,373 @@ var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});return r.ok?await r.json():[];}catch(e){return[];}}
 
+/* ── ÉTAT GLOBAL ── */
 var ALL=[],FILTERED=[],viewMode='grid',selCat='',curPage=1,PER_PAGE=12;
+var _exRates={};
 
-/* URL restaurée par restoreFromURL() */
+/* ── MAPPING PAYS ISO → Nom ── */
+var COUNTRY_NAMES={FR:'France',DE:'Allemagne',ES:'Espagne',IT:'Italie',BE:'Belgique',NL:'Pays-Bas',CH:'Suisse',GB:'Royaume-Uni',PT:'Portugal',AT:'Autriche',LU:'Luxembourg',US:'USA',CA:'Canada',AU:'Australie',SE:'Suède',NO:'Norvège',DK:'Danemark',PL:'Pologne',AE:'Émirats arabes unis'};
+var COUNTRY_FLAGS={FR:'🇫🇷',DE:'🇩🇪',ES:'🇪🇸',IT:'🇮🇹',BE:'🇧🇪',NL:'🇳🇱',CH:'🇨🇭',GB:'🇬🇧',PT:'🇵🇹',AT:'🇦🇹',LU:'🇱🇺',US:'🇺🇸',CA:'🇨🇦',AU:'🇦🇺',SE:'🇸🇪',NO:'🇳🇴',DK:'🇩🇰',PL:'🇵🇱',AE:'🇦🇪'};
+function countryLabel(code){if(!code)return'';return(COUNTRY_FLAGS[code]||'')+' '+(COUNTRY_NAMES[code]||code);}
+/* Correspondance nom (filtre sidebar) → code ISO pour comparaison Supabase */
+var COUNTRY_CODE={
+  'France':'FR','Allemagne':'DE','Royaume-Uni':'GB','Espagne':'ES','Italie':'IT',
+  'Suisse':'CH','Belgique':'BE','Pays-Bas':'NL','Portugal':'PT','USA':'US',
+  'Canada':'CA','Australie':'AU'
+};
 
-/* Nav scroll */
-window.addEventListener('scroll',function(){document.getElementById('mainNav').classList.toggle('scrolled',window.scrollY>40);},{passive:true});
+/* ── CATÉGORIES ── */
+var CAT_LABELS={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
+var CAT_SYMS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$'};
 
-/* Mobile menu */
+/* ── NAV SCROLL ── */
+window.addEventListener('scroll',function(){
+  var n=document.getElementById('mainNav');
+  if(n)n.classList.toggle('scrolled',window.scrollY>40);
+},{passive:true});
+
+/* ── MOBILE MENU ── */
 function toggleMenu(){var m=document.getElementById('mobileMenu'),b=document.getElementById('burger'),o=m.classList.toggle('open');b.classList.toggle('open',o);document.body.style.overflow=o?'hidden':'';}
 
-/* Auth */
+/* ── TOAST ── */
+var _tt;
+function showToast(msg){var el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},3000);}
+
+/* ── FAVORIS ── */
+function getFavs(){try{return JSON.parse(localStorage.getItem('a2s_favs')||'[]');}catch(e){return[];}}
+function saveFavs(f){localStorage.setItem('a2s_favs',JSON.stringify(f));}
+function isFav(id){return getFavs().indexOf(String(id))!==-1;}
+function toggleFav(id,btn){
+  var favs=getFavs();var sid=String(id);
+  if(favs.indexOf(sid)!==-1){favs=favs.filter(function(x){return x!==sid;});btn.classList.remove('liked');btn.textContent='♡';showToast('Retiré des favoris');}
+  else{favs.push(sid);btn.classList.add('liked');btn.textContent='♥';showToast('♥ Ajouté aux favoris');}
+  saveFavs(favs);
+  document.dispatchEvent(new Event('a2s:favs-updated'));
+}
+
+/* ── CHARGEMENT SUPABASE ── */
+async function loadAll(){
+  renderSkeletons();
+  var rows=await sbGet('listings','status=eq.live&order=submitted_at.desc&select=*');
+  ALL=rows.map(function(r){
+    return{
+      id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',
+      price:r.price||null,currency:r.currency||'EUR',
+      category:r.category||'',airport:r.airport||'',
+      country:r.country||'',hours:r.hours||null,smoh:r.smoh||null,
+      ifr:r.ifr||false,rvsm:r.rvsm||false,adsb:r.adsb||false,
+      photos:r.photos||[],description:r.description||'',
+      submitted_at:r.submitted_at||r.created_at||'',
+      title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')
+    };
+  });
+  updateCounts();
+  restoreFromURL();
+  applyFilters();
+}
+
+/* ── COMPTEURS CATÉGORIES ── */
+function updateCounts(){
+  var cats=['light','jet','turbo','heli','ulm','airliner'];
+  var el=document.getElementById('cnt-all');
+  if(el)el.textContent=ALL.length;
+  cats.forEach(function(c){
+    var n=ALL.filter(function(x){return x.category===c;}).length;
+    var el2=document.getElementById('cnt-'+c);
+    if(el2)el2.textContent=n;
+  });
+}
+
+/* ── RESTAURER DEPUIS URL ── */
+function restoreFromURL(){
+  var p=new URLSearchParams(window.location.search);
+  var cat=p.get('cat')||'';
+  var q=p.get('q')||'';
+  var maxP=p.get('max')||'';
+  if(cat){
+    selCat=cat;
+    document.querySelectorAll('.fcat').forEach(function(el){
+      el.classList.toggle('active',el.dataset.cat===cat);
+    });
+  }
+  if(q){var si=document.getElementById('searchInput');if(si)si.value=q;}
+  if(maxP){var mp=document.getElementById('maxPrice');if(mp)mp.value=maxP;}
+  var cur=p.get('cur')||'';
+  if(cur){var dc=document.getElementById('displayCurrency');if(dc)dc.value=cur;}
+}
+
+/* ── SET CATÉGORIE ── */
+function setCat(el,cat){
+  selCat=cat;
+  document.querySelectorAll('.fcat').forEach(function(f){f.classList.remove('active');});
+  el.classList.add('active');
+  curPage=1;
+  applyFilters();
+}
+
+/* ── RESET FILTRES ── */
+function resetFilters(){
+  selCat='';curPage=1;
+  document.querySelectorAll('.fcat').forEach(function(f){f.classList.toggle('active',f.dataset.cat==='');});
+  ['searchInput','minPrice','maxPrice','minYear','maxYear','minHours','maxHours','minSmoh','maxSmoh'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  var fc=document.getElementById('filterCountry');if(fc)fc.value='';
+  var fi=document.getElementById('fIFR');if(fi)fi.checked=false;
+  var fr=document.getElementById('fRVSM');if(fr)fr.checked=false;
+  var fa=document.getElementById('fADSB');if(fa)fa.checked=false;
+  var ss=document.getElementById('sortSel');if(ss)ss.value='recent';
+  applyFilters();
+}
+
+/* ── DEVISE ── */
+var _dispCur='EUR',_budgetCur='EUR';
+function onDisplayCurrencyChange(){
+  var el=document.getElementById('displayCurrency');
+  _dispCur=el?el.value:'EUR';
+  fetchRate(_dispCur,function(){renderPage();});
+}
+function onBudgetCurrencyChange(){
+  var el=document.getElementById('budgetCurrency');
+  _budgetCur=el?el.value:'EUR';
+  fetchRate(_budgetCur,function(){applyFilters();});
+}
+function fetchRate(to,cb){
+  if(to==='EUR'||_exRates[to]){if(cb)cb();return;}
+  fetch('https://api.frankfurter.app/latest?base=EUR&symbols='+to)
+    .then(function(r){return r.json();})
+    .then(function(d){if(d.rates&&d.rates[to])_exRates[to]=d.rates[to];if(cb)cb();})
+    .catch(function(){if(cb)cb();});
+}
+function toEUR(price,cur){
+  if(!price||isNaN(price))return null;
+  if(!cur||cur==='EUR')return Number(price);
+  var rate=_exRates[cur];
+  return rate?Number(price)/rate:Number(price);
+}
+function fromEUR(priceEUR,cur){
+  if(!cur||cur==='EUR')return priceEUR;
+  var rate=_exRates[cur];
+  return rate?priceEUR*rate:priceEUR;
+}
+
+/* ── APPLIQUER FILTRES ── */
+function applyFilters(){
+  var q=(document.getElementById('searchInput')||{value:''}).value.toLowerCase().trim();
+  var minP=parseFloat((document.getElementById('minPrice')||{value:''}).value)||null;
+  var maxP=parseFloat((document.getElementById('maxPrice')||{value:''}).value)||null;
+  var minY=parseInt((document.getElementById('minYear')||{value:''}).value)||null;
+  var maxY=parseInt((document.getElementById('maxYear')||{value:''}).value)||null;
+  var minH=parseFloat((document.getElementById('minHours')||{value:''}).value)||null;
+  var maxH=parseFloat((document.getElementById('maxHours')||{value:''}).value)||null;
+  var minS=parseFloat((document.getElementById('minSmoh')||{value:''}).value)||null;
+  var maxS=parseFloat((document.getElementById('maxSmoh')||{value:''}).value)||null;
+  var countryFilter=(document.getElementById('filterCountry')||{value:''}).value||'';
+  var needIFR=(document.getElementById('fIFR')||{checked:false}).checked;
+  var needRVSM=(document.getElementById('fRVSM')||{checked:false}).checked;
+  var needADSB=(document.getElementById('fADSB')||{checked:false}).checked;
+  var sort=(document.getElementById('sortSel')||{value:'recent'}).value;
+
+  /* Convertir budget en EUR pour comparaison uniforme */
+  var minPeur=minP?toEUR(minP,_budgetCur):null;
+  var maxPeur=maxP?toEUR(maxP,_budgetCur):null;
+
+  /* Code ISO du pays sélectionné */
+  var countryCode=COUNTRY_CODE[countryFilter]||countryFilter;
+
+  FILTERED=ALL.filter(function(l){
+    if(selCat&&l.category!==selCat)return false;
+    if(q){var t=(l.title+' '+l.make+' '+l.model+' '+l.description+' '+l.airport).toLowerCase();if(!t.includes(q))return false;}
+    var priceEUR=toEUR(l.price,l.currency);
+    if(minPeur&&priceEUR&&priceEUR<minPeur)return false;
+    if(maxPeur&&priceEUR&&priceEUR>maxPeur)return false;
+    if(minY&&l.year&&Number(l.year)<minY)return false;
+    if(maxY&&l.year&&Number(l.year)>maxY)return false;
+    if(minH&&l.hours&&Number(l.hours)<minH)return false;
+    if(maxH&&l.hours&&Number(l.hours)>maxH)return false;
+    if(minS&&l.smoh&&Number(l.smoh)<minS)return false;
+    if(maxS&&l.smoh&&Number(l.smoh)>maxS)return false;
+    /* Filtre pays : on compare le code ISO stocké dans Supabase */
+    if(countryCode&&l.country&&l.country.toUpperCase()!==countryCode.toUpperCase())return false;
+    if(needIFR&&!l.ifr)return false;
+    if(needRVSM&&!l.rvsm)return false;
+    if(needADSB&&!l.adsb)return false;
+    return true;
+  });
+
+  /* Tri */
+  FILTERED.sort(function(a,b){
+    if(sort==='price_asc'){var pa=toEUR(a.price,a.currency)||Infinity;var pb=toEUR(b.price,b.currency)||Infinity;return pa-pb;}
+    if(sort==='price_desc'){var pa2=toEUR(a.price,a.currency)||0;var pb2=toEUR(b.price,b.currency)||0;return pb2-pa2;}
+    if(sort==='year_desc'){return(Number(b.year)||0)-(Number(a.year)||0);}
+    if(sort==='hours_asc'){return(Number(a.hours)||Infinity)-(Number(b.hours)||Infinity);}
+    /* recent : par submitted_at décroissant */
+    return new Date(b.submitted_at||0)-new Date(a.submitted_at||0);
+  });
+
+  curPage=1;
+  renderPage();
+}
+
+/* ── RENDU GRILLE ── */
+function renderPage(){
+  var grid=document.getElementById('cardsGrid');
+  var rc=document.getElementById('resultCount');
+  if(!grid)return;
+
+  var total=FILTERED.length;
+  var pages=Math.ceil(total/PER_PAGE)||1;
+  if(curPage>pages)curPage=pages;
+  var start=(curPage-1)*PER_PAGE;
+  var slice=FILTERED.slice(start,start+PER_PAGE);
+
+  if(rc)rc.textContent=total+' annonce'+(total>1?'s':'');
+
+  grid.className='results-grid'+(viewMode==='list'?' list-view':'');
+
+  if(!slice.length){
+    grid.innerHTML='<div class="empty-results"><div class="er-icon">✈</div><div class="er-title">Aucun résultat</div><div class="er-sub">Essayez de modifier vos filtres ou <a href="search.html">réinitialiser la recherche</a>.</div></div>';
+    renderPagination(0,1);
+    return;
+  }
+
+  grid.innerHTML=slice.map(function(l){return renderCard(l);}).join('');
+  renderPagination(total,pages);
+}
+
+/* ── CARTE ANNONCE ── */
+function renderCard(l){
+  var sym=CAT_SYMS[_dispCur]||'€';
+  var priceEUR=toEUR(l.price,l.currency);
+  var displayPrice=priceEUR?fromEUR(priceEUR,_dispCur):null;
+  var pr=displayPrice?sym+Math.round(displayPrice).toLocaleString('fr-FR'):(l.price?'— '+sym:'—');
+  var title=esc(l.title||[l.make,l.model].filter(Boolean).join(' ')||'Sans titre');
+  var cat=CAT_LABELS[l.category]||esc(l.category||'');
+  var loc=l.airport?esc(l.airport):countryLabel(l.country);
+  var img=l.photos&&l.photos[0]
+    ?'<img src="'+esc(l.photos[0])+'?width=480&format=webp" alt="'+title+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" loading="lazy">'
+    :'<div class="rc-plane">✈</div>';
+  var fav=isFav(l.id);
+  var badges='';
+  if(l.ifr)badges+='<span class="badge-ifr" style="left:.5rem">IFR</span>';
+  if(l.rvsm)badges+='<span class="badge-rvsm" style="left:'+(l.ifr?'3.5rem':'.5rem')+'">RVSM</span>';
+  if(l.adsb)badges+='<span class="badge-adsb" style="right:.5rem">ADS-B</span>';
+  return '<div class="rc" onclick="window.location.href=\'listing.html?id='+encodeURIComponent(l.id)+'\'">'
+    +'<div class="rc-img" style="position:relative">'+img
+    +'<button class="rc-fav'+(fav?' liked':'')+'" onclick="event.stopPropagation();toggleFav(\''+l.id+'\',this)" aria-label="Favori">'+(fav?'♥':'♡')+'</button>'
+    +badges
+    +'</div>'
+    +'<div class="rc-body">'
+    +'<div class="rc-cat">'+cat+'</div>'
+    +'<div class="rc-title">'+title+'</div>'
+    +'<div class="rc-specs">'
+    +(l.year?'<span class="rc-spec">📅 '+esc(String(l.year))+'</span>':'')
+    +(l.hours?'<span class="rc-spec">⏱ '+Number(l.hours).toLocaleString('fr-FR')+'h TT</span>':'')
+    +(l.airport?'<span class="rc-spec">📍 '+esc(l.airport)+'</span>':'')
+    +'</div>'
+    +'<div class="rc-trust">Vendeur vérifié</div>'
+    +'<div class="rc-ft">'
+    +'<div class="rc-price">'+pr+'</div>'
+    +'<div class="rc-loc">'+loc+'</div>'
+    +'</div></div></div>';
+}
+
+/* ── PAGINATION ── */
+function renderPagination(total,pages){
+  var el=document.getElementById('pagination');
+  if(!el||pages<=1){if(el)el.innerHTML='';return;}
+  var h='';
+  if(curPage>1)h+='<button class="pgbtn pgbtn-prev" onclick="goPage('+( curPage-1)+')">← Préc.</button>';
+  for(var i=1;i<=pages;i++){
+    if(pages>7&&i>2&&i<pages-1&&Math.abs(i-curPage)>1){if(i===3||i===pages-2)h+='<span style="color:var(--mist2);padding:0 .4rem">…</span>';continue;}
+    h+='<button class="pgbtn'+(i===curPage?' active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
+  }
+  if(curPage<pages)h+='<button class="pgbtn pgbtn-next" onclick="goPage('+(curPage+1)+')">Suiv. →</button>';
+  el.innerHTML=h;
+}
+function goPage(n){curPage=n;renderPage();window.scrollTo({top:0,behavior:'smooth'});}
+
+/* ── SQUELETTES ── */
+function renderSkeletons(){
+  var grid=document.getElementById('cardsGrid');
+  if(!grid)return;
+  grid.className='results-grid';
+  grid.innerHTML=Array(6).fill(0).map(function(){
+    return'<div class="rc"><div class="rc-img skel"></div><div class="rc-body">'
+      +'<div style="height:8px;width:40%;margin-bottom:.7rem;border-radius:2px" class="skel"></div>'
+      +'<div style="height:12px;width:75%;margin-bottom:.5rem;border-radius:2px" class="skel"></div>'
+      +'<div style="height:8px;width:55%;border-radius:2px" class="skel"></div>'
+      +'</div></div>';
+  }).join('');
+  var rc=document.getElementById('resultCount');if(rc)rc.textContent='Chargement…';
+}
+
+/* ── VUE GRILLE / LISTE ── */
+function setView(v){
+  viewMode=v;
+  document.getElementById('gridBtn').classList.toggle('active',v==='grid');
+  document.getElementById('listBtn').classList.toggle('active',v==='list');
+  renderPage();
+}
+
+/* ── AUTH NAV ── */
+(function(){
+  var name=localStorage.getItem('a2s_user_name')||'';
+  var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
+  var tk=sessionStorage.getItem('a2s_auth_token');
+  if(loggedIn||tk){
+    var first=(name.split(' ')[0]||'U');
+    var nu=document.getElementById('navUser');
+    var av=document.getElementById('navAvatar');
+    var tt=document.querySelector('.nav-tooltip');
+    if(nu)nu.style.display='flex';
+    if(av)av.textContent=first[0].toUpperCase();
+    if(tt)tt.textContent=first+' — Mon espace →';
+  }
+})();
+
+/* ── CONVERTISSEUR DEVISE NAV ── */
+;(function(){
+  var _rate=null,_busy=false;
+  var SYMS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',PLN:'zł',AED:'د.إ'};
+  window.toggleCv=function(e){
+    e.stopPropagation();
+    var nav=document.getElementById('navCurrency');if(!nav)return;
+    var isOpen=nav.classList.toggle('open');
+    if(isOpen){
+      if(!_rate&&!_busy)window.cvFetch();
+      setTimeout(function(){document.addEventListener('click',function cl(ev){if(!nav.contains(ev.target)){nav.classList.remove('open');document.removeEventListener('click',cl);}});},0);
+    }
+  };
+  window.cvFetch=function(){
+    var f=document.getElementById('cvFrom'),t=document.getElementById('cvTo');if(!f||!t)return;
+    var from=f.value,to=t.value;
+    if(from===to){_rate=1;window.cvCompute();return;}
+    if(_busy)return;_busy=true;
+    fetch('https://api.frankfurter.app/latest?base='+from+'&symbols='+to)
+      .then(function(r){return r.json();})
+      .then(function(d){_rate=d.rates&&d.rates[to]?d.rates[to]:null;var ts=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});var lv=document.getElementById('cvLiveTime');if(lv)lv.textContent='En direct '+ts;_busy=false;window.cvCompute();})
+      .catch(function(){_busy=false;_rate=null;window.cvCompute();});
+  };
+  window.cvCompute=function(){
+    var amtEl=document.getElementById('cvAmount'),resEl=document.getElementById('cvResult'),rateEl=document.getElementById('cvRateTxt');
+    var fEl=document.getElementById('cvFrom'),tEl=document.getElementById('cvTo');
+    if(!amtEl||!resEl)return;
+    var amt=parseFloat(amtEl.value)||0,from=fEl?fEl.value:'EUR',to=tEl?tEl.value:'USD',sym=SYMS[to]||to;
+    var icon=document.getElementById('cvNavIcon');if(icon)icon.textContent=SYMS[from]||from;
+    if(_rate===null){resEl.textContent='…';if(rateEl)rateEl.innerHTML='<span>Chargement…</span>';return;}
+    var result=Math.round(amt*_rate*100)/100;
+    var fmt=amt>999?result.toLocaleString('fr-FR',{maximumFractionDigits:0}):result.toFixed(2);
+    resEl.textContent=sym+fmt;
+    if(rateEl)rateEl.innerHTML='<span>1 '+from+' = '+(Math.round(_rate*100000)/100000)+' '+to+'</span>';
+    document.querySelectorAll('.cv-qb').forEach(function(b){b.classList.toggle('on',b.textContent.trim()===to);});
+  };
+  window.cvSwap=function(){var f=document.getElementById('cvFrom'),t=document.getElementById('cvTo');if(!f||!t)return;var tmp=f.value;f.value=t.value;t.value=tmp;window.cvFetch();};
+  window.cvSetTo=function(c){var t=document.getElementById('cvTo');if(t)t.value=c;window.cvFetch();};
+})();
+
+/* ── BOOT ── */
+window.addEventListener('DOMContentLoaded',function(){
+  loadAll();
+});
 </script>
 <script src="nav.js"></script>
 </body>
