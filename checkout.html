@@ -144,7 +144,6 @@ nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;al
 .nav-tooltip{position:absolute;top:calc(100% + 8px);right:0;background:var(--card2);border:1px solid var(--border2);padding:.5rem .85rem;font-size:.72rem;color:var(--white);white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(-4px);transition:all .18s;z-index:400}
 .nav-tooltip::before{content:'';position:absolute;top:-5px;right:10px;width:8px;height:8px;background:var(--card2);border-top:1px solid var(--border2);border-left:1px solid var(--border2);transform:rotate(45deg)}
 
-/* ── CONVERTISSEUR DEVISE NAV ── */
 .nav-currency{position:relative;display:flex;align-items:center;height:64px}
 .nav-currency-btn{display:flex;align-items:center;gap:.4rem;height:64px;padding:0 .9rem;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;transition:color .2s;white-space:nowrap}
 .nav-currency-btn:hover{color:var(--white)}
@@ -177,6 +176,7 @@ nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;al
 .cv-qb{background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--mist);padding:.27rem .2rem;font-size:.61rem;font-weight:600;cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .12s;font-family:'DM Sans',sans-serif}
 .cv-qb:hover,.cv-qb.on{border-color:rgba(232,160,32,.3);color:var(--accent);background:rgba(232,160,32,.05)}
 </style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -552,109 +552,8 @@ async function handlePay(){
 
 /* ── TOAST ── */
 var _tt;
-function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},3000);}
-
-/* ── BOOT ── */
-selectPlan('aviateur');
-initStripe();
-// Pré-remplir si connecté
-(function(){
-  var tk=sessionStorage.getItem('a2s_auth_token');
-  if(!tk)return;
-  try{var p=JSON.parse(atob(tk.split('.')[1]));
-  if(p.exp*1000<Date.now())return;
-  document.getElementById('email').value=p.email||'';
-  if(p.user_metadata&&p.user_metadata.full_name){var pts=p.user_metadata.full_name.split(' ');document.getElementById('firstName').value=pts[0]||'';document.getElementById('lastName').value=pts.slice(1).join(' ')||'';}
-  }catch(e){}
-})();
-// Lire le plan depuis l'URL
-(function(){
-  var p=new URLSearchParams(location.search).get('plan');
-  if(p&&plans[p])selectPlan(p);
-})();
+function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout
 </script>
 <script src="nav.js"></script>
-
-/* ── Auth nav ── */
-(function(){
-  if(localStorage.getItem('a2s_logged_in')!=='true')return;
-  var name=localStorage.getItem('a2s_user_name')||'';
-  var first=name.split(' ')[0]||'';
-  var nu=document.getElementById('navUser');
-  var av=document.getElementById('navAvatar');
-  var tt=document.querySelector('.nav-tooltip');
-  if(nu)nu.style.display='flex';
-  if(av)av.textContent=(first[0]||'U').toUpperCase();
-  if(tt&&first)tt.textContent=first+' — Mon espace →';
-})();
-<script>
-/* ── CONVERTISSEUR DEVISE NAV ── */
-;(function(){
-  var _rate=null,_busy=false,_from='EUR',_to='USD';
-  var SYMS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',PLN:'zł',AED:'د.إ'};
-
-  window.toggleCv=function(e){
-    e.stopPropagation();
-    var nav=document.getElementById('navCurrency');
-    if(!nav)return;
-    var isOpen=nav.classList.toggle('open');
-    if(isOpen){
-      if(!_rate&&!_busy)window.cvFetch();
-      setTimeout(function(){
-        document.addEventListener('click',function cl(ev){
-          if(!nav.contains(ev.target)){nav.classList.remove('open');document.removeEventListener('click',cl);}
-        });
-      },0);
-    }
-  };
-
-  window.cvFetch=function(){
-    var f=document.getElementById('cvFrom');
-    var t=document.getElementById('cvTo');
-    if(!f||!t)return;
-    _from=f.value;_to=t.value;
-    if(_from===_to){_rate=1;window.cvCompute();return;}
-    if(_busy)return;
-    _busy=true;
-    fetch('https://api.frankfurter.app/latest?base='+_from+'&symbols='+_to)
-      .then(function(r){return r.json();})
-      .then(function(d){
-        _rate=d.rates&&d.rates[_to]?d.rates[_to]:null;
-        var ts=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-        var lv=document.getElementById('cvLiveTime');if(lv)lv.textContent='En direct '+ts;
-        _busy=false;window.cvCompute();
-      }).catch(function(){_busy=false;_rate=null;window.cvCompute();});
-  };
-
-  window.cvCompute=function(){
-    var amtEl=document.getElementById('cvAmount');
-    var resEl=document.getElementById('cvResult');
-    var rateEl=document.getElementById('cvRateTxt');
-    var fEl=document.getElementById('cvFrom');
-    var tEl=document.getElementById('cvTo');
-    if(!amtEl||!resEl)return;
-    var amt=parseFloat(amtEl.value)||0;
-    var from=fEl?fEl.value:'EUR';
-    var to=tEl?tEl.value:'USD';
-    var sym=SYMS[to]||to;
-    var icon=document.getElementById('cvNavIcon');if(icon)icon.textContent=SYMS[from]||from;
-    if(_rate===null){resEl.textContent='…';if(rateEl)rateEl.innerHTML='<span>Chargement…</span>';return;}
-    var result=Math.round(amt*_rate*100)/100;
-    var fmt=amt>999?result.toLocaleString('fr-FR',{maximumFractionDigits:0}):result.toFixed(2);
-    resEl.textContent=sym+fmt;
-    if(rateEl)rateEl.innerHTML='<span>1 '+from+' = '+(Math.round(_rate*100000)/100000)+' '+to+'</span>';
-    document.querySelectorAll('.cv-qb').forEach(function(b){b.classList.toggle('on',b.textContent.trim()===to);});
-  };
-
-  window.cvSwap=function(){
-    var f=document.getElementById('cvFrom'),t=document.getElementById('cvTo');
-    if(!f||!t)return;
-    var tmp=f.value;f.value=t.value;t.value=tmp;window.cvFetch();
-  };
-  window.cvSetTo=function(c){
-    var t=document.getElementById('cvTo');if(t)t.value=c;window.cvFetch();
-  };
-})();
-</script>
 </body>
 </html>
