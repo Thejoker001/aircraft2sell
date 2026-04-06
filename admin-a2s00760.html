@@ -229,7 +229,6 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
   .g2,.g3,.qa-grid,.mfg2,.mfg3{grid-template-columns:1fr}
 }
 </style>
-<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -671,7 +670,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
 var SK         = 'a2s_admin_session';
 var SB_URL     = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-var SB_SERVICE = '/* MOVE TO EDGE FUNCTION - never expose service_role client-side */'; // bypasse les RLS
+var SB_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDIyMjA3MCwiZXhwIjoyMDg5Nzk4MDcwfQ.Vq4C7c-bY9T9xZQrmFlHofNkjGVD3wuPl0pghOs1YME'; // bypasse les RLS
 
 /* ── ANTI-BRUTEFORCE ── */
 var _loginAttempts=0,_loginBlocked=false,_loginBlockUntil=0;
@@ -756,7 +755,9 @@ function showTab(id,navEl){
   var pt=sel('topbarTitle');if(pt&&TITLES[id])pt.innerHTML=TITLES[id];
   CURRENT_TAB=id;
   if((id==='users'||id==='subs'||id==='mod'||id==='list')&&_allUsers.length===0&&_allListings.length===0){
-    refreshAll();return;
+    refreshAll().then(function(){
+      if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='stats')renderStats();
+    });return;
   }
   if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='stats')renderStats();
 }
@@ -807,7 +808,7 @@ function updateDashboard(){
   var duEl=sel('d-users-list');
   if(duEl){
     if(!_allUsers.length){duEl.innerHTML='<div class="empty-s"><div class="es-ic">👥</div><div class="es-t">Aucun membre</div></div>';}
-    else{duEl.innerHTML='<div class="mini-list">'+_allUsers.slice(0,5).map(function(u){return'<div class="ml-item" onclick="editUser('+u.id+')">'+'<div class="ml-av">'+ini(u.name,u.email)+'</div><div class="ml-info"><div class="ml-name">'+'\'<span class="seller-link" data-email="'+esc(u.email)+'">'+esc(u.name||u.email||'--')+'</span></div><div class="ml-sub">'+esc(u.email||'')+'</div></div>'+'<div class="ml-right">'+planPill(u.plan)+'</div></div>';}).join('')+'</div>';}
+    else{duEl.innerHTML='<div class="mini-list">'+_allUsers.slice(0,5).map(function(u){return'<div class="ml-item" onclick="editUser('+u.id+')">'+'<div class="ml-av">'+ini(u.name,u.email)+'</div><div class="ml-info"><div class="ml-name">'+esc(u.name||u.email||'--')+'</div><div class="ml-sub">'+esc(u.email||'')+'</div></div>'+'<div class="ml-right">'+planPill(u.plan)+'</div></div>';}).join('')+'</div>';}
   }
 }
 
@@ -837,7 +838,7 @@ function renderList(){
   var tb=sel('list-body');if(!tb)return;
   if(!filtered.length){tb.innerHTML='<tr><td colspan="6" class="loading-row">'+(filtered.length<_allListings.length?'Aucun résultat':'Aucune annonce dans Supabase')+'</td></tr>';return;}
   tb.innerHTML=filtered.map(function(l){
-    return'<tr><td style="color:var(--white);font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ltitle(l)+'</td><td>'+'<span class="seller-link" data-email="'+esc(l.sellerEmail||'')+'">'+esc(l.sellerName||'--')+'</span></td><td style="color:var(--accent);font-family:Bebas Neue,sans-serif">'+(l.price?cur(l.currency)+Number(l.price).toLocaleString():'--')+'</td><td>'+statusPill(l.status)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(l.submittedAt)+'</td><td><div class="acts">'+(l.status==='pending'?'<button class="act ap" onclick="approve('+l.id+')">✓</button>':'')+(l.status==='live'?'<button class="act rj" onclick="doReject('+l.id+')">⊘</button>':'')+'<button class="act" onclick="viewListing('+l.id+')">🔍</button><button class="act" onclick="editListing('+l.id+')">✏</button><button class="act rj" onclick="delListing('+l.id+')">✕</button></div></td></tr>';
+    return'<tr><td style="color:var(--white);font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ltitle(l)+'</td><td>'+'<span style="cursor:pointer;color:var(--dim)" onclick="viewSellerListings(\''+esc(l.sellerEmail||'')+'\')">'+esc(l.sellerName||'--')+'</span></td><td style="color:var(--accent);font-family:Bebas Neue,sans-serif">'+(l.price?cur(l.currency)+Number(l.price).toLocaleString():'--')+'</td><td>'+statusPill(l.status)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(l.submittedAt)+'</td><td><div class="acts">'+(l.status==='pending'?'<button class="act ap" onclick="approve('+l.id+')">✓</button>':'')+(l.status==='live'?'<button class="act rj" onclick="doReject('+l.id+')">⊘</button>':'')+'<button class="act" onclick="viewListing('+l.id+')">🔍</button><button class="act" onclick="editListing('+l.id+')">✏</button><button class="act rj" onclick="delListing('+l.id+')">✕</button></div></td></tr>';
   }).join('');
 }
 
@@ -849,7 +850,7 @@ function filterUsers(){
   var tb=sel('users-body');if(!tb)return;
   if(!filtered.length){tb.innerHTML='<tr><td colspan="6" class="loading-row">Aucun résultat</td></tr>';return;}
   tb.innerHTML=filtered.map(function(u,i){
-    return'<tr><td style="color:var(--mist2);font-size:.65rem">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--white)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings(this.dataset.email)" data-email="'+esc(u.email)+'" title="Voir les annonces">📋</button><button class="act" onclick="editUser('+u.id+')">✏ Modifier</button><button class="act rj" onclick="delUser('+u.id+')">✕</button></div></td></tr>';
+    return'<tr><td style="color:var(--mist2);font-size:.65rem">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--white)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings(\''+esc(u.email||'')+'\');" title="Voir les annonces">📋</button><button class="act" onclick="editUser('+u.id+')">✏ Modifier</button><button class="act rj" onclick="delUser('+u.id+')">✕</button></div></td></tr>';
   }).join('');
 }
 
@@ -873,7 +874,7 @@ async function deleteAllListings(){try{await sb('DELETE','listings','id=gt.0');a
 function viewSellerListings(email){
   if(!email)return;
   // Basculer sur l'onglet Annonces
-  switchTab('list');
+  showTab('list',sel('sn-list'));
   // Attendre que l'onglet soit rendu puis filtrer par email vendeur
   setTimeout(function(){
     var q=sel('ls-q');
