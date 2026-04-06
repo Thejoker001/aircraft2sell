@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Aircraft2Sell — Détail annonce</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -337,6 +340,19 @@ function render(l){
   var loc=l.airport||(l.country?l.country:'—');
 
   document.title='Aircraft2Sell — '+esc(title);
+  // Mise à jour des meta OG dynamiques pour le partage
+  var setMeta = function(p, v) {
+    var el = document.querySelector('meta[property="'+p+'"]') || document.querySelector('meta[name="'+p+'"]');
+    if (!el) { el = document.createElement('meta'); el.setAttribute('property', p); document.head.appendChild(el); }
+    el.setAttribute('content', v);
+  };
+  setMeta('og:title', title + ' — Aircraft2Sell');
+  setMeta('og:description', 'À vendre : ' + title + (pr ? ' — ' + pr : '') + (loc ? ' · ' + loc : '') + '. Marketplace aéronautique européenne sans commission.');
+  setMeta('og:url', 'https://aircraft2sell.eu/listing.html?id=' + (l.id || ''));
+  setMeta('og:type', 'product');
+  var canon = document.querySelector('link[rel="canonical"]');
+  if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.appendChild(canon); }
+  canon.href = 'https://aircraft2sell.eu/listing.html?id=' + (l.id || '');
 
   // Breadcrumb
   document.getElementById('bcTitle').className='';
@@ -467,14 +483,14 @@ load();
 
 /* ══════════════════════════════════════════════════════
    BREVO — Emails transactionnels Aircraft2Sell
-   Remplacer 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 par votre clé API Brevo
+   Remplacer /* BREVO_API_KEY - utiliser Edge Function en production */ par votre clé API Brevo
    Paramètres → Clés API → Créer une clé (gratuit)
    ══════════════════════════════════════════════════════ */
-var BREVO_KEY = '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';
+var BREVO_KEY = ''; /* TODO: remplacer par ta clé Brevo — ne jamais l'exposer en production, utiliser l'Edge Function send-contact-email à la place */
 var BREVO_SENDER = {name:'Aircraft2Sell', email:'contact.aircraft2sell@gmail.com'};
 
 async function sendBrevoEmail(to, subject, htmlContent, replyTo) {
-  if (!BREVO_KEY || BREVO_KEY === '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') return false;
+  if (!BREVO_KEY || BREVO_KEY === '/* BREVO_API_KEY - utiliser Edge Function en production */') return false;
   try {
     var payload = {
       sender: BREVO_SENDER,
@@ -511,10 +527,10 @@ function emailWelcome(prenom, email) {
     <table cellpadding="0" cellspacing="0"><tr><td style="background:#e8a020;padding:0">
       <a href="https://aircraft2sell.eu/post-listing.html" style="display:block;padding:14px 32px;font-family:"Bebas Neue",Georgia,serif;font-size:16px;letter-spacing:.1em;color:#030610;text-decoration:none">DÉPOSER MA PREMIÈRE ANNONCE</a>
     </td></tr></table>
-    <p style="margin:24px 0 0;color:#3d5468;font-size:12px">Vous recevez cet email car vous venez de créer un compte sur aircraft2sell.com</p>
+    <p style="margin:24px 0 0;color:#3d5468;font-size:12px">Vous recevez cet email car vous venez de créer un compte sur aircraft2sell.eu</p>
   </td></tr>
   <tr><td style="padding:16px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610">
-    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.com" style="color:#e8a020;text-decoration:none">aircraft2sell.com</a></p>
+    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p>
   </td></tr>
 </table></td></tr></table>
 <!-- LIGHTBOX -->
@@ -623,7 +639,7 @@ function emailNouveauMessage(vendeurEmail, vendeurPrenom, acheteurNom, acheteurE
     </td></tr></table>
   </td></tr>
   <tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610">
-    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.com" style="color:#e8a020;text-decoration:none">aircraft2sell.com</a></p>
+    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p>
   </td></tr>
 </table></td></tr></table><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
 
@@ -655,7 +671,7 @@ function emailConfirmationAcheteur(acheteurEmail, acheteurNom, annonceTitle, ven
     </td></tr></table>
   </td></tr>
   <tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610">
-    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.com" style="color:#e8a020;text-decoration:none">aircraft2sell.com</a></p>
+    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p>
   </td></tr>
 </table></td></tr></table>
 
@@ -691,7 +707,7 @@ function emailAnnonceApprouvee(vendeurEmail, vendeurPrenom, annonceTitle, listin
     </td></tr></table>
   </td></tr>
   <tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610">
-    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.com" style="color:#e8a020;text-decoration:none">aircraft2sell.com</a></p>
+    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p>
   </td></tr>
 </table></td></tr></table>
 
@@ -725,9 +741,10 @@ function emailAnnonceRejetee(vendeurEmail, vendeurPrenom, annonceTitle, motif) {
     </td></tr></table>
   </td></tr>
   <tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610">
-    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.com" style="color:#e8a020;text-decoration:none">aircraft2sell.com</a></p>
+    <p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell · <a href="https://aircraft2sell.eu" style="color:#e8a020;text-decoration:none">aircraft2sell.eu</a></p>
   </td></tr>
 </table></td></tr></table>
 
+<script src="rgpd-consent.js" defer></script>
 <script src="nav.js"></script>
 </body></ht

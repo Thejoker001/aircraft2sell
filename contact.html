@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Aircraft2Sell — Contact</title>
 <meta name="description" content="Contactez l'équipe Aircraft2Sell — support, partenariats, presse.">
@@ -387,11 +390,23 @@ async function submitForm(){
   if(!email.includes('@')){showAlert('Adresse email invalide.','err');document.getElementById('fEmail').classList.add('err');return;}
   var btn=document.getElementById('submitBtn');
   btn.classList.add('loading');btn.disabled=true;
-  await new Promise(function(r){setTimeout(r,1400);});
-  btn.classList.remove('loading');
-  document.getElementById('formContent').style.display='none';
-  document.getElementById('formSuccess').style.display='block';
-  showToast('✅ Message envoyé !');
+  try {
+    var res = await fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/send-contact-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstName: first, lastName: last, email: email, subject: subject, message: msg })
+    });
+    var data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Erreur serveur');
+    btn.classList.remove('loading');
+    document.getElementById('formContent').style.display='none';
+    document.getElementById('formSuccess').style.display='block';
+    showToast('✅ Message envoyé !');
+  } catch(err) {
+    btn.classList.remove('loading');
+    btn.disabled=false;
+    showAlert('Erreur lors de l\'envoi : ' + err.message + '. Réessayez ou contactez-nous directement par email.', 'err');
+  }
 }
 
 function resetForm(){
@@ -415,5 +430,6 @@ function toggleFaq(item){var wasOpen=item.classList.contains('open');document.qu
 var
 <script src="nav.js"></script>
 
+<script src="rgpd-consent.js" defer></script>
 </body>
 </html>
