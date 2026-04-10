@@ -328,7 +328,7 @@ textarea.form-input{resize:vertical;min-height:130px;line-height:1.65}
       <div class="sec-sub">Informations de base pour identifier votre appareil.</div>
       <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">Catégorie <span class="req">*</span></label>
+          <label class="form-label">Catégorie <span class="req">*</span> <span style="font-size:.65rem;color:var(--mist2);font-weight:400;letter-spacing:0">(auto-détectée selon la marque)</span></label>
           <select class="form-input" id="fCategory" onchange="updatePreview()">
             <option value="">— Sélectionner —</option>
             <option value="light">Avion léger</option>
@@ -730,7 +730,7 @@ async function submitListing(){
     category:document.getElementById('fCategory').value,
     airport:document.getElementById('fAirport').value.toUpperCase(),
     description:document.getElementById('fDesc').value,
-    status:'pending',
+    status:'live',
     submitted_at:now,
     seller_name:sellerName,
     seller_email:sellerEmail,
@@ -823,7 +823,7 @@ async function submitListing(){
     category:sbListing.category,
     airport:sbListing.airport,
     description:sbListing.description,
-    status:'pending',
+    status:'live',
     submittedAt:now,
     sellerName:sellerName,
     sellerEmail:sellerEmail,
@@ -905,6 +905,17 @@ function showToast(msg){var el=document.getElementById('toast');el.textContent=m
       }
       if(customWrap)customWrap.classList.remove('show');
       var entry=DB[make];
+      /* ── AUTO-CATÉGORIE depuis la marque ── */
+      if(entry&&entry.cat){
+        var catSel=document.getElementById('fCategory');
+        if(catSel&&(!catSel.value||catSel.value==='')){
+          catSel.value=entry.cat;
+          catSel.style.transition='border-color .3s';
+          catSel.style.borderColor='var(--accent)';
+          setTimeout(function(){catSel.style.borderColor='';},1800);
+          updatePreview();
+        }
+      }
       var models=entry?entry.models:[];
       var mopts='<option value="">— Modèle —</option>';
       for(var j=0;j<models.length;j++)mopts+='<option value="'+models[j]+'">'+models[j]+'</option>';
