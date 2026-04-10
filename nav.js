@@ -78,8 +78,8 @@ window.A2SFavs = (function(){
     s.id = 'a2s-nav-css';
     s.textContent = [
       /* Nav base */
-      'nav#mainNav{position:fixed;top:0;left:0;right:0;z-index:500;height:64px;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;background:rgba(3,6,16,.8);backdrop-filter:blur(28px) saturate(1.4);border-bottom:1px solid rgba(180,200,230,.08);transition:background .3s}',
-      'nav#mainNav.scrolled{background:rgba(3,6,16,.97)}',
+      'nav#mainNav{position:fixed;top:0;left:0;right:0;z-index:500;height:64px;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;background:#0a1428;backdrop-filter:blur(28px) saturate(1.4);border-bottom:2px solid rgba(232,160,32,.35);box-shadow:0 2px 24px rgba(0,0,0,.5);transition:background .3s}',
+      'nav#mainNav.scrolled{background:#03060f;border-bottom-color:rgba(232,160,32,.25)}',
       /* Logo */
       'nav#mainNav .logo{font-family:"Bebas Neue",sans-serif;font-size:1.75rem;letter-spacing:.12em;color:#edf2f8;text-decoration:none;display:flex;align-items:center;gap:2px;flex-shrink:0}',
       'nav#mainNav .logo span{color:#e8a020}',
@@ -159,7 +159,7 @@ window.A2SFavs = (function(){
   function buildNavHTML(){
     return [
       '<nav id="mainNav">',
-        '<a href="homepage.html" class="logo">Aircraft2<span>Sell</span></a>',
+        '<a href="index.html" class="logo">Aircraft2<span>Sell</span></a>',
         '<ul class="nav-links">',
           '<li><a href="search.html">Annonces</a></li>',
           '<li><a href="search.html?cat=light">Avions</a></li>',
@@ -306,7 +306,7 @@ window.A2SFavs = (function(){
     var _rates = {EUR:1};
     var _busy  = false;
     var SYMS   = {EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',PLN:'zł',AED:'AED'};
-    var FALLBACK = {USD:1.0812,GBP:0.8563,CHF:0.9601,CAD:1.4721,AUD:1.6534,JPY:161.84,SEK:11.12,NOK:11.52,DKK:7.461,PLN:4.272,AED:3.971};
+    var FALLBACK = {USD:1.082,GBP:0.856,CHF:0.937,CAD:1.559,AUD:1.746,JPY:162.5,SEK:11.28,NOK:11.62,DKK:7.461,PLN:4.256,AED:3.972};
 
     var elToggle = document.getElementById('toggleCvBtn');
     var elNav    = document.getElementById('navCurrency');
@@ -362,8 +362,8 @@ window.A2SFavs = (function(){
       _busy = true;
       if(elLive) elLive.textContent = 'Chargement…';
       var urls = [
-        'https://api.frankfurter.dev/v2/rates?base=EUR',
-        'https://api.frankfurter.app/latest?base=EUR'
+        'https://open.er-api.com/v6/latest/EUR',
+        'https://api.exchangerate-api.com/v4/latest/EUR'
       ];
       var tried = 0;
       function tryNext(){
@@ -490,7 +490,7 @@ window.A2SFavs = (function(){
       localStorage.removeItem(KEY_EMAIL);
       localStorage.removeItem(KEY_PLAN);
       updateNav();
-      window.location.href = 'homepage.html';
+      window.location.href = 'index.html';
     },
     requireLogin: function(e, dest){
       if(e) e.preventDefault();

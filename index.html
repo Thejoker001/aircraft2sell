@@ -530,8 +530,9 @@ async function sbGet(t,p){
 
 /* ── NAV ─── */
 window.addEventListener('scroll',function(){
-  document.getElementById('mainNav').classList.toggle('scrolled',window.scrollY>40);
-});
+  var nav=document.getElementById('mainNav');
+  if(nav) nav.classList.toggle('scrolled',window.scrollY>40);
+},{passive:true});
 
 /* ── MOBILE MENU ─── */
 function toggleMenu(){
@@ -567,28 +568,22 @@ function renderCard(l){
   var pn=l.price&&!isNaN(Number(l.price))?Number(l.price):null;
   var pr=pn?sym+pn.toLocaleString('fr-FR'):(l.price||'—');
   var title=esc(l.title||[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Sans titre');
-  var cat={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'}[l.category]||esc(l.category||'');
+  var CAT_LABELS={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
+  var CAT_ICONS={light:'🛩',jet:'✈️',turbo:'🌀',heli:'🚁',ulm:'🪂',airliner:'🛫'};
+  var cat=CAT_LABELS[l.category]||esc(l.category||'');
+  var icon=CAT_ICONS[l.category]||'✈';
   var loc=esc(l.airport||l.country||'—');
+  var photos=l.photos||(l.photo?[l.photo]:[]);
+  var imgHtml=(photos&&photos.length&&photos[0])
+    ?'<img src="'+photos[0]+'?width=600&format=webp" alt="'+title+'" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" loading="lazy" onerror="this.style.display=\'none\'">'
+    :'<div style="font-size:3rem;opacity:.12;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)">'+icon+'</div>';
   var div=document.createElement('div');
   div.className='card';
   div.onclick=function(){openModal(l);};
   div.innerHTML=
-    '<div class="card-img">'
-    +'<div class="card-plane">✈</div>'
-    +'<button class="card-fav" onclick="event.stopPropagation();toggleFav(this)" aria-label="Favori">♡</button>'
-    +'</div>'
-    +'<div class="card-body">'
-    +'<div class="card-cat">'+cat+'</div>'
-    +'<div class="card-title">'+title+'</div>'
-    +'<div class="card-specs">'+(l.year?'<span class="card-spec">'+esc(l.year)+'</span>':'')+(l.hours?'<span class="card-spec">'+esc(l.hours)+'h TT</span>':'')+'</div>'
-    +'<div class="card-trust">Vendeur vérifié</div>'
-    +'<div class="card-footer">'
-    +'<div><div class="card-price">'+pr+'</div><div class="card-price-sub">Prix net vendeur</div></div>'
-    +'<div class="card-loc">📍 '+loc+'</div>'
-    +'</div></div>';
+    '<div class="card-img" style="position:relative;overflow:hidden">'    +imgHtml    +'<button class="card-fav" onclick="event.stopPropagation();toggleFav(this)" aria-label="Favori">♡</button>'    +(l.status==='pending'?'<div style="position:absolute;top:8px;left:8px;background:rgba(122,147,170,.85);padding:2px 8px;font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff">En attente</div>':'')    +'</div>'    +'<div class="card-body">'    +'<div class="card-cat"><span style="margin-right:.3rem">'+icon+'</span>'+cat+'</div>'    +'<div class="card-title">'+title+'</div>'    +'<div class="card-specs">'+(l.year?'<span class="card-spec">'+esc(String(l.year))+'</span>':'')+(l.hours?'<span class="card-spec">'+esc(String(l.hours))+'h TT</span>':'')+(l.engine?'<span class="card-spec">'+esc(l.engine)+'</span>':'')+'</div>'    +'<div class="card-footer">'    +'<div><div class="card-price">'+pr+'</div><div class="card-price-sub">Prix net vendeur</div></div>'    +'<div class="card-loc">📍 '+loc+'</div>'    +'</div></div>';
   return div;
 }
-
 /* ── CHARGEMENT LISTINGS ─── */
 async function loadListings(){
   var grid=document.getElementById('listingsGrid');
@@ -608,7 +603,7 @@ async function loadListings(){
   }
 
   // Charger Supabase
-  var rows=await sbGet('listings','status=eq.live&order=submitted_at.desc&limit=6');
+  var rows=await sbGet('listings','status=in.(live,pending)&order=submitted_at.desc&limit=6');
   grid.innerHTML='';
   if(!rows.length){
     grid.style.background='none';
@@ -699,7 +694,13 @@ var _tt;
 function showToast(msg){
   var el=document.getElementById('toast');
   el.textContent=msg;el.classList.add('show');
-  clearTimeout(_tt);_tt=setTimeout
+  clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2800);
+}
+
+/* ── INIT ─── */
+document.addEventListener('DOMContentLoaded', function(){
+  loadListings();
+});
 </script>
 
 <script>
