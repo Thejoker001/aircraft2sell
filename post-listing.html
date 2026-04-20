@@ -885,14 +885,24 @@ function showToast(msg){var el=document.getElementById('toast');el.textContent=m
       }
       if(customWrap)customWrap.classList.remove('show');
       var entry=DB[make];
-      /* ── AUTO-CATÉGORIE depuis la marque ── */
+      /* ── AUTO-CATÉGORIE depuis la marque — toujours forcée ── */
       if(entry&&entry.cat){
         var catSel=document.getElementById('fCategory');
-        if(catSel&&(!catSel.value||catSel.value==='')){
+        if(catSel){
           catSel.value=entry.cat;
           catSel.style.transition='border-color .3s';
-          catSel.style.borderColor='var(--accent)';
-          setTimeout(function(){catSel.style.borderColor='';},1800);
+          catSel.style.borderColor='var(--green)';
+          setTimeout(function(){catSel.style.borderColor='';},2000);
+          /* Afficher un badge de confirmation */
+          var catLabels={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
+          var badge=document.getElementById('fCatAutoBadge');
+          if(!badge){
+            badge=document.createElement('div');
+            badge.id='fCatAutoBadge';
+            badge.style.cssText='font-size:.62rem;color:var(--green);margin-top:.3rem;display:flex;align-items:center;gap:.3rem';
+            catSel.parentNode.appendChild(badge);
+          }
+          badge.innerHTML='✓ Catégorie auto-détectée : <strong>'+( catLabels[entry.cat]||entry.cat )+'</strong>';
           updatePreview();
         }
       }

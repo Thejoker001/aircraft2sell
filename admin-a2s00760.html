@@ -229,6 +229,8 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
   .g2,.g3,.qa-grid,.mfg2,.mfg3{grid-template-columns:1fr}
 }
 </style>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="mobile.css">
 </head>
 <body>
 
@@ -585,33 +587,121 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
 
 <!-- MODAL LISTING -->
 <div class="modal-back" id="mListing" onclick="if(event.target===this)closeM('mListing')">
-  <div class="modal">
-    <div class="modal-hd"><div class="modal-ti">Modifier <em>annonce</em></div><button class="modal-x" onclick="closeM('mListing')">✕</button></div>
+  <div class="modal" style="max-width:620px">
+    <div class="modal-hd">
+      <div class="modal-ti">Modifier <em>annonce</em></div>
+      <button class="modal-x" onclick="closeM('mListing')">✕</button>
+    </div>
     <div class="modal-bd">
       <input type="hidden" id="ml-id">
-      <div class="mfg2">
-        <div class="mfg"><label>Marque</label><input type="text" id="ml-make"></div>
-        <div class="mfg"><label>Modèle</label><input type="text" id="ml-model"></div>
+
+      <!-- Catégorie auto-détectée + badge -->
+      <div style="background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.15);padding:.6rem .9rem;margin-bottom:.9rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+        <span style="font-size:.68rem;color:var(--mist)">Catégorie détectée automatiquement depuis la marque</span>
+        <span id="ml-cat-badge" style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.2rem .6rem;background:rgba(232,160,32,.15);color:var(--accent)">—</span>
       </div>
+
+      <!-- Marque + Modèle -->
       <div class="mfg2">
-        <div class="mfg"><label>Année</label><input type="number" id="ml-year"></div>
-        <div class="mfg"><label>Prix</label><input type="number" id="ml-price"></div>
+        <div class="mfg">
+          <label>Marque</label>
+          <input type="text" id="ml-make" oninput="mlAutocat()" list="ml-makes-list" placeholder="Ex: Cessna, Robinson…">
+          <datalist id="ml-makes-list"></datalist>
+        </div>
+        <div class="mfg">
+          <label>Modèle</label>
+          <input type="text" id="ml-model" list="ml-models-list" placeholder="Ex: 172 Skyhawk…">
+          <datalist id="ml-models-list"></datalist>
+        </div>
       </div>
+
+      <!-- Année + Heures -->
       <div class="mfg2">
+        <div class="mfg"><label>Année</label><input type="number" id="ml-year" min="1920" max="2030" placeholder="2018"></div>
+        <div class="mfg"><label>Heures totales (TT)</label><input type="number" id="ml-hours" min="0" placeholder="1200"></div>
+      </div>
+
+      <!-- Prix + Devise -->
+      <div class="mfg2">
+        <div class="mfg"><label>Prix</label><input type="number" id="ml-price" min="0" placeholder="85000"></div>
+        <div class="mfg"><label>Devise</label>
+          <select id="ml-currency">
+            <option value="EUR">€ EUR</option>
+            <option value="USD">$ USD</option>
+            <option value="GBP">£ GBP</option>
+            <option value="CHF">Fr CHF</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Aéroport + Pays -->
+      <div class="mfg2">
+        <div class="mfg"><label>Code OACI / Aéroport</label><input type="text" id="ml-airport" placeholder="LFPG" style="text-transform:uppercase"></div>
+        <div class="mfg"><label>Pays</label>
+          <select id="ml-country">
+            <option value="">— Sélectionner —</option>
+            <option value="FR">🇫🇷 France</option>
+            <option value="DE">🇩🇪 Allemagne</option>
+            <option value="ES">🇪🇸 Espagne</option>
+            <option value="IT">🇮🇹 Italie</option>
+            <option value="BE">🇧🇪 Belgique</option>
+            <option value="NL">🇳🇱 Pays-Bas</option>
+            <option value="CH">🇨🇭 Suisse</option>
+            <option value="GB">🇬🇧 Royaume-Uni</option>
+            <option value="PT">🇵🇹 Portugal</option>
+            <option value="AT">🇦🇹 Autriche</option>
+            <option value="LU">🇱🇺 Luxembourg</option>
+            <option value="SE">🇸🇪 Suède</option>
+            <option value="NO">🇳🇴 Norvège</option>
+            <option value="DK">🇩🇰 Danemark</option>
+            <option value="PL">🇵🇱 Pologne</option>
+            <option value="US">🇺🇸 USA</option>
+            <option value="CA">🇨🇦 Canada</option>
+            <option value="AE">🇦🇪 Émirats</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Catégorie (manuelle si besoin) + Statut -->
+      <div class="mfg2">
+        <div class="mfg">
+          <label>Catégorie <span style="color:var(--accent);font-size:.6rem">(auto depuis la marque)</span></label>
+          <select id="ml-cat">
+            <option value="light">🛩 Avion léger</option>
+            <option value="jet">✈ Jet d'affaires</option>
+            <option value="turbo">🌀 Turbopropulseur</option>
+            <option value="heli">🚁 Hélicoptère</option>
+            <option value="ulm">🪂 ULM</option>
+            <option value="airliner">🛫 Avion de ligne</option>
+          </select>
+        </div>
         <div class="mfg"><label>Statut</label>
-          <select id="ml-status"><option value="pending">En attente</option><option value="live">Publiée</option><option value="rejected">Rejetée</option></select>
-        </div>
-        <div class="mfg"><label>Catégorie</label>
-          <select id="ml-cat"><option value="light">Avion léger</option><option value="jet">Jet</option><option value="turbo">Turboprop</option><option value="heli">Hélicoptère</option><option value="ulm">ULM</option></select>
+          <select id="ml-status">
+            <option value="pending">⏳ En attente</option>
+            <option value="live">✅ Publiée</option>
+            <option value="rejected">⊘ Rejetée</option>
+            <option value="sold">💰 Vendue</option>
+          </select>
         </div>
       </div>
+
+      <!-- Vendeur -->
       <div class="mfg"><label>Vendeur (email)</label><input type="text" id="ml-seller" readonly style="opacity:.5"></div>
-      <div class="mfg"><label>Description</label><textarea id="ml-desc" style="min-height:80px"></textarea></div>
+
+      <!-- Description -->
+      <div class="mfg"><label>Description</label><textarea id="ml-desc" style="min-height:100px;resize:vertical"></textarea></div>
+
+      <!-- Photos existantes -->
+      <div class="mfg" id="ml-photos-wrap" style="display:none">
+        <label>Photos <span style="color:var(--mist2);font-size:.62rem">(cliquer pour supprimer)</span></label>
+        <div id="ml-photos-grid" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem"></div>
+      </div>
+
     </div>
     <div class="modal-ft">
-      <button class="m-btn danger" onclick="delListingM()">Supprimer</button>
+      <button class="m-btn danger" onclick="delListingM()">🗑 Supprimer</button>
       <button class="m-btn" onclick="closeM('mListing')">Annuler</button>
-      <button class="m-btn primary" onclick="saveListingM()">Enregistrer</button>
+      <button class="m-btn primary" onclick="saveListingM()">💾 Enregistrer</button>
     </div>
   </div>
 </div>
@@ -670,7 +760,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
 var SK         = 'a2s_admin_session';
 var SB_URL     = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-var SB_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDIyMjA3MCwiZXhwIjoyMDg5Nzk4MDcwfQ.Vq4C7c-bY9T9xZQrmFlHofNkjGVD3wuPl0pghOs1YME'; // bypasse les RLS
+var SB_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU'; // bypasse les RLS
 
 /* ── ANTI-BRUTEFORCE ── */
 var _loginAttempts=0,_loginBlocked=false,_loginBlockUntil=0;
@@ -864,8 +954,177 @@ function renderSubs(){
 }
 
 /* ── LISTING EDIT ── */
-function editListing(id){var l=_allListings.find(function(l){return String(l.id)===String(id);});if(!l)return;sel('ml-id').value=l.id;sel('ml-make').value=l.make||'';sel('ml-model').value=l.model||'';sel('ml-year').value=l.year||'';sel('ml-price').value=l.price||'';sel('ml-status').value=l.status||'pending';sel('ml-cat').value=l.category||'light';sel('ml-seller').value=l.sellerEmail||'';sel('ml-desc').value=l.desc||'';openM('mListing');}
-async function saveListingM(){var id=sel('ml-id').value;var body={make:sel('ml-make').value,model:sel('ml-model').value,year:sel('ml-year').value,price:sel('ml-price').value,status:sel('ml-status').value,category:sel('ml-cat').value,description:sel('ml-desc').value};try{await sb('PATCH','listings','id=eq.'+id,body);closeM('mListing');await refreshAll();showToast('Annonce enregistrée');}catch(e){showToast('Erreur : '+e.message);}}
+/* ── DÉTECTION AUTOMATIQUE CATÉGORIE ── */
+var ML_CAT_MAP = {
+  /* Hélicoptères */
+  'Robinson':'heli','Bell':'heli','Airbus Helicopters (Eurocopter)':'heli',
+  'Leonardo (AgustaWestland)':'heli','Sikorsky':'heli','MD Helicopters':'heli',
+  'Guimbal':'heli','Enstrom':'heli','Schweizer':'heli',
+  /* Jets */
+  'Cessna Citation':'jet','Bombardier Learjet':'jet','Bombardier Challenger':'jet',
+  'Bombardier Global':'jet','Gulfstream':'jet','Dassault Falcon':'jet',
+  'Embraer Phenom':'jet','Embraer Legacy':'jet','Embraer Praetor':'jet',
+  'HondaJet':'jet','Pilatus PC-24':'jet','Eclipse Aerospace':'jet',
+  'Nextant Aerospace':'jet','IAI (Astra/Galaxy)':'jet','Textron Aviation':'jet',
+  /* Turboprops */
+  'Pilatus':'turbo','Daher (TBM)':'turbo','Daher Kodiak':'turbo',
+  'Socata / TBM':'turbo','Piper (Turbine)':'turbo','Cessna (Turbine)':'turbo',
+  'Beechcraft (Turbine)':'turbo','Vulcanair':'turbo','Partenavia':'turbo',
+  /* ULM */
+  'Rans':'ulm','Zenith':'ulm','Flight Design':'ulm','Ikarus':'ulm',
+  'AutoGyro':'ulm','DynAero':'ulm','Fantasy Air':'ulm','TL Ultralight':'ulm',
+  'Aeroprakt':'ulm','P&M Aviation':'ulm','Kolb':'ulm','Comco Ikarus':'ulm',
+  'Dova':'ulm','EuroFox':'ulm','Savannah':'ulm',
+  /* Avions de ligne */
+  'ATR':'airliner','Bombardier Q (Dash 8)':'airliner','Embraer ERJ':'airliner',
+  'Embraer E-Jet':'airliner','Boeing':'airliner','Airbus':'airliner',
+  'De Havilland Canada':'airliner','Fokker':'airliner','BAe / British Aerospace':'airliner',
+  /* Avions légers (défaut) */
+  'Cessna':'light','Piper':'light','Beechcraft':'light','Mooney':'light',
+  'Robin':'light','Diamond':'light','Cirrus':'light','Tecnam':'light',
+  'Grumman':'light','Mudry':'light','Extra':'light','Aquila':'light',
+  'BRM Aero':'light','Pipistrel':'light','Ultravia':'light',
+  'North American':'light','Yakovlev':'light','Aero Vodochody':'light',
+  'Zlin':'light','Autre / Other':'light'
+};
+var ML_CAT_LABELS = {
+  light:'🛩 Avion léger', jet:'✈ Jet d\'affaires', turbo:'🌀 Turboprop',
+  heli:'🚁 Hélicoptère', ulm:'🪂 ULM', airliner:'🛫 Avion de ligne'
+};
+
+function mlGetCatFromMake(make) {
+  if(!make) return null;
+  var m = make.trim();
+  // Correspondance exacte
+  if(ML_CAT_MAP[m]) return ML_CAT_MAP[m];
+  // Correspondance partielle (insensible casse)
+  var ml = m.toLowerCase();
+  for(var k in ML_CAT_MAP) {
+    if(ml.includes(k.toLowerCase()) || k.toLowerCase().includes(ml)) {
+      return ML_CAT_MAP[k];
+    }
+  }
+  return null;
+}
+
+function mlAutocat() {
+  var make = sel('ml-make').value;
+  var cat  = mlGetCatFromMake(make);
+  var badge = sel('ml-cat-badge');
+  if(cat) {
+    sel('ml-cat').value = cat;
+    if(badge) { badge.textContent = ML_CAT_LABELS[cat]||cat; badge.style.background='rgba(34,197,94,.15)'; badge.style.color='var(--green)'; }
+  } else {
+    if(badge) { badge.textContent = '— non détectée'; badge.style.background='rgba(232,160,32,.1)'; badge.style.color='var(--accent)'; }
+  }
+  // Mettre à jour la datalist modèles
+  var dl = document.getElementById('ml-models-list');
+  if(dl && typeof AIRCRAFT_DB !== 'undefined' && AIRCRAFT_DB[make]) {
+    dl.innerHTML = AIRCRAFT_DB[make].models.map(function(m){return '<option value="'+m+'">';}).join('');
+  }
+}
+
+function mlInitMakesList() {
+  var dl = document.getElementById('ml-makes-list');
+  if(!dl || typeof AIRCRAFT_DB === 'undefined') return;
+  dl.innerHTML = Object.keys(AIRCRAFT_DB).sort().map(function(m){return '<option value="'+m+'">';}).join('');
+}
+
+function editListing(id) {
+  var l = _allListings.find(function(l){ return String(l.id)===String(id); });
+  if(!l) return;
+  // Remplir tous les champs
+  sel('ml-id').value      = l.id;
+  sel('ml-make').value    = l.make||'';
+  sel('ml-model').value   = l.model||'';
+  sel('ml-year').value    = l.year||'';
+  sel('ml-hours').value   = l.hours||'';
+  sel('ml-price').value   = l.price||'';
+  sel('ml-currency').value= l.currency||'EUR';
+  sel('ml-airport').value = l.airport||'';
+  sel('ml-country').value = l.country||'';
+  sel('ml-status').value  = l.status||'pending';
+  sel('ml-seller').value  = l.sellerEmail||'';
+  sel('ml-desc').value    = l.desc||'';
+  // Catégorie : auto-détecter depuis la marque, sinon garder celle de l\'annonce
+  var autoCat = mlGetCatFromMake(l.make);
+  sel('ml-cat').value = autoCat || l.category || 'light';
+  // Badge catégorie
+  var badge = sel('ml-cat-badge');
+  var dispCat = autoCat || l.category || 'light';
+  if(badge) {
+    badge.textContent = ML_CAT_LABELS[dispCat]||dispCat;
+    badge.style.background = autoCat ? 'rgba(34,197,94,.15)' : 'rgba(232,160,32,.1)';
+    badge.style.color = autoCat ? 'var(--green)' : 'var(--accent)';
+  }
+  // Photos
+  var photos = l.photos || [];
+  var wrap = document.getElementById('ml-photos-wrap');
+  var grid = document.getElementById('ml-photos-grid');
+  if(wrap && grid) {
+    if(photos.length) {
+      wrap.style.display = '';
+      grid.innerHTML = photos.map(function(url, i) {
+        return '<div style="position:relative;width:72px;height:54px;cursor:pointer" title="Cliquer pour supprimer" onclick="mlRemovePhoto('+i+')">'
+          +'<img src="'+url+'?width=150" style="width:100%;height:100%;object-fit:cover;border:1px solid var(--border2)">'
+          +'<div style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,.8);color:#fff;font-size:.55rem;padding:1px 4px;border-radius:2px">✕</div>'
+          +'</div>';
+      }).join('');
+    } else {
+      wrap.style.display = 'none';
+      grid.innerHTML = '';
+    }
+  }
+  // Init datalist marques
+  mlInitMakesList();
+  openM('mListing');
+}
+
+function mlRemovePhoto(idx) {
+  var id = sel('ml-id').value;
+  var l  = _allListings.find(function(l){ return String(l.id)===String(id); });
+  if(!l || !l.photos) return;
+  if(!confirm('Supprimer cette photo ?')) return;
+  l.photos.splice(idx, 1);
+  // Rafraîchir le grid
+  var grid = document.getElementById('ml-photos-grid');
+  var wrap = document.getElementById('ml-photos-wrap');
+  if(grid) grid.innerHTML = l.photos.map(function(url,i){
+    return '<div style="position:relative;width:72px;height:54px;cursor:pointer" title="Cliquer pour supprimer" onclick="mlRemovePhoto('+i+')">'
+      +'<img src="'+url+'?width=150" style="width:100%;height:100%;object-fit:cover;border:1px solid var(--border2)">'
+      +'<div style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,.8);color:#fff;font-size:.55rem;padding:1px 4px;border-radius:2px">✕</div>'
+      +'</div>';
+  }).join('');
+  if(wrap) wrap.style.display = l.photos.length ? '' : 'none';
+}
+
+async function saveListingM() {
+  var id = sel('ml-id').value;
+  if(!id) return;
+  // Récupérer les photos éventuellement modifiées
+  var l = _allListings.find(function(l){ return String(l.id)===String(id); });
+  var photos = l && l.photos ? l.photos : undefined;
+  var body = {
+    make:        sel('ml-make').value.trim(),
+    model:       sel('ml-model').value.trim(),
+    year:        sel('ml-year').value,
+    hours:       sel('ml-hours').value||null,
+    price:       sel('ml-price').value,
+    currency:    sel('ml-currency').value||'EUR',
+    airport:     sel('ml-airport').value.toUpperCase().trim(),
+    country:     sel('ml-country').value,
+    status:      sel('ml-status').value,
+    category:    sel('ml-cat').value,
+    description: sel('ml-desc').value.trim(),
+  };
+  if(photos !== undefined) body.photos = photos;
+  try {
+    await sb('PATCH','listings','id=eq.'+id, body);
+    closeM('mListing');
+    await refreshAll();
+    showToast('✅ Annonce enregistrée');
+  } catch(e) { showToast('Erreur : '+e.message); }
+}
 async function delListing(id){if(!confirm('Supprimer cette annonce ?'))return;try{await sb('DELETE','listings','id=eq.'+id);await refreshAll();showToast('Annonce supprimée');}catch(e){showToast('Erreur : '+e.message);}}
 async function delListingM(){var id=sel('ml-id').value;if(!id||!confirm('Supprimer ?'))return;try{await sb('DELETE','listings','id=eq.'+id);closeM('mListing');await refreshAll();showToast('Annonce supprimée');}catch(e){showToast('Erreur : '+e.message);}}
 async function deleteAllListings(){try{await sb('DELETE','listings','id=gt.0');await refreshAll();showToast('Toutes les annonces supprimées');}catch(e){showToast('Erreur : '+e.message);}}
@@ -1065,5 +1324,6 @@ window.addEventListener('DOMContentLoaded',function(){
   }
 });
 </script>
+<script src="aircraft-db.js"></script>
 </body>
 </html>
