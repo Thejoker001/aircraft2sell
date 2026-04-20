@@ -889,8 +889,16 @@ function showTab(id,navEl){
 /* ── REFRESH ── */
 async function refreshAll(){
   setTimeout(updateSidebarBadges,800);
-  try{var rows=await sb('GET','listings','order=submitted_at.desc');_allListings=rows.map(sbToL);}
-  catch(e){console.error('listings:',e);_allListings=[];setConnStatus(false);}
+  try{
+    var rows=await sb('GET','listings','order=submitted_at.desc&limit=500');
+    _allListings=rows.map(sbToL);
+    setConnStatus(true);
+  }catch(e){
+    console.error('listings fetch error:',e);
+    _allListings=[];
+    setConnStatus(false);
+    showToast('⚠ Erreur chargement annonces : '+e.message);
+  }
   try{_allUsers=await sb('GET','users','order=registered_at.desc');setConnStatus(true);}
   catch(e){console.error('users:',e);_allUsers=[];}
   updateSidebar();updateDashboard();
