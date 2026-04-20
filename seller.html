@@ -2,6 +2,19 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta property="og:title" content="Profil vendeur — Aircraft2Sell">
+<meta property="og:description" content="Consultez le profil et les annonces de ce vendeur vérifié sur Aircraft2Sell.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.aircraft2sell.eu/seller.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Profil vendeur — Aircraft2Sell">
+<meta name="twitter:description" content="Consultez le profil et les annonces de ce vendeur vérifié sur Aircraft2Sell.">
+<meta name="twitter:image" content="https://aircraft2sell.eu/og-image.png">
+<link rel="canonical" href="https://www.aircraft2sell.eu/seller.html">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Aircraft2Sell — Profil vendeur</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -124,18 +137,41 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
 @media(max-width:900px){.page-wrap{grid-template-columns:1fr}.profile-card{position:static}}
 @media(max-width:600px){nav{padding:0 1rem}.page-wrap{padding:1.25rem}.lcard{grid-template-columns:80px 1fr auto}}
 @media(max-width:480px){.lcard{grid-template-columns:1fr}.lcard-side{border-left:none;border-top:1px solid var(--border);flex-direction:row;align-items:center}.lcard-img{display:none}}
-</style>
-</head>
-<body>
 
-<!-- NAV -->
-<nav>
-  <a href="homepage.html" class="logo">Aircraft2<span>Sell</span></a>
-  <div class="nav-right">
-    <a href="search.html" class="btn-back">← Annonces</a>
-    <a href="post-listing.html" class="btn-post">+ Déposer</a>
-  </div>
-</nav>
+/* ── AVIS ── */
+.reviews-section{}
+.review-item{padding:.6rem 0;border-bottom:1px solid var(--border)}
+.review-item:last-child{border-bottom:none}
+.review-stars{display:flex;gap:2px;margin-bottom:.25rem}
+.review-stars .rs{font-size:.8rem;color:rgba(200,220,240,.15)}
+.review-stars .rs.on{color:#f5c518}
+.review-author{font-size:.68rem;font-weight:600;color:var(--white);margin-bottom:.15rem}
+.review-date{font-size:.6rem;color:var(--mist2)}
+.review-text{font-size:.72rem;color:var(--mist);line-height:1.55;margin-top:.2rem}
+.btn-review{width:100%;background:transparent;border:1px solid var(--border2);color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.75rem;padding:.5rem;cursor:pointer;margin-top:.5rem;transition:all .2s}
+.btn-review:hover{color:var(--white);border-color:var(--border2)}
+/* Modal avis */
+.review-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);z-index:800;align-items:center;justify-content:center;padding:1.5rem}
+.review-overlay.open{display:flex}
+.review-box{background:var(--card);border:1px solid var(--border2);width:100%;max-width:440px;padding:1.5rem}
+.review-box h3{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.06em;margin-bottom:1rem}
+.star-picker{display:flex;gap:.4rem;margin-bottom:1rem}
+.sp-star{font-size:1.6rem;cursor:pointer;color:rgba(200,220,240,.15);transition:color .15s}
+.sp-star.on{color:#f5c518}
+.review-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.85rem;padding:.7rem 1rem;outline:none;resize:vertical;min-height:80px;margin-bottom:.75rem}
+.review-inp:focus{border-color:rgba(232,160,32,.4)}
+.review-inp::placeholder{color:var(--mist2)}
+.review-actions{display:flex;gap:.5rem}
+.btn-submit-review{flex:1;background:var(--accent);color:var(--deep);border:none;padding:.75rem;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.08em;cursor:pointer}
+.btn-submit-review:hover{background:var(--gold)}
+.btn-cancel-review{background:transparent;border:1px solid var(--border2);color:var(--mist);padding:.75rem 1rem;font-family:'DM Sans',sans-serif;font-size:.8rem;cursor:pointer}
+</style>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="mobile.css">
+</head>
+<body style="padding-top:64px">
+
+<!-- nav injectée par nav.js -->
 
 <!-- PAGE -->
 <div class="page-wrap">
@@ -160,6 +196,12 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
       <div class="profile-info" id="sellerInfo"></div>
       <div style="padding:.75rem 1rem;border-top:1px solid var(--border)">
         <button class="btn-contact-seller" onclick="openContact()">✉ Contacter ce vendeur</button>
+      </div>
+      <!-- Avis acheteurs -->
+      <div class="reviews-section" id="reviewsSection" style="border-top:1px solid var(--border);padding:.85rem 1rem;display:none">
+        <div style="font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mist2);margin-bottom:.65rem">Avis acheteurs</div>
+        <div id="reviewsList"></div>
+        <button class="btn-review" id="btnWriteReview" onclick="openReview()" style="display:none">✏ Laisser un avis</button>
       </div>
     </div>
   </aside>
@@ -217,7 +259,7 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
 <script>
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
-var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDIyMjA3MCwiZXhwIjoyMDg5Nzk4MDcwfQ.Vq4C7c-bY9T9xZQrmFlHofNkjGVD3wuPl0pghOs1YME';
+var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});return r.ok?await r.json():[];}catch(e){return[];}}
 
 var CAT_LABELS={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
@@ -250,6 +292,7 @@ window.addEventListener('DOMContentLoaded',async function(){
   renderProfile(user,sellerNameParam);
   renderListings(_allListings);
   updateCatTabs();
+  loadReviews(_sellerEmail);
 
   // Auth nav
   var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
@@ -399,5 +442,90 @@ var _tt;
 function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},3000);}
 </script>
 <script src="nav.js"></script>
+<script src="rgpd-consent.js" defer></script>
+
+<!-- MODAL AVIS -->
+<div class="review-overlay" id="reviewOverlay" onclick="if(event.target===this)closeReview()">
+  <div class="review-box">
+    <h3>Laisser un avis</h3>
+    <div class="star-picker" id="starPicker">
+      <span class="sp-star" onclick="setReviewStar(1)">★</span>
+      <span class="sp-star" onclick="setReviewStar(2)">★</span>
+      <span class="sp-star" onclick="setReviewStar(3)">★</span>
+      <span class="sp-star" onclick="setReviewStar(4)">★</span>
+      <span class="sp-star" onclick="setReviewStar(5)">★</span>
+    </div>
+    <textarea class="review-inp" id="reviewText" placeholder="Partagez votre expérience avec ce vendeur…"></textarea>
+    <div class="review-actions">
+      <button class="btn-cancel-review" onclick="closeReview()">Annuler</button>
+      <button class="btn-submit-review" onclick="submitReview()">Publier l'avis</button>
+    </div>
+  </div>
+</div>
+<script>
+/* ── AVIS VENDEUR ── */
+var _reviewStar = 0;
+
+function setReviewStar(n){
+  _reviewStar = n;
+  document.querySelectorAll('.sp-star').forEach(function(s,i){
+    s.classList.toggle('on', i < n);
+  });
+}
+function openReview(){
+  var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
+  if(!loggedIn){showToast('⚠ Connectez-vous pour laisser un avis');setTimeout(function(){window.location.href='login.html';},1200);return;}
+  document.getElementById('reviewText').value='';
+  _reviewStar=0;
+  document.querySelectorAll('.sp-star').forEach(function(s){s.classList.remove('on');});
+  document.getElementById('reviewOverlay').classList.add('open');
+}
+function closeReview(){
+  var el=document.getElementById('reviewOverlay');
+  if(el)el.classList.remove('open');
+}
+function submitReview(){
+  if(!_reviewStar){showToast('⚠ Sélectionnez une note');return;}
+  var text=(document.getElementById('reviewText')||{value:''}).value.trim();
+  if(!text){showToast('⚠ Écrivez un commentaire');return;}
+  var reviewerName=localStorage.getItem('a2s_user_name')||'Acheteur vérifié';
+  var review={seller_email:_sellerEmail,reviewer_name:reviewerName,rating:_reviewStar,text:text,created_at:new Date().toISOString()};
+  var key='a2s_reviews_'+btoa(_sellerEmail||'unknown').replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
+  var reviews=[];try{reviews=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){}
+  reviews.unshift(review);
+  localStorage.setItem(key,JSON.stringify(reviews.slice(0,50)));
+  closeReview();
+  showToast('✅ Avis publié !');
+  loadReviews(_sellerEmail);
+}
+function loadReviews(sellerEmail){
+  var key='a2s_reviews_'+btoa(sellerEmail||'unknown').replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
+  var reviews=[];try{reviews=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){}
+  var section=document.getElementById('reviewsSection');
+  var list=document.getElementById('reviewsList');
+  var btn=document.getElementById('btnWriteReview');
+  if(!section||!list)return;
+  section.style.display='';
+  var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
+  if(btn)btn.style.display=loggedIn?'':'none';
+  if(!reviews.length){
+    list.innerHTML='<div style="font-size:.72rem;color:var(--mist2,#3d5468);padding:.3rem 0">Aucun avis pour l'instant.</div>';
+    return;
+  }
+  var avg=reviews.reduce(function(s,r){return s+r.rating;},0)/reviews.length;
+  var starsHtml=function(n){return'<span style="color:#f5c518">'+'★'.repeat(n)+'</span><span style="color:rgba(200,220,240,.15)">'+'★'.repeat(5-n)+'</span>';};
+  list.innerHTML='<div style="font-size:.75rem;margin-bottom:.6rem">'+starsHtml(Math.round(avg))+' <span style="color:var(--mist2,#3d5468)">'+avg.toFixed(1)+'/5 ('+reviews.length+' avis)</span></div>'
+    +reviews.slice(0,5).map(function(r){
+      return '<div class="review-item">'
+        +'<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.2rem">'
+        +'<span style="font-size:.8rem">'+starsHtml(r.rating)+'</span>'
+        +'<span style="font-size:.68rem;font-weight:600;color:var(--white,#edf2f8)">'+esc(r.reviewer_name)+'</span>'
+        +'</div>'
+        +'<div style="font-size:.72rem;color:var(--mist,#7a93aa);line-height:1.55">'+esc(r.text)+'</div>'
+        +'<div style="font-size:.6rem;color:var(--mist2,#3d5468);margin-top:.2rem">'+new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})+'</div>'
+        +'</div>';
+    }).join('');
+}
+</script>
 </body>
 </html>

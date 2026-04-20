@@ -138,16 +138,11 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
 </style>
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="mobile.css">
+<link rel="canonical" href="https://www.aircraft2sell.eu/listing.html">
 </head>
-<body>
+<body style="padding-top:64px">
 
-<nav>
-  <a href="homepage.html" class="logo">Aircraft2<span>Sell</span></a>
-  <div class="nav-right">
-    <a href="search.html" class="btn-back">← Retour</a>
-    <a href="login.html" class="btn-post" id="btnLogin">Connexion</a>
-  </div>
-</nav>
+<!-- nav injectée par nav.js -->
 
 <div class="listing-wrap">
   <div id="mainCol">
@@ -282,6 +277,7 @@ function render(l){
   var loc=l.airport?esc(l.airport)+(l.country?' — '+countryLabel(l.country):''):countryLabel(l.country)||'—';
 
   document.title='Aircraft2Sell — '+title;
+  injectSchema(l);
   var setMeta=function(p,v){var el=document.querySelector('meta[property="'+p+'"]')||document.querySelector('meta[name="'+p+'"]');if(!el){el=document.createElement('meta');el.setAttribute('property',p);document.head.appendChild(el);}el.setAttribute('content',v);};
   setMeta('og:title',title+' — Aircraft2Sell');
   setMeta('og:description','À vendre : '+title+(pr?' — '+pr:'')+(loc?' · '+loc:'')+'. Marketplace aéronautique européenne sans commission.');
@@ -436,6 +432,34 @@ function showToast(msg){var el=document.getElementById('toast');el.textContent=m
   if((loggedIn||tk)&&btn){btn.textContent='Mon espace';btn.href='dashboard.html';}
 })();
 
+/* ── SCHEMA.ORG Vehicle ── */
+function injectSchema(l){
+  var existing=document.getElementById('listing-schema');
+  if(existing)existing.remove();
+  var sym={EUR:'EUR',USD:'USD',GBP:'GBP',CHF:'CHF'}[l.currency||'EUR']||'EUR';
+  var schema={
+    "@context":"https://schema.org",
+    "@type":"Product",
+    "name":[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' '),
+    "description":l.description||'Aéronef à vendre sur Aircraft2Sell',
+    "url":"https://www.aircraft2sell.eu/listing.html?id="+l.id,
+    "image": l.photos&&l.photos.length?l.photos[0]:'https://www.aircraft2sell.eu/og-image.png',
+    "brand":{"@type":"Brand","name":l.make||''},
+    "offers":{
+      "@type":"Offer",
+      "price":l.price||'0',
+      "priceCurrency":sym,
+      "availability":"https://schema.org/InStock",
+      "url":"https://www.aircraft2sell.eu/listing.html?id="+l.id,
+      "seller":{"@type":"Person","name":l.seller_pseudo||l.seller_name||'Vendeur privé'}
+    }
+  };
+  var s=document.createElement('script');
+  s.type='application/ld+json';
+  s.id='listing-schema';
+  s.textContent=JSON.stringify(schema);
+  document.head.appendChild(s);
+}
 load();
 </script>
 
