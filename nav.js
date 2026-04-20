@@ -366,16 +366,22 @@ window.A2SFavs = (function(){
       /* Liste d'APIs CORS-friendly dans l'ordre de fiabilité */
       var sources = [
         {
-          url: 'https://api.frankfurter.app/latest?from=EUR',
-          parse: function(d){ return d.rates; }
-        },
-        {
           url: 'https://open.er-api.com/v6/latest/EUR',
           parse: function(d){ return d.rates; }
         },
         {
           url: 'https://api.exchangerate-api.com/v4/latest/EUR',
           parse: function(d){ return d.rates; }
+        },
+        {
+          url: 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json',
+          parse: function(d){ 
+            if(!d||!d.eur) return null;
+            var r={};
+            var map={usd:'USD',gbp:'GBP',chf:'CHF',cad:'CAD',aud:'AUD',jpy:'JPY',sek:'SEK',nok:'NOK',dkk:'DKK',pln:'PLN',aed:'AED'};
+            Object.keys(map).forEach(function(k){ if(d.eur[k]) r[map[k]]=d.eur[k]; });
+            return Object.keys(r).length ? r : null;
+          }
         }
       ];
       var tried = 0;
