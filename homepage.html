@@ -297,6 +297,7 @@ footer{background:var(--deep);border-top:1px solid var(--border);padding:4rem 2r
 .cv-qb:hover,.cv-qb.on{border-color:rgba(232,160,32,.3);color:var(--accent);background:rgba(232,160,32,.05)}
 </style>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="mobile.css">
 </head>
 <body>
 
@@ -372,6 +373,16 @@ footer{background:var(--deep);border-top:1px solid var(--border);padding:4rem 2r
   <div class="section-head">
     <h2 class="section-title">Dernières <em>annonces</em></h2>
     <a href="search.html" class="see-all">Voir toutes les annonces →</a>
+  </div>
+  <!-- Pills de filtre catégorie -->
+  <div class="cat-pills" id="catPills" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.5rem">
+    <button class="qpill active" onclick="filterListings(this,'')" data-cat="">Toutes</button>
+    <button class="qpill" onclick="filterListings(this,'light')" data-cat="light">🛩 Avions légers</button>
+    <button class="qpill" onclick="filterListings(this,'jet')" data-cat="jet">✈ Jets</button>
+    <button class="qpill" onclick="filterListings(this,'turbo')" data-cat="turbo">🌀 Turboprops</button>
+    <button class="qpill" onclick="filterListings(this,'heli')" data-cat="heli">🚁 Hélicoptères</button>
+    <button class="qpill" onclick="filterListings(this,'ulm')" data-cat="ulm">🪂 ULM</button>
+    <button class="qpill" onclick="filterListings(this,'airliner')" data-cat="airliner">🛫 Avions de ligne</button>
   </div>
   <div class="listings-grid" id="listingsGrid"></div>
   <div style="text-align:center;margin-top:2rem">
@@ -543,13 +554,15 @@ async function sbGet(t,p){
 
 /* ── NAV ─── */
 window.addEventListener('scroll',function(){
-  document.getElementById('mainNav').classList.toggle('scrolled',window.scrollY>40);
+  var nav=document.getElementById('mainNav');
+  if(nav) nav.classList.toggle('scrolled',window.scrollY>40);
 });
 
 /* ── MOBILE MENU ─── */
 function toggleMenu(){
   var m=document.getElementById('mobileMenu');
   var b=document.getElementById('burger');
+  if(!m||!b) return;
   var open=m.classList.toggle('open');
   b.classList.toggle('open',open);
   document.body.style.overflow=open?'hidden':'';
@@ -603,6 +616,23 @@ function renderCard(l){
 }
 
 /* ── CHARGEMENT LISTINGS ─── */
+var _allLiveListings=[];
+
+function filterListings(btn,cat){
+  document.querySelectorAll('.cat-pills .qpill').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  var grid=document.getElementById('listingsGrid');
+  var filtered=cat?_allLiveListings.filter(function(l){return l.category===cat;}):_allLiveListings;
+  grid.innerHTML='';
+  if(!filtered.length){
+    grid.style.background='none';grid.style.border='none';
+    grid.innerHTML='<div class="empty-state"><div class="empty-icon">✈</div><div class="empty-title">Aucune annonce dans cette catégorie</div><p class="empty-sub">Voir <a href="search.html?cat='+cat+'">toutes les annonces</a>.</p></div>';
+    return;
+  }
+  grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)';
+  filtered.slice(0,6).forEach(function(l){grid.appendChild(renderCard(l));});
+}
+
 async function loadListings(){
   var grid=document.getElementById('listingsGrid');
   // Skeletons
@@ -620,19 +650,26 @@ async function loadListings(){
     grid.appendChild(sk);
   }
 
-  // Charger Supabase
-  var rows=await sbGet('listings','status=eq.live&order=submitted_at.desc&limit=6');
+  // Charger toutes les annonces live (pas de limite — on filtre côté client)
+  var rows=await sbGet('listings','status=eq.live&order=submitted_at.desc&limit=50');
+  _allLiveListings=rows.map(function(r){
+    return {id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'',currency:r.currency||'EUR',category:r.category||'',airport:r.airport||'',country:r.country||'',hours:r.hours||'',photos:r.photos||[],title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' '),desc:r.description||''};
+  });
   grid.innerHTML='';
-  if(!rows.length){
+  if(!_allLiveListings.length){
     grid.style.background='none';
     grid.style.border='none';
     grid.innerHTML='<div class="empty-state"><div class="empty-icon">✈</div><div class="empty-title">Aucune annonce publiée</div><p class="empty-sub">Soyez le premier à <a href="post-listing.html">déposer une annonce</a>.</p></div>';
     animCount('sn1',0); animCount('sn2',0); animCount('sn4',0);
     return;
   }
-  rows.forEach(function(r){
-    var l={id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'',currency:r.currency||'EUR',category:r.category||'',airport:r.airport||'',country:r.country||'',hours:r.hours||'',title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' '),desc:r.description||''};
-    grid.appendChild(renderCard(l));
+  // Afficher les 6 premières (toutes catégories)
+  _allLiveListings.slice(0,6).forEach(function(l){grid.appendChild(renderCard(l));});
+  // Masquer les pills pour les catégories sans annonces
+  var cats={};_allLiveListings.forEach(function(l){cats[l.category]=true;});
+  document.querySelectorAll('.cat-pills .qpill[data-cat]').forEach(function(b){
+    var cat=b.dataset.cat;
+    if(cat&&!cats[cat])b.style.display='none';
   });
 
   // Compteurs
@@ -687,10 +724,10 @@ function openModal(l){
   document.getElementById('dLoc').textContent=l.airport||l.country||'—';
   document.getElementById('mDesc').textContent=l.desc||'Aucune description disponible.';
   document.getElementById('mContactBtn').onclick=function(){if(l.id)go('listing.html?id='+encodeURIComponent(l.id));};
-  document.getElementById('modal').classList.add('open');
+  var _modal=document.getElementById('modal');if(_modal)_modal.classList.add('open');
   document.body.style.overflow='hidden';
 }
-function closeModal(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';}
+function closeModal(){var _m=document.getElementById('modal');if(_m)_m.classList.remove('open');document.body.style.overflow='';}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
 
 /* ── FAVORIS ─── */
@@ -711,8 +748,10 @@ function submitAlert(){
 var _tt;
 function showToast(msg){
   var el=document.getElementById('toast');
+  if(!el)return;
   el.textContent=msg;el.classList.add('show');
-  clearTimeout(_tt);_tt=setTimeout
+  clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2800);
+}
 </script>
 
 <script>
