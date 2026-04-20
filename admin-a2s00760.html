@@ -1575,6 +1575,30 @@ function updateSidebarBadges(){
   var totalEnq=_allListings.reduce(function(s,l){return s+(l.enquiries||0);},0);
   var mb2=sel('msgs-badge');if(mb2){mb2.textContent=totalEnq||'';mb2.style.display=totalEnq?'':'none';};
 }
+
+/* ── BOOT — restauration session au chargement ── */
+window.addEventListener('DOMContentLoaded', function(){
+  var storedToken = sessionStorage.getItem(SK);
+  if(storedToken){
+    try{
+      var payload = JSON.parse(atob(storedToken.split('.')[1]));
+      if(payload.exp && payload.exp*1000 < Date.now()){
+        sessionStorage.removeItem(SK);
+        return;
+      }
+      _sbToken = storedToken;
+      sel('loginWrap').classList.add('hidden');
+      sel('app').classList.add('visible');
+      var em = sessionStorage.getItem('a2s_admin_email') || '';
+      if(em){
+        var name = em.split('@')[0];
+        sel('sbUserName').textContent = name;
+        sel('sbAvatar').textContent = name.charAt(0).toUpperCase();
+      }
+      refreshAll();
+    }catch(e){ sessionStorage.removeItem(SK); }
+  }
+});
 </script>
 </body>
 </html>
