@@ -185,6 +185,8 @@ nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;al
 .mobile-menu a:hover{color:var(--accent)}
 .mm-cta{margin-top:2rem;background:var(--accent);color:var(--deep);text-align:center;padding:1rem;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.1em;text-decoration:none;display:block}
 </style>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="mobile.css">
 <body>
 
 <!-- NAV -->
@@ -393,7 +395,7 @@ nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;al
 <script>
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
-var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDIyMjA3MCwiZXhwIjoyMDg5Nzk4MDcwfQ.Vq4C7c-bY9T9xZQrmFlHofNkjGVD3wuPl0pghOs1YME';
+var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});return r.ok?await r.json():[];}catch(e){return[];}}
 
 /* ── ÉTAT GLOBAL ── */
@@ -720,50 +722,14 @@ function setView(v){
 })();
 
 /* ── CONVERTISSEUR DEVISE NAV ── */
-;(function(){
-  var _rate=null,_busy=false;
-  var SYMS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',PLN:'zł',AED:'د.إ'};
-  window.toggleCv=function(e){
-    e.stopPropagation();
-    var nav=document.getElementById('navCurrency');if(!nav)return;
-    var isOpen=nav.classList.toggle('open');
-    if(isOpen){
-      if(!_rate&&!_busy)window.cvFetch();
-      setTimeout(function(){document.addEventListener('click',function cl(ev){if(!nav.contains(ev.target)){nav.classList.remove('open');document.removeEventListener('click',cl);}});},0);
-    }
-  };
-  window.cvFetch=function(){
-    var f=document.getElementById('cvFrom'),t=document.getElementById('cvTo');if(!f||!t)return;
-    var from=f.value,to=t.value;
-    if(from===to){_rate=1;window.cvCompute();return;}
-    if(_busy)return;_busy=true;
-    fetch('https://api.frankfurter.app/latest?base='+from+'&symbols='+to)
-      .then(function(r){return r.json();})
-      .then(function(d){_rate=d.rates&&d.rates[to]?d.rates[to]:null;var ts=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});var lv=document.getElementById('cvLiveTime');if(lv)lv.textContent='En direct '+ts;_busy=false;window.cvCompute();})
-      .catch(function(){_busy=false;_rate=null;window.cvCompute();});
-  };
-  window.cvCompute=function(){
-    var amtEl=document.getElementById('cvAmount'),resEl=document.getElementById('cvResult'),rateEl=document.getElementById('cvRateTxt');
-    var fEl=document.getElementById('cvFrom'),tEl=document.getElementById('cvTo');
-    if(!amtEl||!resEl)return;
-    var amt=parseFloat(amtEl.value)||0,from=fEl?fEl.value:'EUR',to=tEl?tEl.value:'USD',sym=SYMS[to]||to;
-    var icon=document.getElementById('cvNavIcon');if(icon)icon.textContent=SYMS[from]||from;
-    if(_rate===null){resEl.textContent='…';if(rateEl)rateEl.innerHTML='<span>Chargement…</span>';return;}
-    var result=Math.round(amt*_rate*100)/100;
-    var fmt=amt>999?result.toLocaleString('fr-FR',{maximumFractionDigits:0}):result.toFixed(2);
-    resEl.textContent=sym+fmt;
-    if(rateEl)rateEl.innerHTML='<span>1 '+from+' = '+(Math.round(_rate*100000)/100000)+' '+to+'</span>';
-    document.querySelectorAll('.cv-qb').forEach(function(b){b.classList.toggle('on',b.textContent.trim()===to);});
-  };
-  window.cvSwap=function(){var f=document.getElementById('cvFrom'),t=document.getElementById('cvTo');if(!f||!t)return;var tmp=f.value;f.value=t.value;t.value=tmp;window.cvFetch();};
-  window.cvSetTo=function(c){var t=document.getElementById('cvTo');if(t)t.value=c;window.cvFetch();};
-})();
+
 
 /* ── BOOT ── */
 window.addEventListener('DOMContentLoaded',function(){
   loadAll();
 });
 </script>
+<script src="rgpd-consent.js" defer></script>
 <script src="nav.js"></script>
 </body>
 </html>

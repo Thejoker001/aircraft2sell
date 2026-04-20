@@ -325,6 +325,8 @@ window.A2SFavs = (function(){
       e.stopPropagation();
       elNav.classList.toggle('open');
       if(elNav.classList.contains('open')){
+        /* Recharger les taux si pas encore chargés ou si taux de fallback */
+        if(Object.keys(_rates).length <= 1) fetchRates();
         setTimeout(function(){
           document.addEventListener('click', function cl(ev){
             if(!elNav.contains(ev.target)){
@@ -356,40 +358,58 @@ window.A2SFavs = (function(){
       });
     }
 
-    /* Fetch rates */
+    /* Fetch rates — APIs multiples avec fallback robuste */
     function fetchRates(){
       if(_busy) return;
       _busy = true;
       if(elLive) elLive.textContent = 'Chargement…';
-      var urls = [
-        'https://open.er-api.com/v6/latest/EUR',
-        'https://api.exchangerate-api.com/v4/latest/EUR'
+      /* Liste d'APIs CORS-friendly dans l'ordre de fiabilité */
+      var sources = [
+        {
+          url: 'https://api.frankfurter.app/latest?from=EUR',
+          parse: function(d){ return d.rates; }
+        },
+        {
+          url: 'https://open.er-api.com/v6/latest/EUR',
+          parse: function(d){ return d.rates; }
+        },
+        {
+          url: 'https://api.exchangerate-api.com/v4/latest/EUR',
+          parse: function(d){ return d.rates; }
+        }
       ];
       var tried = 0;
       function tryNext(){
-        if(tried >= urls.length){
+        if(tried >= sources.length){
           _busy = false;
           _rates = Object.assign({EUR:1}, FALLBACK);
-          if(elLive) elLive.textContent = 'Taux indicatifs (hors ligne)';
+          if(elLive) elLive.textContent = 'Taux indicatifs BCE';
           compute();
           return;
         }
-        fetch(urls[tried++])
-          .then(function(r){ return r.json(); })
+        var src = sources[tried++];
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timer = controller ? setTimeout(function(){ controller.abort(); }, 5000) : null;
+        var opts = controller ? { signal: controller.signal } : {};
+        fetch(src.url, opts)
+          .then(function(r){
+            if(!r.ok) throw new Error('HTTP '+r.status);
+            return r.json();
+          })
           .then(function(d){
-            _busy = false;
-            var rates = d.rates || d;
-            if(rates && typeof rates === 'object' && rates.USD){
+            clearTimeout(timer);
+            var rates = src.parse(d);
+            if(rates && typeof rates === 'object' && (rates.USD || rates.GBP)){
+              _busy = false;
               _rates = Object.assign({EUR:1}, rates);
               var ts = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
               if(elLive) elLive.textContent = 'En direct · ' + ts;
+              compute();
             } else {
-              _rates = Object.assign({EUR:1}, FALLBACK);
-              if(elLive) elLive.textContent = 'Taux indicatifs';
+              tryNext();
             }
-            compute();
           })
-          .catch(function(){ tryNext(); });
+          .catch(function(){ clearTimeout(timer); tryNext(); });
       }
       tryNext();
     }
