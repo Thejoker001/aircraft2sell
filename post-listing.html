@@ -203,6 +203,8 @@ textarea.form-input{resize:vertical;min-height:130px;line-height:1.65}
 .cv-qb{background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--mist);padding:.27rem .2rem;font-size:.61rem;font-weight:600;cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .12s;font-family:'DM Sans',sans-serif}
 .cv-qb:hover,.cv-qb.on{border-color:rgba(232,160,32,.3);color:var(--accent);background:rgba(232,160,32,.05)}
 </style>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="mobile.css">
 </head>
 <body>
 
@@ -659,13 +661,13 @@ var LS_KEY='a2s_listings';
 var SB_URL='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 /* ── SECURITY NOTE ──────────────────────────────────────────
-   SB_SERVICE (service_role) est utilisée ici pour bypasser les RLS
+   SB_SERVICE utilise la clé anon (RLS appliquées)
    et lire les annonces du vendeur connecté. 
    TODO: Migrer vers une Edge Function Supabase pour ne pas exposer
    cette clé côté client. En attendant, les RLS Supabase protègent
    les données en écriture.
    ─────────────────────────────────────────────────────────── */
-var SB_SERVICE='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDIyMjA3MCwiZXhwIjoyMDg5Nzk4MDcwfQ.Vq4C7c-bY9T9xZQrmFlHofNkjGVD3wuPl0pghOs1YME';
+var SB_SERVICE='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 var PLAN_SLOTS={Essentiel:1,Aviateur:3,Pro:999};
 
 function saveDraft(){showToast('Brouillon sauvegardé !');}
@@ -832,7 +834,14 @@ async function submitListing(){
   };
   sessionStorage.setItem('a2s_last_listing',JSON.stringify(listing));
 
-  emailNouvelleAnnonce(sbListing,sellerName,sellerEmail,sbId||null);
+  // Email admin via Edge Function sécurisée
+  if(sbId){
+    fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/notify-new-listing',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({listingId:String(sbId)})
+    }).catch(function(){});
+  }
   if(sbId){
     showToast('✅ Annonce envoyée — en attente de validation');
   }else{
@@ -841,36 +850,7 @@ async function submitListing(){
   setTimeout(function(){window.location.href='listing-submitted.html';},1400);
 }
 
-/* ── EMAIL ADMIN — NOUVELLE ANNONCE ── */
-function emailNouvelleAnnonce(listing,sellerName,sellerEmail,listingId){
-  var cat={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'}[listing.category]||listing.category||'—';
-  var prix=listing.price?(listing.price+' '+(listing.currency||'EUR')):'Non renseigné';
-  var titre=[listing.make,listing.model,listing.year?'('+listing.year+')':''].filter(Boolean).join(' ')||'Sans titre';
-  var row=function(l,v){return '<tr><td style="color:#7a93aa;padding:.4rem 0;width:140px">'+l+'</td><td style="color:#edf2f8">'+v+'</td></tr>';};
-  fetch('https://api.brevo.com/v3/smtp/email',{
-    method:'POST',
-    headers:{'api-key':'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','Content-Type':'application/json'},
-    body:JSON.stringify({
-      sender:{name:'Aircraft2Sell',email:'contact@aircraft2sell.eu'},
-      to:[{email:'contact@aircraft2sell.eu',name:'Admin A2S'}],
-      subject:'\u{1F6E9} Nouvelle annonce \u00e0 valider \u2014 '+titre,
-      htmlContent:'<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#05080f;color:#edf2f8;padding:2rem">'
-        +'<div style="font-size:1.4rem;font-weight:700;color:#e8a020;margin-bottom:1.5rem">Nouvelle annonce \u00e0 valider</div>'
-        +'<table style="width:100%;border-collapse:collapse;font-size:.88rem">'
-        +row('A\u00e9ronef','<strong>'+titre+'</strong>')
-        +row('Cat\u00e9gorie',cat)
-        +row('Prix',prix)
-        +row('A\u00e9roport',listing.airport||'\u2014')
-        +row('Vendeur',sellerName||'\u2014')
-        +row('Email vendeur',sellerEmail||'\u2014')
-        +(listingId?row('ID Supabase','<span style="font-size:.75rem;color:#3d5468">'+listingId+'</span>'):'') 
-        +'</table>'
-        +'<div style="margin-top:1.5rem"><a href="https://aircraft2sell.eu/admin-a2s00760.html" style="display:inline-block;background:#e8a020;color:#05080f;font-weight:700;padding:.75rem 1.5rem;text-decoration:none">Acc\u00e9der au panneau admin \u2192</a></div>'
-        +'<p style="font-size:.72rem;color:#3d5468;margin-top:1.5rem">Aircraft2Sell \u00b7 Notification automatique</p>'
-        +'</div>'
-    })
-  }).catch(function(){});
-}
+/* Email admin géré par Edge Function notify-new-listing */
 
 /* ── TOAST ── */
 var _tt;
@@ -959,6 +939,7 @@ function esc(s){if(s==null)return'';var d=document.createElement('div');d.textCo
 })();
 </script>
 <script src="nav.js"></script>
+<script src="rgpd-consent.js" defer></script>
 <script>
 /* ── CONVERTISSEUR DEVISE NAV ── */
 ;(function(){

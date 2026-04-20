@@ -136,6 +136,8 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
 @media(max-width:600px){nav{padding:0 1rem}.listing-wrap{padding:1rem}.specs-grid{grid-template-columns:repeat(2,1fr)}.gallery-thumbs{display:none}.similar-grid{grid-template-columns:1fr}}
 @media(max-width:480px){input,select,textarea,button{font-size:16px !important}}
 </style>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="mobile.css">
 </head>
 <body>
 
@@ -238,7 +240,7 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
 /* ── CONFIG ── */
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
-var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDIyMjA3MCwiZXhwIjoyMDg5Nzk4MDcwfQ.Vq4C7c-bY9T9xZQrmFlHofNkjGVD3wuPl0pghOs1YME';
+var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
 async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});return r.ok?await r.json():null;}catch(e){return null;}}
 
 var LISTING=null;
@@ -412,8 +414,12 @@ async function sendMsg(){
   var _ve=LISTING?LISTING.seller_email:'';
   var _vn=LISTING?(LISTING.seller_pseudo||LISTING.seller_name||'Vendeur'):'Vendeur';
   var _lid=LISTING?String(LISTING.id):'';
-  if(_ve&&typeof emailNouveauMessage==='function')emailNouveauMessage(_ve,_vn,name,email,phone,_t,msg,_lid).catch(function(){});
-  if(typeof emailConfirmationAcheteur==='function')emailConfirmationAcheteur(email,name,_t,_vn,_lid).catch(function(){});
+  // Email via Edge Function sécurisée (clé Brevo côté serveur)
+  fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/send-listing-message',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({buyerName:name,buyerEmail:email,buyerPhone:phone,message:msg,listingId:_lid})
+  }).catch(function(){});
   document.getElementById('msgText').value='';
   setTimeout(closeMsgForm,2500);
 }
@@ -433,30 +439,7 @@ function showToast(msg){var el=document.getElementById('toast');el.textContent=m
 load();
 </script>
 
-<script>
-/* ── BREVO — Emails transactionnels ── */
-var BREVO_KEY='';
-var BREVO_SENDER={name:'Aircraft2Sell',email:'contact@aircraft2sell.eu'};
-async function sendBrevoEmail(to,subject,html,replyTo){
-  if(!BREVO_KEY)return false;
-  try{
-    var p={sender:BREVO_SENDER,to:Array.isArray(to)?to:[{email:to}],subject:subject,htmlContent:html};
-    if(replyTo)p.replyTo={email:replyTo};
-    var r=await fetch('https://api.brevo.com/v3/smtp/email',{method:'POST',headers:{'api-key':BREVO_KEY,'Content-Type':'application/json'},body:JSON.stringify(p)});
-    return r.ok;
-  }catch(e){return false;}
-}
-function emailNouveauMessage(vendeurEmail,vendeurPrenom,acheteurNom,acheteurEmail,acheteurTel,annonceTitle,messageTexte,listingId){
-  var telLine=acheteurTel?'<p style="margin:0 0 8px;color:#c8d8e8;font-size:14px"><strong style="color:#7a93aa">Tél :</strong> '+acheteurTel+'</p>':'';
-  return sendBrevoEmail(vendeurEmail,'✉ Nouveau message — '+annonceTitle,
-    '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f4;font-family:sans-serif"><table width="100%"><tr><td align="center" style="padding:40px 20px"><table width="560" style="background:#0c1428;border:1px solid rgba(180,200,230,.14)"><tr><td style="padding:28px 40px;border-bottom:1px solid rgba(180,200,230,.08)"><span style="font-size:22px;color:#edf2f8;font-weight:700">AIRCRAFT2<span style="color:#e8a020">SELL</span></span></td></tr><tr><td style="padding:28px 40px"><h2 style="margin:0 0 6px;color:#edf2f8;font-size:18px">Vous avez reçu un message</h2><p style="margin:0 0 20px;color:#7a93aa;font-size:13px">Pour votre annonce : <strong style="color:#e8a020">'+annonceTitle+'</strong></p><div style="background:#0f1830;border-left:3px solid #e8a020;padding:16px 20px;margin-bottom:20px"><p style="margin:0 0 8px;color:#c8d8e8;font-size:14px"><strong style="color:#7a93aa">De :</strong> '+acheteurNom+'</p><p style="margin:0 0 8px;color:#c8d8e8;font-size:14px"><strong style="color:#7a93aa">Email :</strong> '+acheteurEmail+'</p>'+telLine+'<p style="margin:12px 0 4px;color:#7a93aa;font-size:12px;font-weight:600;text-transform:uppercase">Message :</p><p style="margin:0;color:#edf2f8;font-size:14px;line-height:1.7;white-space:pre-wrap">'+messageTexte+'</p></div><table><tr><td style="background:#e8a020"><a href="https://aircraft2sell.eu/listing.html?id='+listingId+'" style="display:block;padding:12px 28px;font-size:15px;color:#030610;text-decoration:none;font-weight:700">VOIR L\'ANNONCE</a></td></tr></table></td></tr><tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610"><p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell</p></td></tr></table></td></tr></table></body></html>',
-    acheteurEmail);
-}
-function emailConfirmationAcheteur(acheteurEmail,acheteurNom,annonceTitle,vendeurNom,listingId){
-  return sendBrevoEmail(acheteurEmail,'Votre message a été envoyé — '+annonceTitle,
-    '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f4;font-family:sans-serif"><table width="100%"><tr><td align="center" style="padding:40px 20px"><table width="560" style="background:#0c1428;border:1px solid rgba(180,200,230,.14)"><tr><td style="padding:28px 40px;border-bottom:1px solid rgba(180,200,230,.08)"><span style="font-size:22px;color:#edf2f8;font-weight:700">AIRCRAFT2<span style="color:#e8a020">SELL</span></span></td></tr><tr><td style="padding:28px 40px"><h2 style="margin:0 0 12px;color:#edf2f8;font-size:18px">✅ Message envoyé</h2><p style="margin:0 0 16px;color:#7a93aa;font-size:14px;line-height:1.7">Votre message concernant <strong style="color:#edf2f8">'+annonceTitle+'</strong> a bien été transmis au vendeur <strong style="color:#edf2f8">'+vendeurNom+'</strong>.</p><p style="margin:0 0 24px;color:#7a93aa;font-size:14px">Le vendeur vous répondra directement par email.</p><table><tr><td style="background:#e8a020"><a href="https://aircraft2sell.eu/listing.html?id='+listingId+'" style="display:block;padding:12px 28px;font-size:15px;color:#030610;text-decoration:none;font-weight:700">VOIR L\'ANNONCE</a></td></tr></table></td></tr><tr><td style="padding:14px 40px;border-top:1px solid rgba(180,200,230,.08);background:#030610"><p style="margin:0;color:#3d5468;font-size:11px">© 2026 Aircraft2Sell</p></td></tr></table></td></tr></table></body></html>');
-}
-</script>
+<!-- Emails gérés par Edge Function send-listing-message -->
 
 <script>
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}
