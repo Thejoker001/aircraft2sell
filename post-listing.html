@@ -660,14 +660,7 @@ function updateProgress(){
 var LS_KEY='a2s_listings';
 var SB_URL='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
-/* ── SECURITY NOTE ──────────────────────────────────────────
-   SB_SERVICE utilise la clé anon (RLS appliquées)
-   et lire les annonces du vendeur connecté. 
-   TODO: Migrer vers une Edge Function Supabase pour ne pas exposer
-   cette clé côté client. En attendant, les RLS Supabase protègent
-   les données en écriture.
-   ─────────────────────────────────────────────────────────── */
-var SB_SERVICE='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+/* Toutes les requêtes utilisent SB_KEY (anon) — RLS Supabase actives */
 var PLAN_SLOTS={Essentiel:1,Aviateur:3,Pro:999};
 
 function saveDraft(){showToast('Brouillon sauvegardé !');}
@@ -732,7 +725,7 @@ async function submitListing(){
     category:document.getElementById('fCategory').value,
     airport:document.getElementById('fAirport').value.toUpperCase(),
     description:document.getElementById('fDesc').value,
-    status:'live',
+    status:'pending',
     submitted_at:now,
     seller_name:sellerName,
     seller_email:sellerEmail,
@@ -779,7 +772,7 @@ async function submitListing(){
         var fname='listings/'+Date.now()+'-'+pi+'.'+ext;
         var uploadRes=await fetch(SB_URL+'/storage/v1/object/photos/'+fname,{
           method:'POST',
-          headers:{'apikey':SB_SERVICE,'Authorization':'Bearer '+SB_SERVICE,'Content-Type':f.type,'x-upsert':'true'},
+          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY),'Content-Type':f.type,'x-upsert':'true'},
           body:f
         });
         if(uploadRes.ok){
@@ -799,8 +792,8 @@ async function submitListing(){
     var sbRes=await fetch(SB_URL+'/rest/v1/listings',{
       method:'POST',
       headers:{
-        'apikey':SB_SERVICE,
-        'Authorization':'Bearer '+SB_SERVICE,
+        'apikey':SB_KEY,
+        'Authorization':'Bearer '+(tk||SB_KEY),
         'Content-Type':'application/json',
         'Prefer':'return=representation'
       },
@@ -825,7 +818,7 @@ async function submitListing(){
     category:sbListing.category,
     airport:sbListing.airport,
     description:sbListing.description,
-    status:'live',
+    status:'pending',
     submittedAt:now,
     sellerName:sellerName,
     sellerEmail:sellerEmail,
