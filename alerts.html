@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aircraft2Sell — Mes alertes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="mobile.css">
+<style>
+:root{--bg:#05080f;--deep:#030610;--surface:#0a1020;--card:#0c1428;--card2:#0f1830;--border:rgba(180,200,230,.08);--border2:rgba(180,200,230,.14);--accent:#e8a020;--gold:#f5c518;--mist:#7a93aa;--mist2:#3d5468;--white:#edf2f8;--green:#22c55e;--red:#ef4444}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);padding-top:64px;min-height:100vh}
+.page{max-width:700px;margin:0 auto;padding:2.5rem 1.5rem}
+.page-title{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:.06em;margin-bottom:.5rem}
+.page-title em{font-style:normal;color:var(--accent)}
+.page-sub{color:var(--mist);font-size:.85rem;margin-bottom:2rem}
+.alert-form{background:var(--card);border:1px solid var(--border2);padding:1.5rem;margin-bottom:1.5rem}
+.form-title{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.08em;margin-bottom:1rem;color:var(--accent)}
+.fld{margin-bottom:.85rem}
+.fld label{display:block;font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mist);margin-bottom:.4rem}
+.inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:.65rem .9rem;outline:none;transition:border-color .2s}
+.inp:focus{border-color:rgba(232,160,32,.4)}
+.fld-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.btn-create{width:100%;background:var(--accent);color:var(--deep);border:none;padding:.85rem;font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.1em;cursor:pointer;transition:background .2s;margin-top:.5rem}
+.btn-create:hover{background:var(--gold)}
+.alerts-list{display:flex;flex-direction:column;gap:1px;background:var(--border)}
+.alert-item{background:var(--card);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.alert-info{flex:1}
+.alert-name{font-size:.85rem;font-weight:600;color:var(--white);margin-bottom:.25rem}
+.alert-desc{font-size:.72rem;color:var(--mist2)}
+.alert-badge{font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:var(--green);padding:.2rem .5rem}
+.btn-del{background:transparent;border:1px solid rgba(239,68,68,.2);color:var(--red);padding:.35rem .75rem;font-size:.72rem;cursor:pointer;transition:all .2s}
+.btn-del:hover{background:rgba(239,68,68,.08)}
+.empty{text-align:center;padding:3rem 1rem;color:var(--mist2)}
+.empty-icon{font-size:3rem;opacity:.2;margin-bottom:.75rem}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--card2);border:1px solid var(--border2);color:var(--white);padding:.65rem 1.1rem;font-size:.78rem;opacity:0;transform:translateY(8px);transition:all .22s;z-index:999;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body style="padding-top:64px">
+<h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Mes alertes annonces — Aircraft2Sell</h1>
+<!-- nav injectée par nav.js -->
+
+<div class="page">
+  <div class="page-title">Mes <em>alertes</em></div>
+  <div class="page-sub">Recevez un email dès qu'une annonce correspond à vos critères.</div>
+
+  <div class="alert-form">
+    <div class="form-title">Créer une alerte</div>
+    <div class="fld">
+      <label>Nom de l'alerte</label>
+      <input type="text" class="inp" id="aName" placeholder="Ex: Cessna 172 en France">
+    </div>
+    <div class="fld-row">
+      <div class="fld">
+        <label>Catégorie</label>
+        <select class="inp" id="aCat">
+          <option value="">Toutes</option>
+          <option value="light">🛩 Avion léger</option>
+          <option value="jet">✈ Jet</option>
+          <option value="turbo">🌀 Turboprop</option>
+          <option value="heli">🚁 Hélicoptère</option>
+          <option value="ulm">🪂 ULM</option>
+          <option value="airliner">🛫 Avion de ligne</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Marque / Modèle</label>
+        <input type="text" class="inp" id="aMake" placeholder="Ex: Cessna, Piper…">
+      </div>
+    </div>
+    <div class="fld-row">
+      <div class="fld">
+        <label>Prix max (€)</label>
+        <input type="number" class="inp" id="aMaxPrice" placeholder="Ex: 80000">
+      </div>
+      <div class="fld">
+        <label>Pays</label>
+        <input type="text" class="inp" id="aCountry" placeholder="Ex: France, Espagne…">
+      </div>
+    </div>
+    <div class="fld">
+      <label>Votre email</label>
+      <input type="email" class="inp" id="aEmail" placeholder="vous@exemple.com">
+    </div>
+    <button class="btn-create" onclick="createAlert()">🔔 Créer l'alerte</button>
+  </div>
+
+  <div id="alertsList"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="rgpd-consent.js" defer></script>
+<script src="nav.js"></script>
+<script>
+var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+
+var _tt;
+function showToast(m){var e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){e.classList.remove('show');},3000);}
+function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+
+function loadAlerts(){
+  var alerts=[];try{alerts=JSON.parse(localStorage.getItem('a2s_alerts')||'[]');}catch(e){}
+  var el=document.getElementById('alertsList');
+  if(!el)return;
+  if(!alerts.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">🔔</div><div>Aucune alerte créée</div><div style="font-size:.75rem;margin-top:.5rem">Créez votre première alerte ci-dessus</div></div>';
+    return;
+  }
+  el.innerHTML='<div class="alerts-list">'+alerts.map(function(a,i){
+    var desc=[];
+    if(a.cat)desc.push({light:'Avion léger',jet:'Jet',turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'}[a.cat]||a.cat);
+    if(a.make)desc.push(a.make);
+    if(a.maxPrice)desc.push('< '+Number(a.maxPrice).toLocaleString('fr-FR')+' €');
+    if(a.country)desc.push(a.country);
+    return'<div class="alert-item">'
+      +'<div class="alert-info">'
+      +'<div class="alert-name">'+esc(a.name||'Alerte #'+(i+1))+'</div>'
+      +'<div class="alert-desc">'+esc(desc.join(' · ')||'Toutes annonces')+ ' → '+esc(a.email)+'</div>'
+      +'</div>'
+      +'<span class="alert-badge">Active</span>'
+      +'<button class="btn-del" onclick="delAlert('+i+')">✕</button>'
+      +'</div>';
+  }).join('')+'</div>';
+}
+
+function createAlert(){
+  var name=document.getElementById('aName').value.trim();
+  var email=document.getElementById('aEmail').value.trim();
+  if(!email||!email.includes('@')){showToast('⚠ Email requis');return;}
+  var alert={
+    name:name||'Mon alerte',
+    cat:document.getElementById('aCat').value,
+    make:document.getElementById('aMake').value.trim(),
+    maxPrice:document.getElementById('aMaxPrice').value,
+    country:document.getElementById('aCountry').value.trim(),
+    email:email,
+    created:new Date().toISOString()
+  };
+  var alerts=[];try{alerts=JSON.parse(localStorage.getItem('a2s_alerts')||'[]');}catch(e){}
+  alerts.push(alert);
+  localStorage.setItem('a2s_alerts',JSON.stringify(alerts));
+  
+  // Sauvegarder dans Supabase
+  fetch(SB+'/rest/v1/search_alerts',{
+    method:'POST',
+    headers:{'apikey':SK,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify(alert)
+  }).catch(function(){});
+  
+  showToast('🔔 Alerte créée — vous recevrez un email dès qu\'une annonce correspond');
+  document.getElementById('aName').value='';
+  document.getElementById('aMake').value='';
+  document.getElementById('aMaxPrice').value='';
+  document.getElementById('aCountry').value='';
+  loadAlerts();
+}
+
+function delAlert(i){
+  var alerts=[];try{alerts=JSON.parse(localStorage.getItem('a2s_alerts')||'[]');}catch(e){}
+  alerts.splice(i,1);
+  localStorage.setItem('a2s_alerts',JSON.stringify(alerts));
+  showToast('Alerte supprimée');
+  loadAlerts();
+}
+
+// Pré-remplir depuis URL
+var params=new URLSearchParams(location.search);
+if(params.get('cat'))document.getElementById('aCat').value=params.get('cat');
+if(params.get('q'))document.getElementById('aMake').value=params.get('q');
+var savedEmail=localStorage.getItem('a2s_user_email');
+if(savedEmail)document.getElementById('aEmail').value=savedEmail;
+
+window.addEventListener('DOMContentLoaded',loadAlerts);
+</script>
+</body>
+</html>

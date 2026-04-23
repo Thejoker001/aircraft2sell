@@ -170,6 +170,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-w
 .nav-tooltip{position:absolute;top:calc(100% + 8px);right:0;background:var(--card2);border:1px solid var(--border2);padding:.5rem .85rem;font-size:.72rem;color:var(--white);white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(-4px);transition:all .18s;z-index:400}
 .nav-tooltip::before{content:'';position:absolute;top:-5px;right:10px;width:8px;height:8px;background:var(--card2);border-top:1px solid var(--border2);border-left:1px solid var(--border2);transform:rotate(45deg)}
 
+
+.sh-alert-btn{display:flex;align-items:center;gap:.35rem;background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.25);color:var(--accent);padding:.4rem .85rem;font-size:.75rem;font-weight:600;text-decoration:none;transition:all .2s;white-space:nowrap;min-height:36px}
+.sh-alert-btn:hover{background:rgba(232,160,32,.2);border-color:var(--accent)}
 </style>
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="mobile.css">
@@ -186,6 +189,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-w
   <div class="sh-inner">
     <div class="sh-title">Résultats</div>
     <div class="sh-count" id="resultCount">Chargement…</div>
+    <a href="alerts.html" id="alertBtn" class="sh-alert-btn" title="Créer une alerte pour cette recherche">
+      🔔 <span>Alerte</span>
+    </a>
     <select class="sort-select" id="sortSel" onchange="applyFilters()">
       <option value="recent">Plus récentes</option>
       <option value="price_asc">Prix croissant</option>
@@ -578,7 +584,7 @@ function renderCard(l){
     +(l.hours?'<span class="rc-spec">⏱ '+Number(l.hours).toLocaleString('fr-FR')+'h TT</span>':'')
     +(l.airport?'<span class="rc-spec">📍 '+esc(l.airport)+'</span>':'')
     +'</div>'
-    +'<div class="rc-trust">Vendeur vérifié</div>'
+    +'<div class="rc-trust">'+(l.seller_certified?'<span style="color:var(--green);font-weight:600">✓ Certifié</span>':'Vendeur vérifié')+'</div>'
     +'<div class="rc-ft">'
     +'<div class="rc-price">'+pr+'</div>'
     +'<div class="rc-loc">'+loc+'</div>'
@@ -649,6 +655,18 @@ window.addEventListener('DOMContentLoaded',function(){
 </script>
 <script src="rgpd-consent.js" defer></script>
 <script src="analytics.js" defer></script>
-<script src="nav.js"></script>
+<script src="nav.js">
+/* ── BOUTON ALERTE ── */
+function updateAlertBtn(){
+  var btn=document.getElementById('alertBtn');
+  if(!btn)return;
+  var q=document.getElementById('q')?(document.getElementById('q').value||''):'';
+  var cat=document.getElementById('cat')?(document.getElementById('cat').value||''):'';
+  var params=new URLSearchParams();
+  if(q)params.set('q',q);
+  if(cat)params.set('cat',cat);
+  btn.href='alerts.html'+(params.toString()?'?'+params.toString():'');
+}
+</script>
 </body>
 </html>
