@@ -757,6 +757,13 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
           <select id="mu-status"><option value="active">Actif</option><option value="suspended">Suspendu</option></select>
         </div>
       </div>
+      <div class="mfg" style="background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.2);padding:.65rem .85rem;margin-bottom:.5rem">
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.78rem">
+          <input type="checkbox" id="mu-free" style="accent-color:var(--accent);width:15px;height:15px">
+          🎁 Abonnement <strong>offert</strong> — ne pas comptabiliser dans le MRR
+        </label>
+        <div style="font-size:.65rem;color:var(--mist2);margin-top:.35rem;margin-left:20px">Le plan reste actif mais est exclu du chiffre d'affaires</div>
+      </div>
       <div class="mfg2">
         <div class="mfg">
           <label>Note vendeur</label>
@@ -921,8 +928,8 @@ function setConnStatus(ok){
 
 function updateSidebar(){
   var pending=_allListings.filter(function(l){return l.status==='pending';});
-  var avi=_allUsers.filter(function(u){return u.plan==='Aviateur';});
-  var pro=_allUsers.filter(function(u){return u.plan==='Pro';});
+  var avi=_allUsers.filter(function(u){return u.plan==='Aviateur'&&!u.is_free;});
+  var pro=_allUsers.filter(function(u){return u.plan==='Pro'&&!u.is_free;});
   var mrr=avi.length*29+pro.length*79;
   setText('sk-ann',_allListings.length);setText('sk-usr',_allUsers.length);setText('sk-pnd',pending.length);setText('sk-mrr',mrr);
   var bm=sel('badge-mod');if(bm){bm.textContent=pending.length;bm.style.display=pending.length?'':'none';}
@@ -936,8 +943,8 @@ function updateSidebar(){
 function updateDashboard(){
   var pending=_allListings.filter(function(l){return l.status==='pending';});
   var live=_allListings.filter(function(l){return l.status==='live';});
-  var avi=_allUsers.filter(function(u){return u.plan==='Aviateur';});
-  var pro=_allUsers.filter(function(u){return u.plan==='Pro';});
+  var avi=_allUsers.filter(function(u){return u.plan==='Aviateur'&&!u.is_free;});
+  var pro=_allUsers.filter(function(u){return u.plan==='Pro'&&!u.is_free;});
   var mrr=avi.length*29+pro.length*79;
   setText('d-live',live.length);setText('d-users',_allUsers.length);setText('d-pend',pending.length);setText('d-mrr',mrr+' EUR');
   var alertEl=sel('dash-alert');if(alertEl)alertEl.style.display=pending.length?'flex':'none';setText('dash-alert-n',pending.length);
@@ -1003,17 +1010,17 @@ function filterUsers(){
   var tb=sel('users-body');if(!tb)return;
   if(!filtered.length){tb.innerHTML='<tr><td colspan="6" class="loading-row">Aucun résultat</td></tr>';return;}
   tb.innerHTML=filtered.map(function(u,i){
-    return'<tr><td style="color:var(--mist2);font-size:.65rem">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--white)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings(\''+esc(u.email||'')+'\');" title="Voir les annonces">📋</button><button class="act" onclick="editUser('+u.id+')">✏ Modifier</button><button class="act rj" onclick="delUser('+u.id+')">✕</button></div></td></tr>';
+    return'<tr><td style="color:var(--mist2);font-size:.65rem">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--white)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+(u.is_free?'<span style="font-size:.6rem;color:var(--green);margin-left:.3rem">🎁</span>':'')+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings(\''+esc(u.email||'')+'\');" title="Voir les annonces">📋</button><button class="act" onclick="editUser('+u.id+')">✏ Modifier</button><button class="act rj" onclick="delUser('+u.id+')">✕</button></div></td></tr>';
   }).join('');
 }
 
 /* ── ABONNEMENTS ── */
 function renderSubs(){
-  var avi=_allUsers.filter(function(u){return u.plan==='Aviateur';});var pro=_allUsers.filter(function(u){return u.plan==='Pro';});var mrr=avi.length*29+pro.length*79;
+  var avi=_allUsers.filter(function(u){return u.plan==='Aviateur'&&!u.is_free;});var pro=_allUsers.filter(function(u){return u.plan==='Pro'&&!u.is_free;});var mrr=avi.length*29+pro.length*79;
   setText('sub-mrr',mrr+' EUR');setText('sub-act',avi.length+pro.length);setText('sub-arr',(mrr*12)+' EUR');
   var paid=avi.concat(pro);var tb=sel('subs-body');if(!tb)return;
   if(!paid.length){tb.innerHTML='<tr><td colspan="5" class="loading-row">Aucun abonné payant</td></tr>';return;}
-  tb.innerHTML=paid.map(function(u){return'<tr><td style="color:var(--white)">'+esc(u.name||'--')+'</td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td style="color:var(--accent)">'+(u.plan==='Pro'?'79':'29')+' EUR/mois</td></tr>';}).join('');
+  tb.innerHTML=paid.map(function(u){var price=u.is_free?'<span style="color:var(--green);font-size:.7rem">🎁 Offert</span>':(u.plan==='Pro'?'79':'29')+' EUR/mois';return'<tr><td style="color:var(--white)">'+esc(u.name||'--')+'</td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+(u.is_free?'<span style="font-size:.6rem;color:var(--green);margin-left:.3rem">🎁</span>':'')+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td style="color:var(--accent)">'+price+'</td></tr>';}).join('');
 }
 
 /* ── LISTING EDIT ── */
@@ -1222,8 +1229,8 @@ function clearSellerFilter(){
   var info=sel('ls-info');if(info)info.remove();
   renderList();
 }
-function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;var r=parseInt(u.rating)||0;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=r?'#f5c518':'rgba(200,220,240,.2)';});openM('mUser');}
-async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var body={name:sel('mu-name').value,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked};try{await sb('PATCH','users','id=eq.'+id,body);var uEmail=sel('mu-email').value;if(uEmail)await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked});closeM('mUser');await refreshAll();showToast('Membre mis à jour');}catch(e){showToast('Erreur : '+e.message);}}
+function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;sel('mu-free').checked=u.is_free||false;var r=parseInt(u.rating)||0;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=r?'#f5c518':'rgba(200,220,240,.2)';});openM('mUser');}
+async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var body={name:sel('mu-name').value,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree};try{await sb('PATCH','users','id=eq.'+id,body);var uEmail=sel('mu-email').value;if(uEmail)await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked});closeM('mUser');await refreshAll();showToast(isFree?'🎁 Abonnement offert — exclu du MRR':'Membre mis à jour');}catch(e){showToast('Erreur : '+e.message);}}
 async function delUser(id){if(!confirm('Supprimer ce membre ?'))return;try{await sb('DELETE','users','id=eq.'+id);await refreshAll();showToast('Membre supprimé');}catch(e){showToast('Erreur : '+e.message);}}
 async function delUserM(){var id=sel('mu-id').value;if(!confirm('Supprimer ?'))return;try{await sb('DELETE','users','id=eq.'+id);closeM('mUser');await refreshAll();showToast('Membre supprimé');}catch(e){showToast('Erreur : '+e.message);}}
 
