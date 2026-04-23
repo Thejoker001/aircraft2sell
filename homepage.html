@@ -716,6 +716,39 @@ async function loadTicker(){
     track.innerHTML=items+items;
   }catch(e){}
 }
+
+/* ── COMPTEURS HERO (indépendants) ── */
+async function loadStats(){
+  try{
+    /* Tentative 1 : vue homepage_stats (la plus efficace — 1 seule requête) */
+    var stats=await sbGet('homepage_stats','select=*&limit=1');
+    if(stats&&stats[0]&&stats[0].live_listings!==undefined){
+      animCount('sn1',stats[0].live_listings||0);
+      animCount('sn2',stats[0].certified_sellers||stats[0].active_sellers||0);
+      animCount('sn4',stats[0].new_today||0);
+      return;
+    }
+  }catch(e){}
+  /* Fallback : requêtes directes */
+  try{
+    var live=await sbGet('listings','status=eq.live&select=id,submitted_at,seller_email');
+    if(!live)live=[];
+    animCount('sn1',live.length);
+    var today=live.filter(function(x){
+      if(!x.submitted_at)return false;
+      return Date.now()-new Date(x.submitted_at).getTime()<86400000;
+    }).length;
+    animCount('sn4',today);
+    var unique=new Set(live.map(function(x){return x.seller_email;}).filter(Boolean));
+    animCount('sn2',unique.size||0);
+  }catch(e){
+    ['sn1','sn2','sn4'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el&&el.textContent==='—')el.textContent='0';
+    });
+  }
+}
+
 async function loadListings(){
   var grid=document.getElementById('listingsGrid');
   // Skeletons
@@ -755,17 +788,20 @@ async function loadListings(){
     if(cat&&!cats[cat])b.style.display='none';
   });
 
-  // Compteurs
-  var all=await sbGet('listings','status=eq.live&select=id,category');
-  animCount('sn1',all.length);
+  // Compteurs annonces par catégorie
+  var allLive=await sbGet('listings','status=eq.live&select=id,category,submitted_at');
+  animCount('sn1',allLive.length);
   var cats=['light','jet','turbo','heli','ulm','airliner'];
   cats.forEach(function(c){
     var el=document.getElementById('cc-'+c);
-    if(el){var n=all.filter(function(x){return x.category===c;}).length;el.textContent=n+' annonce'+(n>1?'s':'');}
+    if(el){var n=allLive.filter(function(x){return x.category===c;}).length;el.textContent=n+' annonce'+(n>1?'s':'');}
   });
-  var sellers=await sbGet('users','status=eq.active&select=id');
-  animCount('sn2',sellers.length||0);
-  animCount('sn4',Math.min(all.filter(function(x){var d=new Date(x.submitted_at||x.created_at||0);return Date.now()-d.getTime()<86400000;}).length,all.length));
+  // Nouvelles aujourd'hui
+  var today=allLive.filter(function(x){
+    if(!x.submitted_at)return false;
+    return Date.now()-new Date(x.submitted_at).getTime()<86400000;
+  }).length;
+  animCount('sn4',today);
 
   // Charger les annonces récemment vendues
   var soldGrid=document.getElementById('soldGrid');
