@@ -223,7 +223,8 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
         <div class="urg-item"><div class="urg-dot"></div><span id="urgViews">0 vues</span></div>
         <div class="urg-item"><div class="urg-dot"></div><span id="urgEnq">0 contacts</span></div>
       </div>
-      <a href="#" class="btn-contact" onclick="openMsgForm();return false;">Contacter le vendeur</a>
+      <a href="#" class="btn-contact" onclick="openMsgForm();return false;">✉ Contacter le vendeur</a>
+      <button id="offerBtn" onclick="openOfferForm()" style="display:none;width:100%;background:transparent;border:1px solid rgba(232,160,32,.35);color:var(--accent);font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;padding:.65rem;cursor:pointer;margin-bottom:.5rem;transition:all .2s" onmouseover="this.style.background='rgba(232,160,32,.08)'" onmouseout="this.style.background='transparent'">💬 Faire une offre</button>
       <button onclick="showCalc(LISTING&&LISTING.price?LISTING.price:0)" 
         style="width:100%;background:transparent;border:1px solid var(--border2);color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.8rem;padding:.6rem;cursor:pointer;margin-top:.4rem;transition:all .2s;min-height:36px"
         onmouseover="this.style.color='var(--accent)';this.style.borderColor='rgba(232,160,32,.3)'"
@@ -380,9 +381,16 @@ function render(l){
   document.getElementById('iLoc').textContent=loc;
   document.getElementById('iDate').textContent=l.submitted_at?new Date(l.submitted_at).toLocaleDateString('fr-FR'):'—';
 
-  // Pré-remplir email si connecté
+  // Pré-remplir infos si connecté
   var token=sessionStorage.getItem('a2s_auth_token');
-  if(token){try{var p=JSON.parse(atob(token.split('.')[1]));document.getElementById('msgEmail').value=p.email||'';}catch(e){}}
+  var storedName=localStorage.getItem('a2s_user_name')||localStorage.getItem('a2s_user_pseudo')||'';
+  var storedEmail=localStorage.getItem('a2s_user_email')||'';
+  if(storedName){var nEl=document.getElementById('msgName');if(nEl)nEl.value=storedName;}
+  if(storedEmail){var eEl=document.getElementById('msgEmail');if(eEl)eEl.value=storedEmail;}
+  if(token){try{var p=JSON.parse(atob(token.split('.')[1]));var eEl2=document.getElementById('msgEmail');if(eEl2&&p.email)eEl2.value=p.email;}catch(e){}}
+  // Afficher bouton "Faire une offre" si prix connu
+  var offerBtn=document.getElementById('offerBtn');
+  if(offerBtn&&l.price)offerBtn.style.display='block';
 
   loadSimilar(l.category,l.id);
 }
@@ -623,6 +631,47 @@ function showCalc(price){
   calcPayment();
   card.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
+/* ── OFFRE ── */
+function openOfferForm(){
+  var name=localStorage.getItem('a2s_user_name')||'';
+  var email=localStorage.getItem('a2s_user_email')||'';
+  var n=document.getElementById('offerName');var e=document.getElementById('offerEmail');
+  if(n&&name)n.value=name;if(e&&email)e.value=email;
+  if(LISTING&&LISTING.price){var a=document.getElementById('offerAmount');if(a)a.value=Math.round(LISTING.price*0.95);}
+  if(LISTING&&LISTING.currency){var c=document.getElementById('offerCurr');if(c)c.value=LISTING.currency||'EUR';}
+  document.getElementById('offerOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeOfferForm(){document.getElementById('offerOverlay').classList.remove('open');document.body.style.overflow='';}
+async function sendOffer(){
+  var name=document.getElementById('offerName').value.trim();
+  var email=document.getElementById('offerEmail').value.trim();
+  var amount=document.getElementById('offerAmount').value;
+  var curr=document.getElementById('offerCurr').value;
+  var msg=document.getElementById('offerMsg').value.trim();
+  var alertEl=document.getElementById('offerAlert');
+  if(!name||!email||!amount){alertEl.style.cssText='display:block;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--red);padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem';alertEl.textContent='Remplissez tous les champs obligatoires.';return;}
+  alertEl.style.cssText='display:block;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:var(--green);padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem';
+  alertEl.textContent='✅ Offre envoyée ! Le vendeur vous répondra par email.';
+  var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[curr]||'€';
+  var offerText='OFFRE DE PRIX: '+sym+Number(amount).toLocaleString('fr-FR')+' '+curr+(msg?'
+
+'+msg:'');
+  var _ve=LISTING?LISTING.seller_email:'';
+  var _lid=LISTING?String(LISTING.id):'';
+  fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/send-listing-message',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({buyerName:name,buyerEmail:email,message:offerText,listingId:_lid})
+  }).catch(function(){});
+  var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+  var threadId=_lid+'-'+[email,_ve].sort().join('-');
+  fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/rest/v1/messages',{
+    method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({thread_id:threadId,listing_id:_lid?parseInt(_lid):null,sender_email:email,receiver_email:_ve||'contact@aircraft2sell.eu',content:'[OFFRE '+sym+Number(amount).toLocaleString('fr-FR')+' '+curr+'] '+name+(msg?' — '+msg:''),read:false})
+  }).catch(function(){});
+  setTimeout(closeOfferForm,2500);
+}
 </script>
 
 <!-- CALCULATEUR FINANCEMENT -->
@@ -658,6 +707,31 @@ function showCalc(price){
     <div class="calc-detail" id="calcDetail"></div>
   </div>
   <div style="font-size:.6rem;color:var(--mist2);margin-top:.6rem;max-width:600px;margin:0.6rem auto 0">Simulation indicative — consultez votre banque pour un financement personnalisé.</div>
+</div>
+
+<!-- MODAL OFFRE -->
+<div class="msg-overlay" id="offerOverlay" onclick="if(event.target===this)closeOfferForm()">
+  <div class="msg-box">
+    <div class="msg-head">
+      <div class="msg-title">💬 Faire une offre</div>
+      <button class="msg-close" onclick="closeOfferForm()">✕</button>
+    </div>
+    <div class="msg-body">
+      <div id="offerAlert" style="display:none;padding:.6rem .9rem;font-size:.78rem;margin-bottom:1rem"></div>
+      <div class="fld"><label>Votre nom</label><input type="text" class="inp" id="offerName" placeholder="Jean Dupont" autocomplete="name"></div>
+      <div class="fld"><label>Votre email</label><input type="email" class="inp" id="offerEmail" placeholder="vous@exemple.com" autocomplete="email"></div>
+      <div class="fld">
+        <label>Votre offre</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="number" class="inp" id="offerAmount" placeholder="Ex: 110000" style="flex:1">
+          <select class="inp" id="offerCurr" style="width:90px"><option>EUR</option><option>USD</option><option>GBP</option><option>CHF</option></select>
+        </div>
+      </div>
+      <div class="fld"><label>Message (optionnel)</label><textarea class="inp" id="offerMsg" placeholder="Bonjour, je vous propose…" style="height:80px"></textarea></div>
+      <button class="btn-send" onclick="sendOffer()">Envoyer l'offre</button>
+      <div class="msg-note">Votre offre sera transmise directement au vendeur par email et messagerie.</div>
+    </div>
+  </div>
 </div>
 </body>
 </html>
