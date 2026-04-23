@@ -365,6 +365,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
             <option value="live">✅ Publiées</option>
             <option value="pending">⏳ En attente</option>
             <option value="rejected">⊘ Rejetées</option>
+              <option value="reserved">🤝 Sous compromis</option>
             <option value="sold">💰 Vendues</option>
           </select>
           <select class="filter-sel" id="ls-cat" onchange="renderList()">
@@ -973,6 +974,13 @@ function renderMod(){
     var pr=l.price?cur(l.currency)+Number(l.price).toLocaleString():'--';
     return'<div class="lc">'+'<div class="lc-ico">✈</div>'+'<div class="lc-body"><div class="lc-title">'+ltitle(l)+'</div><div class="lc-meta"><span>'+esc(l.sellerName||'--')+'</span><span>'+esc(l.sellerEmail||'--')+'</span><span>'+fmtDate(l.submittedAt)+'</span>'+(l.airport?'<span>'+esc(l.airport)+'</span>':'')+'</div></div>'+'<div class="lc-right"><div class="lc-price">'+pr+'</div><div class="acts"><button class="act ap" onclick="approve('+l.id+')">✓ Approuver</button><button class="act rj" onclick="doReject('+l.id+')">✕ Rejeter</button><button class="act" onclick="viewListing('+l.id+')">🔍 Voir</button></div></div></div>';
   }).join('');
+}
+async function toggleFeatured(id,current){
+  try{
+    await sb('PATCH','listings','id=eq.'+id,{featured:!current});
+    showToast(current?'Vedette retirée':'⭐ Annonce mise en vedette');
+    await refreshAll();
+  }catch(e){showToast('Erreur : '+e.message);}
 }
 async function approve(id){
   try{
@@ -1615,6 +1623,19 @@ window.addEventListener('DOMContentLoaded', function(){
     }catch(e){ sessionStorage.removeItem(SK); }
   }
 });
+
+/* ── ANNONCE DE LA SEMAINE ── */
+async function setWeeklyListing(id){
+  if(!confirm('Définir cette annonce comme "Annonce de la semaine" ?'))return;
+  try{
+    /* Retirer l'ancienne */
+    await sb('PATCH','listings','weekly_pick=eq.true',{weekly_pick:false});
+    /* Définir la nouvelle */
+    await sb('PATCH','listings','id=eq.'+id,{weekly_pick:true,featured:true});
+    showToast('⭐ Annonce de la semaine définie !');
+    await refreshAll();
+  }catch(e){showToast('Erreur: '+e.message);}
+}
 </script>
 </body>
 </html>

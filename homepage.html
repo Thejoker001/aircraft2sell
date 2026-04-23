@@ -391,18 +391,7 @@ footer{background:var(--deep);border-top:1px solid var(--border);padding:4rem 2r
 <!-- TICKER -->
 <div class="ticker-wrap">
   <div class="ticker-track" id="ticker">
-    <div class="ticker-item"><div class="ticker-dot"></div><span>Cessna 172 Skyhawk · 2018 · 85 000 € · LFPG</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>Robinson R44 Raven II · 2020 · 290 000 € · LFMN</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>Piper PA-28 Archer · 2015 · 118 000 € · EDDF</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>TBM 930 · 2019 · 3 200 000 € · LFBO</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>Diamond DA40 NG · 2021 · 195 000 € · EBBR</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>Cirrus SR22T · 2022 · 680 000 € · LSGG</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>Cessna 172 Skyhawk · 2018 · 85 000 € · LFPG</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>Robinson R44 Raven II · 2020 · 290 000 € · LFMN</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>Piper PA-28 Archer · 2015 · 118 000 € · EDDF</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>TBM 930 · 2019 · 3 200 000 € · LFBO</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>Diamond DA40 NG · 2021 · 195 000 € · EBBR</span></div>
-    <div class="ticker-item"><div class="ticker-dot"></div><span>Cirrus SR22T · 2022 · 680 000 € · LSGG</span></div>
+    <div class="ticker-item"><div class="ticker-dot"></div><span>Chargement des annonces…</span></div>
   </div>
 </div>
 
@@ -428,6 +417,20 @@ footer{background:var(--deep);border-top:1px solid var(--border);padding:4rem 2r
   </div>
 </div>
 
+
+<!-- ANNONCE DE LA SEMAINE -->
+<div class="section reveal" id="weeklySection" style="display:none;padding-top:0">
+  <div style="background:linear-gradient(135deg,rgba(232,160,32,.08),rgba(245,197,24,.04));border:1px solid rgba(232,160,32,.2);padding:2rem">
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem">
+      <span style="font-size:1.3rem">⭐</span>
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;color:#edf2f8">Annonce de la <em style="font-style:normal;color:#e8a020">semaine</em></div>
+        <div style="font-size:.65rem;color:#3d5468;font-weight:600;letter-spacing:.1em;text-transform:uppercase">Sélection Aircraft2Sell</div>
+      </div>
+    </div>
+    <div id="weeklyCard"></div>
+  </div>
+</div>
 <!-- CATÉGORIES -->
 <div class="section reveal" style="padding-top:0">
   <div class="section-head">
@@ -694,6 +697,25 @@ function filterListings(btn,cat){
   filtered.slice(0,6).forEach(function(l){grid.appendChild(renderCard(l));});
 }
 
+
+/* ── TICKER DYNAMIQUE ── */
+async function loadTicker(){
+  var track=document.getElementById('ticker');
+  if(!track)return;
+  try{
+    var rows=await sbGet('listings','status=eq.live&order=submitted_at.desc&limit=12&select=make,model,year,price,currency,airport');
+    if(!rows||!rows.length)return;
+    var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
+    var items=rows.map(function(l){
+      var title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ');
+      var price=l.price?(sym[l.currency||'EUR']||'€')+Number(l.price).toLocaleString('fr-FR'):'';
+      var loc=l.airport?'· '+l.airport:'';
+      return '<div class="ticker-item"><div class="ticker-dot"></div><span>'+title+(price?' · '+price:'')+(loc?' '+loc:'')+'</span></div>';
+    }).join('');
+    // Dupliquer pour boucle infinie
+    track.innerHTML=items+items;
+  }catch(e){}
+}
 async function loadListings(){
   var grid=document.getElementById('listingsGrid');
   // Skeletons
@@ -824,6 +846,34 @@ if('serviceWorker' in navigator){
 </script>
 <script src="rgpd-consent.js" defer></script>
 <script src="analytics.js" defer></script>
-<script src="nav.js"></script>
+<script src="nav.js">
+/* ── ANNONCE DE LA SEMAINE ── */
+async function loadWeeklyListing(){
+  try{
+    var rows=await sbGet('listings','status=eq.live&weekly_pick=eq.true&limit=1&select=*');
+    if(!rows||!rows.length)return;
+    var l=rows[0];
+    var section=document.getElementById('weeklySection');
+    var card=document.getElementById('weeklyCard');
+    if(!section||!card)return;
+    var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
+    var title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Aéronef';
+    var price=l.price?(sym[l.currency||'EUR']||'€')+Number(l.price).toLocaleString('fr-FR'):'Prix sur demande';
+    var catIcons={light:'🛩',jet:'✈',turbo:'🌀',heli:'🚁',ulm:'🪂',airliner:'🛫'};
+    var photo=l.photos&&l.photos.length?'<img src="'+l.photos[0]+'" style="width:100%;height:200px;object-fit:cover;display:block" loading="lazy">':'<div style="height:200px;display:flex;align-items:center;justify-content:center;font-size:4rem;opacity:.15;background:var(--surface)">'+(catIcons[l.category]||'✈')+'</div>';
+    card.innerHTML='<div style="display:grid;grid-template-columns:280px 1fr;gap:1.5rem;cursor:pointer" onclick="location.href='listing.html?id='+l.id+''">'
+      +'<div style="overflow:hidden">'+photo+'</div>'
+      +'<div>'
+      +'<div style="font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#e8a020;margin-bottom:.4rem">'+(catIcons[l.category]||'✈')+' '+(l.category||'').toUpperCase()+'</div>'
+      +'<div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:.04em;color:#edf2f8;margin-bottom:.4rem">'+esc(title)+'</div>'
+      +(l.description?'<div style="font-size:.8rem;color:#7a93aa;line-height:1.7;margin-bottom:1rem">'+esc(l.description.slice(0,180))+'…</div>':'')
+      +'<div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.04em;color:#e8a020;margin-bottom:.5rem">'+price+'</div>'
+      +'<div style="font-size:.72rem;color:#3d5468;margin-bottom:1.25rem">📍 '+(l.airport||l.country||'—')+(l.hours?' · ⏱ '+Number(l.hours).toLocaleString('fr-FR')+' h':'')+'</div>'
+      +'<a href="listing.html?id='+l.id+'" style="display:inline-block;background:#e8a020;color:#030610;text-decoration:none;padding:.65rem 1.75rem;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.1em">Voir l'annonce →</a>'
+      +'</div></div>';
+    section.style.display='block';
+  }catch(e){}
+}
+</script>
 </body>
 </html>

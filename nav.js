@@ -237,6 +237,9 @@ window.A2SFavs = (function(){
         '</ul>',
         '<div class="nav-right">',
           '<a href="login.html" class="btn-nav-login" id="btnLogin">Connexion</a>',
+          '<a href="dashboard.html#favs" class="nav-favs" id="navFavs" title="Mes favoris" style="display:none">',
+            '♥ <span id="navFavCount">0</span>',
+          '</a>',
           '<div class="nav-user" id="navUser">',
             '<div class="nav-avatar" id="navAvatar">U</div>',
             '<span class="nav-user-name" id="navUserName">Mon compte</span>',
@@ -464,6 +467,15 @@ window.A2SFavs = (function(){
         navUser.style.cursor   = 'pointer';
         navUser.title          = 'Mon tableau de bord';
         navUser.onclick        = function(){ window.location.href = 'dashboard.html'; };
+    /* Favoris */
+    var navFavs = document.getElementById('navFavs');
+    if(navFavs){
+      navFavs.style.display='flex';
+      var favs=[];try{favs=JSON.parse(localStorage.getItem('a2s_favs')||'[]');}catch(e){}
+      var fc=document.getElementById('navFavCount');
+      if(fc)fc.textContent=favs.length||'';
+      navFavs.style.display=favs.length?'flex':'none';
+    }
         if(navAvatar) navAvatar.textContent = getInitials(getUserName(), getUserEmail());
         if(navUName)  navUName.textContent  = getUserName() || getUserEmail().split('@')[0] || 'Mon compte';
       }
@@ -553,3 +565,33 @@ window.A2SFavs = (function(){
   }
 
 })();
+
+
+/* ══ CACHE SUPABASE CÔTÉ CLIENT ══════════════════════════════
+   Cache sessionStorage 5 minutes pour les requêtes répétées
+   ──────────────────────────────────────────────────────────── */
+window.A2SCache = {
+  _store: {},
+  get: function(key) {
+    var item = this._store[key];
+    if(!item) return null;
+    if(Date.now() - item.ts > 5 * 60 * 1000) { delete this._store[key]; return null; }
+    return item.data;
+  },
+  set: function(key, data) { this._store[key] = { data: data, ts: Date.now() }; return data; },
+  clear: function() { this._store = {}; }
+};
+
+/* sbGetCached — version cachée de fetch Supabase */
+window.sbGetCached = async function(table, params) {
+  var key = table + '?' + params;
+  var cached = window.A2SCache.get(key);
+  if(cached) return cached;
+  var SB_URL = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+  try {
+    var r = await fetch(SB_URL+'/rest/v1/'+table+'?'+params, { headers: { apikey: SB_KEY } });
+    var data = r.ok ? await r.json() : [];
+    return window.A2SCache.set(key, data);
+  } catch(e) { return []; }
+};

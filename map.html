@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Carte interactive des aéronefs à vendre en Europe. Trouvez des avions près de chez vous par aéroport.">
+<meta property="og:title" content="Carte des annonces — Aircraft2Sell">
+<meta property="og:description" content="Visualisez les aéronefs à vendre en Europe sur une carte interactive par aéroport.">
+<meta property="og:url" content="https://www.aircraft2sell.eu/map.html">
+<link rel="canonical" href="https://www.aircraft2sell.eu/map.html">
+<title>Carte des annonces — Aircraft2Sell</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="mobile.css">
+<style>
+body{margin:0;padding-top:64px;background:#05080f;font-family:'DM Sans',sans-serif;color:#edf2f8;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.map-header{background:#0a1020;border-bottom:1px solid rgba(180,200,230,.08);padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:1rem;flex-wrap:wrap}
+.map-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.06em;color:#edf2f8}
+.map-title em{font-style:normal;color:#e8a020}
+.map-filters{display:flex;gap:.4rem;flex-wrap:wrap}
+.mfpill{background:transparent;border:1px solid rgba(180,200,230,.14);color:#7a93aa;font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:.28rem .65rem;cursor:pointer;transition:all .18s}
+.mfpill.on{background:#e8a020;color:#030610;border-color:#e8a020}
+.map-count{font-size:.72rem;color:#3d5468;white-space:nowrap}
+#map{flex:1;background:#0a1020}
+/* Leaflet custom */
+.leaflet-container{background:#05080f}
+.leaflet-tile-pane{filter:brightness(.7) saturate(.4) hue-rotate(180deg)}
+.a2s-marker{background:#e8a020;border:2px solid #030610;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:#030610;cursor:pointer;transition:transform .15s}
+.a2s-marker:hover{transform:scale(1.2)}
+.a2s-popup{font-family:'DM Sans',sans-serif;min-width:180px}
+.a2s-popup .title{font-weight:600;font-size:.85rem;color:#030610;margin-bottom:.3rem}
+.a2s-popup .price{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#c47a00;margin-bottom:.3rem}
+.a2s-popup .meta{font-size:.7rem;color:#666;margin-bottom:.6rem}
+.a2s-popup a{display:block;background:#e8a020;color:#030610;text-decoration:none;padding:.4rem .75rem;font-size:.72rem;font-weight:700;text-align:center;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Carte des aéronefs à vendre en Europe — Aircraft2Sell</h1>
+<!-- nav injectée par nav.js -->
+
+<div class="map-header">
+  <div class="map-title">Carte des <em>annonces</em></div>
+  <div class="map-filters" id="mapFilters">
+    <button class="mfpill on" data-cat="" onclick="filterMap(this,'')">Toutes</button>
+    <button class="mfpill" data-cat="light" onclick="filterMap(this,'light')">🛩 Avions</button>
+    <button class="mfpill" data-cat="jet" onclick="filterMap(this,'jet')">✈ Jets</button>
+    <button class="mfpill" data-cat="heli" onclick="filterMap(this,'heli')">🚁 Hélicos</button>
+    <button class="mfpill" data-cat="turbo" onclick="filterMap(this,'turbo')">🌀 Turbos</button>
+    <button class="mfpill" data-cat="ulm" onclick="filterMap(this,'ulm')">🪂 ULM</button>
+  </div>
+  <div class="map-count" id="mapCount">Chargement…</div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+
+// Coordonnées des aérodromes OACI européens courants
+var AIRPORTS={
+  LFPG:{lat:49.009,lng:2.547,name:'Paris CDG'},LFPB:{lat:48.969,lng:2.441,name:'Paris Le Bourget'},
+  LFMN:{lat:43.658,lng:7.215,name:'Nice'},LFML:{lat:43.436,lng:5.214,name:'Marseille'},
+  LFBO:{lat:43.629,lng:1.363,name:'Toulouse'},LFBD:{lat:44.828,lng:-0.715,name:'Bordeaux'},
+  LFLL:{lat:45.726,lng:5.090,name:'Lyon'},LFRS:{lat:47.153,lng:-1.610,name:'Nantes'},
+  LFQQ:{lat:50.561,lng:3.086,name:'Lille'},LFRB:{lat:48.447,lng:-4.418,name:'Brest'},
+  EDDF:{lat:50.033,lng:8.570,name:'Francfort'},EDDB:{lat:52.366,lng:13.503,name:'Berlin'},
+  EDDM:{lat:48.353,lng:11.786,name:'Munich'},EDDL:{lat:51.289,lng:6.767,name:'Düsseldorf'},
+  EBBR:{lat:50.902,lng:4.484,name:'Bruxelles'},EBOS:{lat:51.199,lng:2.862,name:'Ostende'},
+  LSGG:{lat:46.238,lng:6.109,name:'Genève'},LSZH:{lat:47.458,lng:8.548,name:'Zürich'},
+  LEMD:{lat:40.472,lng:-3.561,name:'Madrid'},LEBL:{lat:41.297,lng:2.078,name:'Barcelone'},
+  LIRF:{lat:41.800,lng:12.247,name:'Rome Fiumicino'},LIML:{lat:45.445,lng:9.276,name:'Milan'},
+  EHAM:{lat:52.308,lng:4.764,name:'Amsterdam'},EGLL:{lat:51.477,lng:-0.461,name:'Londres Heathrow'},
+  EGKB:{lat:51.331,lng:0.032,name:'Biggin Hill'},
+};
+
+var map=L.map('map',{center:[47,6],zoom:5,zoomControl:true});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map);
+
+var _allListings=[],_markers=[],_markerLayer=L.layerGroup().addTo(map);
+var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
+var catIcons={light:'🛩',jet:'✈',turbo:'🌀',heli:'🚁',ulm:'🪂',airliner:'🛫'};
+
+function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+
+async function loadMarkers(){
+  var r=await fetch(SB+'/rest/v1/listings?status=eq.live&order=submitted_at.desc&limit=200&select=id,make,model,year,price,currency,category,airport',{headers:{'apikey':SK}});
+  _allListings=r.ok?await r.json():[];
+  renderMarkers('');
+}
+
+function renderMarkers(cat){
+  _markerLayer.clearLayers();
+  var filtered=cat?_allListings.filter(function(l){return l.category===cat;}):_allListings;
+  var placed=0;
+  // Grouper par aéroport
+  var byAirport={};
+  filtered.forEach(function(l){
+    if(!l.airport)return;
+    var code=l.airport.toUpperCase().trim();
+    if(!byAirport[code])byAirport[code]=[];
+    byAirport[code].push(l);
+  });
+  Object.keys(byAirport).forEach(function(code){
+    var ap=AIRPORTS[code];
+    if(!ap){
+      // Estimation pour codes non connus : centre Europe
+      return;
+    }
+    var listings=byAirport[code];
+    var count=listings.length;
+    var icon=L.divIcon({
+      html:'<div class="a2s-marker" style="width:'+(count>1?28:22)+'px;height:'+(count>1?28:22)+'px;font-size:'+(count>1?'.7rem':'.8rem')+'">'+(count>1?count:(catIcons[listings[0].category]||'✈'))+'</div>',
+      className:'',iconSize:[30,30],iconAnchor:[15,15]
+    });
+    var popupHtml=listings.slice(0,3).map(function(l){
+      var title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Aéronef';
+      var price=l.price?(sym[l.currency||'EUR']||'€')+Number(l.price).toLocaleString('fr-FR'):'Prix sur demande';
+      return'<div class="a2s-popup" style="margin-bottom:.5rem"><div class="title">'+esc(title)+'</div><div class="price">'+price+'</div><div class="meta">'+ap.name+'</div><a href="listing.html?id='+l.id+'">Voir l'annonce →</a></div>';
+    }).join('<hr style="border-color:#eee;margin:.4rem 0">');
+    if(listings.length>3)popupHtml+='<div style="text-align:center;font-size:.68rem;color:#888;margin-top:.4rem"><a href="search.html?q='+code+'" style="color:#c47a00">+' + (listings.length-3) + ' autre(s) à '+ap.name+'</a></div>';
+    L.marker([ap.lat,ap.lng],{icon:icon}).bindPopup(popupHtml,{maxWidth:220}).addTo(_markerLayer);
+    placed++;
+  });
+  var count=document.getElementById('mapCount');
+  if(count)count.textContent=filtered.length+' annonce'+(filtered.length>1?'s':'')+' • '+placed+' aérodromes';
+}
+
+function filterMap(btn,cat){
+  document.querySelectorAll('.mfpill').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  renderMarkers(cat);
+}
+
+loadMarkers();
+</script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js" defer></script>
+<script src="nav.js"></script>
+</body>
+</html>

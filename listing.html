@@ -168,6 +168,23 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
 .calc-result{background:rgba(232,160,32,.07);border:1px solid rgba(232,160,32,.2);padding:.85rem 1rem;margin-top:.75rem;display:flex;justify-content:space-between;align-items:center}
 .calc-monthly{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--gold);letter-spacing:.05em}
 .calc-detail{font-size:.68rem;color:var(--mist2);text-align:right;line-height:1.5}
+
+/* ── IMPRESSION ── */
+@media print {
+  nav, .listing-actions, .similar-section, .lightbox, #msgOverlay,
+  #offerOverlay, #quickRegOverlay, #calcCard, .card-fav, .btn-share,
+  .share-btns, footer, #toast, .rgpd-banner { display: none !important; }
+  body { background: white !important; color: black !important; padding: 0 !important; }
+  .listing-wrap { grid-template-columns: 1fr !important; display: block !important; }
+  .gallery-main { height: 300px !important; }
+  .specs-grid { grid-template-columns: repeat(3,1fr) !important; }
+  .spec-item { background: #f5f5f5 !important; border-color: #ddd !important; }
+  .spec-label, .spec-val { color: black !important; }
+  .listing-title { color: black !important; }
+  .listing-price { color: #c47a00 !important; }
+  .print-header { display: block !important; }
+}
+.print-header { display: none; }
 </style>
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="mobile.css">
@@ -231,6 +248,7 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
         onmouseout="this.style.color='var(--mist)';this.style.borderColor='var(--border2)'">
         💰 Simuler un financement
       </button>
+      <button onclick="printListing()" style="width:100%;background:transparent;border:1px solid rgba(180,200,230,.12);color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.75rem;padding:.5rem;cursor:pointer;margin-bottom:.4rem;transition:all .2s;min-height:36px" onmouseover="this.style.borderColor='var(--border2)';this.style.color='var(--white)'" onmouseout="this.style.borderColor='rgba(180,200,230,.12)';this.style.color='var(--mist)'">🖨 Imprimer / PDF</button>
       <div class="share-btns">
         <button class="btn-share wa" onclick="shareWhatsApp()" title="WhatsApp">💬 WhatsApp</button>
         <button class="btn-share li" onclick="shareLinkedIn()" title="LinkedIn">in LinkedIn</button>
@@ -309,8 +327,20 @@ async function load(){
   var urgStrip=document.getElementById('urgStrip');
   if(urgStrip){
     urgStrip.style.display='flex';
-    var uv=document.getElementById('urgViews');if(uv)uv.textContent=newViews+' vue'+(newViews>1?'s':'');
-    var ue=document.getElementById('urgEnq');if(ue&&LISTING.enquiries)ue.textContent=LISTING.enquiries+' contact'+(LISTING.enquiries>1?'s':'');
+    var uv=document.getElementById('urgViews');
+    if(uv)uv.textContent=newViews.toLocaleString('fr-FR')+' vue'+(newViews>1?'s':'');
+    var ue=document.getElementById('urgEnq');
+    if(ue)ue.textContent=(LISTING.enquiries||0)+' contact'+(LISTING.enquiries>1?'s':'');
+    /* Ajouter badge "tendance" si >50 vues */
+    if(newViews>=50){
+      var badge=document.getElementById('trendBadge');
+      if(!badge){
+        badge=document.createElement('div');badge.id='trendBadge';
+        badge.style.cssText='display:inline-flex;align-items:center;gap:.3rem;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#ef4444;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .55rem';
+        badge.textContent='🔥 Populaire';
+        urgStrip.appendChild(badge);
+      }
+    }
   }
 }
 
@@ -324,6 +354,24 @@ function render(l){
   var loc=l.airport?esc(l.airport)+(l.country?' — '+countryLabel(l.country):''):countryLabel(l.country)||'—';
 
   document.title='Aircraft2Sell — '+title;
+  /* Incrémenter les vues dans Supabase */
+  (function(){
+    var viewed=sessionStorage.getItem('a2s_viewed_'+l.id);
+    if(!viewed){
+      sessionStorage.setItem('a2s_viewed_'+l.id,'1');
+      fetch(SB_URL+'/rest/v1/rpc/increment_views',{
+        method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({listing_id:l.id})
+      }).catch(function(){
+        /* Fallback: PATCH direct */
+        fetch(SB_URL+'/rest/v1/listings?id=eq.'+l.id,{
+          method:'PATCH',
+          headers:{'apikey':SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify({views:(l.views||0)+1})
+        }).catch(function(){});
+      });
+    }
+  })();
   injectSchema(l);
   loadSimilar(l);
   var setMeta=function(p,v){var el=document.querySelector('meta[property="'+p+'"]')||document.querySelector('meta[name="'+p+'"]');if(!el){el=document.createElement('meta');el.setAttribute('property',p);document.head.appendChild(el);}el.setAttribute('content',v);};
@@ -333,6 +381,28 @@ function render(l){
 
   // Breadcrumb
   var bc=document.getElementById('bcTitle');if(bc){bc.className='';bc.textContent=title;}
+  /* Fil d'Ariane : lien catégorie dynamique */
+  var catLabels={light:'Avions légers',jet:"Jets d'affaires",turbo:'Turboprops',heli:'Hélicoptères',ulm:'ULM',airliner:'Avions de ligne'};
+  var catSlug={light:'avions-legers',jet:'jets-affaires',turbo:'turboprops',heli:'helicopteres',ulm:'ulm',airliner:'search'};
+  var breadcrumb=document.getElementById('breadcrumb');
+  if(breadcrumb&&l.category){
+    var catLabel=catLabels[l.category]||'Annonces';
+    var catUrl=(catSlug[l.category]||'search')+'.html';
+    breadcrumb.innerHTML='<a href="homepage.html">Accueil</a><span>›</span>'
+      +'<a href="search.html">Annonces</a><span>›</span>'
+      +'<a href="'+catUrl+'">'+catLabel+'</a><span>›</span>'
+      +'<span>'+esc(title)+'</span>';
+  }
+  /* Schema BreadcrumbList SEO */
+  var bcSchema=document.getElementById('bc-schema');if(bcSchema)bcSchema.remove();
+  var bs=document.createElement('script');bs.type='application/ld+json';bs.id='bc-schema';
+  bs.textContent=JSON.stringify({"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+    {"@type":"ListItem","position":1,"name":"Accueil","item":"https://www.aircraft2sell.eu/"},
+    {"@type":"ListItem","position":2,"name":"Annonces","item":"https://www.aircraft2sell.eu/search.html"},
+    {"@type":"ListItem","position":3,"name":catLabels[l.category]||'Annonces',"item":"https://www.aircraft2sell.eu/"+(catSlug[l.category]||'search')+".html"},
+    {"@type":"ListItem","position":4,"name":title}
+  ]});
+  document.head.appendChild(bs);
   // Header
   document.getElementById('lCat').textContent=cat;
   document.getElementById('lTitle').textContent=title;
@@ -397,6 +467,9 @@ function render(l){
 
 /* ── SIMILAIRES ── */
 async function loadSimilar(cat,excludeId){
+  /* Mettre à jour le lien "Voir tout" */
+  var btn=document.getElementById('similarSearchBtn');
+  if(btn&&cat){btn.href='search.html?cat='+encodeURIComponent(cat);}
   var rows=await sbGet('listings','status=eq.live&category=eq.'+encodeURIComponent(cat)+'&limit=4');
   if(!rows)return;
   rows=rows.filter(function(r){return r.id!==excludeId;}).slice(0,3);
@@ -424,13 +497,58 @@ function goToSeller(){var head=document.getElementById('sellerHead');if(head&&he
 var _lbPhotos=[],_lbIdx=0;
 function optimizeSupabaseImg(url,w){return optimizeImg(url,w);}
 function setMainPhoto(idx,url){_lbIdx=idx;var m=document.getElementById('galleryMain');if(!m)return;var img=m.querySelector('img');if(img)img.src=url;document.querySelectorAll('.gallery-thumb').forEach(function(t,i){t.classList.toggle('active',i===idx);});}
-function openLightbox(idx){var lb=document.getElementById('lightbox');if(!lb)return;lb.classList.add('open');document.body.style.overflow='hidden';_lbIdx=idx||0;renderLb();var thumbs=document.getElementById('lbThumbs');if(thumbs)thumbs.innerHTML=_lbPhotos.map(function(p,i){return p?'<img class="lb-thumb'+(i===_lbIdx?' active':'')+'" src="'+p+'" onclick="lbGo('+i+')" loading="lazy">':'<div class="lb-thumb-plane">✈</div>';}).join('');}
+function openLightbox(idx){
+  var lb=document.getElementById('lightbox');if(!lb)return;
+  lb.classList.add('open');document.body.style.overflow='hidden';
+  _lbIdx=idx||0;_lbZoom=false;renderLb();
+  var thumbs=document.getElementById('lbThumbs');
+  if(thumbs)thumbs.innerHTML=_lbPhotos.map(function(p,i){
+    return p?'<img class="lb-thumb'+(i===_lbIdx?' active':'')+'" src="'+p+'" onclick="lbGo('+i+')" loading="lazy">':'<div class="lb-thumb-plane">✈</div>';
+  }).join('');
+  /* Compteur */
+  var ctr=document.getElementById('lbCounter');
+  if(ctr)ctr.textContent=(_lbIdx+1)+' / '+_lbPhotos.length;
+}
+var _lbZoom=false;
+function lbToggleZoom(){
+  var img=document.getElementById('lbImg');
+  if(!img)return;
+  _lbZoom=!_lbZoom;
+  img.style.transform=_lbZoom?'scale(2)':'scale(1)';
+  img.style.cursor=_lbZoom?'zoom-out':'zoom-in';
+  img.style.transition='transform .25s';
+}
 function closeLightbox(){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('open');document.body.style.overflow='';}
 function renderLb(){var img=document.getElementById('lbImg'),plane=document.getElementById('lbPlane'),ctr=document.getElementById('lbCounter'),photo=_lbPhotos[_lbIdx];if(img&&plane){if(photo){img.src=photo;img.style.display='block';plane.style.display='none';}else{img.style.display='none';plane.style.display='block';}}if(ctr)ctr.textContent=(_lbIdx+1)+' / '+_lbPhotos.length;document.querySelectorAll('.lb-thumb').forEach(function(t,i){t.classList.toggle('active',i===_lbIdx);});}
-function lbNav(dir){_lbIdx=(_lbIdx+dir+_lbPhotos.length)%_lbPhotos.length;renderLb();}
+function lbNav(dir){
+  _lbIdx=(_lbIdx+dir+_lbPhotos.length)%_lbPhotos.length;
+  _lbZoom=false;
+  var img=document.getElementById('lbImg');if(img){img.style.transform='scale(1)';}
+  renderLb();
+  var ctr=document.getElementById('lbCounter');
+  if(ctr)ctr.textContent=(_lbIdx+1)+' / '+_lbPhotos.length;
+  /* Mettre à jour les thumbs actifs */
+  document.querySelectorAll('.lb-thumb').forEach(function(t,i){t.classList.toggle('active',i===_lbIdx);});
+}
 function lbGo(i){_lbIdx=i;renderLb();}
 document.addEventListener('keydown',function(e){var lb=document.getElementById('lightbox');if(!lb||!lb.classList.contains('open'))return;if(e.key==='ArrowLeft')lbNav(-1);if(e.key==='ArrowRight')lbNav(1);if(e.key==='Escape')closeLightbox();});
-(function(){var lb=document.getElementById('lightbox');if(!lb)return;var sx=0;lb.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;},{passive:true});lb.addEventListener('touchend',function(e){var dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>50)lbNav(dx<0?1:-1);},{passive:true});})();
+(function(){
+  var lb=document.getElementById('lightbox');if(!lb)return;
+  var sx=0,sy=0,lastTap=0;
+  lb.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  lb.addEventListener('touchend',function(e){
+    var dx=e.changedTouches[0].clientX-sx;
+    var dy=e.changedTouches[0].clientY-sy;
+    var now=Date.now();
+    if(now-lastTap<300&&Math.abs(dx)<20&&Math.abs(dy)<20){lbToggleZoom();} /* double-tap */
+    else if(Math.abs(dx)>50&&!_lbZoom){lbNav(dx<0?1:-1);} /* swipe */
+    lastTap=now;
+  },{passive:true});
+  /* Double-clic desktop */
+  var img=document.getElementById('lbImg');
+  if(img)img.addEventListener('dblclick',lbToggleZoom);
+  img.style.cursor='zoom-in';
+})();
 
 /* ── WHATSAPP ── */
 function shareWhatsApp(){
@@ -495,7 +613,17 @@ async function toggleFav(){
 }
 
 /* ── CONTACT ── */
-function openMsgForm(){document.getElementById('msgOverlay').classList.add('open');document.body.style.overflow='hidden';}
+function openMsgForm(){
+  var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
+  var token=sessionStorage.getItem('a2s_auth_token');
+  if(!loggedIn&&!token){
+    // Proposer inscription rapide
+    openQuickReg();
+    return;
+  }
+  document.getElementById('msgOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
 function closeMsgForm(){document.getElementById('msgOverlay').classList.remove('open');document.body.style.overflow='';}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMsgForm();});
 
@@ -730,6 +858,25 @@ async function sendOffer(){
       <div class="fld"><label>Message (optionnel)</label><textarea class="inp" id="offerMsg" placeholder="Bonjour, je vous propose…" style="height:80px"></textarea></div>
       <button class="btn-send" onclick="sendOffer()">Envoyer l'offre</button>
       <div class="msg-note">Votre offre sera transmise directement au vendeur par email et messagerie.</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL INSCRIPTION RAPIDE -->
+<div style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);z-index:950;align-items:center;justify-content:center;padding:1.5rem" id="quickRegOverlay" onclick="if(event.target===this)closeQuickReg()">
+  <div style="background:var(--card);border:1px solid var(--border2);width:100%;max-width:420px;padding:2rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.06em">Créer un compte gratuit</div>
+      <button onclick="closeQuickReg()" style="background:none;border:none;color:var(--mist);cursor:pointer;font-size:1.2rem">✕</button>
+    </div>
+    <p style="font-size:.78rem;color:var(--mist);margin-bottom:1.25rem;line-height:1.65">Créez votre compte en 30 secondes pour contacter ce vendeur et suivre cette annonce.</p>
+    <div style="display:flex;flex-direction:column;gap:.65rem">
+      <input type="text" id="qrName" placeholder="Votre prénom" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:.65rem .9rem;outline:none;width:100%">
+      <input type="email" id="qrEmail" placeholder="Votre email" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:.65rem .9rem;outline:none;width:100%">
+      <input type="password" id="qrPw" placeholder="Mot de passe (min. 8 caractères)" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:.65rem .9rem;outline:none;width:100%">
+      <div id="qrAlert" style="display:none;padding:.55rem .85rem;font-size:.78rem"></div>
+      <button onclick="quickRegister()" style="background:var(--accent);color:var(--deep);border:none;padding:.8rem;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.08em;cursor:pointer;width:100%">Créer mon compte →</button>
+      <div style="text-align:center;font-size:.72rem;color:var(--mist2)">Déjà un compte ? <a href="login.html" style="color:var(--accent)">Se connecter</a></div>
     </div>
   </div>
 </div>

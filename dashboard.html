@@ -330,6 +330,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-w
       <div class="nav-tab active" id="tab-overview" onclick="switchTab('overview')"><span class="tab-icon">◻</span> Vue d'ensemble</div>
       <div class="nav-tab" id="tab-listings" onclick="switchTab('listings')"><span class="tab-icon">✈</span> Mes annonces</div>
       <div class="nav-tab" id="tab-messages" onclick="switchTab('messages')"><span class="tab-icon">✉</span> Messages<span class="tab-badge" id="badge-msgs">0</span></div>
+      <div class="nav-tab" id="tab-offers" onclick="switchTab('offers')"><span class="tab-icon">💬</span> Offres<span class="tab-badge" id="badge-offers" style="display:none">0</span></div>
     </div>
     <div class="sb-section">
       <div class="sb-label">Compte</div>
@@ -468,6 +469,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-w
     </div>
 
     <!-- MESSAGES -->
+    <!-- PANEL OFFRES -->
+    <div class="panel" id="panel-offers" style="display:none">
+      <div class="panel-title">Offres <em>reçues</em></div>
+      <div id="offersList">
+        <div style="text-align:center;padding:3rem;color:var(--mist2)">
+          <div style="font-size:2.5rem;opacity:.15;margin-bottom:.75rem">💬</div>
+          <div style="font-size:.85rem;font-weight:500;color:var(--white);margin-bottom:.4rem">Aucune offre reçue</div>
+          <div style="font-size:.78rem">Les offres de prix apparaîtront ici.</div>
+        </div>
+      </div>
+    </div>
+
     <div class="panel" id="panel-messages">
       <div class="panel-title">Mes <em>messages</em></div>
       <div class="msg-layout">
@@ -1252,7 +1265,46 @@ setTimeout(renderAnalytics, 800);
 })();
 </script>
 <script src="rgpd-consent.js" defer></script>
-<script src="nav.js"></script>
+<script src="nav.js">
+/* ── OFFRES REÇUES ── */
+async function renderOffers(){
+  var el=document.getElementById('offersList');if(!el)return;
+  el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--mist2);font-size:.8rem">Chargement…</div>';
+  var userEmail=localStorage.getItem('a2s_user_email')||'';
+  if(!userEmail){el.innerHTML='<div style="padding:2rem;color:var(--mist2);text-align:center">Connectez-vous pour voir vos offres.</div>';return;}
+  try{
+    var rows=await fetch(SB_URL+'/rest/v1/messages?receiver_email=eq.'+encodeURIComponent(userEmail)+'&content=like.*OFFRE*&order=created_at.desc&limit=50',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(AUTH_TOKEN||SB_KEY)}
+    }).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];});
+    
+    var badge=document.getElementById('badge-offers');
+    if(badge){badge.textContent=rows.length;badge.style.display=rows.length?'':'none';}
+    
+    if(!rows.length){
+      el.innerHTML='<div style="text-align:center;padding:3rem;color:var(--mist2)"><div style="font-size:2.5rem;opacity:.15;margin-bottom:.75rem">💬</div><div style="font-size:.85rem;font-weight:500;color:var(--white);margin-bottom:.4rem">Aucune offre reçue</div><div style="font-size:.78rem">Les offres de prix apparaîtront ici.</div></div>';
+      return;
+    }
+    el.innerHTML='<div style="display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border)">'+rows.map(function(m){
+      var amount=m.content.match(/OFFRE ([^\]]+)\]/)?m.content.match(/OFFRE ([^\]]+)\]/)[1]:'';
+      var msg=m.content.replace(/^\[OFFRE[^\]]*\]\s*/,'').trim();
+      var date=new Date(m.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      return'<div style="background:var(--card);padding:1rem 1.25rem">'
+        +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.5rem">'
+        +'<div>'
+        +'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.3rem;letter-spacing:.04em;color:var(--accent)">'+esc(amount)+'</div>'
+        +'<div style="font-size:.72rem;color:var(--mist2)">De: '+esc(m.sender_email)+'</div>'
+        +'</div>'
+        +'<div style="font-size:.62rem;color:var(--mist2);text-align:right;flex-shrink:0">'+date+'</div>'
+        +'</div>'
+        +(msg?'<div style="font-size:.78rem;color:var(--mist);line-height:1.6;padding:.6rem .75rem;background:rgba(255,255,255,.03);border:1px solid var(--border)">'+esc(msg)+'</div>':'')
+        +'<div style="display:flex;gap:.5rem;margin-top:.75rem">'
+        +'<a href="messages.html" style="background:var(--accent);color:var(--deep);border:none;padding:.45rem 1rem;font-family:\'Bebas Neue\',sans-serif;font-size:.82rem;letter-spacing:.08em;cursor:pointer;text-decoration:none">Répondre</a>'
+        +'</div>'
+        +'</div>';
+    }).join('')+'</div>';
+  }catch(e){el.innerHTML='<div style="padding:2rem;color:var(--red);font-size:.8rem">Erreur: '+esc(e.message)+'</div>';}
+}
+</script>
 
 <!-- MODAL MODIFIER ANNONCE -->
 <div style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);z-index:900;align-items:center;justify-content:center;padding:1.5rem" id="mEditListing" onclick="if(event.target===this)closeEditListing()">
