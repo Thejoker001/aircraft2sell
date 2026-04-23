@@ -857,6 +857,13 @@ async function sb(method,table,params,body){
 /* ── MAPPING ── */
 function sbToL(r){return{id:r.id,make:r.make,model:r.model,year:r.year,price:r.price,currency:r.currency||'EUR',category:r.category,airport:r.airport,desc:r.description,status:r.status||'pending',sellerName:r.seller_name,sellerEmail:r.seller_email,views:r.views||0,enquiries:r.enquiries||0,submittedAt:r.submitted_at,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')};}
 
+/* ── INIT CHECK ── */
+console.log('[A2S Admin] Script chargé, SB_URL=', typeof SB_URL !== 'undefined' ? SB_URL : 'UNDEFINED');
+document.addEventListener('DOMContentLoaded', function(){
+  console.log('[A2S Admin] DOM prêt, loginWrap=', document.getElementById('loginWrap') ? 'OK' : 'ABSENT');
+  console.log('[A2S Admin] Bouton=', document.querySelector('.lb-btn') ? 'OK' : 'ABSENT');
+});
+
 /* ── AUTH ── */
 async function login(){
   if(_loginBlocked){
@@ -877,12 +884,17 @@ async function login(){
   btn.disabled=true;
   
   try{
+    console.log('[A2S Admin] Tentative login:', em);
+    console.log('[A2S Admin] SB_URL:', SB_URL);
+    console.log('[A2S Admin] SB_KEY début:', SB_KEY.substring(0,20)+'...');
     var res=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
       method:'POST',
       headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({email:em,password:pw})
     });
+    console.log('[A2S Admin] HTTP status:', res.status);
     var data=await res.json();
+    console.log('[A2S Admin] Réponse:', JSON.stringify(data).substring(0,200));
     
     if(!res.ok||!data.access_token){
       var msg=data.error_description||data.msg||data.error||'Identifiants incorrects';
@@ -1733,7 +1745,7 @@ async function loadVerifRequests(){
       el.innerHTML='<div style="text-align:center;padding:3rem;color:var(--mist2)"><div style="font-size:2rem;opacity:.2;margin-bottom:.75rem">🪪</div><div>Aucune demande en attente</div></div>';
       return;
     }
-    el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.8rem">'
+    var html='<table style="width:100%;border-collapse:collapse;font-size:.8rem">'
       +'<thead><tr style="border-bottom:1px solid var(--border2)">'
       +'<th style="text-align:left;padding:.6rem 1rem;font-size:.65rem;color:var(--mist2);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Email</th>'
       +'<th style="text-align:left;padding:.6rem 1rem;font-size:.65rem;color:var(--mist2);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Document</th>'
@@ -1741,23 +1753,29 @@ async function loadVerifRequests(){
       +'<th style="text-align:left;padding:.6rem 1rem;font-size:.65rem;color:var(--mist2);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Pays</th>'
       +'<th style="text-align:left;padding:.6rem 1rem;font-size:.65rem;color:var(--mist2);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Date</th>'
       +'<th style="padding:.6rem 1rem"></th>'
-      +'</tr></thead><tbody>'
-      +rows.map(function(r){
-        var date=new Date(r.created_at).toLocaleDateString('fr-FR');
-        var typeLabel={passport:'Passeport',id_card:'CNI',pilot_license:'Licence pilote'}[r.doc_type]||r.doc_type||'—';
-        return'<tr style="border-bottom:1px solid var(--border)">'
-          +'<td style="padding:.75rem 1rem;color:var(--white)">'+esc(r.email)+'</td>'
-          +'<td style="padding:.75rem 1rem;color:var(--mist)">'+esc(typeLabel)+'</td>'
-          +'<td style="padding:.75rem 1rem;color:var(--mist);font-family:monospace;font-size:.75rem">'+esc(r.doc_number||'—')+'</td>'
-          +'<td style="padding:.75rem 1rem;color:var(--mist)">'+esc(r.doc_country||'—')+'</td>'
-          +'<td style="padding:.75rem 1rem;color:var(--mist2);font-size:.72rem">'+date+'</td>'
-          +'<td style="padding:.75rem 1rem"><div style="display:flex;gap:.4rem">'
-          +'<button onclick="approveVerif('+r.id+',''+esc(r.email)+'')" class="act ap">✓ Certifier</button>'
-          +'<button onclick="rejectVerif('+r.id+')" class="act rj">✕ Refuser</button>'
-          +'</div></td></tr>';
-      }).join('')+'</tbody></table>';
+      +'</tr></thead><tbody>';
+    var typeLabels={passport:'Passeport',id_card:'CNI',pilot_license:'Licence pilote'};
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i];
+      var date=new Date(r.created_at).toLocaleDateString('fr-FR');
+      var typeLabel=typeLabels[r.doc_type]||r.doc_type||'—';
+      var emailSafe=esc(r.email||'');
+      html+='<tr style="border-bottom:1px solid var(--border)">';
+      html+='<td style="padding:.75rem 1rem;color:var(--white)">'+emailSafe+'</td>';
+      html+='<td style="padding:.75rem 1rem;color:var(--mist)">'+esc(typeLabel)+'</td>';
+      html+='<td style="padding:.75rem 1rem;color:var(--mist);font-family:monospace;font-size:.75rem">'+esc(r.doc_number||'—')+'</td>';
+      html+='<td style="padding:.75rem 1rem;color:var(--mist)">'+esc(r.doc_country||'—')+'</td>';
+      html+='<td style="padding:.75rem 1rem;color:var(--mist2);font-size:.72rem">'+date+'</td>';
+      html+='<td style="padding:.75rem 1rem"><div style="display:flex;gap:.4rem">';
+      html+='<button class="act ap" data-id="'+r.id+'" data-email="'+emailSafe+'" onclick="approveVerif(this.dataset.id,this.dataset.email)">✓ Certifier</button>';
+      html+='<button class="act rj" data-id="'+r.id+'" onclick="rejectVerif(this.dataset.id)">✕ Refuser</button>';
+      html+='</div></td></tr>';
+    }
+    html+='</tbody></table>';
+    el.innerHTML=html;
   }catch(e){el.innerHTML='<div style="color:var(--red);padding:1rem;font-size:.8rem">Erreur: '+esc(e.message)+'</div>';}
 }
+
 
 async function approveVerif(id,email){
   if(!confirm('Certifier le compte '+email+' ?'))return;
