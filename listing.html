@@ -409,12 +409,40 @@ async function sendMsg(){
   var _ve=LISTING?LISTING.seller_email:'';
   var _vn=LISTING?(LISTING.seller_pseudo||LISTING.seller_name||'Vendeur'):'Vendeur';
   var _lid=LISTING?String(LISTING.id):'';
-  // Email via Edge Function sécurisée (clé Brevo côté serveur)
+  // 1. Email via Edge Function (Brevo)
   fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/send-listing-message',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({buyerName:name,buyerEmail:email,buyerPhone:phone,message:msg,listingId:_lid})
   }).catch(function(){});
+
+  // 2. Sauvegarder dans Supabase table messages
+  var SB_URL='https://hlivysnlzlqdjcigqgvk.supabase.co';
+  var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+  var threadId=_lid+'-'+[email,_ve].sort().join('-');
+  fetch(SB_URL+'/rest/v1/messages',{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({
+      thread_id:threadId,
+      listing_id:_lid?parseInt(_lid):null,
+      sender_email:email,
+      receiver_email:_ve||'contact@aircraft2sell.eu',
+      content:'['+name+(phone?' — '+phone:'')+'] '+msg,
+      read:false
+    })
+  }).then(function(r){
+    // 3. Stocker la conversation pour l'ouvrir dans messages.html
+    try{
+      sessionStorage.setItem('a2s_open_conv',JSON.stringify({
+        listingId:_lid?parseInt(_lid):null,
+        sellerEmail:_ve,
+        aircraft:_t,
+        price:LISTING&&LISTING.price?LISTING.price:''
+      }));
+    }catch(e){}
+  }).catch(function(){});
+
   document.getElementById('msgText').value='';
   setTimeout(closeMsgForm,2500);
 }
