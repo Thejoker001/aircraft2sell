@@ -328,8 +328,24 @@ function renderProfile(user,fallbackName){
   // Badges
   var badges='';
   var isCertified=user&&user.certified;
+  var isPro=user&&user.is_pro;
+  var sellerType=user&&user.seller_type;
   var plan=user&&user.plan;
-  if(isCertified)badges+='<span class="badge badge-verified">✓ Vendeur vérifié</span>';
+
+  /* Badge principal : Pro vérifié ou Particulier */
+  if(isPro){
+    badges+='<span class="badge" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#93c5fd">🏢 Professionnel vérifié</span>';
+  } else {
+    var typeMap={particulier:'👤 Particulier',broker:'🤝 Courtier',club:'✈ Aéroclub',acheteur:'🔍 Acheteur'};
+    if(sellerType&&typeMap[sellerType]){
+      badges+='<span class="badge" style="background:rgba(180,200,230,.06);border:1px solid rgba(180,200,230,.12);color:var(--mist)">'+typeMap[sellerType]+'</span>';
+    }
+  }
+
+  /* Badge certifié */
+  if(isCertified)badges+='<span class="badge badge-verified">✓ Identité vérifiée</span>';
+
+  /* Badge abonnement */
   if(plan==='Pro')badges+='<span class="badge badge-pro">★ Pro</span>';
   else if(plan==='Aviateur')badges+='<span class="badge badge-plan">Aviateur</span>';
   document.getElementById('sellerBadges').innerHTML=badges;
@@ -351,6 +367,10 @@ function renderProfile(user,fallbackName){
   // Pays : depuis le profil user, sinon depuis la première annonce
   var countryCode=(user&&user.country)||(_allListings.length&&_allListings[0].country)||'';
   if(countryCode)info+='<div class="pi-row"><span class="pi-icon">🌍</span><span class="pi-val">'+countryLabel(countryCode)+'</span></div>';
+  /* Infos pro */
+  if(isPro){
+    info+='<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.12);padding:.75rem 1rem;margin-bottom:.75rem;font-size:.75rem;color:#93c5fd;line-height:1.6">🏢 Ce vendeur est un <strong>professionnel vérifié</strong> par Aircraft2Sell.</div>';
+  }
   if(user&&user.company)info+='<div class="pi-row"><span class="pi-icon">🏢</span><span class="pi-val">'+esc(user.company)+'</span></div>';
   if(user&&user.phone)info+='<div class="pi-row"><span class="pi-icon">📞</span><span class="pi-val"><a href="tel:'+esc(user.phone)+'">'+esc(user.phone)+'</a></span></div>';
   if(!info)info='<div class="pi-row" style="color:var(--mist2);font-size:.76rem;padding:.75rem 0">Aucune information de profil</div>';
@@ -527,6 +547,7 @@ function loadReviews(sellerEmail){
 }
 </script>
 <script src="rgpd-consent.js" defer></script>
+<script src="analytics.js" defer></script>
 <script src="nav.js"></script>
 </body>
 </html>

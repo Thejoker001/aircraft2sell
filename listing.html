@@ -439,7 +439,43 @@ function render(l){
   document.getElementById('sellerAvatar').textContent=sellerDisplay.charAt(0).toUpperCase();
   document.getElementById('sellerName').textContent=sellerDisplay;
   document.getElementById('sellerSince').textContent=l.submitted_at?'Membre depuis '+new Date(l.submitted_at).toLocaleDateString('fr-FR',{month:'long',year:'numeric'}):'';
-  document.getElementById('sellerBadge').innerHTML='<div class="seller-verified">Vendeur vérifié</div>';
+  /* Charger les infos complètes du vendeur depuis la table users */
+  (async function(){
+    if(!l.seller_email)return;
+    try{
+      var userData=await sbGet('users','email=eq.'+encodeURIComponent(l.seller_email)+'&select=seller_type,is_pro,certified,rating,company&limit=1');
+      var u=userData&&userData[0]?userData[0]:null;
+      var badgeEl=document.getElementById('sellerBadge');
+      if(!badgeEl)return;
+      var badges='';
+      /* Badge PRO professionnel */
+      if(u&&u.is_pro){
+        badges+='<span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#93c5fd;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .55rem;margin-right:.3rem">🏢 Pro vérifié</span>';
+      }
+      /* Badge certifié */
+      if(u&&u.certified){
+        badges+='<span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:var(--green);font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .55rem;margin-right:.3rem">✓ Certifié</span>';
+      }
+      /* Type particulier/courtier/club */
+      if(u&&u.seller_type&&!u.is_pro){
+        var typeLabels={particulier:'Particulier',broker:'Courtier',club:'Aéroclub',acheteur:''};
+        var typeLabel=typeLabels[u.seller_type]||'';
+        if(typeLabel)badges+='<span style="font-size:.62rem;color:var(--mist2)">'+typeLabel+'</span>';
+      }
+      /* Nom entreprise si pro */
+      if(u&&u.company&&u.is_pro){
+        var snEl=document.getElementById('sellerSince');
+        if(snEl)snEl.textContent=u.company;
+      }
+      /* Note vendeur */
+      if(u&&u.rating){
+        badges+='<span style="font-size:.68rem;color:#f5c518;margin-left:.3rem">'+'★'.repeat(Math.round(u.rating))+'</span>';
+      }
+      badgeEl.innerHTML=badges||'<div class="seller-verified">Vendeur vérifié</div>';
+    }catch(e){
+      document.getElementById('sellerBadge').innerHTML='<div class="seller-verified">Vendeur vérifié</div>';
+    }
+  })();
   var sellerUrl='seller.html?email='+encodeURIComponent(l.seller_email||'')+'&name='+encodeURIComponent(sellerDisplay);
   document.getElementById('sellerHead').dataset.url=sellerUrl;
   document.getElementById('sellerProfileLink').href=sellerUrl;

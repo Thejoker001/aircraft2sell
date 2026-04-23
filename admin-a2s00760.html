@@ -276,6 +276,7 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
       <div class="sn" id="sn-new" onclick="showTab('new',this)"><span class="sn-ico">＋</span><span class="sn-txt">Créer une annonce</span></div>
       <div class="sg-label">Utilisateurs</div>
       <div class="sn" id="sn-users" onclick="showTab('users',this)"><span class="sn-ico">👥</span><span class="sn-txt">Membres</span><span class="sn-badge nb-blue" id="users-badge" style="display:none"></span></div>
+      <div class="sn" id="sn-verif" onclick="showTab('verif',this)"><span class="sn-ico">🪪</span><span class="sn-txt">Vérifications</span><span class="sn-badge nb-red" id="verif-badge" style="display:none"></span></div>
       <div class="sn" id="sn-subs" onclick="showTab('subs',this)"><span class="sn-ico">💳</span><span class="sn-txt">Abonnements</span></div>
       <div class="sg-label">Analyse</div>
       <div class="sn" id="sn-stats" onclick="showTab('stats',this)"><span class="sn-ico">▲</span><span class="sn-txt">Statistiques</span></div>
@@ -468,6 +469,17 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
       </div>
 
       <!-- MEMBRES -->
+      <!-- ══ VÉRIFICATIONS ═══════════════════════════════════════ -->
+      <div class="sec" id="tab-verif" style="display:none">
+        <div class="toolbar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+          <div class="sec-title">Demandes de <em>vérification</em></div>
+          <button onclick="loadVerifRequests()" style="background:transparent;border:1px solid var(--border2);color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.75rem;padding:.45rem .9rem;cursor:pointer">🔄 Actualiser</button>
+        </div>
+        <div id="verifTable">
+          <div style="text-align:center;padding:3rem;color:var(--mist2)">Chargement…</div>
+        </div>
+      </div>
+
       <div class="sec" id="tab-users">
         <div class="toolbar">
           <div class="sec-title">Gestion des <em>membres</em></div>
@@ -777,10 +789,24 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
           </div>
           <input type="hidden" id="mu-rating" value="0">
         </div>
-        <div class="mfg" style="display:flex;align-items:flex-end;padding-bottom:.3rem">
-          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.78rem">
+        <div class="mfg">
+          <label style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mist);display:block;margin-bottom:.3rem">Type de vendeur</label>
+          <select id="mu-seller-type" style="width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.85rem;padding:.6rem .85rem;outline:none">
+            <option value="">Non renseigné</option>
+            <option value="particulier">👤 Particulier</option>
+            <option value="broker">🏢 Courtier / Professionnel</option>
+            <option value="club">✈ Aéroclub / Association</option>
+            <option value="acheteur">🔍 Acheteur uniquement</option>
+          </select>
+        </div>
+        <div class="mfg" style="display:flex;align-items:flex-end;padding-bottom:.3rem;flex-direction:column;gap:.4rem">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.78rem;width:100%">
             <input type="checkbox" id="mu-certified" style="accent-color:var(--green);width:15px;height:15px">
-            ✓ Vendeur certifié
+            ✓ Vendeur certifié (identité vérifiée)
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.78rem;width:100%">
+            <input type="checkbox" id="mu-is-pro" style="accent-color:#3b82f6;width:15px;height:15px">
+            🏢 Statut Professionnel vérifié
           </label>
         </div>
       </div>
@@ -1018,7 +1044,7 @@ function filterUsers(){
   var tb=sel('users-body');if(!tb)return;
   if(!filtered.length){tb.innerHTML='<tr><td colspan="6" class="loading-row">Aucun résultat</td></tr>';return;}
   tb.innerHTML=filtered.map(function(u,i){
-    return'<tr><td style="color:var(--mist2);font-size:.65rem">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--white)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+(u.is_free?'<span style="font-size:.6rem;color:var(--green);margin-left:.3rem">🎁</span>':'')+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings(\''+esc(u.email||'')+'\');" title="Voir les annonces">📋</button><button class="act" onclick="editUser('+u.id+')">✏ Modifier</button><button class="act rj" onclick="delUser('+u.id+')">✕</button></div></td></tr>';
+    return'<tr><td style="color:var(--mist2);font-size:.65rem">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--white)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+(u.is_free?'<span style="font-size:.6rem;color:var(--green);margin-left:.3rem">🎁</span>':'')+(u.is_pro?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);color:#93c5fd;padding:.1rem .35rem;margin-left:.3rem">PRO</span>':u.seller_type==='particulier'?'<span style="font-size:.6rem;color:var(--mist2);margin-left:.3rem">Particulier</span>':'')+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings(\''+esc(u.email||'')+'\');" title="Voir les annonces">📋</button><button class="act" onclick="editUser('+u.id+')">✏ Modifier</button><button class="act rj" onclick="delUser('+u.id+')">✕</button></div></td></tr>';
   }).join('');
 }
 
@@ -1028,7 +1054,7 @@ function renderSubs(){
   setText('sub-mrr',mrr+' EUR');setText('sub-act',avi.length+pro.length);setText('sub-arr',(mrr*12)+' EUR');
   var paid=avi.concat(pro);var tb=sel('subs-body');if(!tb)return;
   if(!paid.length){tb.innerHTML='<tr><td colspan="5" class="loading-row">Aucun abonné payant</td></tr>';return;}
-  tb.innerHTML=paid.map(function(u){var price=u.is_free?'<span style="color:var(--green);font-size:.7rem">🎁 Offert</span>':(u.plan==='Pro'?'79':'29')+' EUR/mois';return'<tr><td style="color:var(--white)">'+esc(u.name||'--')+'</td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+(u.is_free?'<span style="font-size:.6rem;color:var(--green);margin-left:.3rem">🎁</span>':'')+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td style="color:var(--accent)">'+price+'</td></tr>';}).join('');
+  tb.innerHTML=paid.map(function(u){var price=u.is_free?'<span style="color:var(--green);font-size:.7rem">🎁 Offert</span>':(u.plan==='Pro'?'79':'29')+' EUR/mois';return'<tr><td style="color:var(--white)">'+esc(u.name||'--')+'</td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+(u.is_free?'<span style="font-size:.6rem;color:var(--green);margin-left:.3rem">🎁</span>':'')+(u.is_pro?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);color:#93c5fd;padding:.1rem .35rem;margin-left:.3rem">PRO</span>':u.seller_type==='particulier'?'<span style="font-size:.6rem;color:var(--mist2);margin-left:.3rem">Particulier</span>':'')+'</td><td style="color:var(--mist2);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td style="color:var(--accent)">'+price+'</td></tr>';}).join('');
 }
 
 /* ── LISTING EDIT ── */
@@ -1237,8 +1263,10 @@ function clearSellerFilter(){
   var info=sel('ls-info');if(info)info.remove();
   renderList();
 }
-function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;sel('mu-free').checked=u.is_free||false;var r=parseInt(u.rating)||0;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=r?'#f5c518':'rgba(200,220,240,.2)';});openM('mUser');}
-async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var body={name:sel('mu-name').value,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree};try{await sb('PATCH','users','id=eq.'+id,body);var uEmail=sel('mu-email').value;if(uEmail)await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked});closeM('mUser');await refreshAll();showToast(isFree?'🎁 Abonnement offert — exclu du MRR':'Membre mis à jour');}catch(e){showToast('Erreur : '+e.message);}}
+function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;sel('mu-free').checked=u.is_free||false;
+  var mst=sel('mu-seller-type');if(mst)mst.value=u.seller_type||'';
+  var mip=sel('mu-is-pro');if(mip)mip.checked=u.is_pro||false;var r=parseInt(u.rating)||0;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=r?'#f5c518':'rgba(200,220,240,.2)';});openM('mUser');}
+async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var isPro=sel('mu-is-pro')?sel('mu-is-pro').checked:false;var sellerType=sel('mu-seller-type')?sel('mu-seller-type').value:'';var body={name:sel('mu-name').value,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree,is_pro:isPro,seller_type:sellerType};try{await sb('PATCH','users','id=eq.'+id,body);var uEmail=sel('mu-email').value;if(uEmail)await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked});closeM('mUser');await refreshAll();showToast(isFree?'🎁 Abonnement offert — exclu du MRR':'Membre mis à jour');}catch(e){showToast('Erreur : '+e.message);}}
 async function delUser(id){if(!confirm('Supprimer ce membre ?'))return;try{await sb('DELETE','users','id=eq.'+id);await refreshAll();showToast('Membre supprimé');}catch(e){showToast('Erreur : '+e.message);}}
 async function delUserM(){var id=sel('mu-id').value;if(!confirm('Supprimer ?'))return;try{await sb('DELETE','users','id=eq.'+id);closeM('mUser');await refreshAll();showToast('Membre supprimé');}catch(e){showToast('Erreur : '+e.message);}}
 
@@ -1634,6 +1662,65 @@ async function setWeeklyListing(id){
     await sb('PATCH','listings','id=eq.'+id,{weekly_pick:true,featured:true});
     showToast('⭐ Annonce de la semaine définie !');
     await refreshAll();
+  }catch(e){showToast('Erreur: '+e.message);}
+}
+
+/* ── VÉRIFICATIONS IDENTITÉ ── */
+async function loadVerifRequests(){
+  var el=document.getElementById('verifTable');
+  if(!el)return;
+  el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--mist2);font-size:.8rem">Chargement…</div>';
+  try{
+    var rows=await apiGet('verification_requests','status=eq.pending&order=created_at.desc');
+    var badge=document.getElementById('verif-badge');
+    if(badge){badge.textContent=rows.length;badge.style.display=rows.length?'':'none';}
+    if(!rows.length){
+      el.innerHTML='<div style="text-align:center;padding:3rem;color:var(--mist2)"><div style="font-size:2rem;opacity:.2;margin-bottom:.75rem">🪪</div><div>Aucune demande en attente</div></div>';
+      return;
+    }
+    el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.8rem">'
+      +'<thead><tr style="border-bottom:1px solid var(--border2)">'
+      +'<th style="text-align:left;padding:.6rem 1rem;font-size:.65rem;color:var(--mist2);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Email</th>'
+      +'<th style="text-align:left;padding:.6rem 1rem;font-size:.65rem;color:var(--mist2);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Document</th>'
+      +'<th style="text-align:left;padding:.6rem 1rem;font-size:.65rem;color:var(--mist2);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Numéro</th>'
+      +'<th style="text-align:left;padding:.6rem 1rem;font-size:.65rem;color:var(--mist2);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Pays</th>'
+      +'<th style="text-align:left;padding:.6rem 1rem;font-size:.65rem;color:var(--mist2);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Date</th>'
+      +'<th style="padding:.6rem 1rem"></th>'
+      +'</tr></thead><tbody>'
+      +rows.map(function(r){
+        var date=new Date(r.created_at).toLocaleDateString('fr-FR');
+        var typeLabel={passport:'Passeport',id_card:'CNI',pilot_license:'Licence pilote'}[r.doc_type]||r.doc_type||'—';
+        return'<tr style="border-bottom:1px solid var(--border)">'
+          +'<td style="padding:.75rem 1rem;color:var(--white)">'+esc(r.email)+'</td>'
+          +'<td style="padding:.75rem 1rem;color:var(--mist)">'+esc(typeLabel)+'</td>'
+          +'<td style="padding:.75rem 1rem;color:var(--mist);font-family:monospace;font-size:.75rem">'+esc(r.doc_number||'—')+'</td>'
+          +'<td style="padding:.75rem 1rem;color:var(--mist)">'+esc(r.doc_country||'—')+'</td>'
+          +'<td style="padding:.75rem 1rem;color:var(--mist2);font-size:.72rem">'+date+'</td>'
+          +'<td style="padding:.75rem 1rem"><div style="display:flex;gap:.4rem">'
+          +'<button onclick="approveVerif('+r.id+',''+esc(r.email)+'')" class="act ap">✓ Certifier</button>'
+          +'<button onclick="rejectVerif('+r.id+')" class="act rj">✕ Refuser</button>'
+          +'</div></td></tr>';
+      }).join('')+'</tbody></table>';
+  }catch(e){el.innerHTML='<div style="color:var(--red);padding:1rem;font-size:.8rem">Erreur: '+esc(e.message)+'</div>';}
+}
+
+async function approveVerif(id,email){
+  if(!confirm('Certifier le compte '+email+' ?'))return;
+  try{
+    await sb('PATCH','verification_requests','id=eq.'+id,{status:'approved'});
+    await sb('PATCH','users','email=eq.'+encodeURIComponent(email),{certified:true});
+    showToast('✅ '+email+' certifié !');
+    loadVerifRequests();
+    refreshAll();
+  }catch(e){showToast('Erreur: '+e.message);}
+}
+
+async function rejectVerif(id){
+  if(!confirm('Refuser cette demande de vérification ?'))return;
+  try{
+    await sb('PATCH','verification_requests','id=eq.'+id,{status:'rejected'});
+    showToast('Demande refusée');
+    loadVerifRequests();
   }catch(e){showToast('Erreur: '+e.message);}
 }
 </script>
