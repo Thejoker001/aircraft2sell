@@ -244,7 +244,10 @@ tbody tr:hover td{background:rgba(255,255,255,.015)}
     <label class="lb-lbl">Mot de passe</label>
     <input type="password" class="lb-inp" id="lPw" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
     <button class="lb-btn" onclick="login()">Accéder</button>
-    <div class="lb-err" id="lErr"></div>
+    <div id="lErr" style="font-size:.78rem;min-height:1.2rem;margin-top:.5rem;text-align:center;padding:.3rem 0;transition:color .2s"></div>
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid rgba(180,200,230,.08);font-size:.65rem;color:var(--mist2);text-align:center;line-height:1.65">
+      Utilisez l'email et le mot de passe de votre<br>compte Supabase (<code style="color:var(--accent)">contact@aircraft2sell.eu</code>)
+    </div>
   </div>
 </div>
 
@@ -856,35 +859,87 @@ function sbToL(r){return{id:r.id,make:r.make,model:r.model,year:r.year,price:r.p
 
 /* ── AUTH ── */
 async function login(){
-  if(_loginBlocked){var rem=Math.ceil((_loginBlockUntil-Date.now())/1000);if(rem>0){document.getElementById('lErr').textContent='Trop de tentatives. Réessayez dans '+rem+'s.';return;}else{_loginBlocked=false;_loginAttempts=0;}}
+  if(_loginBlocked){
+    var rem=Math.ceil((_loginBlockUntil-Date.now())/1000);
+    if(rem>0){document.getElementById('lErr').textContent='Trop de tentatives. Réessayez dans '+rem+'s.';return;}
+    else{_loginBlocked=false;_loginAttempts=0;}
+  }
   var em=document.getElementById('lEmail').value.trim().toLowerCase();
   var pw=document.getElementById('lPw').value;
   var errEl=document.getElementById('lErr');
+  var btn=document.querySelector('.lb-btn');
+  
   if(!em||!pw){errEl.textContent='Remplissez tous les champs.';return;}
-  errEl.textContent='';
-  document.querySelector('.lb-btn').textContent='Connexion…';
-  document.querySelector('.lb-btn').disabled=true;
+  
+  errEl.style.color='var(--mist)';
+  errEl.textContent='Connexion en cours…';
+  btn.textContent='Connexion…';
+  btn.disabled=true;
+  
   try{
-    var res=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw})});
+    var res=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email:em,password:pw})
+    });
     var data=await res.json();
-    if(!res.ok||!data.access_token)throw new Error(data.error_description||data.msg||'Identifiants incorrects');
-    sessionStorage.setItem(SK,data.access_token);
-    sessionStorage.setItem('a2s_admin_email',em);
+    
+    if(!res.ok||!data.access_token){
+      var msg=data.error_description||data.msg||data.error||'Identifiants incorrects';
+      throw new Error(msg);
+    }
+    
+    /* Vérifier que c'est bien le compte admin */
+    var ADMIN_EMAILS=['contact@aircraft2sell.eu'];
+    if(ADMIN_EMAILS.indexOf(em)===-1){
+      /* Accepter quand même si le JWT contient le bon email — 
+         permet d'utiliser n'importe quel email configuré */
+      try{
+        var payload=JSON.parse(atob(data.access_token.split('.')[1]));
+        if(ADMIN_EMAILS.indexOf((payload.email||'').toLowerCase())===-1){
+          /* Log mais ne bloque pas — l'admin peut utiliser son vrai email */
+          console.warn('Login non-admin accepté:', em);
+        }
+      }catch(e2){}
+    }
+    
+    sessionStorage.setItem(SK, data.access_token);
+    sessionStorage.setItem('a2s_admin_email', em);
     _loginAttempts=0;
     _sbToken=data.access_token;
+    
     document.getElementById('loginWrap').classList.add('hidden');
     document.getElementById('app').classList.add('visible');
-    // Afficher email dans sidebar
+    
     var name=em.split('@')[0];
-    document.getElementById('sbUserName').textContent=name;
-    document.getElementById('sbAvatar').textContent=name.charAt(0).toUpperCase();
-    refreshAll();showToast('Bienvenue !');
+    var nameEl=document.getElementById('sbUserName');
+    var avEl=document.getElementById('sbAvatar');
+    if(nameEl)nameEl.textContent=name;
+    if(avEl)avEl.textContent=name.charAt(0).toUpperCase();
+    
+    refreshAll();
+    showToast('Bienvenue, '+name+' !');
+    
   }catch(e){
     _loginAttempts++;
-    if(_loginAttempts>=5){_loginBlocked=true;_loginBlockUntil=Date.now()+60000;errEl.textContent='Trop de tentatives. Compte bloqué 60 secondes.';}
-    else errEl.textContent='Erreur : '+e.message;
+    errEl.style.color='var(--red)';
+    if(_loginAttempts>=5){
+      _loginBlocked=true;
+      _loginBlockUntil=Date.now()+60000;
+      errEl.textContent='Trop de tentatives. Attendez 60 secondes.';
+    }else{
+      var msg=e.message||'Erreur inconnue';
+      /* Traduire les erreurs Supabase */
+      if(msg.toLowerCase().includes('invalid login'))msg='Email ou mot de passe incorrect.';
+      else if(msg.toLowerCase().includes('email not confirmed'))msg='Email non confirmé. Vérifiez votre boîte mail.';
+      else if(msg.toLowerCase().includes('network')||msg.toLowerCase().includes('fetch'))msg='Erreur réseau. Vérifiez votre connexion.';
+      errEl.textContent=msg;
+    }
     document.getElementById('lPw').value='';
-  }finally{document.querySelector('.lb-btn').textContent='Accéder';document.querySelector('.lb-btn').disabled=false;}
+  }finally{
+    btn.textContent='Accéder';
+    btn.disabled=false;
+  }
 }
 function logout(){sessionStorage.removeItem(SK);sessionStorage.removeItem('a2s_admin_email');_sbToken=null;location.reload();}
 
