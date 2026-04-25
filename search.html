@@ -5,8 +5,10 @@
 <meta name="keywords" content="annonces avions à vendre, avions d'occasion Europe, achat aéronef, jets à vendre, hélicoptères occasion">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://www.aircraft2sell.eu/search.html">
-<meta property="og:title" content="Rechercher des aéronefs — Aircraft2Sell">
-<meta property="og:description" content="Des centaines d'annonces d'avions et hélicoptères en Europe. Filtrez par catégorie, budget et localisation.">
+  <link rel="alternate" hreflang="fr" href="https://www.aircraft2sell.eu/search.html">
+  <link rel="alternate" hreflang="x-default" href="https://www.aircraft2sell.eu/search.html">
+<meta property="og:title" content="Rechercher un aéronef à vendre en Europe | Aircraft2Sell">
+<meta property="og:description" content="Recherchez parmi des centaines d'aéronefs à vendre en Europe : avions légers, jets, hélicoptères, turboprops, ULM. Filtres avancés, vendeurs vérifiés.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.aircraft2sell.eu/search.html">
 <meta property="og:image" content="https://aircraft2sell.eu/og-image.jpg">
@@ -14,10 +16,13 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Rechercher des aéronefs — Aircraft2Sell">
 <meta name="twitter:description" content="Des centaines d'annonces d'avions et hélicoptères en Europe. Filtrez par catégorie, budget et localisation.">
-<meta name="description" content="Recherchez parmi des centaines d'annonces d'aéronefs en Europe. Avions légers, jets d'affaires, hélicoptères, turbopropulseurs, ULM — sans commission.">
+<meta name="description" content="Recherchez parmi des centaines d'aéronefs à vendre en Europe : avions légers, jets, hélicoptères, turboprops, ULM. Filtres avancés, vendeurs vérifiés.">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Aircraft2Sell — Recherche d'aéronefs</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<title>Rechercher un aéronef à vendre en Europe | Aircraft2Sell</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://hlivysnlzlqdjcigqgvk.supabase.co">
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#05080f;--deep:#030610;--surface:#0a1020;--card:#0c1428;--card2:#0f1830;--border:rgba(180,200,230,.08);--border2:rgba(180,200,230,.14);--accent:#e8a020;--gold:#f5c518;--mist:#7a93aa;--mist2:#3d5468;--white:#edf2f8;--dim:#c8d8e8;--green:#22c55e;--red:#ef4444}
@@ -666,6 +671,29 @@ function updateAlertBtn(){
   if(q)params.set('q',q);
   if(cat)params.set('cat',cat);
   btn.href='alerts.html'+(params.toString()?'?'+params.toString():'');
+}
+
+/* ── SCHEMA ITEMLIST SEO ── */
+function injectSearchSchema(listings){
+  var existing=document.getElementById('search-schema');
+  if(existing)existing.remove();
+  if(!listings||!listings.length)return;
+  var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
+  var items=listings.slice(0,10).map(function(l,i){
+    var title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Aéronef';
+    return {
+      "@type":"ListItem",
+      "position":i+1,
+      "name":title,
+      "url":"https://www.aircraft2sell.eu/listing.html?id="+l.id,
+      "description":l.description?l.description.slice(0,120):''
+    };
+  });
+  var schema={"@context":"https://schema.org","@type":"ItemList","name":"Aéronefs à vendre — Aircraft2Sell","itemListElement":items};
+  var s=document.createElement('script');
+  s.type='application/ld+json';s.id='search-schema';
+  s.textContent=JSON.stringify(schema);
+  document.head.appendChild(s);
 }
 </script>
 </body>
