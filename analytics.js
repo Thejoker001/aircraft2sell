@@ -73,6 +73,22 @@
     return id ? parseInt(id, 10) : null;
   }
 
+
+  /* ── Table ISO 3166-1 → Nom pays ── */
+  function isoToName(code) {
+    var map = {
+      FR:'France',BE:'Belgique',CH:'Suisse',DE:'Allemagne',ES:'Espagne',
+      IT:'Italie',GB:'Royaume-Uni',NL:'Pays-Bas',PT:'Portugal',AT:'Autriche',
+      LU:'Luxembourg',DK:'Danemark',SE:'Suède',NO:'Norvège',FI:'Finlande',
+      PL:'Pologne',CZ:'République tchèque',HU:'Hongrie',RO:'Roumanie',
+      GR:'Grèce',HR:'Croatie',SK:'Slovaquie',BG:'Bulgarie',IE:'Irlande',
+      US:'États-Unis',CA:'Canada',AU:'Australie',JP:'Japon',CN:'Chine',
+      AE:'Émirats arabes unis',MA:'Maroc',TN:'Tunisie',DZ:'Algérie',
+      SN:'Sénégal',CI:'Côte d\'Ivoire',
+    };
+    return map[code] || code;
+  }
+
   /* ── Envoyer le hit ── */
   function track() {
     // Ne pas tracker les pages admin/diag
@@ -110,15 +126,17 @@
     if (countryCache) {
       sendHit(countryCache);
     } else {
-      fetch('https://get.geojs.io/v1/ip/country.json')
+      fetch('https://get.geojs.io/v1/ip/geo.json')
         .then(function(r) { return r.json(); })
         .then(function(d) {
-          var country = d.name || d.country || null;
+          /* geojs /geo retourne: {country:"FR", country_code:"FR", name:"France",...} */
+          var country = d.country_3166_1_alpha_2
+            ? isoToName(d.country_3166_1_alpha_2)
+            : (d.country || d.name || null);
           if (country) sessionStorage.setItem('a2s_country', country);
           sendHit(country);
         })
         .catch(function() {
-          // Si géoloc échoue, envoyer quand même sans pays
           sendHit(null);
         });
     }
