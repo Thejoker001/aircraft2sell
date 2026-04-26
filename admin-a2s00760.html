@@ -1463,8 +1463,23 @@ async function renderStats(){
     /* ── PAYS AVEC DRAPEAUX ── */
     var countryFlags={FR:'🇫🇷',DE:'🇩🇪',ES:'🇪🇸',IT:'🇮🇹',BE:'🇧🇪',NL:'🇳🇱',CH:'🇨🇭',GB:'🇬🇧',PT:'🇵🇹',AT:'🇦🇹',LU:'🇱🇺',US:'🇺🇸',CA:'🇨🇦',AU:'🇦🇺',SE:'🇸🇪',NO:'🇳🇴',DK:'🇩🇰',PL:'🇵🇱',AE:'🇦🇪',JP:'🇯🇵',CN:'🇨🇳',BR:'🇧🇷',RU:'🇷🇺',IN:'🇮🇳'};
     var countryNames={FR:'France',DE:'Allemagne',ES:'Espagne',IT:'Italie',BE:'Belgique',NL:'Pays-Bas',CH:'Suisse',GB:'Royaume-Uni',PT:'Portugal',AT:'Autriche',LU:'Luxembourg',US:'États-Unis',CA:'Canada',AU:'Australie',SE:'Suède',NO:'Norvège',DK:'Danemark',PL:'Pologne',AE:'Émirats',JP:'Japon',CN:'Chine',BR:'Brésil',RU:'Russie',IN:'Inde'};
+    /* Normaliser les pays (codes ISO et noms complets) */
+    var nameToCode={
+      'France':'FR','Germany':'DE','Allemagne':'DE','Spain':'ES','Espagne':'ES',
+      'Italy':'IT','Italie':'IT','Belgium':'BE','Belgique':'BE','Netherlands':'NL',
+      'Pays-Bas':'NL','Switzerland':'CH','Suisse':'CH','United Kingdom':'GB',
+      'Royaume-Uni':'GB','Portugal':'PT','Austria':'AT','Autriche':'AT',
+      'United States':'US','États-Unis':'US','Canada':'CA','Australia':'AU',
+      'Sweden':'SE','Norway':'NO','Denmark':'DK','Poland':'PL','Pologne':'PL',
+      'China':'CN','Chine':'CN','Japan':'JP','Japon':'JP','Brazil':'BR',
+      'Russia':'RU','India':'IN','Madagascar':'MG','Unknown':'?'
+    };
     var countryCounts={};
-    analytics.forEach(function(r){if(r.country)countryCounts[r.country]=(countryCounts[r.country]||0)+1;});
+    analytics.forEach(function(r){
+      if(!r.country)return;
+      var code=nameToCode[r.country]||r.country;
+      countryCounts[code]=(countryCounts[code]||0)+1;
+    });
     var countries=Object.entries(countryCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
     var maxC=countries[0]?countries[0][1]:1;
     sel('st-countries').innerHTML=countries.length?countries.map(function(c,i){

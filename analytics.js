@@ -130,9 +130,10 @@
         .then(function(r) { return r.json(); })
         .then(function(d) {
           /* geojs /geo retourne: {country:"FR", country_code:"FR", name:"France",...} */
+          /* Stocker le code ISO 2 lettres directement */
           var country = d.country_3166_1_alpha_2
-            ? isoToName(d.country_3166_1_alpha_2)
-            : (d.country || d.name || null);
+            || d.country
+            || null;
           if (country) sessionStorage.setItem('a2s_country', country);
           sendHit(country);
         })
