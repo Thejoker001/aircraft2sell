@@ -1422,6 +1422,7 @@ async function syncSellersAsMembers(){
 /* ── STATISTIQUES ── */
 async function renderStats(){
   var days=parseInt((sel('stats-period')||{value:'7'}).value)||7;
+  console.log('[Stats] Chargement stats, period='+days+'j');
   var since=new Date(Date.now()-days*86400000).toISOString();
   ['st-pages','st-countries','st-top-listings','st-devices','st-referrers'].forEach(function(id){
     var el=sel(id);if(el)el.innerHTML='<div class="loading-row">Chargement...</div>';
@@ -1429,6 +1430,9 @@ async function renderStats(){
   try{
     var analytics=await sb('GET','analytics','created_at=gte.'+since+'&order=created_at.desc&limit=5000');
     var listViews=await sb('GET','listing_views','created_at=gte.'+since+'&order=created_at.desc&limit=5000');
+    console.log('[Stats] analytics:', analytics ? analytics.length : 'null/error', 'rows');
+    console.log('[Stats] sample:', analytics && analytics[0] ? JSON.stringify(analytics[0]) : 'vide');
+    console.log('[Stats] listViews:', listViews ? listViews.length : 'null/error', 'rows');
 
     /* ── KPIs ── */
     var sessions=new Set(analytics.map(function(r){return r.session_id;})).size;
@@ -1481,6 +1485,8 @@ async function renderStats(){
       countryCounts[code]=(countryCounts[code]||0)+1;
     });
     var countries=Object.entries(countryCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
+    console.log('[Stats] countryCounts:', JSON.stringify(countryCounts));
+    console.log('[Stats] countries:', countries.length);
     var maxC=countries[0]?countries[0][1]:1;
     sel('st-countries').innerHTML=countries.length?countries.map(function(c,i){
       var pct=Math.round(c[1]/maxC*100);
@@ -1639,6 +1645,9 @@ async function renderMsgs(){
   try{
     /* Utiliser listing_views comme proxy des contacts (enquiries dans listings) */
     var listViews=await sb('GET','listing_views','created_at=gte.'+since+'&order=created_at.desc&limit=5000');
+    console.log('[Stats] analytics:', analytics ? analytics.length : 'null/error', 'rows');
+    console.log('[Stats] sample:', analytics && analytics[0] ? JSON.stringify(analytics[0]) : 'vide');
+    console.log('[Stats] listViews:', listViews ? listViews.length : 'null/error', 'rows');
     var allTime=await sb('GET','listings','select=id,make,model,year,category,price,currency,enquiries,status,seller_name,seller_email&order=enquiries.desc&limit=50');
     
     var total=allTime.reduce(function(s,l){return s+(l.enquiries||0);},0);
