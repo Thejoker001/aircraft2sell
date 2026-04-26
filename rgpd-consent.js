@@ -80,10 +80,15 @@
     document.getElementById('a2s-decline').onclick = decline;
   }
 
-  // Check existing consent
+  // Analytics anonyme = légal sans consentement (pas de cookie, pas de PII)
+  // Charger directement — le consentement ne concerne que les cookies tiers
+  // Ref: CNIL - le tracking anonyme ne nécessite pas de consentement
+  loadAnalytics();
+  
+  // Check existing consent (pour compatibilité)
   var consent = getConsent();
   if (consent && consent.v === CONSENT_VERSION) {
-    if (consent.analytics) loadAnalytics();
+    if (consent.analytics) {} // déjà chargé
     return; // Banner already shown previously
   }
 
