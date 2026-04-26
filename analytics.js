@@ -126,20 +126,27 @@
     if (countryCache) {
       sendHit(countryCache);
     } else {
-      fetch('https://get.geojs.io/v1/ip/geo.json')
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          /* geojs /geo retourne: {country:"FR", country_code:"FR", name:"France",...} */
-          /* Stocker le code ISO 2 lettres directement */
-          var country = d.country_3166_1_alpha_2
-            || d.country
-            || null;
-          if (country) sessionStorage.setItem('a2s_country', country);
-          sendHit(country);
-        })
-        .catch(function() {
-          sendHit(null);
-        });
+      /* Essayer plusieurs APIs géo en cascade */
+      function tryGeo(apis, idx) {
+        if (idx >= apis.length) { sendHit(null); return; }
+        fetch(apis[idx].url)
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            var country = apis[idx].extract(d);
+            if (country && country.length >= 2) {
+              sessionStorage.setItem('a2s_country', country);
+              sendHit(country);
+            } else {
+              tryGeo(apis, idx + 1);
+            }
+          })
+          .catch(function() { tryGeo(apis, idx + 1); });
+      }
+      tryGeo([
+        { url: 'https://ipapi.co/json/', extract: function(d){ return d.country_code || null; } },
+        { url: 'https://get.geojs.io/v1/ip/country.json', extract: function(d){ return d.country || null; } },
+        { url: 'https://ipwho.is/', extract: function(d){ return d.country_code || null; } }
+      ], 0);
     }
 
     // Si c'est une page annonce, tracer aussi dans listing_views
