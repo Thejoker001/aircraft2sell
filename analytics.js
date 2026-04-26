@@ -86,20 +86,42 @@
       browser:    getBrowser(),
       session_id: getSessionId(),
       listing_id: getListingId(),
+      country:    null,
     };
 
-    // Envoyer en mode "fire and forget" — erreur silencieuse
-    fetch(SB_URL + '/rest/v1/analytics', {
-      method: 'POST',
-      headers: {
-        'apikey':        SB_KEY,
-        'Authorization': 'Bearer ' + SB_KEY,
-        'Content-Type':  'application/json',
-        'Prefer':        'return=minimal',
-      },
-      body: JSON.stringify(payload),
-      keepalive: true, // S'envoie même si l'utilisateur navigue
-    }).catch(function() {}); // Erreur silencieuse — ne jamais bloquer l'UX
+    // Envoyer le hit immédiatement (sans pays)
+    function sendHit(country) {
+      payload.country = country || null;
+      fetch(SB_URL + '/rest/v1/analytics', {
+        method: 'POST',
+        headers: {
+          'apikey':        SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type':  'application/json',
+          'Prefer':        'return=minimal',
+        },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(function() {});
+    }
+
+    // Récupérer le pays via get.geojs.io (sans clé API, RGPD-friendly)
+    var countryCache = sessionStorage.getItem('a2s_country');
+    if (countryCache) {
+      sendHit(countryCache);
+    } else {
+      fetch('https://get.geojs.io/v1/ip/country.json')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var country = d.name || d.country || null;
+          if (country) sessionStorage.setItem('a2s_country', country);
+          sendHit(country);
+        })
+        .catch(function() {
+          // Si géoloc échoue, envoyer quand même sans pays
+          sendHit(null);
+        });
+    }
 
     // Si c'est une page annonce, tracer aussi dans listing_views
     var listingId = getListingId();
