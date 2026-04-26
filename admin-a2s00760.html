@@ -1502,6 +1502,27 @@ async function renderStats(){
         +'</div>';
     }).join(''):'<div style="color:var(--mist2);font-size:.75rem;padding:.5rem 0">Aucune donnée pays — vérifier analytics.js</div>';
 
+    /* ── TOP VILLES ── */
+    var cityCounts={};
+    analytics.forEach(function(r){
+      if(r.city&&r.city!=='null')cityCounts[r.city]=(cityCounts[r.city]||0)+1;
+    });
+    var cities=Object.entries(cityCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+    var cityEl=sel('st-cities');
+    if(cityEl){
+      var maxCity=cities[0]?cities[0][1]:1;
+      cityEl.innerHTML=cities.length?cities.map(function(c){
+        var pct=Math.round(c[1]/maxCity*100);
+        return'<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem 0;border-bottom:1px solid var(--border)">'
+          +'<span style="color:var(--white);font-size:.72rem;flex:1">📍 '+esc(c[0])+'</span>'
+          +'<div style="width:80px;height:4px;background:rgba(255,255,255,.05);border-radius:2px">'
+          +'<div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:2px"></div>'
+          +'</div>'
+          +'<span style="color:var(--accent);font-size:.68rem;font-weight:600;min-width:28px;text-align:right">'+c[1]+'</span>'
+          +'</div>';
+      }).join(''):'<div style="color:var(--mist2);font-size:.75rem;padding:.5rem 0">Aucune donnée ville</div>';
+    }
+
     /* ── TOP ANNONCES ── */
     var lCounts={};
     listViews.forEach(function(r){if(r.listing_id)lCounts[r.listing_id]=(lCounts[r.listing_id]||0)+1;});

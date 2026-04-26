@@ -103,6 +103,8 @@
       session_id: getSessionId(),
       listing_id: getListingId(),
       country:    null,
+      city:       sessionStorage.getItem('a2s_city') || null,
+      region:     sessionStorage.getItem('a2s_region') || null,
     };
 
     // Envoyer le hit immédiatement (sans pays)
@@ -143,7 +145,12 @@
           .catch(function() { tryGeo(apis, idx + 1); });
       }
       tryGeo([
-        { url: 'https://ipapi.co/json/', extract: function(d){ return d.country_code || null; } },
+        { url: 'https://ipapi.co/json/', extract: function(d){
+            /* Stocker aussi la ville */
+            if(d.city) sessionStorage.setItem('a2s_city', d.city);
+            if(d.region) sessionStorage.setItem('a2s_region', d.region);
+            return d.country_code || null;
+          } },
         { url: 'https://get.geojs.io/v1/ip/country.json', extract: function(d){ return d.country || null; } },
         { url: 'https://ipwho.is/', extract: function(d){ return d.country_code || null; } }
       ], 0);
