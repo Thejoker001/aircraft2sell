@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
 <meta name="keywords" content="contact Aircraft2Sell, support marketplace aéronef">
 <meta name="robots" content="index, follow">
 <meta property="og:title" content="Contact — Aircraft2Sell">
@@ -17,6 +20,8 @@
 <meta name="twitter:description" content="Contactez l'équipe Aircraft2Sell pour toute question sur nos services.">
 <meta name="twitter:image" content="https://aircraft2sell.eu/og-image.png">
 <link rel="canonical" href="https://www.aircraft2sell.eu/contact.html">
+  <link rel="alternate" hreflang="fr" href="https://www.aircraft2sell.eu/contact.html">
+  <link rel="alternate" hreflang="x-default" href="https://www.aircraft2sell.eu/contact.html">
 <meta property="og:image" content="https://aircraft2sell.eu/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -210,6 +215,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .cv-qb:hover,.cv-qb.on{border-color:rgba(232,160,32,.3);color:var(--accent);background:rgba(232,160,32,.05)}
 </style>
 <link rel="canonical" href="https://aircraft2sell.eu/contact.html">
+  <link rel="alternate" hreflang="fr" href="https://www.aircraft2sell.eu/contact.html">
+  <link rel="alternate" hreflang="x-default" href="https://www.aircraft2sell.eu/contact.html">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="mobile.css">
 <script type="application/ld+json">
@@ -405,13 +412,38 @@ async function submitForm(){
   var btn=document.getElementById('submitBtn');
   btn.classList.add('loading');btn.disabled=true;
   try {
-    var res = await fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/send-contact-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstName: first, lastName: last, email: email, subject: subject, message: msg })
-    });
-    var data = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data.error || 'Erreur serveur');
+    /* Essayer Edge Function d'abord */
+    var data = null;
+    try {
+      var res = await fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/send-contact-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU' },
+        body: JSON.stringify({ firstName: first, lastName: last, email: email, subject: subject, message: msg })
+      });
+      data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Erreur serveur');
+    } catch(fetchErr) {
+      /* Fallback : sauvegarder dans Supabase messages en attendant */
+      var fallbackRes = await fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/rest/v1/messages', {
+        method: 'POST',
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU',
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          thread_id: 'contact-'+Date.now(),
+          listing_id: null,
+          sender_email: email,
+          receiver_email: 'contact@aircraft2sell.eu',
+          content: '[CONTACT - '+subject+'] '+first+' '+last+' : '+msg,
+          read: false
+        })
+      });
+      if (!fallbackRes.ok) throw fetchErr;
+      /* Succès via fallback */
+      data = { ok: true };
+    }
     btn.classList.remove('loading');
     document.getElementById('formContent').style.display='none';
     document.getElementById('formSuccess').style.display='block';
@@ -444,6 +476,7 @@ function toggleFaq(item){var wasOpen=item.classList.contains('open');document.qu
 var
 
 </script>
+<script src="analytics.js" defer></script>
 <script src="nav.js"></script>
 
 <script src="rgpd-consent.js" defer></script>
