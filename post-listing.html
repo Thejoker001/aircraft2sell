@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
 <meta name="keywords" content="vendre avion, déposer annonce aéronef, vente hélicoptère, publier annonce avion Europe">
 <meta name="robots" content="index, follow">
 <meta property="og:title" content="Déposer une annonce — Aircraft2Sell">
@@ -198,6 +201,14 @@ textarea.form-input{resize:vertical;min-height:130px;line-height:1.65}
 .cv-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:.45rem}
 .cv-qb{background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--mist);padding:.27rem .2rem;font-size:.61rem;font-weight:600;cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .12s;font-family:'DM Sans',sans-serif}
 .cv-qb:hover,.cv-qb.on{border-color:rgba(232,160,32,.3);color:var(--accent);background:rgba(232,160,32,.05)}
+
+/* ── SCORE COMPLÉTUDE ── */
+.complete-bar-wrap{position:sticky;top:64px;z-index:50;background:rgba(5,8,15,.95);backdrop-filter:blur(10px);border-bottom:1px solid rgba(180,200,230,.08);padding:.6rem 1.5rem;display:flex;align-items:center;gap:1rem}
+.complete-label{font-size:.68rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);white-space:nowrap}
+.complete-bar{flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.complete-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s ease}
+.complete-pct{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.06em;color:var(--accent);min-width:36px;text-align:right}
+.complete-tip{font-size:.68rem;color:var(--mist2);flex:1}
 </style>
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="mobile.css">
@@ -217,6 +228,13 @@ textarea.form-input{resize:vertical;min-height:130px;line-height:1.65}
 <h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">Déposer une annonce aéronef</h1>
 
 <!-- nav injectée par nav.js -->
+<!-- BARRE DE COMPLÉTUDE -->
+<div class="complete-bar-wrap" id="completeBar">
+  <span class="complete-label">Complétude</span>
+  <div class="complete-bar"><div class="complete-fill" id="completeFill" style="width:0%"></div></div>
+  <span class="complete-pct" id="completePct">0%</span>
+  <span class="complete-tip" id="completeTip">Remplissez les champs pour maximiser vos chances</span>
+</div>
 <!-- HEADER -->
 <div class="page-header">
   <div class="page-header-left">
@@ -765,6 +783,14 @@ async function submitListing(){
   }else{
     showToast('✅ Annonce sauvegardée — synchronisation en cours');
   }
+  /* Notifier l'admin par email */
+  try{
+    fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/notify-new-listing',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU'},
+      body:JSON.stringify(listing)
+    }).catch(function(){});
+  }catch(e2){}
   setTimeout(function(){window.location.href='listing-submitted.html';},1400);
 }
 
@@ -941,6 +967,58 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
 </script>
 <script src="rgpd-consent.js" defer></script>
 <script src="analytics.js" defer></script>
-<script src="nav.js"></script>
+<script src="nav.js">
+/* ── SCORE COMPLÉTUDE ── */
+var COMPLETE_FIELDS=[
+  {id:'fMake',weight:10,tip:'Ajoutez la marque'},
+  {id:'fModel',weight:10,tip:'Ajoutez le modèle'},
+  {id:'fYear',weight:8,tip:'Ajoutez l'année'},
+  {id:'fPrice',weight:10,tip:'Renseignez le prix'},
+  {id:'fCategory',weight:8,tip:'Choisissez une catégorie'},
+  {id:'fCountry',weight:6,tip:'Indiquez le pays'},
+  {id:'fAirport',weight:6,tip:'Indiquez l'aéroport OACI'},
+  {id:'fHours',weight:8,tip:'Renseignez les heures TT'},
+  {id:'fDesc',weight:15,tip:'Ajoutez une description détaillée'},
+];
+var PHOTO_WEIGHT=19;
+
+function updateCompleteness(){
+  var total=0;var missing=[];
+  COMPLETE_FIELDS.forEach(function(f){
+    var el=document.getElementById(f.id);
+    if(el&&el.value&&el.value.trim()){total+=f.weight;}
+    else{missing.push(f.tip);}
+  });
+  /* Photos */
+  var photoCount=document.querySelectorAll('.photo-thumb,.preview-img').length||0;
+  if(photoCount>=3)total+=PHOTO_WEIGHT;
+  else if(photoCount>=1)total+=Math.round(PHOTO_WEIGHT*photoCount/3);
+  else missing.push('Ajoutez au moins 3 photos');
+  
+  var pct=Math.min(100,Math.round(total));
+  var fill=document.getElementById('completeFill');
+  var pctEl=document.getElementById('completePct');
+  var tipEl=document.getElementById('completeTip');
+  if(fill)fill.style.width=pct+'%';
+  if(fill){
+    fill.style.background=pct>=80?'var(--green)':pct>=50?'var(--accent)':'#ef4444';
+  }
+  if(pctEl)pctEl.textContent=pct+'%';
+  if(tipEl){
+    if(pct===100)tipEl.textContent='✅ Annonce complète — excellent !';
+    else if(missing.length)tipEl.textContent='💡 '+missing[0];
+    else tipEl.textContent='';
+  }
+}
+
+/* Écouter les changements */
+document.addEventListener('DOMContentLoaded',function(){
+  COMPLETE_FIELDS.forEach(function(f){
+    var el=document.getElementById(f.id);
+    if(el)el.addEventListener('input',updateCompleteness);
+  });
+  updateCompleteness();
+});
+</script>
 </body>
 </html>

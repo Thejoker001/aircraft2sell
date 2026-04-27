@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
 <meta name="keywords" content="avion à vendre, aéronef occasion, annonce avion Europe">
 <meta name="robots" content="index, follow">
 <meta name="description" content="Consultez cette annonce d'aéronef sur Aircraft2Sell, la marketplace aéronautique européenne sans commission.">
@@ -499,6 +502,7 @@ function render(l){
   if(offerBtn&&l.price)offerBtn.style.display='block';
 
   loadSimilar(l.category,l.id);
+  checkPriceHistory(l);
 }
 
 /* ── SIMILAIRES ── */
@@ -835,6 +839,27 @@ async function sendOffer(){
     body:JSON.stringify({thread_id:threadId,listing_id:_lid?parseInt(_lid):null,sender_email:email,receiver_email:_ve||'contact@aircraft2sell.eu',content:'[OFFRE '+sym+Number(amount).toLocaleString('fr-FR')+' '+curr+'] '+name+(msg?' — '+msg:''),read:false})
   }).catch(function(){});
   setTimeout(closeOfferForm,2500);
+}
+
+/* ── HISTORIQUE PRIX ── */
+function checkPriceHistory(listing){
+  if(!listing||!listing.price)return;
+  var key='a2s_price_'+listing.id;
+  var stored=localStorage.getItem(key);
+  if(stored){
+    var oldPrice=parseFloat(stored);
+    var newPrice=parseFloat(listing.price);
+    if(oldPrice>newPrice&&oldPrice>0){
+      var diff=Math.round((oldPrice-newPrice)/oldPrice*100);
+      var badge=document.getElementById('priceBadge');
+      if(badge){
+        badge.style.display='inline-flex';
+        badge.textContent='↓ Prix réduit de '+diff+'%';
+      }
+    }
+  }
+  /* Stocker le prix actuel */
+  localStorage.setItem(key,listing.price);
 }
 </script>
 

@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
 <meta name="keywords" content="marketplace aéronautique, vente avion Europe, acheter avion, vendre hélicoptère, aircraft for sale Europe">
 <meta name="robots" content="index, follow">
 <meta property="og:title" content="Aircraft2Sell — La marketplace aéronautique européenne">
@@ -528,6 +531,7 @@ footer{background:var(--deep);border-top:1px solid var(--border);padding:4rem 2r
         <li><a href="search.html?cat=jet">Jets d'affaires</a></li>
         <li><a href="search.html?cat=heli">Hélicoptères</a></li>
         <li><a href="guide-acheteur.html">Guide acheteur</a></li>
+        <li><a href="estimation.html">Estimer mon avion</a></li>
         <li><a href="blog.html">Guides & Conseils</a></li>
       </ul>
     </div>
@@ -741,6 +745,11 @@ async function loadStats(){
       return Date.now()-new Date(x.submitted_at).getTime()<86400000;
     }).length;
     animCount('sn4',today);
+    /* Annonces vendues */
+    try{
+      var sold=await sbGet('listings','status=eq.sold&select=id');
+      animCount('sn3',(sold||[]).length||0);
+    }catch(e){}
     var unique=new Set(live.map(function(x){return x.seller_email;}).filter(Boolean));
     animCount('sn2',unique.size||0);
   }catch(e){
@@ -804,6 +813,11 @@ async function loadListings(){
     return Date.now()-new Date(x.submitted_at).getTime()<86400000;
   }).length;
   animCount('sn4',today);
+    /* Annonces vendues */
+    try{
+      var sold=await sbGet('listings','status=eq.sold&select=id');
+      animCount('sn3',(sold||[]).length||0);
+    }catch(e){}
 
   // Charger les annonces récemment vendues
   var soldGrid=document.getElementById('soldGrid');

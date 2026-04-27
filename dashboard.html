@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
 <meta name="robots" content="noindex, nofollow">
 <meta property="og:title" content="Mon espace — Aircraft2Sell">
 <meta property="og:description" content="Gérez vos annonces, suivez vos statistiques et consultez vos messages depuis votre tableau de bord.">
@@ -651,6 +654,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-w
         </div>
       </div>
 
+
+      <!-- PARRAINAGE -->
+      <div class="set-card-full">
+        <div class="set-card-ttl" style="display:flex;align-items:center;gap:.5rem">
+          🎁 Programme de parrainage
+          <span style="font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.2);color:var(--accent);padding:.2rem .45rem">NOUVEAU</span>
+        </div>
+        <p style="font-size:.75rem;color:var(--mist);margin-bottom:1rem;line-height:1.65">Invitez un ami vendeur — il obtient <strong style="color:var(--white)">1 mois Aviateur gratuit</strong>, et vous aussi dès sa première annonce publiée.</p>
+        <div style="background:rgba(255,255,255,.03);border:1px solid var(--border2);padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.75rem">
+          <span id="referralLink" style="font-size:.75rem;color:var(--mist);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Chargement…</span>
+          <button onclick="copyReferral()" style="background:var(--accent);color:var(--deep);border:none;padding:.4rem .9rem;font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap">Copier</button>
+        </div>
+        <div style="font-size:.68rem;color:var(--mist2)">Partages : <span id="referralCount" style="color:var(--accent);font-weight:600">0</span> invitation(s) envoyée(s)</div>
+      </div>
       <div class="set-card-full">
         <div class="set-card-ttl">Mot de passe</div>
         <div class="set-pass-grid">
@@ -1338,5 +1355,79 @@ async function renderOffers(){
     </div>
   </div>
 </div>
+<script src="analytics.js" defer>
+/* ── REALTIME MESSAGES ── */
+function initRealtime(){
+  var token=AUTH_TOKEN||SB_KEY;
+  try{
+    var ws=new WebSocket('wss://hlivysnlzlqdjcigqgvk.supabase.co/realtime/v1/websocket?apikey='+SB_KEY+'&vsn=1.0.0');
+    ws.onopen=function(){
+      ws.send(JSON.stringify({topic:'realtime:public:messages',event:'phx_join',payload:{},ref:'1'}));
+    };
+    ws.onmessage=function(e){
+      try{
+        var msg=JSON.parse(e.data);
+        if(msg.event==='INSERT'&&msg.payload&&msg.payload.record){
+          var rec=msg.payload.record;
+          var userEmail=localStorage.getItem('a2s_user_email')||'';
+          if(rec.receiver_email===userEmail){
+            /* Nouveau message reçu */
+            showToast('✉ Nouveau message de '+esc(rec.sender_email||'quelqu'un'));
+            /* Mettre à jour le badge */
+            var badge=document.getElementById('badge-msgs');
+            if(badge){
+              var n=(parseInt(badge.textContent)||0)+1;
+              badge.textContent=n;
+              badge.style.display='';
+            }
+            /* Son de notification discret */
+            try{
+              var ctx=new AudioContext();
+              var osc=ctx.createOscillator();
+              var gain=ctx.createGain();
+              osc.connect(gain);gain.connect(ctx.destination);
+              osc.frequency.value=880;gain.gain.value=0.1;
+              osc.start();gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
+              osc.stop(ctx.currentTime+0.3);
+            }catch(e2){}
+          }
+        }
+      }catch(e){}
+    };
+    ws.onerror=function(){};
+    /* Reconnexion auto toutes les 30s si déconnecté */
+    ws.onclose=function(){setTimeout(initRealtime,30000);};
+  }catch(e){}
+}
+/* Démarrer Realtime après login */
+document.addEventListener('a2s:logged-in',function(){
+  setTimeout(initRealtime,1000);
+});
+
+/* ── PARRAINAGE ── */
+function initReferral(){
+  var email=localStorage.getItem('a2s_user_email')||'';
+  if(!email)return;
+  var code=btoa(email).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
+  var link='https://www.aircraft2sell.eu/login.html?ref='+code;
+  var el=document.getElementById('referralLink');
+  if(el)el.textContent=link;
+  /* Compter les clics */
+  var count=parseInt(localStorage.getItem('a2s_ref_count')||'0');
+  var cel=document.getElementById('referralCount');
+  if(cel)cel.textContent=count;
+}
+function copyReferral(){
+  var el=document.getElementById('referralLink');
+  if(!el)return;
+  navigator.clipboard.writeText(el.textContent).then(function(){
+    showToast('🎁 Lien de parrainage copié !');
+    var count=parseInt(localStorage.getItem('a2s_ref_count')||'0')+1;
+    localStorage.setItem('a2s_ref_count',String(count));
+    var cel=document.getElementById('referralCount');
+    if(cel)cel.textContent=count;
+  }).catch(function(){showToast('Lien: '+el.textContent);});
+}
+</script>
 </body>
 </html>
