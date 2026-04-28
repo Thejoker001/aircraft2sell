@@ -404,56 +404,54 @@ async function submitForm(){
   var email=(document.getElementById('fEmail').value||'').trim().toLowerCase();
   var subject=document.getElementById('fSubject').value;
   var msg=(document.getElementById('fMsg').value||'').trim();
-  var fields=[['fFirst',first],['fLast',last],['fEmail',email],['fSubject',subject],['fMsg',msg]];
-  var hasErr=false;
-  fields.forEach(function(f){var el=document.getElementById(f[0]);el.classList.toggle('err',!f[1]);if(!f[1])hasErr=true;});
-  if(hasErr){showAlert('Veuillez remplir tous les champs obligatoires.','err');return;}
+
+  if(!first||!email||!msg){
+    ['fFirst','fEmail','fMsg'].forEach(function(id){var el=document.getElementById(id);if(el&&!el.value.trim())el.classList.add('err');});
+    showAlert('Veuillez remplir tous les champs obligatoires.','err');return;
+  }
   if(!email.includes('@')){showAlert('Adresse email invalide.','err');document.getElementById('fEmail').classList.add('err');return;}
+
   var btn=document.getElementById('submitBtn');
   btn.classList.add('loading');btn.disabled=true;
-  try {
-    /* Essayer Edge Function d'abord */
-    var data = null;
-    try {
-      var res = await fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/send-contact-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU' },
-        body: JSON.stringify({ firstName: first, lastName: last, email: email, subject: subject, message: msg })
-      });
-      data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Erreur serveur');
-    } catch(fetchErr) {
-      /* Fallback : sauvegarder dans Supabase messages en attendant */
-      var fallbackRes = await fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/rest/v1/messages', {
-        method: 'POST',
-        headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU',
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
-          thread_id: 'contact-'+Date.now(),
-          listing_id: null,
-          sender_email: email,
-          receiver_email: 'contact@aircraft2sell.eu',
-          content: '[CONTACT - '+subject+'] '+first+' '+last+' : '+msg,
-          read: false
-        })
-      });
-      if (!fallbackRes.ok) throw fetchErr;
-      /* Succès via fallback */
-      data = { ok: true };
-    }
+
+  var subjectLabels={support:'Support / Problème technique',listing:'Question sur une annonce',billing:'Facturation / Abonnement',partnership:'Partenariat',press:'Presse / Médias',other:'Autre'};
+  var subjectLabel=subjectLabels[subject]||subject||'Contact';
+
+  try{
+    var BKEY='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';
+    var res=await fetch('https://api.brevo.com/v3/smtp/email',{
+      method:'POST',
+      headers:{'api-key':BKEY,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        sender:{name:'Aircraft2Sell Contact',email:'contact@aircraft2sell.eu'},
+        to:[{email:'contact@aircraft2sell.eu'}],
+        replyTo:{email:email,name:first+' '+(last||'')},
+        subject:'[Contact A2S] '+subjectLabel+' — '+first+' '+(last||''),
+        htmlContent:'<div style="font-family:sans-serif;max-width:600px"><h2 style="color:#e8a020">Nouveau message</h2><p><b>De:</b> '+first+' '+(last||'')+' (<a href="mailto:'+email+'">'+email+'</a>)</p><p><b>Objet:</b> '+subjectLabel+'</p><p><b>Message:</b></p><p style="white-space:pre-wrap">'+msg+'</p></div>'
+      })
+    });
+    if(!res.ok){var e=await res.json();throw new Error(e.message||'Erreur '+res.status);}
+    /* Confirmation visiteur */
+    fetch('https://api.brevo.com/v3/smtp/email',{
+      method:'POST',
+      headers:{'api-key':BKEY,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        sender:{name:'Aircraft2Sell',email:'contact@aircraft2sell.eu'},
+        to:[{email:email,name:first}],
+        subject:'Nous avons bien reçu votre message — Aircraft2Sell',
+        htmlContent:'<p>Bonjour '+first+',</p><p>Nous avons bien reçu votre message. Notre équipe vous répondra sous 24h ouvrées.</p><p>— Aircraft2Sell</p>'
+      })
+    }).catch(function(){});
     btn.classList.remove('loading');
     document.getElementById('formContent').style.display='none';
     document.getElementById('formSuccess').style.display='block';
-    showToast('✅ Message envoyé !');
-  } catch(err) {
-    btn.classList.remove('loading');
-    btn.disabled=false;
-    showAlert('Erreur lors de l\'envoi : ' + err.message + '. Réessayez ou contactez-nous directement par email.', 'err');
+  }catch(err){
+    btn.classList.remove('loading');btn.disabled=false;
+    showAlert('Erreur: '+err.message,'err');
   }
 }
+
+
 
 function resetForm(){
   document.getElementById('formContent').style.display='block';
