@@ -1,5 +1,5 @@
 /* Aircraft2Sell — Supabase Client */
-var _SB='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+var _SB='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 async function sbReq(m,t,p,b){var url=_SB+'/rest/v1/'+t+(p?'?'+p:'');var h={'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json','Prefer':'return=representation'};var r=await fetch(url,{method:m,headers:h,body:b?JSON.stringify(b):undefined});var tx=await r.text();if(!r.ok)throw new Error(tx);return tx?JSON.parse(tx):[];}
 function sbGet(t,p){return sbReq('GET',t,p);}
 function sbPost(t,b){return sbReq('POST',t,null,b);}

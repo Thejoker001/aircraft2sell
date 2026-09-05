@@ -588,7 +588,7 @@ window.sbGetCached = async function(table, params) {
   var cached = window.A2SCache.get(key);
   if(cached) return cached;
   var SB_URL = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
-  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsaXZ5c25semxxZGpjaWdxZ3ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjIwNzAsImV4cCI6MjA4OTc5ODA3MH0.5tKQLlx9LsSujgILJKpmo__ByHorH6KuLyznE-mBVwU';
+  var SB_KEY = 'sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
   try {
     var r = await fetch(SB_URL+'/rest/v1/'+table+'?'+params, { headers: { apikey: SB_KEY } });
     var data = r.ok ? await r.json() : [];
