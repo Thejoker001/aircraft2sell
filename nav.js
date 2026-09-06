@@ -79,6 +79,7 @@ window.A2SFavs = (function(){
     var m = location.pathname.match(/^\/(en|de|it|es)\//);
     return m ? m[1] : 'fr';
   }
+  var LANG_FLAGS = { fr:'🇫🇷', en:'🇬🇧', de:'🇩🇪', it:'🇮🇹', es:'🇪🇸' };
 
   /* ── CSS global injecté (fallback si styles.css absent) ── */
   function injectCSS(){
@@ -107,6 +108,7 @@ window.A2SFavs = (function(){
       /* Bouton post (seule décoration accent) */
       '.btn-post{background:#FF7A1A;color:#fff;border:none;padding:.5rem 1.3rem;font-family:"Poppins",sans-serif;font-size:.82rem;font-weight:600;text-decoration:none;cursor:pointer;transition:background .2s,transform .15s;display:inline-flex;align-items:center;border-radius:8px}',
       '.btn-post:hover{background:#E8690F;transform:translateY(-1px)}',
+      '.btn-post .bp-short{display:none}',
       /* Avatar user */
       '.nav-user{display:none;align-items:center;gap:.6rem;cursor:pointer;padding:.3rem .65rem;border:1px solid rgba(255,255,255,.15);transition:border-color .2s;border-radius:8px}',
       '.nav-user:hover{border-color:rgba(255,255,255,.3)}',
@@ -117,18 +119,19 @@ window.A2SFavs = (function(){
       /* Favoris */
       '.nav-favs{display:none;align-items:center;gap:.3rem;color:rgba(255,255,255,.85);text-decoration:none;font-size:.82rem;padding:.4rem .5rem}',
       '.nav-favs:hover{color:#fff}',
-      /* Langue */
-      '.nav-lang{position:relative;display:flex;align-items:center;height:64px}',
-      '.nav-lang-btn{display:flex;align-items:center;gap:.3rem;height:64px;padding:0 .7rem;font-size:.78rem;font-weight:600;color:rgba(255,255,255,.78);cursor:pointer;background:none;border:none;font-family:"Inter",sans-serif;transition:color .2s;white-space:nowrap}',
-      '.nav-lang-btn:hover{color:#fff}',
-      '.nav-lang-btn .cv-arrow{font-size:.55rem;opacity:.6;transition:transform .2s}',
+      /* Langue — badge visible en permanence (desktop + mobile), plus un simple lien de menu */
+      '.nav-lang{position:relative;display:flex;align-items:center;flex-shrink:0}',
+      '.nav-lang-btn{display:flex;align-items:center;gap:.35rem;height:38px;padding:0 .75rem;font-size:.8rem;font-weight:700;color:#fff;cursor:pointer;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.28);border-radius:8px;font-family:"Inter",sans-serif;transition:all .2s;white-space:nowrap}',
+      '.nav-lang-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5)}',
+      '.nav-lang-btn .nav-lang-flag{font-size:.95rem;line-height:1}',
+      '.nav-lang-btn .cv-arrow{font-size:.55rem;opacity:.7;transition:transform .2s}',
       '.nav-lang.open .cv-arrow{transform:rotate(180deg)}',
-      '.nav-lang.open .nav-lang-btn{color:#fff}',
-      '.nav-lang-dropdown{position:absolute;top:calc(100% + 1px);right:0;min-width:140px;background:#fff;box-shadow:0 12px 32px rgba(11,37,69,.18);border:1px solid #E3E8F0;border-radius:12px;z-index:500;opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s,transform .18s;overflow:hidden}',
+      '.nav-lang.open .nav-lang-btn{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5)}',
+      '.nav-lang-dropdown{position:absolute;top:calc(100% + 8px);right:0;min-width:170px;background:#fff;box-shadow:0 12px 32px rgba(11,37,69,.22);border:1px solid #E3E8F0;border-radius:12px;z-index:500;opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s,transform .18s;overflow:hidden}',
       '.nav-lang.open .nav-lang-dropdown{opacity:1;pointer-events:auto;transform:translateY(0)}',
-      '.nav-lang-dropdown a{display:flex;align-items:center;gap:.55rem;padding:.6rem .9rem;font-size:.82rem;font-weight:500;color:#16233A;text-decoration:none;transition:background .15s}',
+      '.nav-lang-dropdown a{display:flex;align-items:center;gap:.6rem;padding:.65rem .9rem;font-size:.84rem;font-weight:500;color:#16233A;text-decoration:none;transition:background .15s}',
       '.nav-lang-dropdown a:hover{background:#F7F9FC}',
-      '.nav-lang-dropdown a.active{color:#1E5FCC;font-weight:700}',
+      '.nav-lang-dropdown a.active{color:#1E5FCC;font-weight:700;background:rgba(30,95,204,.06)}',
       /* Méga-menu Acheter */
       '.nav-mega{position:relative}',
       '.nav-mega-trigger{display:flex;align-items:center;gap:.3rem;cursor:pointer}',
@@ -191,7 +194,8 @@ window.A2SFavs = (function(){
       '.cv-qb:hover,.cv-qb.on{border-color:rgba(30,95,204,.3);color:#1E5FCC;background:rgba(30,95,204,.05)}',
       /* Responsive */
       '@media(max-width:1180px){.nav-links a[data-nav="pro"],.nav-links a[data-nav="blog"]{display:none}}',
-      '@media(max-width:768px){nav#mainNav{padding:0 1.25rem}.nav-links,.btn-nav-login,.nav-lang{display:none!important}.burger{display:flex}}',
+      '@media(max-width:768px){nav#mainNav{padding:0 1.25rem}.nav-links,.btn-nav-login{display:none!important}.burger{display:flex}.nav-right{gap:.4rem}.nav-lang-btn{height:34px;padding:0 .55rem;font-size:.74rem}.btn-post{padding:.5rem .8rem;font-size:.78rem}.btn-post .bp-full{display:none}.btn-post .bp-short{display:inline}}',
+      '@media(max-width:400px){nav#mainNav{padding:0 .85rem}.logo{font-size:1.15rem}.nav-lang-btn span:not(.nav-lang-flag){display:none}.nav-lang-btn{padding:0 .5rem;gap:0}.nav-lang-btn .cv-arrow{display:none}.btn-post{padding:.5rem .65rem}}',
       '@supports(padding-bottom:env(safe-area-inset-bottom)){.mobile-menu{padding-bottom:calc(2rem + env(safe-area-inset-bottom))}}'
     ].join('');
     document.head.appendChild(s);
@@ -291,22 +295,23 @@ window.A2SFavs = (function(){
               '</div>',
             '</div>',
           '</li>',
-          /* Sélecteur de langue */
-          '<li class="nav-lang" id="navLang">',
+        '</ul>',
+        '<div class="nav-right">',
+          /* Sélecteur de langue — badge visible en permanence, plus un lien noyé dans le menu */
+          '<div class="nav-lang" id="navLang">',
             '<button class="nav-lang-btn" id="toggleLangBtn" aria-label="Choisir la langue">',
+              '<span class="nav-lang-flag">' + LANG_FLAGS[lang] + '</span>',
               '<span>' + lang.toUpperCase() + '</span>',
               '<span class="cv-arrow">▾</span>',
             '</button>',
             '<div class="nav-lang-dropdown">',
               '<a href="/index.html" class="' + (lang==='fr'?'active':'') + '">🇫🇷 Français</a>',
-              '<a href="/en/index.html">🇬🇧 English</a>',
-              '<a href="/de/index.html">🇩🇪 Deutsch</a>',
-              '<a href="/it/index.html">🇮🇹 Italiano</a>',
-              '<a href="/es/index.html">🇪🇸 Español</a>',
+              '<a href="/en/index.html" class="' + (lang==='en'?'active':'') + '">🇬🇧 English</a>',
+              '<a href="/de/index.html" class="' + (lang==='de'?'active':'') + '">🇩🇪 Deutsch</a>',
+              '<a href="/it/index.html" class="' + (lang==='it'?'active':'') + '">🇮🇹 Italiano</a>',
+              '<a href="/es/index.html" class="' + (lang==='es'?'active':'') + '">🇪🇸 Español</a>',
             '</div>',
-          '</li>',
-        '</ul>',
-        '<div class="nav-right">',
+          '</div>',
           '<a href="login.html" class="btn-nav-login" id="btnLogin">Connexion</a>',
           '<a href="dashboard.html#favs" class="nav-favs" id="navFavs" title="Mes favoris" style="display:none">',
             '♥ <span id="navFavCount">0</span>',
@@ -315,7 +320,7 @@ window.A2SFavs = (function(){
             '<div class="nav-avatar" id="navAvatar">U</div>',
             '<span class="nav-user-name" id="navUserName">Mon compte</span>',
           '</div>',
-          '<a href="post-listing.html" class="btn-post" id="btnPost">Déposer une annonce</a>',
+          '<a href="post-listing.html" class="btn-post" id="btnPost"><span class="bp-full">Déposer une annonce</span><span class="bp-short">Vendre</span></a>',
           '<button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>',
         '</div>',
       '</nav>',
