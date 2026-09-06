@@ -81,6 +81,99 @@ window.A2SFavs = (function(){
   }
   var LANG_FLAGS = { fr:'🇫🇷', en:'🇬🇧', de:'🇩🇪', it:'🇮🇹', es:'🇪🇸' };
 
+  /* ── i18n : pages traduites + résolution des liens ──────── */
+  /* Liste des pages existant sous /en/ /de/ /it/ /es/. Une page absente
+     de cette liste retombe sur la version FR (racine) plutôt que 404. */
+  var TRANSLATED_PAGES = ['index.html','search.html','listing.html','post-listing.html',
+    'avions-legers.html','jets-affaires.html','helicopteres.html','turboprops.html',
+    'ulm.html','avions-de-ligne.html'];
+  function isTranslatedPage(page){
+    return TRANSLATED_PAGES.indexOf(page.split(/[?#]/)[0]) > -1;
+  }
+  /* href('search.html') → lien correct pour la langue courante :
+     - fr : relatif tel quel
+     - autre langue + page traduite : relatif tel quel (résout dans /xx/ déjà)
+     - autre langue + page non traduite : absolu vers la racine FR */
+  function href(page){
+    if(currentLang() === 'fr') return page;
+    return isTranslatedPage(page) ? page : '/' + page;
+  }
+  /* Chemin de la page courante sans le préfixe de langue */
+  function currentPageBase(){
+    var m = location.pathname.match(/^\/(?:en|de|it|es)\/(.*)$/);
+    var rel = m ? m[1] : location.pathname.replace(/^\//, '');
+    return rel || 'index.html';
+  }
+  /* Lien du sélecteur de langue : reste sur la même page si elle existe
+     dans la langue cible, sinon retombe sur l'accueil de cette langue. */
+  function langSwitchHref(targetLang){
+    var base = currentPageBase().split(/[?#]/)[0] || 'index.html';
+    var target = isTranslatedPage(base) ? base : 'index.html';
+    return targetLang === 'fr' ? '/' + target : '/' + targetLang + '/' + target;
+  }
+
+  var I18N = {
+    fr: {
+      buy:'Acheter', sell:'Vendre', pro:'Professionnels', guide:'Guide', blog:'Blog',
+      faq:'FAQ', contact:'Contact', currencies:'Devises', converter:'Convertisseur',
+      live:'En direct', loading:'Chargement…', invert:'Inverser', ecbRate:'Taux indicatif BCE',
+      allListings:'Toutes les annonces', catLight:'Avions légers', catJet:'Jets d\'affaires',
+      catTurbo:'Turbopropulseurs', catHeli:'Hélicoptères', catUlm:'ULM', catAirliner:'Avions de ligne',
+      login:'Connexion', myFavs:'Mes favoris', myAccount:'Mon compte', myDashboard:'Mon tableau de bord',
+      postFull:'Déposer une annonce', postShort:'Vendre', chooseLang:'Choisir la langue',
+      mmBuy:'Acheter', mmSellPro:'Vendre &amp; Professionnels', mmSellMy:'Vendre mon avion',
+      mmResources:'Ressources', mmGuide:'Guide acheteur', mmLogin:'Se connecter'
+    },
+    en: {
+      buy:'Buy', sell:'Sell', pro:'Dealers', guide:'Guide', blog:'Blog',
+      faq:'FAQ', contact:'Contact', currencies:'Currency', converter:'Converter',
+      live:'Live', loading:'Loading…', invert:'Swap', ecbRate:'Indicative ECB rate',
+      allListings:'All listings', catLight:'Light aircraft', catJet:'Business jets',
+      catTurbo:'Turboprops', catHeli:'Helicopters', catUlm:'Light sport / ULM', catAirliner:'Airliners',
+      login:'Log in', myFavs:'My favourites', myAccount:'My account', myDashboard:'My dashboard',
+      postFull:'List your aircraft', postShort:'Sell', chooseLang:'Choose language',
+      mmBuy:'Buy', mmSellPro:'Sell &amp; Dealers', mmSellMy:'Sell my aircraft',
+      mmResources:'Resources', mmGuide:'Buyer\'s guide', mmLogin:'Log in'
+    },
+    de: {
+      buy:'Kaufen', sell:'Verkaufen', pro:'Händler', guide:'Ratgeber', blog:'Blog',
+      faq:'FAQ', contact:'Kontakt', currencies:'Währung', converter:'Umrechner',
+      live:'Live', loading:'Lädt…', invert:'Tauschen', ecbRate:'Indikativer EZB-Kurs',
+      allListings:'Alle Anzeigen', catLight:'Leichtflugzeuge', catJet:'Geschäftsjets',
+      catTurbo:'Turboprops', catHeli:'Hubschrauber', catUlm:'Ultraleicht (ULM)', catAirliner:'Verkehrsflugzeuge',
+      login:'Anmelden', myFavs:'Meine Favoriten', myAccount:'Mein Konto', myDashboard:'Mein Dashboard',
+      postFull:'Flugzeug inserieren', postShort:'Verkaufen', chooseLang:'Sprache wählen',
+      mmBuy:'Kaufen', mmSellPro:'Verkaufen &amp; Händler', mmSellMy:'Mein Flugzeug verkaufen',
+      mmResources:'Ressourcen', mmGuide:'Käuferratgeber', mmLogin:'Anmelden'
+    },
+    it: {
+      buy:'Acquista', sell:'Vendi', pro:'Rivenditori', guide:'Guida', blog:'Blog',
+      faq:'FAQ', contact:'Contatto', currencies:'Valuta', converter:'Convertitore',
+      live:'In diretta', loading:'Caricamento…', invert:'Inverti', ecbRate:'Tasso indicativo BCE',
+      allListings:'Tutti gli annunci', catLight:'Aerei leggeri', catJet:'Jet privati',
+      catTurbo:'Turboelica', catHeli:'Elicotteri', catUlm:'Ultraleggeri (ULM)', catAirliner:'Aerei di linea',
+      login:'Accedi', myFavs:'I miei preferiti', myAccount:'Il mio account', myDashboard:'La mia dashboard',
+      postFull:'Pubblica un annuncio', postShort:'Vendi', chooseLang:'Scegli lingua',
+      mmBuy:'Acquista', mmSellPro:'Vendi &amp; Rivenditori', mmSellMy:'Vendi il mio aereo',
+      mmResources:'Risorse', mmGuide:'Guida per l\'acquirente', mmLogin:'Accedi'
+    },
+    es: {
+      buy:'Comprar', sell:'Vender', pro:'Distribuidores', guide:'Guía', blog:'Blog',
+      faq:'FAQ', contact:'Contacto', currencies:'Divisa', converter:'Conversor',
+      live:'En directo', loading:'Cargando…', invert:'Invertir', ecbRate:'Tipo indicativo BCE',
+      allListings:'Todos los anuncios', catLight:'Aviones ligeros', catJet:'Jets privados',
+      catTurbo:'Turbohélices', catHeli:'Helicópteros', catUlm:'Ultraligeros (ULM)', catAirliner:'Aviones comerciales',
+      login:'Acceder', myFavs:'Mis favoritos', myAccount:'Mi cuenta', myDashboard:'Mi panel',
+      postFull:'Publicar un anuncio', postShort:'Vender', chooseLang:'Elegir idioma',
+      mmBuy:'Comprar', mmSellPro:'Vender &amp; Distribuidores', mmSellMy:'Vender mi avión',
+      mmResources:'Recursos', mmGuide:'Guía del comprador', mmLogin:'Acceder'
+    }
+  };
+  function t(key){
+    var lang = currentLang();
+    return (I18N[lang] && I18N[lang][key]) || I18N.fr[key] || key;
+  }
+
   /* ── CSS global injecté (fallback si styles.css absent) ── */
   function injectCSS(){
     if(document.getElementById('a2s-nav-css')) return;
@@ -206,39 +299,39 @@ window.A2SFavs = (function(){
     var lang = currentLang();
     return [
       '<nav id="mainNav">',
-        '<a href="index.html" class="logo">Aircraft2<span>Sell</span></a>',
+        '<a href="' + href('index.html') + '" class="logo">Aircraft2<span>Sell</span></a>',
         '<ul class="nav-links">',
           /* Acheter — méga-menu */
           '<li class="nav-mega" id="navMega">',
-            '<a href="search.html" class="nav-mega-trigger" id="megaTrigger">',
-              '<span>Acheter</span><span class="mega-arrow">▾</span>',
+            '<a href="' + href('search.html') + '" class="nav-mega-trigger" id="megaTrigger">',
+              '<span>' + t('buy') + '</span><span class="mega-arrow">▾</span>',
             '</a>',
             '<div class="nav-mega-panel">',
-              '<a class="nav-mega-item" href="avions-legers.html"><span class="mi-icon">🛩</span>Avions légers</a>',
-              '<a class="nav-mega-item" href="jets-affaires.html"><span class="mi-icon">✈️</span>Jets d\'affaires</a>',
-              '<a class="nav-mega-item" href="turboprops.html"><span class="mi-icon">🌀</span>Turbopropulseurs</a>',
-              '<a class="nav-mega-item" href="helicopteres.html"><span class="mi-icon">🚁</span>Hélicoptères</a>',
-              '<a class="nav-mega-item" href="ulm.html"><span class="mi-icon">🪂</span>ULM</a>',
-              '<a class="nav-mega-item" href="search.html?cat=airliner"><span class="mi-icon">🛫</span>Avions de ligne</a>',
-              '<a class="nav-mega-all" href="search.html">Toutes les annonces <span>→</span></a>',
+              '<a class="nav-mega-item" href="' + href('avions-legers.html') + '"><span class="mi-icon">🛩</span>' + t('catLight') + '</a>',
+              '<a class="nav-mega-item" href="' + href('jets-affaires.html') + '"><span class="mi-icon">✈️</span>' + t('catJet') + '</a>',
+              '<a class="nav-mega-item" href="' + href('turboprops.html') + '"><span class="mi-icon">🌀</span>' + t('catTurbo') + '</a>',
+              '<a class="nav-mega-item" href="' + href('helicopteres.html') + '"><span class="mi-icon">🚁</span>' + t('catHeli') + '</a>',
+              '<a class="nav-mega-item" href="' + href('ulm.html') + '"><span class="mi-icon">🪂</span>' + t('catUlm') + '</a>',
+              '<a class="nav-mega-item" href="' + href('search.html') + '?cat=airliner"><span class="mi-icon">🛫</span>' + t('catAirliner') + '</a>',
+              '<a class="nav-mega-all" href="' + href('search.html') + '">' + t('allListings') + ' <span>→</span></a>',
             '</div>',
           '</li>',
-          '<li><a href="post-listing.html" data-nav="sell">Vendre</a></li>',
-          '<li><a href="pro-dealers.html" data-nav="pro">Professionnels</a></li>',
-          '<li><a href="guide-acheteur.html">Guide</a></li>',
-          '<li><a href="blog.html" data-nav="blog">Blog</a></li>',
-          '<li><a href="faq.html">FAQ</a></li>',
-          '<li><a href="contact.html">Contact</a></li>',
+          '<li><a href="' + href('post-listing.html') + '" data-nav="sell">' + t('sell') + '</a></li>',
+          '<li><a href="' + href('pro-dealers.html') + '" data-nav="pro">' + t('pro') + '</a></li>',
+          '<li><a href="' + href('guide-acheteur.html') + '">' + t('guide') + '</a></li>',
+          '<li><a href="' + href('blog.html') + '" data-nav="blog">' + t('blog') + '</a></li>',
+          '<li><a href="' + href('faq.html') + '">' + t('faq') + '</a></li>',
+          '<li><a href="' + href('contact.html') + '">' + t('contact') + '</a></li>',
           /* Convertisseur devises */
           '<li class="nav-currency" id="navCurrency">',
-            '<button class="nav-currency-btn" id="toggleCvBtn" aria-label="Convertisseur de devises">',
-              '<span>Devises</span>',
+            '<button class="nav-currency-btn" id="toggleCvBtn" aria-label="' + t('converter') + '">',
+              '<span>' + t('currencies') + '</span>',
               '<span class="cv-arrow">▾</span>',
             '</button>',
             '<div class="cv-dropdown">',
               '<div class="cv-drop-head">',
-                '<span class="cv-drop-title">Convertisseur</span>',
-                '<span class="cv-live" id="cvLiveTime">En direct</span>',
+                '<span class="cv-drop-title">' + t('converter') + '</span>',
+                '<span class="cv-live" id="cvLiveTime">' + t('live') + '</span>',
               '</div>',
               '<div class="cv-body">',
                 '<div class="cv-row">',
@@ -259,12 +352,12 @@ window.A2SFavs = (function(){
                       '<option value="AED">AED</option>',
                     '</select>',
                   '</div>',
-                  '<button class="cv-swap-btn" id="cvSwapBtn" title="Inverser">⇅</button>',
+                  '<button class="cv-swap-btn" id="cvSwapBtn" title="' + t('invert') + '">⇅</button>',
                 '</div>',
                 '<div class="cv-result-box">',
                   '<div>',
                     '<div class="cv-result-val" id="cvResult">…</div>',
-                    '<div style="font-size:.57rem;color:#8A99B3;margin-top:.1rem">Taux indicatif BCE</div>',
+                    '<div style="font-size:.57rem;color:#8A99B3;margin-top:.1rem">' + t('ecbRate') + '</div>',
                   '</div>',
                   '<select class="cv-to-sel" id="cvTo">',
                     '<option value="EUR">EUR €</option>',
@@ -299,55 +392,55 @@ window.A2SFavs = (function(){
         '<div class="nav-right">',
           /* Sélecteur de langue — badge visible en permanence, plus un lien noyé dans le menu */
           '<div class="nav-lang" id="navLang">',
-            '<button class="nav-lang-btn" id="toggleLangBtn" aria-label="Choisir la langue">',
+            '<button class="nav-lang-btn" id="toggleLangBtn" aria-label="' + t('chooseLang') + '">',
               '<span class="nav-lang-flag">' + LANG_FLAGS[lang] + '</span>',
               '<span>' + lang.toUpperCase() + '</span>',
               '<span class="cv-arrow">▾</span>',
             '</button>',
             '<div class="nav-lang-dropdown">',
-              '<a href="/index.html" class="' + (lang==='fr'?'active':'') + '">🇫🇷 Français</a>',
-              '<a href="/en/index.html" class="' + (lang==='en'?'active':'') + '">🇬🇧 English</a>',
-              '<a href="/de/index.html" class="' + (lang==='de'?'active':'') + '">🇩🇪 Deutsch</a>',
-              '<a href="/it/index.html" class="' + (lang==='it'?'active':'') + '">🇮🇹 Italiano</a>',
-              '<a href="/es/index.html" class="' + (lang==='es'?'active':'') + '">🇪🇸 Español</a>',
+              '<a href="' + langSwitchHref('fr') + '" class="' + (lang==='fr'?'active':'') + '">🇫🇷 Français</a>',
+              '<a href="' + langSwitchHref('en') + '" class="' + (lang==='en'?'active':'') + '">🇬🇧 English</a>',
+              '<a href="' + langSwitchHref('de') + '" class="' + (lang==='de'?'active':'') + '">🇩🇪 Deutsch</a>',
+              '<a href="' + langSwitchHref('it') + '" class="' + (lang==='it'?'active':'') + '">🇮🇹 Italiano</a>',
+              '<a href="' + langSwitchHref('es') + '" class="' + (lang==='es'?'active':'') + '">🇪🇸 Español</a>',
             '</div>',
           '</div>',
-          '<a href="login.html" class="btn-nav-login" id="btnLogin">Connexion</a>',
-          '<a href="dashboard.html#favs" class="nav-favs" id="navFavs" title="Mes favoris" style="display:none">',
+          '<a href="' + href('login.html') + '" class="btn-nav-login" id="btnLogin">' + t('login') + '</a>',
+          '<a href="' + href('dashboard.html') + '#favs" class="nav-favs" id="navFavs" title="' + t('myFavs') + '" style="display:none">',
             '♥ <span id="navFavCount">0</span>',
           '</a>',
           '<div class="nav-user" id="navUser">',
             '<div class="nav-avatar" id="navAvatar">U</div>',
-            '<span class="nav-user-name" id="navUserName">Mon compte</span>',
+            '<span class="nav-user-name" id="navUserName">' + t('myAccount') + '</span>',
           '</div>',
-          '<a href="post-listing.html" class="btn-post" id="btnPost"><span class="bp-full">Déposer une annonce</span><span class="bp-short">Vendre</span></a>',
+          '<a href="' + href('post-listing.html') + '" class="btn-post" id="btnPost"><span class="bp-full">' + t('postFull') + '</span><span class="bp-short">' + t('postShort') + '</span></a>',
           '<button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>',
         '</div>',
       '</nav>',
       /* Mobile menu */
       '<div class="mobile-menu" id="mobileMenu">',
-        '<div class="mm-section-label">Acheter</div>',
-        '<a href="search.html">Toutes les annonces</a>',
-        '<a class="mm-sub" href="avions-legers.html">Avions légers</a>',
-        '<a class="mm-sub" href="jets-affaires.html">Jets d\'affaires</a>',
-        '<a class="mm-sub" href="turboprops.html">Turbopropulseurs</a>',
-        '<a class="mm-sub" href="helicopteres.html">Hélicoptères</a>',
-        '<a class="mm-sub" href="ulm.html">ULM</a>',
-        '<div class="mm-section-label">Vendre &amp; Professionnels</div>',
-        '<a href="post-listing.html">Vendre mon avion</a>',
-        '<a href="pro-dealers.html">Professionnels</a>',
-        '<div class="mm-section-label">Ressources</div>',
-        '<a href="guide-acheteur.html">Guide acheteur</a>',
-        '<a href="blog.html">Blog</a>',
-        '<a href="faq.html">FAQ</a>',
-        '<a href="contact.html">Contact</a>',
-        '<a href="login.html" class="mm-cta" id="mmCta">Se connecter</a>',
+        '<div class="mm-section-label">' + t('mmBuy') + '</div>',
+        '<a href="' + href('search.html') + '">' + t('allListings') + '</a>',
+        '<a class="mm-sub" href="' + href('avions-legers.html') + '">' + t('catLight') + '</a>',
+        '<a class="mm-sub" href="' + href('jets-affaires.html') + '">' + t('catJet') + '</a>',
+        '<a class="mm-sub" href="' + href('turboprops.html') + '">' + t('catTurbo') + '</a>',
+        '<a class="mm-sub" href="' + href('helicopteres.html') + '">' + t('catHeli') + '</a>',
+        '<a class="mm-sub" href="' + href('ulm.html') + '">' + t('catUlm') + '</a>',
+        '<div class="mm-section-label">' + t('mmSellPro') + '</div>',
+        '<a href="' + href('post-listing.html') + '">' + t('mmSellMy') + '</a>',
+        '<a href="' + href('pro-dealers.html') + '">' + t('pro') + '</a>',
+        '<div class="mm-section-label">' + t('mmResources') + '</div>',
+        '<a href="' + href('guide-acheteur.html') + '">' + t('mmGuide') + '</a>',
+        '<a href="' + href('blog.html') + '">' + t('blog') + '</a>',
+        '<a href="' + href('faq.html') + '">' + t('faq') + '</a>',
+        '<a href="' + href('contact.html') + '">' + t('contact') + '</a>',
+        '<a href="' + href('login.html') + '" class="mm-cta" id="mmCta">' + t('mmLogin') + '</a>',
         '<div class="mm-langs">',
-          '<a href="/index.html" class="mm-lang-btn ' + (lang==='fr'?'active':'') + '">FR</a>',
-          '<a href="/en/index.html" class="mm-lang-btn">EN</a>',
-          '<a href="/de/index.html" class="mm-lang-btn">DE</a>',
-          '<a href="/it/index.html" class="mm-lang-btn">IT</a>',
-          '<a href="/es/index.html" class="mm-lang-btn">ES</a>',
+          '<a href="' + langSwitchHref('fr') + '" class="mm-lang-btn ' + (lang==='fr'?'active':'') + '">FR</a>',
+          '<a href="' + langSwitchHref('en') + '" class="mm-lang-btn ' + (lang==='en'?'active':'') + '">EN</a>',
+          '<a href="' + langSwitchHref('de') + '" class="mm-lang-btn ' + (lang==='de'?'active':'') + '">DE</a>',
+          '<a href="' + langSwitchHref('it') + '" class="mm-lang-btn ' + (lang==='it'?'active':'') + '">IT</a>',
+          '<a href="' + langSwitchHref('es') + '" class="mm-lang-btn ' + (lang==='es'?'active':'') + '">ES</a>',
         '</div>',
       '</div>'
     ].join('');
@@ -492,7 +585,7 @@ window.A2SFavs = (function(){
     function fetchRates(){
       if(_busy) return;
       _busy = true;
-      if(elLive) elLive.textContent = 'Chargement…';
+      if(elLive) elLive.textContent = t('loading');
       /* Liste d'APIs CORS-friendly dans l'ordre de fiabilité */
       var sources = [
         {
@@ -519,7 +612,7 @@ window.A2SFavs = (function(){
         if(tried >= sources.length){
           _busy = false;
           _rates = Object.assign({EUR:1}, FALLBACK);
-          if(elLive) elLive.textContent = 'Taux indicatifs BCE';
+          if(elLive) elLive.textContent = t('ecbRate');
           compute();
           return;
         }
@@ -539,7 +632,7 @@ window.A2SFavs = (function(){
               _busy = false;
               _rates = Object.assign({EUR:1}, rates);
               var ts = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-              if(elLive) elLive.textContent = 'En direct · ' + ts;
+              if(elLive) elLive.textContent = t('live') + ' · ' + ts;
               compute();
             } else {
               tryNext();
@@ -592,8 +685,8 @@ window.A2SFavs = (function(){
       if(navUser){
         navUser.style.display  = 'flex';
         navUser.style.cursor   = 'pointer';
-        navUser.title          = 'Mon tableau de bord';
-        navUser.onclick        = function(){ window.location.href = 'dashboard.html'; };
+        navUser.title          = t('myDashboard');
+        navUser.onclick        = function(){ window.location.href = href('dashboard.html'); };
     /* Favoris */
     var navFavs = document.getElementById('navFavs');
     if(navFavs){
@@ -604,16 +697,16 @@ window.A2SFavs = (function(){
       navFavs.style.display=favs.length?'flex':'none';
     }
         if(navAvatar) navAvatar.textContent = getInitials(getUserName(), getUserEmail());
-        if(navUName)  navUName.textContent  = getUserName() || getUserEmail().split('@')[0] || 'Mon compte';
+        if(navUName)  navUName.textContent  = getUserName() || getUserEmail().split('@')[0] || t('myAccount');
       }
       if(btnPost){
         btnPost.removeAttribute('onclick');
-        btnPost.href = 'post-listing.html';
+        btnPost.href = href('post-listing.html');
       }
       /* Mobile menu : remplacer "Se connecter" par "Mon compte" */
       if(mmCta){
-        mmCta.href        = 'dashboard.html';
-        mmCta.textContent = 'Mon compte';
+        mmCta.href        = href('dashboard.html');
+        mmCta.textContent = t('myAccount');
       }
     } else {
       if(btnLogin) btnLogin.style.display = '';
@@ -622,12 +715,12 @@ window.A2SFavs = (function(){
         btnPost.href = '#';
         btnPost.onclick = function(e){
           e.preventDefault();
-          window.location.href = 'login.html?redirect=post-listing.html';
+          window.location.href = href('login.html') + '?redirect=post-listing.html';
         };
       }
       if(mmCta){
-        mmCta.href        = 'login.html';
-        mmCta.textContent = 'Se connecter';
+        mmCta.href        = href('login.html');
+        mmCta.textContent = t('mmLogin');
       }
     }
   }
