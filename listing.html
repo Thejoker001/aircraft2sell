@@ -7,7 +7,7 @@
 <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
 <meta name="keywords" content="avion à vendre, aéronef occasion, annonce avion Europe">
 <meta name="robots" content="index, follow">
-<meta name="description" content="Consultez cette annonce d'aéronef sur Aircraft2Sell, la marketplace aéronautique européenne sans commission.">
+<meta name="description" content="Consultez le détail de cette annonce d'aéronef : caractéristiques techniques, heures de vol, équipements, photos et contact direct avec le vendeur.">
 <meta property="og:image" content="https://aircraft2sell.eu/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -20,6 +20,9 @@
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0B2545">
 <link rel="canonical" href="https://aircraft2sell.eu/listing.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/listing.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/listing.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/listing.html">
 <link rel="stylesheet" href="styles.css?v=20260906c">
 <link rel="stylesheet" href="mobile.css?v=20260906c">
 <style>
@@ -419,6 +422,13 @@ function render(l){
   setMeta('og:title',title+' — Aircraft2Sell');
   setMeta('og:description','À vendre : '+title+(pr?' — '+pr:'')+(loc?' · '+loc:'')+'. Marketplace aéronautique européenne sans commission.');
   setMeta('og:url','https://aircraft2sell.eu/listing.html?id='+(l.id||''));
+  /* Canonique propre à l'annonce : sans id, toutes les annonces se déclareraient
+     dupliquées de /listing.html et Google n'en indexerait qu'une seule. */
+  (function(){
+    var link=document.querySelector('link[rel="canonical"]');
+    if(!link){ link=document.createElement('link'); link.rel='canonical'; document.head.appendChild(link); }
+    link.href='https://aircraft2sell.eu/listing.html?id='+(l.id||'');
+  })();
 
   /* Fil d'Ariane */
   var catLabels={light:'Avions légers',jet:"Jets d'affaires",turbo:'Turboprops',heli:'Hélicoptères',ulm:'ULM',airliner:'Avions de ligne'};
@@ -813,6 +823,8 @@ function injectSchema(l){
       "@type":"Offer",
       "price":l.price||'0',
       "priceCurrency":cur,
+      /* Google recommande priceValidUntil : sans lui, l'offre peut être ignorée. */
+      "priceValidUntil":(function(){var d=new Date();d.setFullYear(d.getFullYear()+1);return d.toISOString().slice(0,10);})(),
       "availability":"https://schema.org/InStock",
       "itemCondition":"https://schema.org/UsedCondition",
       "url":"https://aircraft2sell.eu/listing.html?id="+l.id,
