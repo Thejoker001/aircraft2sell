@@ -1912,7 +1912,27 @@ async function renderMsgs(){
 /* ── STARS ── */
 function muSetRating(n){sel('mu-rating').value=n;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=n?'var(--a2s-accent)':'var(--a2s-border-2)';});}
 function setRating(n){if(!_viewListingId)return;document.querySelectorAll('#ratingStars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=n?'var(--a2s-accent)':'var(--a2s-border-2)';});sb('PATCH','listings','id=eq.'+_viewListingId,{seller_rating:n}).then(function(){showToast('Note de '+n+' sur 5 enregistrée');refreshAll();}).catch(function(e){showToast('Erreur: '+e.message);});}
-function toggleCertified(){if(!_viewListingId)return;var checked=document.getElementById('certifiedCheck').checked;sb('PATCH','listings','id=eq.'+_viewListingId,{seller_certified:checked}).then(function(){showToast(checked?'Vendeur certifié':'Certification retirée');refreshAll();}).catch(function(e){showToast('Erreur: '+e.message);});}
+/* Certification depuis la fiche d'une annonce.
+   La v2 ne modifiait QUE l'annonce ouverte : le compte et les autres annonces
+   du même vendeur restaient désynchronisés. On applique désormais au compte
+   et à toutes ses annonces. */
+async function toggleCertified(){
+  if(!_viewListingId)return;
+  var checked=document.getElementById('certifiedCheck').checked;
+  var l=_allListings.find(function(x){return String(x.id)===String(_viewListingId);});
+  var email=l?(l.sellerEmail||l.seller_email||''):'';
+  try{
+    if(email){
+      await sb('PATCH','users','email=eq.'+encodeURIComponent(email),{certified:checked});
+      await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(email),{seller_certified:checked});
+      showToast(checked?'Vendeur certifié (compte + annonces)':'Certification retirée (compte + annonces)');
+    }else{
+      await sb('PATCH','listings','id=eq.'+_viewListingId,{seller_certified:checked});
+      showToast(checked?'Annonce certifiée':'Certification retirée');
+    }
+    await refreshAll();
+  }catch(e){showToast('Erreur: '+e.message);}
+}
 
 /* ── RECHERCHE GLOBALE ── */
 /* Recherche globale.
@@ -2061,11 +2081,16 @@ async function approveVerif(id,email){
   try{
     await sb('PATCH','verification_requests','id=eq.'+id,{status:'approved'});
     await sb('PATCH','users','email=eq.'+encodeURIComponent(email),{certified:true});
+    /* Propager sur les annonces du vendeur : le site lit listings.seller_certified,
+       pas users.certified. Sans cette ligne, un vendeur certifié restait affiché
+       comme simple « Vendeur vérifié » sur l'accueil et la recherche. */
+    await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(email),{seller_certified:true});
     loadVerifRequests(); refreshAll();
     toastUndo(email+' certifié', async function(){
       try{
         await sb('PATCH','verification_requests','id=eq.'+id,{status:'pending'});
         await sb('PATCH','users','email=eq.'+encodeURIComponent(email),{certified:false});
+        await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(email),{seller_certified:false});
         loadVerifRequests(); refreshAll(); showToast('Certification annulée');
       }catch(e){showToast('Erreur: '+e.message);}
     });

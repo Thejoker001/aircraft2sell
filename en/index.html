@@ -530,7 +530,10 @@ async function loadListings(){
   grid.innerHTML='';
   if(!_all.length){
     grid.innerHTML='<div class="empty-state"><span class="icon-box">'+A2SIcon('plane')+'</span><div class="empty-title">The first listings are on their way</div><p class="empty-sub">Selling an aircraft? <a href="post-listing.html">Post the first listing</a> — it is free and commission-free.</p></div>';
-    animCount('sn1',0);animCount('sn2',0);
+    animCount('sn1',0);
+    /* Certified accounts exist even with no live listing: query
+       homepage_stats instead of showing 0. */
+    loadCertifiedCount();
     document.querySelectorAll('.cat-count').forEach(function(el){el.textContent='Coming soon';});
     return;
   }
@@ -539,8 +542,25 @@ async function loadListings(){
   document.querySelectorAll('#catPills .pill[data-cat]').forEach(function(b){if(b.dataset.cat&&!cats[b.dataset.cat])b.style.display='none';});
   var all=await sbGet('listings','status=eq.live&select=id,category,seller_email');
   animCount('sn1',all.length);
-  animCount('sn2',new Set(all.map(function(x){return x.seller_email;}).filter(Boolean)).size);
+  /* "Verified sellers" must count actually certified accounts. The previous
+     version counted distinct emails with a live listing: a certified seller
+     without a published listing was never counted. */
+  loadCertifiedCount(new Set(all.map(function(x){return x.seller_email;}).filter(Boolean)).size);
   ['light','jet','turbo','heli','ulm','airliner'].forEach(function(c){var el=document.getElementById('cc-'+c);if(el){var n=all.filter(function(x){return x.category===c;}).length;el.textContent=n+' listing'+(n!==1?'s':'');}});
+}
+
+/* ── Certified sellers count ──
+   Source: the homepage_stats view (public read-only aggregate), which avoids
+   exposing the member list to visitors. Falls back to active sellers. */
+async function loadCertifiedCount(fallback){
+  try{
+    var st=await sbGet('homepage_stats','select=certified_sellers&limit=1');
+    if(st&&st.length&&st[0].certified_sellers!=null){
+      animCount('sn2',st[0].certified_sellers);
+      return;
+    }
+  }catch(e){}
+  animCount('sn2',fallback||0);
 }
 
 /* ── Listing of the week ── */

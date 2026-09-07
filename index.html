@@ -528,7 +528,10 @@ async function loadListings(){
   grid.innerHTML='';
   if(!_all.length){
     grid.innerHTML='<div class="empty-state"><span class="icon-box">'+A2SIcon('plane')+'</span><div class="empty-title">Les premières annonces arrivent</div><p class="empty-sub">Vous vendez un aéronef ? <a href="post-listing.html">Déposez la première annonce</a> — c\'est gratuit et sans commission.</p></div>';
-    animCount('sn1',0);animCount('sn2',0);
+    animCount('sn1',0);
+    /* Même sans annonce en ligne, les comptes certifiés existent :
+       on interroge homepage_stats plutôt que d'afficher 0. */
+    loadCertifiedCount();
     document.querySelectorAll('.cat-count').forEach(function(el){el.textContent='Bientôt';});
     return;
   }
@@ -537,8 +540,27 @@ async function loadListings(){
   document.querySelectorAll('#catPills .pill[data-cat]').forEach(function(b){if(b.dataset.cat&&!cats[b.dataset.cat])b.style.display='none';});
   var all=await sbGet('listings','status=eq.live&select=id,category,seller_email');
   animCount('sn1',all.length);
-  animCount('sn2',new Set(all.map(function(x){return x.seller_email;}).filter(Boolean)).size);
+  /* « Vendeurs vérifiés » doit compter les comptes réellement certifiés.
+     La v1 comptait les emails distincts ayant une annonce en ligne : un
+     vendeur certifié sans annonce publiée n'était jamais compté, et un
+     vendeur non certifié l'était à tort. */
+  loadCertifiedCount(new Set(all.map(function(x){return x.seller_email;}).filter(Boolean)).size);
   ['light','jet','turbo','heli','ulm','airliner'].forEach(function(c){var el=document.getElementById('cc-'+c);if(el){var n=all.filter(function(x){return x.category===c;}).length;el.textContent=n+' annonce'+(n>1?'s':'');}});
+}
+
+/* ── Nombre de vendeurs certifiés ──
+   Source : la vue homepage_stats (agrégat exposé en lecture publique),
+   qui évite d'exposer la liste des membres au visiteur.
+   Repli sur le nombre de vendeurs actifs si la vue est indisponible. */
+async function loadCertifiedCount(fallback){
+  try{
+    var st=await sbGet('homepage_stats','select=certified_sellers&limit=1');
+    if(st&&st.length&&st[0].certified_sellers!=null){
+      animCount('sn2',st[0].certified_sellers);
+      return;
+    }
+  }catch(e){}
+  animCount('sn2',fallback||0);
 }
 
 /* ── Annonce de la semaine ── */

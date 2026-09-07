@@ -690,6 +690,26 @@ async function submitListing(){
     enquiries:0
   };
 
+  /* Recopie l'état de certification du compte sur l'annonce.
+     Sans cela, l'annonce d'un vendeur certifié naît avec
+     seller_certified=false et n'affiche jamais le badge, puisque
+     les listes du site lisent seller_certified (pas users.certified). */
+  try{
+    if(sellerEmail){
+      var rCert=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(sellerEmail)+'&select=certified,is_pro,rating,pseudo',{
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}
+      });
+      if(rCert.ok){
+        var uCert=await rCert.json();
+        if(uCert&&uCert[0]){
+          sbListing.seller_certified=!!uCert[0].certified;
+          if(uCert[0].pseudo) sbListing.seller_pseudo=uCert[0].pseudo;
+          if(uCert[0].rating!=null) sbListing.seller_rating=uCert[0].rating;
+        }
+      }
+    }
+  }catch(e){ /* la certification reste à false : l'annonce part quand même */ }
+
   // Champs optionnels
   var ttVal=document.getElementById('fTT').value;
   if(ttVal)sbListing.hours=parseInt(ttVal);
