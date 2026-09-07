@@ -116,9 +116,22 @@
 
   function boot(){
     injectCSS();
+    loadChat();
     if(window.A2SIcon){ injectFooter(); return; }
     var s = document.createElement('script'); s.src = '/icons.js?v=20260906c';
     s.onload = injectFooter; s.onerror = injectFooter;
+    document.head.appendChild(s);
+  }
+
+  /* Chat support (Crisp) — chargé en différé par chat.js, inerte tant que
+     l'identifiant Crisp n'y est pas renseigné. Monté ici pour être présent
+     sur toutes les pages publiques sans les éditer une par une. */
+  function loadChat(){
+    if(document.querySelector('script[data-a2s-chat]')) return;
+    var s = document.createElement('script');
+    s.src = '/chat.js?v=20260906c';
+    s.async = true;
+    s.setAttribute('data-a2s-chat', '1');
     document.head.appendChild(s);
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
