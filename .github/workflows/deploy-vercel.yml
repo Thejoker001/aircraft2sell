@@ -10,10 +10,48 @@ env:
   VERCEL_PROJECT_ID: prj_pmtno1302H9GqF9WLdEMuzBsjzkT
 
 jobs:
-  deploy:
+  # Garde-fous : ces contrôles tournent même si le déploiement est cassé,
+  # pour qu'une régression de contenu soit visible immédiatement.
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gen-sitemap.py lit les dates de commit pour lastmod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validation des pages (JS, balises, emoji, thème)
+        run: python3 scripts/check-page.py *.html en/*.html
+
+      - name: Le sitemap est-il à jour ?
+        run: python3 scripts/gen-sitemap.py --check
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: checks
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sans cette vérification, un token expiré fait échouer l'étape suivante
+      # avec un message opaque ; l'incident passe alors inaperçu (c'est ce qui
+      # s'est produit : 3 déploiements en échec, prod figée plusieurs jours).
+      - name: Vérifier le token Vercel
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "::error::Le secret VERCEL_TOKEN est vide."
+            echo "Créer un token sur https://vercel.com/account/tokens puis :"
+            echo "  gh secret set VERCEL_TOKEN --repo Thejoker001/aircraft2sell"
+            exit 1
+          fi
+          if ! npx --yes vercel@latest whoami --token="${{ secrets.VERCEL_TOKEN }}" 2>/dev/null; then
+            echo "::error::VERCEL_TOKEN invalide ou expiré — le déploiement ne peut pas aboutir."
+            echo "Régénérer sur https://vercel.com/account/tokens puis :"
+            echo "  gh secret set VERCEL_TOKEN --repo Thejoker001/aircraft2sell"
+            exit 1
+          fi
 
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
