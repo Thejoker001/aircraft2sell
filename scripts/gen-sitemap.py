@@ -25,12 +25,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE = 'https://aircraft2sell.eu'
 
 # Pages sans valeur de référencement (outil personnel, redirections, doublons).
+# `sitemap.html` reste indexable : c'est un hub de maillage interne qui pointe
+# vers les 38 pages du site (dont les versions EN) en HTML brut, donc crawlable
+# sans JavaScript — utile là où la nav est injectée en JS.
 EXCLUDE = {
     'homepage.html',      # redirection vers /
-    'sitemap.html',       # plan du site HTML, doublon du sitemap.xml
     'alerts.html',        # outil personnel, contenu mince
     'seller.html',        # profil vendeur, généré dynamiquement
-    'diag.html', 'moderate.html', 'moderation.html',
+    'diag.html', 'moderation.html',
 }
 
 # Priorité et fréquence par page (défaut : 0.70 / monthly).
@@ -59,6 +61,7 @@ PRIORITY = {
     'listing.html': (0.70, 'weekly'),
     'faq.html': (0.65, 'monthly'),
     'contact.html': (0.55, 'monthly'),
+    'sitemap.html': (0.40, 'weekly'),
     'legal.html': (0.30, 'yearly'),
 }
 
