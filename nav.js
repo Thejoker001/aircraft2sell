@@ -221,7 +221,7 @@ window.A2SFavs = (function(){
             '<a href="' + href('login.html') + '" class="btn-nav-login" id="btnLogin">' + ic('user') + '<span>' + t('login') + '</span></a>',
             '<div class="nav-user" id="navUser" role="button" tabindex="0" style="display:none"><div class="nav-avatar" id="navAvatar">U</div><span class="nav-user-name" id="navUserName">' + t('myAccount') + '</span></div>',
             /* CTA vendre */
-            '<a href="' + href('post-listing.html') + '" class="btn-post" id="btnPost">' + ic('plus') + '<span class="bp-full">' + t('postFull') + '</span><span class="bp-short">' + t('postShort') + '</span></a>',
+            '<a href="' + href('post-listing.html') + '" class="btn-post" id="btnPost" aria-label="' + t('postFull') + '">' + ic('plus') + '<span class="bp-full">' + t('postFull') + '</span><span class="bp-short">' + t('postShort') + '</span></a>',
             '<button class="burger" id="burger" type="button" aria-label="' + t('menu') + '" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>',
           '</div>',
         '</div>',
