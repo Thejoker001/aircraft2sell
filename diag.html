@@ -2,162 +2,186 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Aircraft2Sell — Diagnostic</title>
+<title>Diagnostic — Aircraft2Sell</title>
+<link rel="stylesheet" href="styles.css?v=20260906c">
+<link rel="stylesheet" href="mobile.css?v=20260906c">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:'DM Sans',system-ui,sans-serif}
-body{background:#060b15;color:#f0f4f8;padding:1.5rem;line-height:1.6}
-h1{font-family:'Bebas Neue',system-ui;font-size:1.8rem;letter-spacing:.1em;color:#e8a020;margin-bottom:1.5rem}
-.card{background:#0c1826;border:1px solid rgba(200,220,240,.1);padding:1.2rem;margin-bottom:1rem}
-.card-title{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8fa3b8;margin-bottom:.8rem}
-.row{display:flex;align-items:center;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid rgba(200,220,240,.06);font-size:.82rem}
-.row:last-child{border-bottom:none}
-.lbl{color:#4a6278}.val{font-weight:500}
-.ok{color:#22c55e}.warn{color:#f97316}.err{color:#ef4444}
-.btn{background:#e8a020;color:#060b15;border:none;padding:.6rem 1.2rem;font-weight:700;font-size:.8rem;cursor:pointer;margin:.3rem .3rem 0 0;transition:background .2s}
-.btn:hover{background:#f5c842}
-.btn.ghost{background:rgba(255,255,255,.06);color:#8fa3b8}
-.btn.danger{background:rgba(239,68,68,.15);color:#ef4444}
-.code{background:rgba(255,255,255,.05);padding:.8rem 1rem;font-size:.75rem;font-family:monospace;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;margin-top:.5rem}
-.badge{font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.15rem .45rem;border-radius:3px}
-.b-ok{background:rgba(34,197,94,.15);color:#22c55e}
-.b-err{background:rgba(239,68,68,.15);color:#ef4444}
-.b-warn{background:rgba(249,115,22,.15);color:#f97316}
-hr{border:none;border-top:1px solid rgba(200,220,240,.08);margin:1rem 0}
-/* Gate de sécurité */
-#gate{position:fixed;inset:0;background:#030812;display:flex;align-items:center;justify-content:center;z-index:1000}
-#gate.hidden{display:none}
-.gate-box{background:#0c1826;border:1px solid rgba(200,220,240,.1);border-radius:12px;padding:2rem;width:320px;text-align:center}
-.gate-title{font-size:1.1rem;font-weight:600;margin-bottom:.5rem;color:#e8a020}
-.gate-sub{font-size:.75rem;color:#4a6278;margin-bottom:1.2rem}
-.gate-input{width:100%;background:rgba(200,220,240,.04);border:1px solid rgba(200,220,240,.1);border-radius:6px;padding:.6rem .9rem;color:#f0f4f8;font-size:.85rem;margin-bottom:.75rem;outline:none}
-.gate-btn{width:100%;background:#e8a020;color:#060b15;border:none;padding:.7rem;font-weight:700;border-radius:6px;cursor:pointer;font-size:.9rem}
-.gate-err{color:#ef4444;font-size:.75rem;margin-top:.5rem}
+/* ── Écran de connexion ── */
+.gate{position:fixed;inset:0;z-index:1000;background:var(--a2s-navy);display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.gate.hidden{display:none}
+.gate-box{background:var(--a2s-surface);border-radius:var(--a2s-radius-lg);box-shadow:var(--a2s-shadow-lg);width:100%;max-width:400px;overflow:hidden}
+.gate-head{padding:1.75rem 1.75rem 1.25rem;border-bottom:1px solid var(--a2s-border);text-align:center}
+.gate-head .icon-box{margin:0 auto .85rem}
+.gate-title{font-family:var(--font-display);font-weight:800;font-size:1.2rem;color:var(--a2s-navy)}
+.gate-sub{font-size:.85rem;color:var(--a2s-text-muted);margin-top:.25rem}
+.gate-body{padding:1.5rem 1.75rem 1.75rem}
+
+/* ── Diagnostic ── */
+.diag-wrap{padding:1.5rem 0 4rem}
+.diag-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;align-items:start}
+.diag-grid .card{overflow:hidden}
+.card-head h3{font-size:.95rem}
+.drow{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 1.25rem;border-bottom:1px solid var(--a2s-border);font-size:.86rem}
+.drow:last-child{border-bottom:0}
+.drow .lbl{color:var(--a2s-text-muted)}
+.drow .val{font-weight:700;color:var(--a2s-text);display:flex;align-items:center;gap:.4rem}
+.drow.sub .lbl{padding-left:1rem;color:var(--a2s-text-faint)}
+.code{background:var(--a2s-surface-2);border-radius:var(--a2s-radius-btn);padding:.85rem 1rem;font-size:.76rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow:auto;white-space:pre-wrap;word-break:break-word;max-height:320px;margin:0 1.25rem 1.25rem}
+.btn-row{display:flex;flex-wrap:wrap;gap:.5rem;padding:1rem 1.25rem}
+.flow-step{display:flex;align-items:center;gap:.55rem;padding:.35rem 0;font-size:.85rem}
+.flow-step .ic{width:16px;height:16px;flex-shrink:0}
+.flow-ok{color:var(--a2s-success)}
+.flow-err{color:var(--a2s-danger)}
+@media(max-width:900px){.diag-grid{grid-template-columns:1fr}}
 </style>
-<link rel="stylesheet" href="styles.css?v=20260906b">
 </head>
 <body>
 
-<!-- GATE DE SÉCURITÉ -->
-<div id="gate">
+<!-- ÉCRAN DE CONNEXION -->
+<div class="gate" id="gate">
   <div class="gate-box">
-    <div class="gate-title">🔒 Accès restreint</div>
-    <div class="gate-sub">Diagnostic réservé aux administrateurs</div>
-    <input type="password" id="gPw" class="gate-input" placeholder="Mot de passe admin" onkeydown="if(event.key==='Enter')checkGate()">
-    <button class="gate-btn" onclick="checkGate()">Accéder</button>
-    <div class="gate-err" id="gErr"></div>
+    <div class="gate-head">
+      <span class="icon-box navy"><i data-icon="lock"></i></span>
+      <div class="gate-title">Accès restreint</div>
+      <div class="gate-sub">Diagnostic réservé aux administrateurs</div>
+    </div>
+    <div class="gate-body">
+      <div class="field">
+        <label for="gEmail">Email administrateur</label>
+        <input type="email" id="gEmail" class="inp" placeholder="vous@aircraft2sell.eu" autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="gPw">Mot de passe</label>
+        <input type="password" id="gPw" class="inp" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkGate()">
+      </div>
+      <button type="button" class="btn-primary btn-block" id="gateBtn" onclick="checkGate()">Accéder au diagnostic</button>
+      <div id="gErr" class="field-error" style="display:block;text-align:center;margin-top:.75rem"></div>
+    </div>
   </div>
 </div>
 
-<!-- CONTENU DIAGNOSTIC (masqué jusqu'à auth) -->
+<!-- CONTENU -->
 <div id="diagContent" style="display:none">
-<h1>🔧 Diagnostic Aircraft2Sell</h1>
 
-<div class="card">
-  <div class="card-title">0. Supabase</div>
-  <div id="sb-status"><div class="row"><span class="lbl">Chargement...</span></div></div>
-  <button class="btn" onclick="checkSB()" style="margin-top:.5rem">Tester Supabase</button>
+<!-- nav injectée par nav.js -->
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><span aria-current="page">Diagnostic</span></nav>
+    <h1>Diagnostic technique</h1>
+    <p>État des données locales, de la session et de la connexion Supabase.</p>
+  </div>
 </div>
 
-<div class="card">
-  <div class="card-title">1. État du localStorage</div>
-  <div id="ls-status"></div>
+<div class="container diag-wrap">
+  <div class="diag-grid">
+
+    <div class="card">
+      <div class="card-head"><h3>Supabase</h3><button type="button" class="btn-link" onclick="checkSB()"><i data-icon="refresh"></i>Tester</button></div>
+      <div id="sb-status"><div class="drow"><span class="lbl">Chargement…</span></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Stockage local</h3></div>
+      <div id="ls-status"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Annonces enregistrées</h3></div>
+      <div id="ls-listings"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Membres enregistrés</h3></div>
+      <div id="ls-users"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Session</h3></div>
+      <div id="session-info"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Test du flux complet</h3></div>
+      <div class="btn-row"><button type="button" class="btn-secondary btn-sm" onclick="testFullFlow()"><i data-icon="zap"></i>Lancer le test</button></div>
+      <div id="flow-result" style="padding:0 1.25rem 1.25rem"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Jeux de données de test</h3></div>
+      <div class="btn-row">
+        <button type="button" class="btn-secondary btn-sm" onclick="injectListing()"><i data-icon="plus"></i>Annonce test</button>
+        <button type="button" class="btn-secondary btn-sm" onclick="injectUser()"><i data-icon="user"></i>Membre test</button>
+        <button type="button" class="btn-ghost btn-sm" onclick="refresh()"><i data-icon="refresh"></i>Rafraîchir</button>
+      </div>
+      <div class="btn-row" style="border-top:1px solid var(--a2s-border)">
+        <button type="button" class="btn-danger btn-sm" onclick="clearListings()"><i data-icon="trash"></i>Effacer les annonces</button>
+        <button type="button" class="btn-danger btn-sm" onclick="clearUsers()"><i data-icon="trash"></i>Effacer les membres</button>
+        <button type="button" class="btn-danger btn-sm" onclick="clearAll()"><i data-icon="trash"></i>Tout réinitialiser</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Données brutes</h3><button type="button" class="btn-link" onclick="showRaw()"><i data-icon="eye"></i>Afficher</button></div>
+      <div id="raw-data"></div>
+    </div>
+
+  </div>
 </div>
 
-<div class="card">
-  <div class="card-title">2. Contenu a2s_listings</div>
-  <div id="ls-listings"></div>
+<div id="a2sFooter"></div>
 </div>
 
-<div class="card">
-  <div class="card-title">3. Contenu a2s_users</div>
-  <div id="ls-users"></div>
-</div>
+<div class="toast" id="toast"></div>
 
-<div class="card">
-  <div class="card-title">4. Session</div>
-  <div id="session-info"></div>
-</div>
-
-<div class="card">
-  <div class="card-title">5. Actions de test</div>
-  <button class="btn" onclick="injectListing()">+ Injecter annonce test (pending)</button>
-  <button class="btn" onclick="injectUser()">+ Injecter membre test</button>
-  <button class="btn ghost" onclick="refresh()">↺ Rafraîchir</button>
-  <hr>
-  <button class="btn danger" onclick="clearAll()">🗑 Tout effacer (reset)</button>
-  <button class="btn danger" onclick="clearListings()">🗑 Effacer annonces</button>
-  <button class="btn danger" onclick="clearUsers()">🗑 Effacer membres</button>
-</div>
-
-<div class="card">
-  <div class="card-title">6. Test flux complet</div>
-  <button class="btn" onclick="testFullFlow()">▶ Tester le flux complet</button>
-  <div id="flow-result" style="margin-top:.8rem"></div>
-</div>
-
-<div class="card">
-  <div class="card-title">7. Données brutes (localStorage)</div>
-  <button class="btn ghost" onclick="showRaw()">Afficher JSON brut</button>
-  <div id="raw-data"></div>
-</div>
-</div>
-
+<script src="icons.js?v=20260906c"></script>
 <script>
-/* ── GATE DE SÉCURITÉ ── */
-/* Le mot de passe doit être changé régulièrement et ne jamais être celui de l'admin principal */
-var _DIAG_HASH = '5e8c9b5b3f2a1d4e6f7a8b9c0d1e2f3a'; // SHA256 du mot de passe à définir côté serveur
+/* ── AUTH ── */
 var _diagAuthed = false;
 var _gAttempts  = 0;
+var _SB = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
+var _SK = 'sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
+var ADMIN_EMAILS = ['contact.aircraft2sell@gmail.com'];
 
-/* Vérification via Supabase Auth (même mécanisme que l'admin) */
-async function checkGate() {
-  if (_gAttempts >= 5) {
-    document.getElementById('gErr').textContent = 'Trop de tentatives. Rechargez la page.';
-    return;
-  }
-  var pw = document.getElementById('gPw').value;
-  if (!pw) return;
+async function checkGate(){
+  var err = document.getElementById('gErr');
+  err.textContent = '';
+  if(_gAttempts >= 5){ err.textContent = 'Trop de tentatives. Rechargez la page.'; return; }
 
-  /* Vérifier la session admin existante */
-  var adminToken = sessionStorage.getItem('a2s_admin_session');
-  if (adminToken) {
-    try {
-      var payload = JSON.parse(atob(adminToken.split('.')[1]));
-      if (payload.exp * 1000 > Date.now()) {
-        unlockDiag();
-        return;
-      }
-    } catch(e) {}
-  }
-
-  /* Sinon auth Supabase */
-  _gAttempts++;
-  var adminEmails = ['contact.aircraft2sell@gmail.com'];
-  var emailInput  = prompt('Email admin :');
-  if (!emailInput || adminEmails.indexOf(emailInput.trim().toLowerCase()) === -1) {
-    document.getElementById('gErr').textContent = 'Accès refusé.';
+  var email = document.getElementById('gEmail').value.trim().toLowerCase();
+  var pw    = document.getElementById('gPw').value;
+  if(!email || !pw){ err.textContent = 'Renseignez votre email et votre mot de passe.'; return; }
+  if(ADMIN_EMAILS.indexOf(email) === -1){
+    _gAttempts++;
+    err.textContent = 'Accès refusé.';
     document.getElementById('gPw').value = '';
     return;
   }
 
+  var btn = document.getElementById('gateBtn');
+  btn.disabled = true; btn.classList.add('is-loading');
+  _gAttempts++;
   try {
-    var res = await fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/auth/v1/token?grant_type=password', {
+    var res = await fetch(_SB + '/auth/v1/token?grant_type=password', {
       method: 'POST',
-      headers: { 'apikey': 'sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailInput.trim(), password: pw })
+      headers: { 'apikey': _SK, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pw })
     });
     var data = await res.json();
-    if (!res.ok || !data.access_token) throw new Error('Auth échouée');
+    if(!res.ok || !data.access_token) throw new Error('Identifiants incorrects');
     sessionStorage.setItem('a2s_admin_session', data.access_token);
     unlockDiag();
-  } catch(e) {
-    document.getElementById('gErr').textContent = 'Identifiants incorrects.';
+  } catch(e){
+    err.textContent = e.message;
     document.getElementById('gPw').value = '';
+  } finally {
+    btn.disabled = false; btn.classList.remove('is-loading');
   }
 }
 
-function unlockDiag() {
+function unlockDiag(){
   _diagAuthed = true;
   document.getElementById('gate').classList.add('hidden');
   document.getElementById('diagContent').style.display = 'block';
@@ -165,158 +189,181 @@ function unlockDiag() {
   checkSB();
 }
 
-/* Vérification auto si déjà connecté */
-window.addEventListener('DOMContentLoaded', function() {
-  var adminToken = sessionStorage.getItem('a2s_admin_session');
-  if (adminToken) {
+window.addEventListener('DOMContentLoaded', function(){
+  var token = sessionStorage.getItem('a2s_admin_session');
+  if(token){
     try {
-      var payload = JSON.parse(atob(adminToken.split('.')[1]));
-      if (payload.exp * 1000 > Date.now()) { unlockDiag(); return; }
-    } catch(e) {}
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      if(payload.exp * 1000 > Date.now()){ unlockDiag(); }
+    } catch(e){}
   }
 });
 
 /* ── SUPABASE ── */
-var _SB = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
-var _SK = 'sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
-
-function getAuthHeaders() {
+function getAuthHeaders(){
   var token = sessionStorage.getItem('a2s_admin_session') || _SK;
   return { 'apikey': _SK, 'Authorization': 'Bearer ' + token };
 }
-
-async function sbGet(t, p) {
+async function sbGet(t, p){
   var r = await fetch(_SB + '/rest/v1/' + t + (p ? '?' + p : ''), { headers: getAuthHeaders() });
-  return r.ok ? (await r.json()) : [];
-}
-async function sbPost(t, b) {
-  return (await fetch(_SB + '/rest/v1/' + t, {
-    method: 'POST',
-    headers: Object.assign({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }, getAuthHeaders()),
-    body: JSON.stringify(b)
-  })).ok;
-}
-
-/* ── ESCAPE HTML ── */
-function esc(s) {
-  if (s == null) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  return await r.json();
 }
 
 /* ── HELPERS ── */
+function esc(s){ if(s==null)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function getLS(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
 function setLS(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
 function badge(ok, textOk, textErr){
-  return ok ? '<span class="badge b-ok">'+textOk+'</span>' : '<span class="badge b-err">'+textErr+'</span>';
+  return ok ? '<span class="badge badge-success">'+esc(textOk)+'</span>'
+            : '<span class="badge badge-warning">'+esc(textErr)+'</span>';
+}
+function hydrate(el){ if(window.A2SIcon && window.A2SIcon.hydrate) window.A2SIcon.hydrate(el); }
+
+var tt;
+function showToast(msg){
+  var el = document.getElementById('toast');
+  if(!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(tt);
+  tt = setTimeout(function(){ el.classList.remove('show'); }, 3000);
 }
 
+/* ── RENDU ── */
 function refresh(){
-  if (!_diagAuthed) return;
+  if(!_diagAuthed) return;
   var listings = getLS('a2s_listings');
   var users    = getLS('a2s_users');
   var loggedIn = localStorage.getItem('a2s_logged_in') === 'true';
   var userName = esc(localStorage.getItem('a2s_user_name') || '—');
-  var userEmail= esc(localStorage.getItem('a2s_user_email') || '—');
   var pending  = listings.filter(function(l){ return !l.status || l.status === 'pending'; });
   var live     = listings.filter(function(l){ return l.status === 'live'; });
 
-  document.getElementById('ls-status').innerHTML =
-    '<div class="row"><span class="lbl">localStorage disponible</span><span class="val">' + badge(typeof localStorage !== 'undefined', '✓ OK', '✗ Absent') + '</span></div>' +
-    '<div class="row"><span class="lbl">a2s_listings</span><span class="val ' + (listings.length ? 'ok' : 'warn') + '">' + listings.length + ' ' + badge(listings.length > 0, 'données présentes', 'vide') + '</span></div>' +
-    '<div class="row"><span class="lbl">└ En attente</span><span class="val ' + (pending.length ? 'ok' : 'warn') + '">' + pending.length + '</span></div>' +
-    '<div class="row"><span class="lbl">└ Publiées</span><span class="val">' + live.length + '</span></div>' +
-    '<div class="row"><span class="lbl">a2s_users</span><span class="val ' + (users.length ? 'ok' : 'warn') + '">' + users.length + ' ' + badge(users.length > 0, 'données présentes', 'vide') + '</span></div>' +
-    '<div class="row"><span class="lbl">Utilisateur connecté</span><span class="val">' + badge(loggedIn, '✓ Oui', '✗ Non') + ' ' + userName + ' (' + userEmail + ')</span></div>';
+  var st = document.getElementById('ls-status');
+  st.innerHTML =
+    '<div class="drow"><span class="lbl">Stockage disponible</span><span class="val">' + badge(typeof localStorage !== 'undefined', 'Oui', 'Non') + '</span></div>' +
+    '<div class="drow"><span class="lbl">Annonces</span><span class="val">' + listings.length + '</span></div>' +
+    '<div class="drow sub"><span class="lbl">En attente</span><span class="val">' + pending.length + '</span></div>' +
+    '<div class="drow sub"><span class="lbl">Publiées</span><span class="val">' + live.length + '</span></div>' +
+    '<div class="drow"><span class="lbl">Membres</span><span class="val">' + users.length + '</span></div>' +
+    '<div class="drow"><span class="lbl">Utilisateur connecté</span><span class="val">' + badge(loggedIn, userName, 'Non connecté') + '</span></div>';
 
   var llEl = document.getElementById('ls-listings');
-  if (!listings.length) {
-    llEl.innerHTML = '<div class="row"><span class="warn">Aucune annonce</span></div>';
-  } else {
-    llEl.innerHTML = listings.map(function(l, i){
-      var sc = l.status === 'live' ? 'ok' : (l.status === 'rejected' ? 'err' : 'warn');
-      return '<div class="row"><span class="lbl">#'+(i+1)+' — '+esc(l.make||'?')+' '+esc(l.model||'')+'</span><span class="val"><span class="'+sc+'">'+(l.status||'pending')+'</span></span></div>';
-    }).join('');
-  }
+  llEl.innerHTML = !listings.length
+    ? '<div class="drow"><span class="lbl">Aucune annonce enregistrée</span></div>'
+    : listings.map(function(l, i){
+        var s = l.status || 'pending';
+        var cls = s === 'live' ? 'badge-success' : (s === 'rejected' ? 'badge-danger' : 'badge-warning');
+        var lib = s === 'live' ? 'Publiée' : (s === 'rejected' ? 'Rejetée' : 'En attente');
+        return '<div class="drow"><span class="lbl">'+(i+1)+'. '+esc(l.make||'?')+' '+esc(l.model||'')+'</span>'
+             + '<span class="val"><span class="badge '+cls+'">'+lib+'</span></span></div>';
+      }).join('');
 
   var usEl = document.getElementById('ls-users');
-  if (!users.length) {
-    usEl.innerHTML = '<div class="row"><span class="warn">Aucun membre</span></div>';
-  } else {
-    usEl.innerHTML = users.map(function(u, i){
-      return '<div class="row"><span class="lbl">#'+(i+1)+' — '+esc(u.name||'?')+' ('+esc(u.email)+')</span><span class="val">'+esc(u.plan||'Essentiel')+'</span></div>';
-    }).join('');
-  }
+  usEl.innerHTML = !users.length
+    ? '<div class="drow"><span class="lbl">Aucun membre enregistré</span></div>'
+    : users.map(function(u, i){
+        return '<div class="drow"><span class="lbl">'+(i+1)+'. '+esc(u.name||'?')+'</span>'
+             + '<span class="val">'+esc(u.plan||'Essentiel')+'</span></div>';
+      }).join('');
 
   var adminSess = sessionStorage.getItem('a2s_admin_session');
   document.getElementById('session-info').innerHTML =
-    '<div class="row"><span class="lbl">Session admin</span><span class="val">' + badge(!!adminSess, '✓ Token présent', '✗ Non connecté') + '</span></div>';
+    '<div class="drow"><span class="lbl">Session administrateur</span><span class="val">' + badge(!!adminSess, 'Active', 'Absente') + '</span></div>';
 }
 
 function injectListing(){
   var listings = getLS('a2s_listings');
-  listings.unshift({ id:Date.now(), make:'Cessna', model:'172 Skyhawk', year:'2019', price:'85000', currency:'EUR', category:'light', airport:'LFPG', desc:'Test diag', status:'pending', submittedAt:new Date().toISOString(), sellerName:'Test', sellerEmail:'test@aircraft2sell.eu', views:0, enquiries:0, icon:'✈' });
+  listings.unshift({ id:Date.now(), make:'Cessna', model:'172 Skyhawk', year:'2019', price:85000,
+    currency:'EUR', category:'Avions légers', airport:'LFPG', desc:'Annonce de test générée par le diagnostic.',
+    status:'pending', submittedAt:new Date().toISOString(), seller:'Compte de test', views:0, enquiries:0 });
   setLS('a2s_listings', listings);
   refresh();
-  alert('✓ Annonce test injectée (pending)');
+  showToast('Annonce de test ajoutée');
 }
 
 function injectUser(){
   var users = getLS('a2s_users');
-  var email = 'test'+Date.now().toString().slice(-4)+'@aircraft2sell.eu';
-  users.unshift({ id:Date.now(), name:'Jean Dupont', email:email, plan:'Essentiel', status:'active', registeredAt:new Date().toISOString(), listings:0 });
+  users.unshift({ id:Date.now(), name:'Jean Dupont', email:'test'+Date.now().toString().slice(-4)+'@aircraft2sell.eu',
+    plan:'Essentiel', status:'active', registeredAt:new Date().toISOString(), listings:0 });
   setLS('a2s_users', users);
   refresh();
-  alert('✓ Membre test injecté');
+  showToast('Membre de test ajouté');
 }
 
-function clearAll(){ if(confirm('Effacer TOUTES les données localStorage ?')){ ['a2s_listings','a2s_users','a2s_logged_in','a2s_user_name','a2s_user_email','a2s_user_plan'].forEach(function(k){ localStorage.removeItem(k); }); refresh(); } }
-function clearListings(){ if(confirm('Effacer toutes les annonces ?')){ localStorage.removeItem('a2s_listings'); refresh(); } }
-function clearUsers(){    if(confirm('Effacer tous les membres ?')){ localStorage.removeItem('a2s_users'); refresh(); } }
+function clearAll(){
+  if(!confirm('Effacer toutes les données locales ?')) return;
+  ['a2s_listings','a2s_users','a2s_logged_in','a2s_user_name','a2s_user_email','a2s_user_plan']
+    .forEach(function(k){ localStorage.removeItem(k); });
+  refresh(); showToast('Données locales effacées');
+}
+function clearListings(){
+  if(!confirm('Effacer toutes les annonces ?')) return;
+  localStorage.removeItem('a2s_listings'); refresh(); showToast('Annonces effacées');
+}
+function clearUsers(){
+  if(!confirm('Effacer tous les membres ?')) return;
+  localStorage.removeItem('a2s_users'); refresh(); showToast('Membres effacés');
+}
 
 function testFullFlow(){
   var el = document.getElementById('flow-result');
   var steps = [], ok = true, ts = Date.now();
-  if(typeof localStorage !== 'undefined') steps.push({ok:true, msg:'localStorage disponible'});
-  else { steps.push({ok:false, msg:'localStorage non disponible'}); ok=false; }
-  var test = {id:ts, make:'Test', model:'Diag', year:'2024', price:'50000', currency:'EUR', status:'pending', submittedAt:new Date().toISOString(), sellerName:'Test', sellerEmail:'diag@test.eu', views:0};
+
+  if(typeof localStorage !== 'undefined') steps.push({ok:true, msg:'Stockage local disponible'});
+  else { steps.push({ok:false, msg:'Stockage local indisponible'}); ok = false; }
+
   var listings = getLS('a2s_listings');
-  listings.unshift(test); setLS('a2s_listings', listings);
-  steps.push({ok:true, msg:'Injection OK (id: '+ts+')'});
-  var found = getLS('a2s_listings').find(function(l){ return String(l.id)===String(ts); });
-  if(found) steps.push({ok:true, msg:'Relecture OK'});
-  else { steps.push({ok:false, msg:'ERREUR: annonce non retrouvée'}); ok=false; }
-  setLS('a2s_listings', getLS('a2s_listings').filter(function(l){ return String(l.id)!==String(ts); }));
-  steps.push({ok:true, msg:'Nettoyage OK'});
-  el.innerHTML = '<div style="font-size:.78rem">' + steps.map(function(s){
-    return '<div style="padding:.3rem 0;display:flex;gap:.5rem"><span style="color:'+(s.ok?'#22c55e':'#ef4444')+'">'+(s.ok?'✓':'✗')+'</span><span style="color:'+(s.ok?'#f0f4f8':'#ef4444')+'">'+esc(s.msg)+'</span></div>';
-  }).join('') + '<div style="margin-top:.8rem;font-weight:600;color:'+(ok?'#22c55e':'#ef4444')+'">'+(ok?'✅ Flux OK':'❌ Problème détecté')+'</div></div>';
+  listings.unshift({ id:ts, make:'Test', model:'Diagnostic', year:'2024', price:50000, currency:'EUR',
+    status:'pending', submittedAt:new Date().toISOString(), seller:'Diagnostic', views:0 });
+  setLS('a2s_listings', listings);
+  steps.push({ok:true, msg:'Écriture réussie (référence '+ts+')'});
+
+  var found = getLS('a2s_listings').filter(function(l){ return String(l.id) === String(ts); })[0];
+  if(found) steps.push({ok:true, msg:'Relecture réussie'});
+  else { steps.push({ok:false, msg:'Relecture impossible : annonce non retrouvée'}); ok = false; }
+
+  setLS('a2s_listings', getLS('a2s_listings').filter(function(l){ return String(l.id) !== String(ts); }));
+  steps.push({ok:true, msg:'Nettoyage effectué'});
+
+  el.innerHTML = steps.map(function(s){
+    return '<div class="flow-step '+(s.ok?'flow-ok':'flow-err')+'">'
+         + '<i data-icon="'+(s.ok?'check-circle':'x-circle')+'"></i><span>'+esc(s.msg)+'</span></div>';
+  }).join('')
+  + '<div class="alert '+(ok?'alert-success':'alert-error')+'" style="margin-top:.85rem">'
+  + '<i data-icon="'+(ok?'check-circle':'alert-triangle')+'"></i>'
+  + '<span>'+(ok?'Flux de bout en bout fonctionnel.':'Un problème a été détecté, voir le détail ci-dessus.')+'</span></div>';
+  hydrate(el);
   refresh();
 }
 
 function showRaw(){
-  if (!_diagAuthed) return;
+  if(!_diagAuthed) return;
   var data = {};
-  ['a2s_listings','a2s_users','a2s_logged_in','a2s_user_name','a2s_user_email'].forEach(function(k){
-    try{ data[k]=JSON.parse(localStorage.getItem(k)); }catch(e){ data[k]=localStorage.getItem(k); }
+  ['a2s_listings','a2s_users','a2s_logged_in','a2s_user_name','a2s_user_plan'].forEach(function(k){
+    try{ data[k] = JSON.parse(localStorage.getItem(k)); }catch(e){ data[k] = localStorage.getItem(k); }
   });
-  /* Ne pas afficher les emails en clair dans la sortie brute */
   document.getElementById('raw-data').innerHTML = '<div class="code">' + esc(JSON.stringify(data, null, 2)) + '</div>';
 }
 
 async function checkSB(){
-  if (!_diagAuthed) return;
+  if(!_diagAuthed) return;
   var el = document.getElementById('sb-status');
-  try{
+  el.innerHTML = '<div class="drow"><span class="lbl">Test en cours…</span></div>';
+  try {
     var l = await sbGet('listings','limit=3&order=submitted_at.desc');
     var u = await sbGet('users','limit=3');
-    el.innerHTML = '<div class="row"><span class="lbl">Listings</span><span class="val ok">'+l.length+' récents</span></div>'
-      +'<div class="row"><span class="lbl">Users</span><span class="val ok">'+u.length+' récents</span></div>'
-      +'<div class="row"><span class="lbl">Connexion</span><span class="val ok">✓ OK</span></div>';
-  }catch(e){
-    el.innerHTML = '<div class="row"><span class="lbl">Supabase</span><span class="val err">Erreur: '+esc(e.message)+'</span></div>';
+    el.innerHTML = '<div class="drow"><span class="lbl">Connexion</span><span class="val">'+badge(true,'Établie','Échec')+'</span></div>'
+      + '<div class="drow"><span class="lbl">Table listings</span><span class="val">'+l.length+' enregistrement(s)</span></div>'
+      + '<div class="drow"><span class="lbl">Table users</span><span class="val">'+u.length+' enregistrement(s)</span></div>';
+  } catch(e){
+    el.innerHTML = '<div class="drow"><span class="lbl">Connexion</span><span class="val">'+badge(false,'OK','Échec')+'</span></div>'
+      + '<div class="drow"><span class="lbl">Détail</span><span class="val">'+esc(e.message)+'</span></div>';
   }
 }
 </script>
-<script src="nav.js?v=20260906b"></script>
+<script src="nav.js?v=20260906c"></script>
+<script src="footer.js?v=20260906c"></script>
 </body>
 </html>
