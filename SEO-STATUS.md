@@ -16,45 +16,46 @@ Dernière passe : 2026-09-07.
 
 Détail des correctifs dans l'historique git (`git log --grep=seo`).
 
-## Actions restantes — nécessitent vos accès
+## Actions restantes
 
-### 1. Redirection `www` → domaine racine (priorité haute)
+### 1. Redirection `www` → domaine racine — ✅ RÉSOLU le 2026-09-07
 
-**Le problème.** Google a choisi `https://www.aircraft2sell.eu/` comme URL
-canonique du site, alors que toutes les pages déclarent la version sans `www`.
-L'inspection Search Console le confirme :
+**Le problème.** Google avait choisi `https://www.aircraft2sell.eu/` comme URL
+canonique du site alors que toutes les pages déclarent la version sans `www`,
+et la version `www` indexée était figée sur l'ancien `homepage.html`
+(dernier crawl du 4 août).
 
+**La solution appliquée.** La redirection a été posée **au niveau du domaine
+Vercel**, et non sur Cloudflare : le `www` pointe sur `cname.vercel-dns.com`,
+donc Vercel répond et Cloudflare relaie sa redirection. Cela contourne le
+token Cloudflare en lecture seule.
+
+```bash
+PATCH https://api.vercel.com/v9/projects/<projectId>/domains/www.aircraft2sell.eu
+{"redirect": "aircraft2sell.eu", "redirectStatusCode": 301}
 ```
-coverageState  : Duplicate, Google chose different canonical than user
-googleCanonical: https://www.aircraft2sell.eu/     <- ce que Google indexe
-userCanonical  : https://aircraft2sell.eu/         <- ce que le site déclare
+
+**Vérifié en production** (à travers Cloudflare, avec un User-Agent navigateur —
+`curl` nu reçoit un challenge 403 qui ne présage rien) :
+
+| URL demandée | Réponse |
+|---|---|
+| `www.aircraft2sell.eu/` | 301 → `aircraft2sell.eu/` |
+| `www.aircraft2sell.eu/search.html` | 301 → `aircraft2sell.eu/search.html` |
+| `www.aircraft2sell.eu/en/index.html` | 301 → `aircraft2sell.eu/en/index.html` |
+| `www…/pricing.html?utm_source=test` | 301, paramètres préservés |
+| `www.aircraft2sell.eu/homepage.html` | 301 → apex → 308 → `/` → 200 |
+| `aircraft2sell.eu/search.html` | 200 (l'apex ne redirige pas) |
+
+Google mettra quelques jours à recrawler et à basculer l'URL canonique vers
+l'apex. Surveiller avec :
+
+```bash
+python3 scripts/gsc-submit.py inspect https://aircraft2sell.eu/
 ```
 
-Pire : la version `www` indexée est figée sur l'ancien `homepage.html`
-(dernier crawl du 4 août). Le référencement travaille donc pour un hôte
-obsolète, et la popularité du site est répartie sur deux domaines.
-
-**Pourquoi ce n'est pas corrigé automatiquement.** La redirection doit se faire
-sur Cloudflare, qui est en amont de Vercel (la règle `has: host` de
-`vercel.json` ne s'applique jamais, Cloudflare répond avant). Or le token
-`CLOUDFLARE_API_TOKEN` est en lecture seule : il lit la zone mais renvoie
-`Authentication error` sur `/rulesets` et `Unauthorized` sur `/pagerules`.
-
-**Correction (2 minutes, dans l'interface Cloudflare).**
-
-1. Cloudflare > `aircraft2sell.eu` > **Rules** > **Redirect Rules** > *Create rule*
-2. Nom : `www vers apex`
-3. Condition : `Hostname` **equals** `www.aircraft2sell.eu`
-4. Action : *Dynamic redirect*
-   - URL : `concat("https://aircraft2sell.eu", http.request.uri.path)`
-   - Statut : **301**, cocher *Preserve query string*
-5. Déployer.
-
-Vérification : `curl -sI https://www.aircraft2sell.eu/` doit renvoyer
-`301` et `location: https://aircraft2sell.eu/`.
-
-*Alternative :* étendre le token API (permissions `Zone > Page Rules > Edit`
-et `Zone > Config Rules > Edit`) et me le fournir — je poserai la règle.
+`googleCanonical` doit passer de `https://www.aircraft2sell.eu/` à
+`https://aircraft2sell.eu/`.
 
 ### 2. Token Vercel expiré (priorité haute)
 
