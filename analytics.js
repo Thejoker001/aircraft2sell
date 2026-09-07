@@ -46,7 +46,7 @@
 
   /* ── Page courante ── */
   function getPage() {
-    var path = location.pathname.split('/').pop() || 'homepage.html';
+    var path = location.pathname.split('/').pop() || 'index.html';
     var params = new URLSearchParams(location.search);
     if (params.get('id')) path += '?id=' + params.get('id');
     if (params.get('cat')) path += '?cat=' + params.get('cat');

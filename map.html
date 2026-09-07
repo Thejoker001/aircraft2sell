@@ -2,61 +2,135 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="robots" content="index, follow">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="description" content="Carte interactive des aéronefs à vendre en Europe. Trouvez des avions près de chez vous par aéroport.">
+<meta name="description" content="Carte interactive des aéronefs à vendre en Europe. Trouvez des avions, jets, hélicoptères et ULM près de chez vous, par aérodrome.">
 <meta property="og:title" content="Carte des annonces — Aircraft2Sell">
-<meta property="og:description" content="Visualisez les aéronefs à vendre en Europe sur une carte interactive par aéroport.">
-<meta property="og:url" content="https://www.aircraft2sell.eu/map.html">
-<link rel="canonical" href="https://www.aircraft2sell.eu/map.html">
-<title>Carte des annonces — Aircraft2Sell</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<meta property="og:description" content="Visualisez les aéronefs à vendre en Europe sur une carte interactive par aérodrome.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://aircraft2sell.eu/map.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png">
+<link rel="canonical" href="https://aircraft2sell.eu/map.html">
+<title>Carte des annonces d'aéronefs à vendre en Europe | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Accueil","item":"https://aircraft2sell.eu/"},{"@type":"ListItem","position":2,"name":"Carte des annonces","item":"https://aircraft2sell.eu/map.html"}],"@context":"https://schema.org"}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260906b">
-<link rel="stylesheet" href="mobile.css?v=20260906b">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://hlivysnlzlqdjcigqgvk.supabase.co">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="styles.css?v=20260906c">
+<link rel="stylesheet" href="mobile.css?v=20260906c">
 <style>
-body{margin:0;padding-top:64px;background:#05080f;font-family:'DM Sans',sans-serif;color:#edf2f8;height:100vh;display:flex;flex-direction:column;overflow:hidden}
-.map-header{background:#0a1020;border-bottom:1px solid rgba(180,200,230,.08);padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:1rem;flex-wrap:wrap}
-.map-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.06em;color:#edf2f8}
-.map-title em{font-style:normal;color:#e8a020}
-.map-filters{display:flex;gap:.4rem;flex-wrap:wrap}
-.mfpill{background:transparent;border:1px solid rgba(180,200,230,.14);color:#7a93aa;font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:.28rem .65rem;cursor:pointer;transition:all .18s}
-.mfpill.on{background:#e8a020;color:#030610;border-color:#e8a020}
-.map-count{font-size:.72rem;color:#3d5468;white-space:nowrap}
-#map{flex:1;background:#0a1020}
-/* Leaflet custom */
-.leaflet-container{background:#05080f}
-.leaflet-tile-pane{filter:brightness(.7) saturate(.4) hue-rotate(180deg)}
-.a2s-marker{background:#e8a020;border:2px solid #030610;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:#030610;cursor:pointer;transition:transform .15s}
-.a2s-marker:hover{transform:scale(1.2)}
-.a2s-popup{font-family:'DM Sans',sans-serif;min-width:180px}
-.a2s-popup .title{font-weight:600;font-size:.85rem;color:#030610;margin-bottom:.3rem}
-.a2s-popup .price{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#c47a00;margin-bottom:.3rem}
-.a2s-popup .meta{font-size:.7rem;color:#666;margin-bottom:.6rem}
-.a2s-popup a{display:block;background:#e8a020;color:#030610;text-decoration:none;padding:.4rem .75rem;font-size:.72rem;font-weight:700;text-align:center;letter-spacing:.06em}
+/* ── En-tête compact : pilules de catégorie + compteur ── */
+.map-toolbar{background:var(--a2s-surface);border-bottom:1px solid var(--a2s-border);padding:.85rem 0}
+.map-toolbar .container{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.map-filters{display:flex;gap:.45rem;flex-wrap:wrap}
+.map-count{margin-left:auto;display:inline-flex;align-items:center;gap:.4rem;font-size:.84rem;font-weight:600;color:var(--a2s-text-muted);white-space:nowrap}
+.map-count .ic{width:16px;height:16px}
+
+/* ── Carte pleine largeur ── */
+.map-wrap{position:relative;background:var(--a2s-surface-2)}
+#map{height:calc(100vh - var(--nav-h) - 210px);min-height:420px;background:var(--a2s-surface-2)}
+.map-legend{position:absolute;left:1rem;bottom:1rem;z-index:400;display:flex;flex-direction:column;gap:.35rem;padding:.7rem .9rem;background:var(--a2s-surface);border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-btn);box-shadow:var(--a2s-shadow);font-size:.76rem;color:var(--a2s-text-muted)}
+.map-legend span{display:inline-flex;align-items:center;gap:.5rem}
+.map-legend .dot{width:14px;height:14px;border-radius:50%;background:var(--a2s-navy);border:2px solid #fff;box-shadow:0 0 0 1px var(--a2s-border-2)}
+.map-legend .dot.multi{background:var(--a2s-accent)}
+.map-empty{position:absolute;inset:0;z-index:401;display:none;align-items:center;justify-content:center;background:rgba(245,247,250,.92);padding:1.5rem}
+.map-empty.show{display:flex}
+.map-empty .empty-state{background:var(--a2s-surface);border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);box-shadow:var(--a2s-shadow);max-width:460px}
+
+/* ── Marqueurs et popups Leaflet ── */
+.leaflet-container{font-family:var(--font-body);background:var(--a2s-surface-2)}
+.a2s-marker{width:100%;height:100%;border-radius:50%;background:var(--a2s-navy);color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(11,37,69,.35);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;cursor:pointer;transition:transform .15s}
+.a2s-marker.multi{background:var(--a2s-accent)}
+.a2s-marker .ic{width:14px;height:14px;stroke-width:2}
+.a2s-marker:hover{transform:scale(1.12)}
+.leaflet-popup-content-wrapper{border-radius:var(--a2s-radius-card);box-shadow:var(--a2s-shadow-lg);padding:0}
+.leaflet-popup-content{margin:0;width:auto !important;min-width:220px}
+.leaflet-popup-tip{box-shadow:none}
+.a2s-popup{padding:.9rem 1rem}
+.a2s-popup + .a2s-popup{border-top:1px solid var(--a2s-border)}
+.a2s-popup .title{font-family:var(--font-display);font-weight:700;font-size:.9rem;color:var(--a2s-navy);line-height:1.3;margin-bottom:.25rem}
+.a2s-popup .price{font-family:var(--font-display);font-weight:800;font-size:1.05rem;color:var(--a2s-navy);margin-bottom:.2rem}
+.a2s-popup .meta{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;color:var(--a2s-text-muted);margin-bottom:.6rem}
+.a2s-popup .meta .ic{width:13px;height:13px}
+.a2s-popup .btn-navy{width:100%;min-height:38px;font-size:.82rem}
+.a2s-popup-more{padding:.6rem 1rem;border-top:1px solid var(--a2s-border);background:var(--a2s-bg);text-align:center;font-size:.78rem}
+.a2s-popup-more a{color:var(--a2s-blue);font-weight:700;display:inline-flex;align-items:center;gap:.3rem}
+.a2s-popup-more .ic{width:14px;height:14px}
+
+/* ── Aide sous la carte ── */
+.map-help{display:flex;align-items:flex-start;gap:.75rem;font-size:.84rem;color:var(--a2s-text-muted)}
+.map-help .ic{width:18px;height:18px;flex-shrink:0;margin-top:.15rem;color:var(--a2s-blue)}
+.map-help a{color:var(--a2s-blue);font-weight:700}
+
+@media(max-width:768px){
+  #map{height:calc(100vh - var(--nav-h) - 240px);min-height:360px}
+  .map-count{margin-left:0;width:100%}
+  .map-legend{display:none}
+}
 </style>
 </head>
 <body>
-<h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Carte des aéronefs à vendre en Europe — Aircraft2Sell</h1>
 <!-- nav injectée par nav.js -->
 
-<div class="map-header">
-  <div class="map-title">Carte des <em>annonces</em></div>
-  <div class="map-filters" id="mapFilters">
-    <button class="mfpill on" data-cat="" onclick="filterMap(this,'')">Toutes</button>
-    <button class="mfpill" data-cat="light" onclick="filterMap(this,'light')">🛩 Avions</button>
-    <button class="mfpill" data-cat="jet" onclick="filterMap(this,'jet')">✈ Jets</button>
-    <button class="mfpill" data-cat="heli" onclick="filterMap(this,'heli')">🚁 Hélicos</button>
-    <button class="mfpill" data-cat="turbo" onclick="filterMap(this,'turbo')">🌀 Turbos</button>
-    <button class="mfpill" data-cat="ulm" onclick="filterMap(this,'ulm')">🪂 ULM</button>
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><span aria-current="page">Carte des annonces</span></nav>
+    <h1>Carte des annonces</h1>
+    <p>Repérez les aéronefs à vendre près de chez vous, regroupés par aérodrome.</p>
   </div>
-  <div class="map-count" id="mapCount">Chargement…</div>
 </div>
 
-<div id="map"></div>
+<div class="map-toolbar">
+  <div class="container">
+    <div class="pills map-filters" id="mapFilters" role="group" aria-label="Filtrer par catégorie">
+      <button type="button" class="pill active" data-cat="" aria-pressed="true" onclick="filterMap(this,'')"><i data-icon="search"></i>Toutes</button>
+      <button type="button" class="pill" data-cat="light" aria-pressed="false" onclick="filterMap(this,'light')"><i data-icon="plane-light"></i>Avions légers</button>
+      <button type="button" class="pill" data-cat="jet" aria-pressed="false" onclick="filterMap(this,'jet')"><i data-icon="jet"></i>Jets</button>
+      <button type="button" class="pill" data-cat="turbo" aria-pressed="false" onclick="filterMap(this,'turbo')"><i data-icon="turboprop"></i>Turboprops</button>
+      <button type="button" class="pill" data-cat="heli" aria-pressed="false" onclick="filterMap(this,'heli')"><i data-icon="helicopter"></i>Hélicoptères</button>
+      <button type="button" class="pill" data-cat="ulm" aria-pressed="false" onclick="filterMap(this,'ulm')"><i data-icon="ulm"></i>ULM</button>
+      <button type="button" class="pill" data-cat="airliner" aria-pressed="false" onclick="filterMap(this,'airliner')"><i data-icon="airliner"></i>Avions de ligne</button>
+    </div>
+    <div class="map-count" id="mapCount" aria-live="polite"><i data-icon="map-pin"></i>Chargement…</div>
+  </div>
+</div>
+
+<div class="map-wrap">
+  <div id="map" role="region" aria-label="Carte interactive des annonces"></div>
+  <div class="map-legend" aria-hidden="true">
+    <span><i class="dot"></i>Un aéronef</span>
+    <span><i class="dot multi"></i>Plusieurs aéronefs (nombre affiché)</span>
+  </div>
+  <div class="map-empty" id="mapEmpty">
+    <div class="empty-state">
+      <span class="icon-box"><i data-icon="map"></i></span>
+      <div class="empty-title">Aucune annonce localisée</div>
+      <p class="empty-sub" id="mapEmptySub">Aucune annonce de cette catégorie n'est rattachée à un aérodrome connu pour le moment.</p>
+      <div class="btn-group" style="justify-content:center">
+        <a href="search.html" class="btn-primary"><i data-icon="search"></i>Voir toutes les annonces</a>
+        <a href="alerts.html" class="btn-secondary"><i data-icon="bell"></i>Créer une alerte</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="section-sm">
+  <div class="container">
+    <div class="map-help">
+      <i data-icon="info"></i>
+      <p>Seules les annonces rattachées à un code OACI connu apparaissent sur la carte. Pour une recherche par prix, année ou équipement, utilisez la <a href="search.html">recherche avancée</a>.</p>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="icons.js?v=20260906c"></script>
 <script>
 var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
@@ -75,21 +149,26 @@ var AIRPORTS={
   LEMD:{lat:40.472,lng:-3.561,name:'Madrid'},LEBL:{lat:41.297,lng:2.078,name:'Barcelone'},
   LIRF:{lat:41.800,lng:12.247,name:'Rome Fiumicino'},LIML:{lat:45.445,lng:9.276,name:'Milan'},
   EHAM:{lat:52.308,lng:4.764,name:'Amsterdam'},EGLL:{lat:51.477,lng:-0.461,name:'Londres Heathrow'},
-  EGKB:{lat:51.331,lng:0.032,name:'Biggin Hill'},
+  EGKB:{lat:51.331,lng:0.032,name:'Biggin Hill'}
 };
 
-var map=L.map('map',{center:[47,6],zoom:5,zoomControl:true});
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map);
+var map=L.map('map',{center:[47,6],zoom:5,zoomControl:true,scrollWheelZoom:false});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap',maxZoom:18}).addTo(map);
+map.on('focus',function(){map.scrollWheelZoom.enable();});
+map.on('blur',function(){map.scrollWheelZoom.disable();});
 
 var _allListings=[],_markers=[],_markerLayer=L.layerGroup().addTo(map);
 var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'};
-var catIcons={light:'🛩',jet:'✈',turbo:'🌀',heli:'🚁',ulm:'🪂',airliner:'🛫'};
+var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
+var CAT_LABEL={light:'avion léger',jet:'jet',turbo:'turboprop',heli:'hélicoptère',ulm:'ULM',airliner:'avion de ligne'};
 
 function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
 
 async function loadMarkers(){
-  var r=await fetch(SB+'/rest/v1/listings?status=eq.live&order=submitted_at.desc&limit=200&select=id,make,model,year,price,currency,category,airport',{headers:{'apikey':SK}});
-  _allListings=r.ok?await r.json():[];
+  try{
+    var r=await fetch(SB+'/rest/v1/listings?status=eq.live&order=submitted_at.desc&limit=200&select=id,make,model,year,price,currency,category,airport',{headers:{'apikey':SK}});
+    _allListings=r.ok?await r.json():[];
+  }catch(e){_allListings=[];}
   renderMarkers('');
 }
 
@@ -107,39 +186,46 @@ function renderMarkers(cat){
   });
   Object.keys(byAirport).forEach(function(code){
     var ap=AIRPORTS[code];
-    if(!ap){
-      // Estimation pour codes non connus : centre Europe
-      return;
-    }
+    if(!ap)return; // code OACI inconnu : non placé
     var listings=byAirport[code];
     var count=listings.length;
+    var inner=count>1?String(count):A2SIcon(CAT_ICON[listings[0].category]||'plane');
     var icon=L.divIcon({
-      html:'<div class="a2s-marker" style="width:'+(count>1?28:22)+'px;height:'+(count>1?28:22)+'px;font-size:'+(count>1?'.7rem':'.8rem')+'">'+(count>1?count:(catIcons[listings[0].category]||'✈'))+'</div>',
-      className:'',iconSize:[30,30],iconAnchor:[15,15]
+      html:'<div class="a2s-marker'+(count>1?' multi':'')+'" title="'+esc(ap.name)+'">'+inner+'</div>',
+      className:'',iconSize:[count>1?32:26,count>1?32:26],iconAnchor:[count>1?16:13,count>1?16:13]
     });
     var popupHtml=listings.slice(0,3).map(function(l){
       var title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Aéronef';
-      var price=l.price?(sym[l.currency||'EUR']||'€')+Number(l.price).toLocaleString('fr-FR'):'Prix sur demande';
-      return'<div class="a2s-popup" style="margin-bottom:.5rem"><div class="title">'+esc(title)+'</div><div class="price">'+price+'</div><div class="meta">'+ap.name+'</div><a href="listing.html?id='+l.id+'">Voir l'annonce →</a></div>';
-    }).join('<hr style="border-color:#eee;margin:.4rem 0">');
-    if(listings.length>3)popupHtml+='<div style="text-align:center;font-size:.68rem;color:#888;margin-top:.4rem"><a href="search.html?q='+code+'" style="color:#c47a00">+' + (listings.length-3) + ' autre(s) à '+ap.name+'</a></div>';
-    L.marker([ap.lat,ap.lng],{icon:icon}).bindPopup(popupHtml,{maxWidth:220}).addTo(_markerLayer);
+      var price=l.price?Number(l.price).toLocaleString('fr-FR')+' '+(sym[l.currency||'EUR']||'€'):'Prix sur demande';
+      return'<div class="a2s-popup"><div class="title">'+esc(title)+'</div><div class="price">'+price+'</div><div class="meta">'+A2SIcon('map-pin')+esc(ap.name)+' · '+esc(code)+'</div><a class="btn-navy" href="listing.html?id='+encodeURIComponent(l.id)+'">Voir l\'annonce'+A2SIcon('arrow-right')+'</a></div>';
+    }).join('');
+    if(listings.length>3)popupHtml+='<div class="a2s-popup-more"><a href="search.html?q='+encodeURIComponent(code)+'">'+(listings.length-3)+' autre'+(listings.length-3>1?'s':'')+' à '+esc(ap.name)+A2SIcon('chevron-right')+'</a></div>';
+    L.marker([ap.lat,ap.lng],{icon:icon,title:ap.name}).bindPopup(popupHtml,{maxWidth:260,minWidth:220}).addTo(_markerLayer);
     placed++;
   });
-  var count=document.getElementById('mapCount');
-  if(count)count.textContent=filtered.length+' annonce'+(filtered.length>1?'s':'')+' • '+placed+' aérodromes';
+  var countEl=document.getElementById('mapCount');
+  if(countEl)countEl.innerHTML=A2SIcon('map-pin')+filtered.length+' annonce'+(filtered.length>1?'s':'')+' · '+placed+' aérodrome'+(placed>1?'s':'');
+  var empty=document.getElementById('mapEmpty');
+  if(empty){
+    var sub=document.getElementById('mapEmptySub');
+    if(sub)sub.textContent=_allListings.length===0
+      ?'Les premières annonces arrivent. Créez une alerte pour être prévenu dès leur publication.'
+      :(cat?'Aucune annonce de type '+(CAT_LABEL[cat]||cat)+' n\'est rattachée à un aérodrome connu pour le moment.':'Aucune annonce n\'est rattachée à un aérodrome connu pour le moment.');
+    empty.classList.toggle('show',placed===0);
+  }
 }
 
 function filterMap(btn,cat){
-  document.querySelectorAll('.mfpill').forEach(function(b){b.classList.remove('on');});
-  btn.classList.add('on');
+  document.querySelectorAll('#mapFilters .pill').forEach(function(b){b.classList.remove('active');b.setAttribute('aria-pressed','false');});
+  btn.classList.add('active');btn.setAttribute('aria-pressed','true');
   renderMarkers(cat);
 }
 
 loadMarkers();
 </script>
-<script src="analytics.js" defer></script>
 <script src="rgpd-consent.js" defer></script>
-<script src="nav.js?v=20260906b"></script>
+<script src="analytics.js" defer></script>
+<script src="nav.js?v=20260906c"></script>
+<script src="footer.js?v=20260906c"></script>
 </body>
 </html>

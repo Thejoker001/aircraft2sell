@@ -1,17 +1,21 @@
-/* Aircraft2Sell — Service Worker v2.0 */
-var CACHE = 'a2s-v2';
+/* Aircraft2Sell — Service Worker v3.0 (design system v2) */
+var CACHE = 'a2s-v3';
 var OFFLINE_URL = '/404.html';
 
 /* Ressources pré-cachées au premier chargement */
 var PRECACHE = [
-  '/homepage.html',
+  '/',
   '/search.html',
   '/guide-acheteur.html',
   '/faq.html',
   '/legal.html',
   '/404.html',
   '/manifest.json',
-  'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&display=swap'
+  '/styles.css?v=20260906c',
+  '/mobile.css?v=20260906c',
+  '/icons.js?v=20260906c',
+  '/nav.js?v=20260906c',
+  '/footer.js?v=20260906c'
 ];
 
 /* Installation */

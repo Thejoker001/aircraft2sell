@@ -2,10 +2,11 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
 <meta property="og:title" content="Paiement — Aircraft2Sell">
 <meta property="og:description" content="Finalisez votre abonnement Aircraft2Sell de façon sécurisée.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://www.aircraft2sell.eu/checkout.html">
+<meta property="og:url" content="https://aircraft2sell.eu/checkout.html">
 <meta property="og:image" content="https://aircraft2sell.eu/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -14,391 +15,292 @@
 <meta name="twitter:title" content="Paiement — Aircraft2Sell">
 <meta name="twitter:description" content="Finalisez votre abonnement Aircraft2Sell de façon sécurisée.">
 <meta name="twitter:image" content="https://aircraft2sell.eu/og-image.png">
-<link rel="canonical" href="https://www.aircraft2sell.eu/checkout.html">
+<link rel="canonical" href="https://aircraft2sell.eu/checkout.html">
 <meta name="description" content="Finalisez votre abonnement Aircraft2Sell et commencez à vendre votre aéronef avec une visibilité maximale en Europe.">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Aircraft2Sell — Paiement</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&display=swap" rel="stylesheet">
+<title>Paiement — Aircraft2Sell</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
 <script src="https://js.stripe.com/v3/"></script>
+<link rel="stylesheet" href="styles.css?v=20260906c">
+<link rel="stylesheet" href="mobile.css?v=20260906c">
 <style>
-:root{--bg:#05080f;--deep:#030610;--surface:#0a1020;--card:#0c1428;--card2:#0f1830;--border:rgba(180,200,230,.08);--border2:rgba(180,200,230,.14);--accent:#e8a020;--gold:#f5c518;--mist:#7a93aa;--mist2:#3d5468;--white:#edf2f8;--dim:#c8d8e8;--green:#22c55e;--red:#ef4444}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-img{max-width:100%;height:auto}
-html{scroll-behavior:smooth}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);-webkit-font-smoothing:antialiased;overflow-x:hidden}
-
-/* NAV */
-nav{position:sticky;top:0;z-index:300;height:64px;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;background:rgba(3,6,16,.9);backdrop-filter:blur(28px);border-bottom:1px solid var(--border)}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:1.75rem;letter-spacing:.12em;color:var(--white);text-decoration:none;flex-shrink:0}
-.logo span{color:var(--accent)}
-.nav-links{display:flex;list-style:none;align-items:center;gap:.1rem;height:64px}
-.nav-links a{display:flex;align-items:center;height:64px;padding:0 .9rem;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);text-decoration:none;transition:color .2s;white-space:nowrap}
-.nav-links a:hover{color:var(--white)}
-.nav-right{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
-.btn-nav-login{background:transparent;border:1px solid var(--border2);color:var(--dim);padding:.44rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center}
-.btn-nav-login:hover{border-color:var(--accent);color:var(--accent)}
-.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:.5rem;min-height:unset}
-.burger span{display:block;width:22px;height:2px;background:var(--white);border-radius:1px;transition:all .25s}
-.burger.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
-.burger.open span:nth-child(2){opacity:0}
-.burger.open span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
-
-/* MOBILE MENU */
-.mobile-menu{display:none;position:fixed;inset:0;background:rgba(3,6,16,.98);backdrop-filter:blur(20px);z-index:490;flex-direction:column;padding:5rem 2rem 2rem;overflow-y:auto}
-.mobile-menu.open{display:flex}
-.mobile-menu a{padding:1rem 0;font-size:.9rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-decoration:none;border-bottom:1px solid var(--border);display:block;transition:color .2s}
-.mobile-menu a:hover{color:var(--accent)}
-.mm-cta{margin-top:2rem;background:var(--accent);color:var(--deep);text-align:center;padding:1rem;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.1em;cursor:pointer;text-decoration:none;display:block}
-
-/* CHECKOUT LAYOUT */
-.checkout-wrap{max-width:1100px;margin:0 auto;padding:3rem 2rem 6rem;display:grid;grid-template-columns:1fr 1.4fr;gap:2.5rem;align-items:start}
-
-/* ── RÉSUMÉ COMMANDE ── */
-.order-summary{position:sticky;top:80px}
-.block-title{font-size:.6rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--mist2);margin-bottom:1.1rem;padding-bottom:.7rem;border-bottom:1px solid var(--border)}
-
-/* Plan selector */
-.plan-option{display:flex;align-items:center;gap:.8rem;padding:.85rem 1rem;background:var(--card);border:1px solid var(--border2);margin-bottom:2px;cursor:pointer;transition:all .18s;position:relative}
-.plan-option:hover{background:var(--card2)}
-.plan-option.selected{border-color:rgba(232,160,32,.45);background:rgba(232,160,32,.05)}
-.plan-radio{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--mist2);flex-shrink:0;transition:all .18s;position:relative}
-.plan-option.selected .plan-radio{border-color:var(--accent);background:var(--accent)}
-.plan-option.selected .plan-radio::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:var(--deep)}
-.plan-badge{position:absolute;top:-.55rem;right:.8rem;background:var(--accent);color:var(--deep);font-size:.52rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.18rem .55rem}
-.plan-info{flex:1}
-.plan-name{font-size:.8rem;font-weight:600;color:var(--white)}
-.plan-desc{font-size:.7rem;color:var(--mist);margin-top:.1rem}
-.plan-price{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.04em;color:var(--accent);white-space:nowrap}
-.plan-price span{font-family:'DM Sans',sans-serif;font-size:.72rem;color:var(--mist);font-weight:400}
-
-/* Addon */
-.addon-box{display:flex;align-items:center;gap:.8rem;padding:.85rem 1rem;background:var(--card);border:1px solid var(--border2);cursor:pointer;transition:all .18s;margin-top:.5rem}
-.addon-box:hover{background:var(--card2)}
-.addon-box.checked{border-color:rgba(232,160,32,.35);background:rgba(232,160,32,.04)}
-.addon-chk{width:16px;height:16px;border:1.5px solid var(--mist2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:transparent;transition:all .18s}
-.addon-box.checked .addon-chk{border-color:var(--accent);background:var(--accent);color:var(--deep)}
+.checkout-wrap{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:2rem;align-items:start}
+.order-summary{position:sticky;top:calc(var(--nav-h) + 1.5rem)}
+.form-card{padding:1.75rem}
+.form-card h2{font-size:1.25rem;margin-bottom:1.25rem}
+.form-section{margin-bottom:1.75rem}
+.form-section-title{font-size:.95rem;font-weight:800;color:var(--a2s-navy);margin-bottom:.9rem;padding-bottom:.55rem;border-bottom:1px solid var(--a2s-border);display:flex;align-items:center;gap:.5rem}
+.form-section-title .ic{width:18px;height:18px;color:var(--a2s-text-muted)}
+.pay-methods{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1.5rem}
+.pay-method{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:46px;padding:.5rem;border:1.5px solid var(--a2s-border-2);border-radius:var(--a2s-radius-btn);background:var(--a2s-surface);font-size:.86rem;font-weight:700;color:var(--a2s-text);cursor:pointer;transition:border-color .15s,background .15s}
+.pay-method:hover{border-color:var(--a2s-navy)}
+.pay-method.active{border-color:var(--a2s-navy);background:var(--a2s-blue-soft);color:var(--a2s-navy)}
+.pay-method .ic{width:18px;height:18px}
+.pay-method svg.brand{width:18px;height:18px}
+.stripe-wrap{min-height:46px;background:var(--a2s-surface);border:1.5px solid var(--a2s-border-2);border-radius:var(--a2s-radius-btn);padding:.8rem .95rem;transition:border-color .15s,box-shadow .15s}
+.stripe-wrap.focused{border-color:var(--a2s-blue);box-shadow:0 0 0 3px rgba(30,95,204,.14)}
+#card-errors,#sepa-errors{font-size:.78rem;color:var(--a2s-danger);font-weight:600;min-height:1rem;margin-top:.3rem}
+.sepa-mandate{font-size:.8rem;color:var(--a2s-text-muted);line-height:1.6;margin-top:.5rem}
+.promo-wrap{display:flex;gap:.5rem}
+.promo-wrap .inp{flex:1}
+.security-note{display:flex;align-items:center;justify-content:center;gap:.45rem;font-size:.8rem;color:var(--a2s-text-muted);margin-top:.85rem}
+.security-note .ic{width:16px;height:16px;color:var(--a2s-success)}
+/* Récapitulatif */
+.plan-option{display:flex;align-items:center;gap:.8rem;padding:.9rem 1rem;border:1.5px solid var(--a2s-border-2);border-radius:var(--a2s-radius-btn);cursor:pointer;position:relative;transition:border-color .15s,background .15s;background:var(--a2s-surface)}
+.plan-option + .plan-option{margin-top:.5rem}
+.plan-option:hover{border-color:var(--a2s-navy)}
+.plan-option.selected{border-color:var(--a2s-navy);background:var(--a2s-blue-soft)}
+.plan-radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--a2s-border-2);flex-shrink:0;position:relative;background:var(--a2s-surface)}
+.plan-option.selected .plan-radio{border-color:var(--a2s-navy)}
+.plan-option.selected .plan-radio::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:var(--a2s-navy)}
+.plan-badge{position:absolute;top:-.6rem;right:.8rem}
+.plan-info{flex:1;min-width:0}
+.plan-name{font-size:.92rem;font-weight:800;color:var(--a2s-navy)}
+.plan-desc{font-size:.78rem;color:var(--a2s-text-muted);margin-top:.1rem}
+.plan-price{font-weight:800;color:var(--a2s-navy);white-space:nowrap;font-size:.95rem}
+.plan-price span{font-size:.75rem;font-weight:600;color:var(--a2s-text-muted)}
+.addon-box{display:flex;align-items:center;gap:.8rem;padding:.9rem 1rem;border:1.5px solid var(--a2s-border-2);border-radius:var(--a2s-radius-btn);cursor:pointer;margin-top:.75rem;transition:border-color .15s,background .15s;background:var(--a2s-surface)}
+.addon-box:hover{border-color:var(--a2s-navy)}
+.addon-box.checked{border-color:var(--a2s-navy);background:var(--a2s-blue-soft)}
+.addon-chk{width:18px;height:18px;border:2px solid var(--a2s-border-2);border-radius:4px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:transparent;background:var(--a2s-surface)}
+.addon-chk .ic{width:13px;height:13px;stroke-width:3}
+.addon-box.checked .addon-chk{border-color:var(--a2s-navy);background:var(--a2s-navy);color:#fff}
 .addon-info{flex:1}
-.addon-name{font-size:.8rem;font-weight:600;color:var(--white)}
-.addon-desc{font-size:.7rem;color:var(--mist);margin-top:.1rem}
-.addon-price{font-size:.8rem;font-weight:600;color:var(--accent);white-space:nowrap}
-
-/* Total */
-.order-total{background:var(--surface);border:1px solid var(--border2);padding:1.25rem;margin-top:1rem}
-.total-row{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;font-size:.8rem;border-bottom:1px solid var(--border)}
-.total-row:last-child{border-bottom:none;padding-bottom:0}
-.total-label{color:var(--mist)}
-.total-val{color:var(--white);font-weight:500}
-.total-grand{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.04em;color:var(--white);line-height:1}
-.total-period{font-size:.66rem;color:var(--mist2);margin-top:.2rem}
-.no-commission{font-size:.7rem;color:var(--green);margin-top:.75rem;display:flex;align-items:center;gap:.4rem}
-
-/* ── FORMULAIRE PAIEMENT ── */
-.payment-form{background:var(--card);border:1px solid var(--border2);padding:1.75rem}
-.form-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.06em;margin-bottom:1.5rem}
-
-/* Méthodes de paiement */
-.pay-methods{display:flex;gap:2px;margin-bottom:1.5rem}
-.pay-method{flex:1;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.65rem .5rem;background:var(--surface);border:1px solid var(--border2);cursor:pointer;transition:all .18s;font-size:.76rem;color:var(--mist);font-weight:500;min-height:44px}
-.pay-method:hover{border-color:var(--border2);color:var(--dim)}
-.pay-method.active{border-color:rgba(232,160,32,.4);background:rgba(232,160,32,.05);color:var(--accent)}
-.pay-icon{font-size:1rem}
-
-/* Sections formulaire */
-.form-section{margin-bottom:1.5rem}
-.form-section-title{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mist2);margin-bottom:.9rem;padding-bottom:.55rem;border-bottom:1px solid var(--border)}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem}
-.form-row.full{grid-template-columns:1fr}
-.form-group{display:flex;flex-direction:column;gap:.35rem}
-.form-label{font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mist2)}
-.form-input{background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:.72rem 1rem;outline:none;transition:border-color .2s;appearance:none;width:100%}
-.form-input:focus{border-color:rgba(232,160,32,.5)}
-.form-input::placeholder{color:var(--mist2)}
-.form-input option{background:var(--deep)}
-
-/* Stripe elements */
-.stripe-wrap{background:rgba(255,255,255,.04);border:1px solid var(--border2);padding:.72rem 1rem;transition:border-color .2s;min-height:42px}
-.stripe-wrap.focused{border-color:rgba(232,160,32,.5)}
-#card-errors,#sepa-errors{font-size:.75rem;color:var(--red);margin-top:.4rem;min-height:1rem}
-
-/* Promo */
-.promo-wrap{display:flex;gap:.5rem;margin-bottom:1rem}
-.promo-input{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--white);font-family:'DM Sans',sans-serif;font-size:.84rem;padding:.65rem 1rem;outline:none;transition:border-color .2s}
-.promo-input:focus{border-color:rgba(232,160,32,.4)}
-.promo-input::placeholder{color:var(--mist2)}
-.promo-btn{background:var(--surface);border:1px solid var(--border2);color:var(--mist);font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:600;padding:.65rem 1.1rem;cursor:pointer;transition:all .2s;white-space:nowrap}
-.promo-btn:hover{color:var(--white);border-color:var(--border2)}
-
-/* Submit */
-.btn-pay{width:100%;background:var(--accent);color:var(--deep);border:none;padding:1rem;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:.1em;cursor:pointer;transition:background .2s,transform .15s;display:flex;align-items:center;justify-content:center;gap:.6rem;margin-top:.25rem}
-.btn-pay:hover{background:var(--gold);transform:translateY(-1px)}
-.btn-pay:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.spinner{width:16px;height:16px;border:2px solid rgba(5,8,15,.25);border-top-color:var(--deep);border-radius:50%;animation:spin .7s linear infinite;display:none}
-@keyframes spin{to{transform:rotate(360deg)}}
-.btn-pay.loading .spinner{display:block}
-.btn-pay.loading .pay-lbl{display:none}
-
-/* Sécurité */
-.security-note{display:flex;align-items:center;justify-content:center;gap:.5rem;font-size:.7rem;color:var(--mist2);margin-top:.75rem}
-.sepa-mandate{font-size:.72rem;color:var(--mist);line-height:1.6;margin-top:.75rem}
-
-/* Toast */
-.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card2);border:1px solid var(--border2);color:var(--white);padding:.75rem 1.3rem;font-size:.8rem;z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
-.toast.show{opacity:1;transform:translateY(0)}
-
-/* RESPONSIVE */
-@media(max-width:960px){.checkout-wrap{grid-template-columns:1fr;padding:2rem 1.25rem 4rem}.order-summary{position:static}}
-@media(max-width:768px){nav{padding:0 1.25rem}.nav-links,.btn-nav-login{display:none}.burger{display:flex}.pay-methods{flex-wrap:wrap}.form-row{grid-template-columns:1fr}}
-@media(max-width:480px){input,select,button{font-size:16px !important}}
-.nav-user{display:none;align-items:center;cursor:pointer;position:relative}
-.nav-user:hover .nav-tooltip{opacity:1;pointer-events:auto;transform:translateY(0)}
-.nav-avatar{width:34px;height:34px;background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.3);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:var(--accent);transition:border-color .2s;flex-shrink:0}
-.nav-user:hover .nav-avatar{border-color:var(--accent)}
-.nav-tooltip{position:absolute;top:calc(100% + 8px);right:0;background:var(--card2);border:1px solid var(--border2);padding:.5rem .85rem;font-size:.72rem;color:var(--white);white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(-4px);transition:all .18s;z-index:400}
-.nav-tooltip::before{content:'';position:absolute;top:-5px;right:10px;width:8px;height:8px;background:var(--card2);border-top:1px solid var(--border2);border-left:1px solid var(--border2);transform:rotate(45deg)}
-
-.nav-currency{position:relative;display:flex;align-items:center;height:64px}
-.nav-currency-btn{display:flex;align-items:center;gap:.4rem;height:64px;padding:0 .9rem;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;transition:color .2s;white-space:nowrap}
-.nav-currency-btn:hover{color:var(--white)}
-.nav-currency-btn .cv-icon{font-size:.82rem;font-weight:700;color:var(--accent);min-width:10px}
-.nav-currency-btn .cv-arrow{font-size:.55rem;opacity:.5;transition:transform .2s}
-.nav-currency.open .cv-arrow{transform:rotate(180deg)}
-.nav-currency.open .nav-currency-btn{color:var(--white)}
-.cv-dropdown{position:absolute;top:calc(100% + 1px);left:50%;transform:translateX(-50%) translateY(-6px);width:284px;background:rgba(3,6,16,.98);backdrop-filter:blur(28px);border:1px solid var(--border2);z-index:500;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s}
-.nav-currency.open .cv-dropdown{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
-.cv-drop-head{padding:.6rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.cv-drop-title{font-size:.58rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--mist2)}
-.cv-live{display:flex;align-items:center;gap:.35rem;font-size:.58rem;color:var(--green)}
-.cv-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:cvpulse 2s infinite;flex-shrink:0}
-@keyframes cvpulse{0%,100%{opacity:1}50%{opacity:.3}}
-.cv-body{padding:.85rem 1rem}
-.cv-row{display:flex;gap:.4rem;margin-bottom:.4rem;align-items:center}
-.cv-inp-wrap{flex:1;display:flex;border:1px solid var(--border2);overflow:hidden;min-width:0}
-.cv-inp{flex:1;background:rgba(255,255,255,.04);border:none;color:var(--white);font-family:'DM Sans',sans-serif;font-size:.92rem;padding:.55rem .7rem;outline:none;min-width:0}
-.cv-sel{background:rgba(232,160,32,.08);border:none;border-left:1px solid var(--border2);color:var(--accent);font-family:'DM Sans',sans-serif;font-size:.7rem;font-weight:600;padding:.3rem .4rem;cursor:pointer;outline:none;flex-shrink:0}
-.cv-sel option{background:var(--deep);color:var(--white)}
-.cv-swap-btn{background:none;border:1px solid var(--border2);color:var(--mist);width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;transition:all .15s;flex-shrink:0}
-.cv-swap-btn:hover{color:var(--accent);border-color:rgba(232,160,32,.3)}
-.cv-result-box{background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.15);padding:.55rem .85rem;display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem}
-.cv-result-val{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.04em;color:var(--accent)}
-.cv-to-sel{background:none;border:none;color:var(--accent);font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;outline:none;padding:0}
-.cv-to-sel option{background:var(--deep);color:var(--white)}
-.cv-rate-txt{font-size:.61rem;color:var(--mist2);text-align:center;padding:.2rem 0;border-top:1px solid var(--border)}
-.cv-rate-txt span{color:var(--mist)}
-.cv-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:.45rem}
-.cv-qb{background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--mist);padding:.27rem .2rem;font-size:.61rem;font-weight:600;cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .12s;font-family:'DM Sans',sans-serif}
-.cv-qb:hover,.cv-qb.on{border-color:rgba(232,160,32,.3);color:var(--accent);background:rgba(232,160,32,.05)}
+.addon-name{font-size:.9rem;font-weight:700;color:var(--a2s-navy)}
+.addon-desc{font-size:.78rem;color:var(--a2s-text-muted)}
+.addon-price{font-weight:800;color:var(--a2s-navy);white-space:nowrap;font-size:.9rem}
+.order-total{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--a2s-border)}
+.total-row{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.4rem 0;font-size:.9rem}
+.total-label{color:var(--a2s-text-muted)}
+.total-val{font-weight:700;color:var(--a2s-navy)}
+.total-grand-row{margin-top:.5rem;padding-top:.75rem;border-top:1px solid var(--a2s-border);align-items:flex-end}
+.total-grand{font-size:1.75rem;font-weight:800;color:var(--a2s-navy);line-height:1;letter-spacing:-.02em}
+.total-period{font-size:.78rem;color:var(--a2s-text-muted);margin-top:.3rem}
+.reassure{display:flex;flex-direction:column;gap:.55rem;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--a2s-border)}
+.reassure span{display:inline-flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--a2s-text-muted)}
+.reassure .ic{width:16px;height:16px;color:var(--a2s-success)}
+@media(max-width:960px){.checkout-wrap{grid-template-columns:1fr}.order-summary{position:static;order:-1}}
+@media(max-width:600px){.pay-methods{grid-template-columns:1fr 1fr}.form-card{padding:1.25rem}}
 </style>
-<link rel="stylesheet" href="styles.css?v=20260906b">
-<link rel="stylesheet" href="mobile.css?v=20260906b">
 </head>
-<body style="padding-top:64px">
+<body>
 
 <!-- nav injectée par nav.js -->
-<div class="checkout-wrap">
-
-  <!-- RÉSUMÉ COMMANDE -->
-  <div class="order-summary">
-    <div class="block-title">Votre commande</div>
-
-    <!-- Plans -->
-    <div id="planSelector">
-      <div class="plan-option" id="opt-essential" onclick="selectPlan('essential')">
-        <div class="plan-radio"></div>
-        <div class="plan-info">
-          <div class="plan-name">ESSENTIEL</div>
-          <div class="plan-desc">1 annonce · 5 photos · 60 jours</div>
-        </div>
-        <div class="plan-price">Gratuit</div>
-      </div>
-      <div class="plan-option selected" id="opt-aviateur" onclick="selectPlan('aviateur')">
-        <div class="plan-badge">Le plus populaire</div>
-        <div class="plan-radio"></div>
-        <div class="plan-info">
-          <div class="plan-name">AVIATEUR</div>
-          <div class="plan-desc">1 annonce · 20 photos · Mise en avant</div>
-        </div>
-        <div class="plan-price">€29<span>/mois</span></div>
-      </div>
-      <div class="plan-option" id="opt-pro" onclick="selectPlan('pro')">
-        <div class="plan-radio"></div>
-        <div class="plan-info">
-          <div class="plan-name">PRO</div>
-          <div class="plan-desc">Annonces illimitées · Badge certifié</div>
-        </div>
-        <div class="plan-price">€79<span>/mois</span></div>
-      </div>
-    </div>
-
-    <!-- Addon -->
-    <div class="addon-box" id="addonBox" onclick="toggleAddon()">
-      <div class="addon-chk" id="addonChk">✓</div>
-      <div class="addon-info">
-        <div class="addon-name">📸 Photos+ Add-on</div>
-        <div class="addon-desc">5 photos supplémentaires pour Essentiel</div>
-      </div>
-      <div class="addon-price">+€10/mois</div>
-    </div>
-
-    <!-- Total -->
-    <div class="order-total">
-      <div class="total-row"><span class="total-label">Plan</span><span class="total-val" id="tvPlan">€29/mois</span></div>
-      <div class="total-row" id="addonRow" style="display:none"><span class="total-label">Photos+</span><span class="total-val">+€10/mois</span></div>
-      <div class="total-row" id="discountRow" style="display:none"><span class="total-label">Réduction promo</span><span class="total-val" style="color:var(--green)" id="tvDiscount">−€0</span></div>
-      <div class="total-row"><span class="total-label">TVA (20%)</span><span class="total-val" id="tvTax">€5.80</span></div>
-      <div class="total-row" style="padding-top:.75rem">
-        <div>
-          <div class="total-grand" id="tvTotal">€34.80</div>
-          <div class="total-period">par mois · résiliable à tout moment</div>
-        </div>
-      </div>
-      <div class="no-commission">✓ Zéro commission sur vos ventes d'aéronefs</div>
-    </div>
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="pricing.html">Tarifs</a><i data-icon="chevron-right"></i><span aria-current="page">Paiement</span></nav>
+    <h1>Finaliser votre abonnement</h1>
+    <p>Paiement sécurisé, sans engagement : vous pouvez résilier à tout moment depuis votre espace.</p>
   </div>
+</div>
+
+<section class="section">
+<div class="container checkout-wrap">
 
   <!-- FORMULAIRE PAIEMENT -->
   <div>
-    <div class="payment-form">
-      <div class="form-title">Détails du paiement</div>
+    <div class="card form-card">
+      <h2>Détails du paiement</h2>
 
-      <!-- Méthodes -->
-      <div class="pay-methods">
-        <div class="pay-method active" id="pm-card" onclick="setPayMethod('card')"><span class="pay-icon">💳</span> Carte</div>
-        <div class="pay-method" id="pm-sepa" onclick="setPayMethod('sepa')"><span class="pay-icon">🏦</span> SEPA</div>
-        <div class="pay-method" id="pm-apple" onclick="setPayMethod('apple')">
-          <svg viewBox="0 0 814 1000" width="18" height="18" fill="currentColor"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-38.8-165.8-127.3C92.3 813.1 69 734.2 69 656.5c0-220.4 144.7-337.4 287.7-337.4 75.7 0 138.7 48.5 186.8 48.5 46.1 0 118.6-51.7 200.1-51.7 32.3 0 136.9 2.9 210.1 116.1zm-165.1-130.9c37.4-44.2 64.7-105.7 64.7-167.2 0-8.4-.6-16.8-2.1-23.9-61.3 2.3-135.2 41.7-179 91.9-33.1 37.5-64 99.1-64 161.8 0 9 1.4 18 2.1 20.9 3.8.6 10 1.6 16.2 1.6 54.9 0 124.3-36.8 162.1-84.8z"/></svg>
-          Pay
-        </div>
-        <div class="pay-method" id="pm-google" onclick="setPayMethod('google')">
-          <svg viewBox="0 0 122 48" width="40" height="16" fill="currentColor"><path d="M58.16 24.17v14.4h-4.57V4h12.12a10.94 10.94 0 0 1 7.82 3.08 10.08 10.08 0 0 1 3.24 7.66 10.1 10.1 0 0 1-3.24 7.69 10.83 10.83 0 0 1-7.82 3.09h-7.55zm0-15.77v11.4h7.64a6.12 6.12 0 0 0 4.59-1.84 6.03 6.03 0 0 0 1.86-4.35 6 6 0 0 0-1.86-4.32 6.06 6.06 0 0 0-4.59-1.84h-7.64zM88 14.06c3.38 0 6.05.9 8 2.72a9.56 9.56 0 0 1 2.93 7.36v14.43H94.3v-3.25h-.19a8.59 8.59 0 0 1-7.47 4 9.65 9.65 0 0 1-6.64-2.31 7.42 7.42 0 0 1-2.62-5.82 7.05 7.05 0 0 1 2.78-5.85c1.86-1.44 4.33-2.16 7.42-2.16a13.49 13.49 0 0 1 6.53 1.44v-1c0-1.51-.64-2.96-1.76-3.99a6.19 6.19 0 0 0-4.27-1.6 6.7 6.7 0 0 0-5.75 3.04l-4.2-2.63A11.13 11.13 0 0 1 88 14.06zm-5.91 17.4a3.58 3.58 0 0 0 1.49 2.94 5.46 5.46 0 0 0 3.52 1.19 7.13 7.13 0 0 0 5.04-2.09 6.62 6.62 0 0 0 2.09-4.88 5.87 5.87 0 0 0-5.81-2.62 7.71 7.71 0 0 0-4.53 1.32 4.02 4.02 0 0 0-1.8 3.14zm33.06-16.6l-15.25 35.12h-4.72l5.66-12.26-10.04-22.86h4.98l7.26 17.47h.09l7.08-17.47z"/></svg>
-          Pay
-        </div>
+      <div class="pay-methods" role="group" aria-label="Moyen de paiement">
+        <button type="button" class="pay-method active" id="pm-card" onclick="setPayMethod('card')"><i data-icon="credit-card"></i>Carte</button>
+        <button type="button" class="pay-method" id="pm-sepa" onclick="setPayMethod('sepa')"><i data-icon="building"></i>SEPA</button>
+        <button type="button" class="pay-method" id="pm-apple" onclick="setPayMethod('apple')">
+          <svg class="brand" viewBox="0 0 814 1000" fill="currentColor" aria-hidden="true"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-38.8-165.8-127.3C92.3 813.1 69 734.2 69 656.5c0-220.4 144.7-337.4 287.7-337.4 75.7 0 138.7 48.5 186.8 48.5 46.1 0 118.6-51.7 200.1-51.7 32.3 0 136.9 2.9 210.1 116.1zm-165.1-130.9c37.4-44.2 64.7-105.7 64.7-167.2 0-8.4-.6-16.8-2.1-23.9-61.3 2.3-135.2 41.7-179 91.9-33.1 37.5-64 99.1-64 161.8 0 9 1.4 18 2.1 20.9 3.8.6 10 1.6 16.2 1.6 54.9 0 124.3-36.8 162.1-84.8z"/></svg>
+          Apple Pay
+        </button>
+        <button type="button" class="pay-method" id="pm-google" onclick="setPayMethod('google')">
+          <svg class="brand" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 11v2.8h4.6c-.2 1.1-.8 2-1.7 2.6l2.7 2.1c1.6-1.5 2.5-3.7 2.5-6.2 0-.6-.1-1.1-.2-1.7H12Z"/><path d="M6.9 13.9 6.3 14.4 4.1 16c1.4 2.7 4.3 4.6 7.9 4.6 2.4 0 4.4-.8 5.9-2.2l-2.7-2.1c-.8.5-1.8.9-3.2.9-2.5 0-4.6-1.7-5.3-3.9l.2.6Z"/><path d="M4.1 8c-.6 1.2-.9 2.6-.9 4s.3 2.8.9 4l2.9-2.2c-.2-.5-.3-1.1-.3-1.8s.1-1.3.3-1.8L4.1 8Z"/><path d="M12 6.8c1.4 0 2.6.5 3.5 1.4l2.4-2.4C16.4 4.4 14.4 3.4 12 3.4 8.4 3.4 5.5 5.3 4.1 8l2.9 2.2c.7-2.2 2.8-3.4 5-3.4Z"/></svg>
+          Google Pay
+        </button>
       </div>
+
+      <div id="payAlert"></div>
 
       <!-- Infos compte -->
       <div class="form-section">
-        <div class="form-section-title">Informations du compte</div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Prénom</label><input type="text" class="form-input" id="firstName" placeholder="Jean" autocomplete="given-name"></div>
-          <div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="lastName" placeholder="Dupont" autocomplete="family-name"></div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group"><label class="form-label">Adresse email</label><input type="email" class="form-input" id="email" placeholder="jean@example.com" autocomplete="email"></div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group"><label class="form-label">Entreprise (optionnel)</label><input type="text" class="form-input" id="company" placeholder="Aviation SAS" autocomplete="organization"></div>
+        <div class="form-section-title"><i data-icon="user"></i>Informations du compte</div>
+        <div class="form-grid">
+          <div class="field"><label for="firstName">Prénom <span class="req">*</span></label><input type="text" class="inp" id="firstName" placeholder="Jean" autocomplete="given-name" required></div>
+          <div class="field"><label for="lastName">Nom <span class="req">*</span></label><input type="text" class="inp" id="lastName" placeholder="Dupont" autocomplete="family-name" required></div>
+          <div class="field span2"><label for="email">Adresse email <span class="req">*</span></label><input type="email" class="inp" id="email" placeholder="vous@exemple.com" autocomplete="email" required><div class="field-hint">Le reçu et la facture seront envoyés à cette adresse.</div></div>
+          <div class="field span2"><label for="company">Entreprise <span class="muted" style="font-weight:500">(optionnel)</span></label><input type="text" class="inp" id="company" placeholder="Aviation SAS" autocomplete="organization"></div>
         </div>
       </div>
 
       <!-- Carte -->
       <div class="form-section" id="cardSection">
-        <div class="form-section-title">Détails de la carte</div>
-        <div class="form-group" style="margin-bottom:.75rem">
-          <label class="form-label">Numéro de carte</label>
+        <div class="form-section-title"><i data-icon="credit-card"></i>Carte bancaire</div>
+        <div class="field">
+          <label for="card-element">Numéro de carte</label>
           <div class="stripe-wrap" id="card-element"></div>
-          <div id="card-errors"></div>
+          <div id="card-errors" aria-live="polite"></div>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Expiration</label><div class="stripe-wrap" id="card-expiry"></div></div>
-          <div class="form-group"><label class="form-label">CVC</label><div class="stripe-wrap" id="card-cvc"></div></div>
+        <div class="form-grid">
+          <div class="field"><label for="card-expiry">Date d'expiration</label><div class="stripe-wrap" id="card-expiry"></div></div>
+          <div class="field"><label for="card-cvc">Code de sécurité (CVC)</label><div class="stripe-wrap" id="card-cvc"></div></div>
         </div>
       </div>
 
       <!-- SEPA -->
       <div class="form-section" id="sepaSection" style="display:none">
-        <div class="form-section-title">Prélèvement SEPA</div>
-        <div class="form-group" style="margin-bottom:.5rem">
-          <label class="form-label">IBAN</label>
+        <div class="form-section-title"><i data-icon="building"></i>Prélèvement SEPA</div>
+        <div class="field">
+          <label for="iban-element">IBAN</label>
           <div class="stripe-wrap" id="iban-element"></div>
-          <div id="sepa-errors"></div>
+          <div id="sepa-errors" aria-live="polite"></div>
         </div>
-        <p class="sepa-mandate">En fournissant votre IBAN et en confirmant ce paiement, vous autorisez Aircraft2Sell à prélever votre compte pour les paiements récurrents.</p>
+        <p class="sepa-mandate">En fournissant votre IBAN et en confirmant ce paiement, vous autorisez Aircraft2Sell à prélever votre compte pour les paiements récurrents de votre abonnement.</p>
+      </div>
+
+      <!-- Wallets -->
+      <div class="form-section" id="walletSection" style="display:none">
+        <div class="alert alert-info"><i data-icon="info"></i><span>Vous serez invité à confirmer le paiement dans votre portefeuille après avoir cliqué sur « Payer ».</span></div>
       </div>
 
       <!-- Adresse de facturation -->
       <div class="form-section">
-        <div class="form-section-title">Adresse de facturation</div>
-        <div class="form-row full" style="margin-bottom:.75rem">
-          <div class="form-group">
-            <label class="form-label">Pays</label>
-            <select class="form-input" id="country">
-              <optgroup label="── Europe ──">
-                <option value="FR">🇫🇷 France</option>
-                <option value="DE">🇩🇪 Allemagne</option>
-                <option value="ES">🇪🇸 Espagne</option>
-                <option value="IT">🇮🇹 Italie</option>
-                <option value="BE">🇧🇪 Belgique</option>
-                <option value="NL">🇳🇱 Pays-Bas</option>
-                <option value="PT">🇵🇹 Portugal</option>
-                <option value="AT">🇦🇹 Autriche</option>
-                <option value="PL">🇵🇱 Pologne</option>
-                <option value="SE">🇸🇪 Suède</option>
-                <option value="CH">🇨🇭 Suisse</option>
-                <option value="GB">🇬🇧 Royaume-Uni</option>
-                <option value="LU">🇱🇺 Luxembourg</option>
-              </optgroup>
-              <optgroup label="── Reste du monde ──">
-                <option value="US">🇺🇸 États-Unis</option>
-                <option value="CA">🇨🇦 Canada</option>
-                <option value="AE">🇦🇪 Émirats Arabes Unis</option>
-                <option value="AU">🇦🇺 Australie</option>
-                <option value="OTHER">🌍 Autre</option>
-              </optgroup>
-            </select>
-          </div>
+        <div class="form-section-title"><i data-icon="map-pin"></i>Adresse de facturation</div>
+        <div class="field">
+          <label for="country">Pays</label>
+          <select class="sel" id="country" autocomplete="country">
+            <optgroup label="Europe">
+              <option value="FR">France</option>
+              <option value="DE">Allemagne</option>
+              <option value="ES">Espagne</option>
+              <option value="IT">Italie</option>
+              <option value="BE">Belgique</option>
+              <option value="NL">Pays-Bas</option>
+              <option value="PT">Portugal</option>
+              <option value="AT">Autriche</option>
+              <option value="PL">Pologne</option>
+              <option value="SE">Suède</option>
+              <option value="CH">Suisse</option>
+              <option value="GB">Royaume-Uni</option>
+              <option value="LU">Luxembourg</option>
+            </optgroup>
+            <optgroup label="Reste du monde">
+              <option value="US">États-Unis</option>
+              <option value="CA">Canada</option>
+              <option value="AE">Émirats arabes unis</option>
+              <option value="AU">Australie</option>
+              <option value="OTHER">Autre</option>
+            </optgroup>
+          </select>
         </div>
-        <div class="form-row full">
-          <div class="form-group"><label class="form-label">Adresse</label><input type="text" class="form-input" id="address" placeholder="12 rue de l'Aviation" autocomplete="street-address"></div>
+        <div class="field"><label for="address">Adresse</label><input type="text" class="inp" id="address" placeholder="12 rue de l'Aviation" autocomplete="street-address"></div>
+        <div class="form-grid">
+          <div class="field"><label for="zip">Code postal</label><input type="text" class="inp" id="zip" placeholder="75001" autocomplete="postal-code"></div>
+          <div class="field"><label for="city">Ville</label><input type="text" class="inp" id="city" placeholder="Paris" autocomplete="address-level2"></div>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Code postal</label><input type="text" class="form-input" id="zip" placeholder="75001" autocomplete="postal-code"></div>
-          <div class="form-group"><label class="form-label">Ville</label><input type="text" class="form-input" id="city" placeholder="Paris" autocomplete="address-level2"></div>
-        </div>
-        <div class="form-row full" id="vatRow">
-          <div class="form-group"><label class="form-label">Numéro de TVA intracommunautaire (optionnel)</label><input type="text" class="form-input" id="vat" placeholder="FR 12 345 678 901"></div>
-        </div>
+        <div class="field" id="vatRow"><label for="vat">Numéro de TVA intracommunautaire <span class="muted" style="font-weight:500">(optionnel)</span></label><input type="text" class="inp" id="vat" placeholder="FR 12 345 678 901"><div class="field-hint">Pour les professionnels : permet la facturation hors taxe si applicable.</div></div>
       </div>
 
       <!-- Code promo -->
       <div class="form-section">
-        <div class="form-section-title">Code promotionnel</div>
-        <div class="promo-wrap">
-          <input type="text" class="promo-input" id="promoCode" placeholder="AVIATION2026">
-          <button class="promo-btn" onclick="applyPromo()">Appliquer</button>
+        <div class="form-section-title"><i data-icon="tag"></i>Code promotionnel</div>
+        <div class="field">
+          <label for="promoCode">Code</label>
+          <div class="promo-wrap">
+            <input type="text" class="inp" id="promoCode" placeholder="Saisissez votre code">
+            <button type="button" class="btn-secondary" onclick="applyPromo()">Appliquer</button>
+          </div>
+          <div class="field-hint" id="promoHint"></div>
         </div>
       </div>
 
-      <!-- Bouton paiement -->
-      <button class="btn-pay" id="payBtn" onclick="handlePay()">
-        <span class="pay-lbl">🔒 Payer maintenant</span>
-        <div class="spinner"></div>
-      </button>
-      <div class="security-note">🔒 Paiement sécurisé par Stripe · Données chiffrées SSL</div>
+      <button type="button" class="btn-primary btn-lg btn-block" id="payBtn" onclick="handlePay()"><i data-icon="lock"></i><span class="pay-lbl">Payer maintenant</span></button>
+      <div class="security-note"><i data-icon="lock"></i>Paiement sécurisé par Stripe. Données chiffrées, aucune information bancaire stockée par Aircraft2Sell.</div>
     </div>
   </div>
 
+  <!-- RÉCAPITULATIF -->
+  <aside class="order-summary">
+    <div class="card">
+      <div class="card-head"><h3>Votre commande</h3></div>
+      <div class="card-body">
+        <div id="planSelector" role="radiogroup" aria-label="Formule">
+          <div class="plan-option" id="opt-essential" onclick="selectPlan('essential')" role="radio" aria-checked="false" tabindex="0">
+            <div class="plan-radio"></div>
+            <div class="plan-info">
+              <div class="plan-name">Essentiel</div>
+              <div class="plan-desc">1 annonce · 5 photos · 60 jours</div>
+            </div>
+            <div class="plan-price">Gratuit</div>
+          </div>
+          <div class="plan-option selected" id="opt-aviateur" onclick="selectPlan('aviateur')" role="radio" aria-checked="true" tabindex="0">
+            <span class="badge badge-navy plan-badge">Le plus choisi</span>
+            <div class="plan-radio"></div>
+            <div class="plan-info">
+              <div class="plan-name">Aviateur</div>
+              <div class="plan-desc">3 annonces · 20 photos · Mise en avant</div>
+            </div>
+            <div class="plan-price">29 € <span>/ mois</span></div>
+          </div>
+          <div class="plan-option" id="opt-pro" onclick="selectPlan('pro')" role="radio" aria-checked="false" tabindex="0">
+            <div class="plan-radio"></div>
+            <div class="plan-info">
+              <div class="plan-name">Pro</div>
+              <div class="plan-desc">Annonces illimitées · Badge vérifié</div>
+            </div>
+            <div class="plan-price">79 € <span>/ mois</span></div>
+          </div>
+        </div>
+
+        <div class="addon-box" id="addonBox" onclick="toggleAddon()" role="checkbox" aria-checked="false" tabindex="0" style="display:none">
+          <div class="addon-chk" id="addonChk"><i data-icon="check"></i></div>
+          <div class="addon-info">
+            <div class="addon-name">Option Photos+</div>
+            <div class="addon-desc">5 photos supplémentaires pour la formule Essentiel</div>
+          </div>
+          <div class="addon-price">+10 € / mois</div>
+        </div>
+
+        <div class="order-total">
+          <div class="total-row"><span class="total-label">Formule</span><span class="total-val" id="tvPlan">29 € / mois</span></div>
+          <div class="total-row" id="addonRow" style="display:none"><span class="total-label">Photos+</span><span class="total-val">+10 € / mois</span></div>
+          <div class="total-row" id="discountRow" style="display:none"><span class="total-label">Réduction</span><span class="total-val" style="color:var(--a2s-success)" id="tvDiscount">−0 €</span></div>
+          <div class="total-row"><span class="total-label">TVA (20 %)</span><span class="total-val" id="tvTax">5,80 €</span></div>
+          <div class="total-row total-grand-row">
+            <span class="total-label">Total</span>
+            <div style="text-align:right"><div class="total-grand" id="tvTotal">34,80 €</div><div class="total-period">par mois, résiliable à tout moment</div></div>
+          </div>
+        </div>
+
+        <div class="reassure">
+          <span><i data-icon="lock"></i>Paiement sécurisé</span>
+          <span><i data-icon="percent"></i>Zéro commission sur vos ventes</span>
+          <span><i data-icon="refresh"></i>Sans engagement, résiliation en un clic</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
 </div>
+</section>
 
 <div class="toast" id="toast"></div>
+<div id="a2sFooter"></div>
 
+<script src="icons.js?v=20260906c"></script>
 <script>
-/* ── MOBILE MENU ── */
-function toggleMenu(){var m=document.getElementById('mobileMenu'),b=document.getElementById('burger'),o=m.classList.toggle('open');b.classList.toggle('open',o);document.body.style.overflow=o?'hidden':'';}
-
-/* ── PLANS ── */
-var plans={essential:{price:0,label:'Gratuit'},aviateur:{price:29,label:'€29/mois'},pro:{price:79,label:'€79/mois'}};
+/* ── FORMULES ── */
+var plans={essential:{price:0,label:'Gratuit'},aviateur:{price:29,label:'29 € / mois'},pro:{price:79,label:'79 € / mois'}};
+var PLAN_ALIASES={essentiel:'essential',essential:'essential',aviateur:'aviateur',boost:'aviateur',pro:'pro'};
 var currentPlan='aviateur';
 var addonActive=false;
 var discount=0;
 var VAT_RATE=0.20;
+var payMethod='card';
+
+function eur(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
 
 function selectPlan(p){
   currentPlan=p;
-  document.querySelectorAll('.plan-option').forEach(function(el){el.classList.remove('selected');});
-  document.getElementById('opt-'+p).classList.add('selected');
-  // Addon dispo seulement sur Essentiel
+  document.querySelectorAll('.plan-option').forEach(function(el){el.classList.remove('selected');el.setAttribute('aria-checked','false');});
+  var sel=document.getElementById('opt-'+p);sel.classList.add('selected');sel.setAttribute('aria-checked','true');
   document.getElementById('addonBox').style.display=p==='essential'?'flex':'none';
-  if(p!=='essential')addonActive=false;
+  if(p!=='essential'){addonActive=false;document.getElementById('addonBox').classList.remove('checked');}
   updateTotal();
 }
 
@@ -406,47 +308,54 @@ function toggleAddon(){
   addonActive=!addonActive;
   var box=document.getElementById('addonBox');
   box.classList.toggle('checked',addonActive);
+  box.setAttribute('aria-checked',addonActive?'true':'false');
   updateTotal();
 }
 
 function updateTotal(){
   var base=plans[currentPlan].price;
   var addon=addonActive?10:0;
-  var sub=base+addon-discount;
+  var sub=Math.max(0,base+addon-discount);
   var tax=Math.round(sub*VAT_RATE*100)/100;
   var total=Math.round((sub+tax)*100)/100;
   document.getElementById('tvPlan').textContent=plans[currentPlan].label;
   document.getElementById('addonRow').style.display=addonActive?'flex':'none';
   document.getElementById('discountRow').style.display=discount>0?'flex':'none';
-  if(discount>0)document.getElementById('tvDiscount').textContent='−€'+discount;
-  document.getElementById('tvTax').textContent='€'+tax.toFixed(2);
-  document.getElementById('tvTotal').textContent=base===0&&!addonActive?'Gratuit':'€'+total.toFixed(2);
+  if(discount>0)document.getElementById('tvDiscount').textContent='−'+eur(discount);
+  document.getElementById('tvTax').textContent=eur(tax);
+  var free=base===0&&!addonActive;
+  document.getElementById('tvTotal').textContent=free?'Gratuit':eur(total);
+  var lbl=document.querySelector('#payBtn .pay-lbl');
+  if(lbl)lbl.textContent=free?'Activer la formule gratuite':'Payer '+eur(total);
 }
 
-/* ── MÉTHODES DE PAIEMENT ── */
+/* ── MOYENS DE PAIEMENT ── */
 function setPayMethod(m){
+  payMethod=m;
   document.querySelectorAll('.pay-method').forEach(function(el){el.classList.remove('active');});
   document.getElementById('pm-'+m).classList.add('active');
   document.getElementById('cardSection').style.display=m==='card'?'block':'none';
   document.getElementById('sepaSection').style.display=m==='sepa'?'block':'none';
-  if(m==='apple'||m==='google'){document.getElementById('cardSection').style.display='none';document.getElementById('sepaSection').style.display='none';}
+  document.getElementById('walletSection').style.display=(m==='apple'||m==='google')?'block':'none';
 }
 
-/* ── PROMO ── */
+/* ── CODE PROMO ── */
 var PROMOS={'AVIATION2026':5,'A2S2026':10};
 function applyPromo(){
   var code=document.getElementById('promoCode').value.trim().toUpperCase();
-  if(PROMOS[code]){discount=PROMOS[code];updateTotal();showToast('✅ Code promo appliqué : −€'+discount);}
-  else{showToast('⚠ Code promo invalide');}
+  var hint=document.getElementById('promoHint');
+  if(PROMOS[code]){discount=PROMOS[code];updateTotal();hint.textContent='Code appliqué : −'+eur(discount)+' par mois.';hint.style.color='var(--a2s-success)';showToast('Code promotionnel appliqué.');}
+  else{discount=0;updateTotal();hint.textContent='Ce code n\'est pas valide.';hint.style.color='var(--a2s-danger)';}
 }
 
 /* ── STRIPE ── */
 var stripe=null,cardElement=null,expiryElement=null,cvcElement=null,ibanElement=null;
 function initStripe(){
   try{
+    if(typeof Stripe==='undefined')return;
     stripe=Stripe(window.STRIPE_KEY||'pk_test_VOTRE_CLE_PUBLIQUE_STRIPE');
     var elements=stripe.elements({locale:'fr'});
-    var style={base:{color:'#edf2f8',fontFamily:'DM Sans, sans-serif',fontSize:'14px','::placeholder':{color:'#3d5468'}},invalid:{color:'#ef4444'}};
+    var style={base:{color:'#14213D',fontFamily:'Manrope, system-ui, sans-serif',fontSize:'15px','::placeholder':{color:'#8B97AB'}},invalid:{color:'#C8321F'}};
     cardElement=elements.create('cardNumber',{style:style});cardElement.mount('#card-element');
     expiryElement=elements.create('cardExpiry',{style:style});expiryElement.mount('#card-expiry');
     cvcElement=elements.create('cardCvc',{style:style});cvcElement.mount('#card-cvc');
@@ -460,30 +369,49 @@ function initStripe(){
 }
 
 /* ── PAIEMENT ── */
+function setAlert(msg,type){
+  var el=document.getElementById('payAlert');
+  el.innerHTML=msg?'<div class="alert alert-'+(type||'error')+'" style="margin-bottom:1.25rem">'+A2SIcon(type==='success'?'check-circle':type==='info'?'info':'alert-triangle')+'<span>'+msg+'</span></div>':'';
+  if(msg)el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function markField(id,bad){var f=document.getElementById(id);if(f)f.classList.toggle('err',!!bad);}
 async function handlePay(){
+  setAlert('');
   var first=document.getElementById('firstName').value.trim();
   var last=document.getElementById('lastName').value.trim();
   var email=document.getElementById('email').value.trim();
-  if(!first||!last||!email){showToast('⚠ Remplissez tous les champs obligatoires');return;}
-  if(!email.includes('@')){showToast('⚠ Adresse email invalide');return;}
+  markField('firstName',!first);markField('lastName',!last);markField('email',!email||email.indexOf('@')===-1);
+  if(!first||!last||!email){setAlert('Renseignez votre prénom, votre nom et votre adresse email.');return;}
+  if(email.indexOf('@')===-1){setAlert('L\'adresse email n\'est pas valide.');return;}
   var btn=document.getElementById('payBtn');
-  btn.classList.add('loading');btn.disabled=true;
-  // ⚠️ TODO: Créer un PaymentIntent via Edge Function Supabase
-  // et confirmer avec stripe.confirmCardPayment(clientSecret, {payment_method: {card: cardElement}})
-  // Pour l'instant : démonstration
-  btn.textContent='Traitement en cours…';
-  await new Promise(function(r){setTimeout(r,2000);});
-  showToast('✅ Démonstration — configurez votre clé Stripe pour activer les paiements');
-  btn.classList.remove('loading');btn.disabled=false;
-  btn.textContent='Payer maintenant';
+  btn.classList.add('is-loading');btn.disabled=true;
+  // TODO : créer un PaymentIntent via une Edge Function Supabase
+  // puis confirmer avec stripe.confirmCardPayment(clientSecret,{payment_method:{card:cardElement}})
+  await new Promise(function(r){setTimeout(r,1500);});
+  btn.classList.remove('is-loading');btn.disabled=false;
+  setAlert('Mode démonstration : le paiement sera activé une fois la clé Stripe configurée. Aucun montant n\'a été débité.','info');
 }
 
 /* ── TOAST ── */
 var _tt;
-function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2800);
-}
+function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},2800);}
+
+/* ── INIT ── */
+(function(){
+  var params=new URLSearchParams(location.search);
+  var p=PLAN_ALIASES[(params.get('plan')||'').toLowerCase()];
+  if(p)selectPlan(p);else updateTotal();
+  if(params.get('addon')==='true'&&currentPlan==='essential')toggleAddon();
+  var em=localStorage.getItem('a2s_user_email')||'';
+  var nm=localStorage.getItem('a2s_user_name')||'';
+  if(em&&!document.getElementById('email').value)document.getElementById('email').value=em;
+  if(nm){var parts=nm.split(' ');if(!document.getElementById('firstName').value)document.getElementById('firstName').value=parts[0]||'';if(!document.getElementById('lastName').value)document.getElementById('lastName').value=parts.slice(1).join(' ')||'';}
+  document.querySelectorAll('.plan-option,.addon-box').forEach(function(el){el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click();}});});
+  initStripe();
+})();
 </script>
-<script src="nav.js?v=20260906b"></script>
 <script src="rgpd-consent.js" defer></script>
+<script src="nav.js?v=20260906c"></script>
+<script src="footer.js?v=20260906c"></script>
 </body>
 </html>
