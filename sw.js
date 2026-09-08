@@ -1,5 +1,5 @@
 /* Aircraft2Sell — Service Worker v3.0 (design system v2) */
-var CACHE = 'a2s-v8';
+var CACHE = 'a2s-v9';
 var OFFLINE_URL = '/404.html';
 
 /* Ressources pré-cachées au premier chargement */
