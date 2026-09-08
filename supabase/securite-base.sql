@@ -33,7 +33,31 @@
 
 
 -- ═══════════════════════════════════════════════════════════════
--- 1. PROFIL VENDEUR PUBLIC (sans email)
+-- 1. SUPPRESSION DES POLITIQUES PERMISSIVES PRÉEXISTANTES
+--
+-- La base contenait des politiques en rôle `public` qui autorisaient TOUT
+-- le monde — même sans connexion — à lire, modifier et supprimer. Elles
+-- primaient sur toute politique restrictive que l'on peut ajouter.
+-- Ces noms doivent être supprimés explicitement : ils ne figurent pas dans
+-- les listes plus bas.
+-- ═══════════════════════════════════════════════════════════════
+
+drop policy if exists "listings_delete" on public.listings;
+drop policy if exists "listings_insert" on public.listings;
+drop policy if exists "listings_read"   on public.listings;
+drop policy if exists "listings_update" on public.listings;
+drop policy if exists "messages_read"   on public.messages;
+drop policy if exists "messages_update" on public.messages;
+drop policy if exists "admin_all"      on public.users;
+drop policy if exists "users_delete"   on public.users;
+drop policy if exists "users_insert"   on public.users;
+drop policy if exists "users_read"     on public.users;
+drop policy if exists "users_update"   on public.users;
+drop policy if exists "verif_read"     on public.verification_requests;
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- 2. PROFIL VENDEUR PUBLIC (sans email)
 -- Le site l'utilise déjà : il faut la créer AVANT de verrouiller users.
 -- ═══════════════════════════════════════════════════════════════
 

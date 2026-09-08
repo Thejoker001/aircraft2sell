@@ -37,7 +37,13 @@ def requete(chemin, corps=None, methode="GET"):
     req = urllib.request.Request(
         f"https://api.supabase.com/v1/{chemin}",
         data=json.dumps(corps).encode() if corps else None,
-        headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {TOKEN}",
+            "Content-Type": "application/json",
+            # Sans User-Agent de navigateur, Cloudflare renvoie 403 (code 1010)
+            # indépendamment de la validité du jeton.
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+        },
         method=methode,
     )
     try:
