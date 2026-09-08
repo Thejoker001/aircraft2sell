@@ -583,6 +583,38 @@ var SB_URL='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SB_KEY='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 var AUTH_TOKEN=sessionStorage.getItem('a2s_auth_token')||'';
 
+/* Jeton avec renouvellement automatique (même correctif que post-listing.html
+   / messages.html) : AUTH_TOKEN n'était lu qu'une fois au chargement de la
+   page — un vendeur qui reste plus d'une heure sur son tableau de bord voit
+   ses PATCH/DELETE d'annonces échouer silencieusement (RLS = jeton expiré
+   traité comme anonyme), alors que le code affichait quand même un succès. */
+function tokenExpire(tk){
+  try{ var p=JSON.parse(atob(tk.split('.')[1])); return !p.exp||(p.exp*1000)<(Date.now()+60000); }
+  catch(e){ return true; }
+}
+async function authToken(){
+  var tk=sessionStorage.getItem('a2s_auth_token');
+  if(tk&&!tokenExpire(tk)){AUTH_TOKEN=tk;return tk;}
+  var rt=null; try{ rt=localStorage.getItem('a2s_refresh_token'); }catch(e){}
+  if(rt){
+    try{
+      var r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
+        method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({refresh_token:rt})});
+      if(r.ok){
+        var d=await r.json();
+        if(d.access_token){
+          try{ sessionStorage.setItem('a2s_auth_token',d.access_token);
+               if(d.refresh_token)localStorage.setItem('a2s_refresh_token',d.refresh_token); }catch(e){}
+          AUTH_TOKEN=d.access_token;
+          return d.access_token;
+        }
+      }
+    }catch(e){}
+  }
+  return null;
+}
+
 function greetingWord(){var h=new Date().getHours();return h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';}
 
 function applyUserDisplay(name, email){
@@ -711,21 +743,20 @@ var currentPeriod=7;
 var PLAN_SLOTS={Essentiel:1,Aviateur:3,Pro:999};
 var _userPlan='Essentiel';
 var _userListings=[];
-/* ── NOTE SÉCURITÉ ──────────────────────────────────────────
-   SB_SERVICE utilise la clé publishable (RLS appliquées) pour
-   lire les annonces du vendeur connecté.
-   TODO : migrer vers une Edge Function Supabase.
-   ─────────────────────────────────────────────────────────── */
-var SB_SERVICE='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
 var CAT_LABEL={light:'Avion léger',jet:'Jet d\'affaires',turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
 
 function getListings(){try{return JSON.parse(localStorage.getItem(LS_LISTINGS)||'[]');}catch(e){return[];}}
 
 async function loadListingsFromSupabase(email){
+  var tk=await authToken();
+  if(!tk)return null; /* session expirée : le vendeur ne verrait de toute façon
+                          que ses annonces status='live' avec la clé anon —
+                          mieux vaut échouer explicitement que masquer les
+                          annonces pending/rejected du vendeur. */
   try{
     var res=await fetch(SB_URL+'/rest/v1/listings?seller_email=eq.'+encodeURIComponent(email)+'&order=submitted_at.desc&select=*',{
-      headers:{'apikey':SB_SERVICE,'Authorization':'Bearer '+SB_SERVICE}
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
     });
     if(!res.ok)return null;
     var rows=await res.json();
@@ -858,23 +889,33 @@ function updateNewListingBtn(slotsLeft){
 
 async function patchListing(l,payload){
   if(l&&l._supabase&&l.id){
+    var tk=await authToken();
+    if(!tk){ return {ok:false, erreur:'session_expiree'}; }
     try{
-      await fetch(SB_URL+'/rest/v1/listings?id=eq.'+encodeURIComponent(l.id),{
+      var r=await fetch(SB_URL+'/rest/v1/listings?id=eq.'+encodeURIComponent(l.id),{
         method:'PATCH',
-        headers:{'apikey':SB_SERVICE,'Authorization':'Bearer '+(AUTH_TOKEN||SB_SERVICE),'Content-Type':'application/json','Prefer':'return=minimal'},
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify(payload)
       });
-    }catch(e){}
+      if(!r.ok) return {ok:false, erreur:'http_'+r.status};
+    }catch(e){
+      return {ok:false, erreur:e.message};
+    }
   }
   var arr=getListings().map(function(x){if(String(x.id)===String(l.id)){Object.keys(payload).forEach(function(k){x[k]=payload[k];});}return x;});
   localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));
+  return {ok:true};
 }
 
 async function markSold(listingId){
   var l=_userListings.find(function(x){return String(x.id)===String(listingId);});
   if(!l)return;
   if(!confirm('Marquer cette annonce comme vendue ? Elle ne sera plus visible par les acheteurs.'))return;
-  await patchListing(l,{status:'sold'});
+  var res=await patchListing(l,{status:'sold'});
+  if(!res.ok){
+    showToast(res.erreur==='session_expiree'?'Session expirée : reconnectez-vous.':'Erreur, réessayez.');
+    return;
+  }
   await renderListings();
   showToast('Annonce marquée comme vendue. Félicitations.');
 }
@@ -883,12 +924,18 @@ async function delListing(listingId){
   if(!confirm('Supprimer cette annonce ? Cette action est irréversible.'))return;
   var l=_userListings.find(function(x){return String(x.id)===String(listingId);});
   if(l&&l._supabase&&l.id){
+    var tk=await authToken();
+    if(!tk){ showToast('Session expirée : reconnectez-vous.'); return; }
     try{
-      await fetch(SB_URL+'/rest/v1/listings?id=eq.'+encodeURIComponent(l.id),{
+      var r=await fetch(SB_URL+'/rest/v1/listings?id=eq.'+encodeURIComponent(l.id),{
         method:'DELETE',
-        headers:{'apikey':SB_SERVICE,'Authorization':'Bearer '+SB_SERVICE}
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
       });
-    }catch(e){}
+      if(!r.ok){ showToast('La suppression a échoué (HTTP '+r.status+'). Réessayez.'); return; }
+    }catch(e){
+      showToast('Erreur réseau, la suppression a échoué.');
+      return;
+    }
   }
   var arr=getListings().filter(function(x){return String(x.id)!==String(listingId);});
   localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));
@@ -933,7 +980,11 @@ async function saveEditListing(){
     airport:document.getElementById('el-airport').value.trim().toUpperCase(),
     description:document.getElementById('el-desc').value.trim()
   };
-  await patchListing(l,payload);
+  var res=await patchListing(l,payload);
+  if(!res.ok){
+    al.innerHTML='<div class="alert alert-error">'+A2SIcon('alert-triangle')+'<span>'+(res.erreur==='session_expiree'?'Session expirée : reconnectez-vous.':'La mise à jour a échoué. Réessayez.')+'</span></div>';
+    return;
+  }
   closeEditListing();
   await renderListings();
   showToast('Annonce mise à jour.');
