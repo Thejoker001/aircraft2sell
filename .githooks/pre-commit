@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Régénère sitemap.xml si des pages ont changé, avant que la CI ne le refuse.
+# Le job `checks` du workflow échoue sur `gen-sitemap.py --check` dès qu'un
+# lastmod est périmé — ce qui arrive à chaque modification d'une page.
+set -e
+
+if git diff --cached --name-only | grep -qE '\.html$'; then
+  python3 scripts/gen-sitemap.py > /dev/null 2>&1 || exit 0
+  if ! git diff --quiet sitemap.xml 2>/dev/null; then
+    git add sitemap.xml
+    echo "sitemap.xml régénéré et ajouté au commit"
+  fi
+fi
