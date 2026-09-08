@@ -65,7 +65,7 @@
       '<footer class="a2s-footer">',
         '<div class="footer-inner">',
           '<div>',
-            '<a href="' + href('index.html') + '" class="f-logo"><span class="logo-mark">' + ic('plane') + '</span>Aircraft2<span class="logo-accent">Sell</span></a>',
+            '<a href="' + href('index.html') + '" class="f-logo"><img src="' + href('logo-white.png') + '?v=20260908" alt="Aircraft2Sell" class="f-logo-img" width="170" height="32" loading="lazy"></a>',
             '<p class="f-desc">' + t('desc') + '</p>',
             '<div class="f-trust">',
               '<span>' + ic('percent') + t('trust1') + '</span>',
