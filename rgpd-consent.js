@@ -22,9 +22,13 @@
   }
 
   function loadAnalytics() {
-    if (document.querySelector('script[src="analytics.js"]')) return;
+    /* Chemin ABSOLU : en relatif, depuis /en/ le navigateur demandait
+       /en/analytics.js (404) et le suivi était mort sur toutes les pages
+       anglaises. Le sélecteur doit couvrir les deux écritures, sinon la
+       page charge le script une seconde fois. */
+    if (document.querySelector('script[src="analytics.js"], script[src^="/analytics.js"]')) return;
     var s = document.createElement('script');
-    s.src = 'analytics.js';
+    s.src = '/analytics.js';
     s.defer = true;
     document.head.appendChild(s);
   }
