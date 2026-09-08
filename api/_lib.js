@@ -128,7 +128,24 @@ export async function envoyer({ to, toName, sujet, html, replyTo }) {
       body: JSON.stringify(corps),
     });
     const txt = await r.text();
-    if (!r.ok) return { ok: false, erreur: `Brevo ${r.status} : ${txt.slice(0, 200)}` };
+    if (!r.ok) {
+      /* Brevo refuse les IP inconnues quand la restriction « Authorised IPs »
+         est active sur le compte. Les fonctions serverless Vercel n'ont pas
+         d'IP fixe : il faut désactiver cette restriction dans le tableau de
+         bord Brevo (Paramètres → Sécurité → Adresses IP autorisées).
+         On rend le diagnostic explicite plutôt que de renvoyer un 502 muet. */
+      if (r.status === 401 && /unrecognised IP address/i.test(txt)) {
+        const ip = (txt.match(/IP address ([\d.]+)/) || [])[1] || 'inconnue';
+        return {
+          ok: false,
+          erreur: `Brevo bloque l'IP ${ip} (restriction « Authorised IPs » active). ` +
+                  `Désactiver la restriction dans Brevo → Paramètres → Sécurité, ` +
+                  `ou y ajouter les plages Vercel.`,
+          codeConnu: 'BREVO_IP_BLOQUEE',
+        };
+      }
+      return { ok: false, erreur: `Brevo ${r.status} : ${txt.slice(0, 200)}` };
+    }
     let id = null;
     try { id = JSON.parse(txt).messageId; } catch { /* réponse vide acceptée */ }
     return { ok: true, id };
