@@ -1257,16 +1257,31 @@ async function approve(id){
   try{
     await sb('PATCH','listings','id=eq.'+id,{status:'live'});
     /* Notifier le vendeur par email */
-    fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/notify-listing-approved',{
+    fetch('/api/notify-listing-moderated',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({listing_id:String(id)})
+      body:JSON.stringify({listing_id:String(id),decision:'approved'})
     }).catch(function(){});
     showToast('Annonce approuvée, vendeur notifié');
     await refreshAll();
   }catch(e){showToast('Erreur : '+e.message);}
 }
-async function doReject(id){var r=prompt('Motif du rejet (optionnel) :','');if(r===null)return;try{await sb('PATCH','listings','id=eq.'+id,{status:'rejected',rejection_reason:r});showToast('Annonce rejetée');await refreshAll();}catch(e){showToast('Erreur : '+e.message);}}
+async function doReject(id){
+  var r=prompt('Motif du rejet (communiqué au vendeur, optionnel) :','');
+  if(r===null)return;
+  try{
+    await sb('PATCH','listings','id=eq.'+id,{status:'rejected',rejection_reason:r});
+    /* Prévenir le vendeur : sans cet appel, l'annonce était rejetée en
+       silence et le vendeur ne savait pas pourquoi elle n'apparaissait pas. */
+    fetch('/api/notify-listing-moderated',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({listing_id:String(id),decision:'rejected',reason:r})
+    }).catch(function(){});
+    showToast('Annonce rejetée, vendeur notifié');
+    await refreshAll();
+  }catch(e){showToast('Erreur : '+e.message);}
+}
 async function approveAll(){var pending=_allListings.filter(function(l){return l.status==='pending';});if(!pending.length){showToast('Aucune annonce en attente');return;}if(!confirm('Approuver les '+pending.length+' annonce(s) ?'))return;try{await sb('PATCH','listings','status=eq.pending',{status:'live'});showToast(pending.length+' annonce(s) approuvée(s)');await refreshAll();}catch(e){showToast('Erreur : '+e.message);}}
 
 /* ── LISTE ANNONCES ── */
