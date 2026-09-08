@@ -88,6 +88,24 @@ create policy "users_insert_signup"
 -- La clé service_role (back-office) contourne la RLS : rien à changer.
 
 
+-- ── COMPATIBILITÉ VÉRIFIÉE AVANT APPLICATION ──────────────────────
+-- Chaque flux du site touchant `users` a été relu :
+--
+--   login.html (inscription)   INSERT avec le jeton + return=minimal
+--                              -> couvert par users_insert_signup ; pas de
+--                                 relecture, donc aucun blocage SELECT.
+--   login.html (connexion)     n'interroge pas users.
+--   onboarding.html            PATCH avec le jeton -> users_update_self.
+--   post-listing.html          SELECT plan avec le jeton -> users_read_self.
+--   dashboard.html             jeton présent partout.
+--   diag.html                  jeton admin (a2s_admin_session) transmis.
+--   seller.html                bascule sur get_seller_public().
+--   listing.html, en/listing.html   idem.
+--
+-- Aucune page publique ne lit `users` en direct après ce changement.
+-- Contrôle automatisé : python3 scripts/test-fuite-users.py
+
+
 -- ── 3. VÉRIFICATION (à exécuter après application) ────────────────
 -- Doit renvoyer [] :
 --   curl "$SUPABASE_URL/rest/v1/users?select=email" -H "apikey: <clé publique>"

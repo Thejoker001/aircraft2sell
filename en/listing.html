@@ -394,11 +394,15 @@ async function load(){
   if(!rows||!rows.length){showError("This listing does not exist or is no longer available.");return;}
   LISTING=rows[0];
   render(LISTING);
-  /* Incrémenter les vues */
-  var newViews=(LISTING.views||0)+1;
-  fetch(SB+'/rest/v1/listings?id=eq.'+encodeURIComponent(id),{
-    method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body:JSON.stringify({views:newViews})
+  /* Compteur de vues : on enregistre la visite dans listing_views plutôt
+     que de faire un PATCH anonyme sur listings. Après le verrouillage RLS
+     (supabase/securite-base.sql), un visiteur ne peut plus modifier une
+     annonce — et c'est voulu : ce PATCH permettait à n'importe qui de
+     réécrire n'importe quel champ de n'importe quelle annonce. */
+  fetch(SB+'/rest/v1/listing_views',{
+    method:'POST',
+    headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({listing_id:parseInt(id)||null,session_id:(function(){try{var k=sessionStorage.getItem('a2s_sid');if(!k){k=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('a2s_sid',k);}return k;}catch(e){return null;}})()})
   }).catch(function(){});
   var urgStrip=document.getElementById('urgStrip');
   if(urgStrip){
