@@ -257,6 +257,26 @@ def main():
     open(dest, 'w', encoding='utf-8').write(js)
     print(f'faq-data.js généré : {len(entries)} entrées (FR + EN), {len(js) // 1024} ko.')
 
+    # Contexte serveur pour l'agent IA (api/chat.js) : même source unique de
+    # vérité, format texte compact FR/EN pour être injecté dans le prompt
+    # système. Ne JAMAIS écrire ce contenu à la main dans api/chat.js.
+    def contexte(lang):
+        lignes = [f"Q: {e[lang]['q']}\nR: {e[lang]['a']}" for e in entries]
+        return '\n\n'.join(lignes)
+
+    ctx_js = (
+        '/* Contexte FAQ pour l\'agent IA (api/chat.js) — FICHIER GÉNÉRÉ, NE PAS ÉDITER.\n'
+        '   Source : le JSON-LD de faq.html (FR) + les traductions de gen-faq-data.py.\n'
+        '   Régénérer : python3 scripts/gen-faq-data.py */\n'
+        'export const FAQ_CONTEXT = {\n'
+        '  fr: ' + json.dumps(contexte('fr'), ensure_ascii=False) + ',\n'
+        '  en: ' + json.dumps(contexte('en'), ensure_ascii=False) + ',\n'
+        '};\n'
+    )
+    dest_ctx = os.path.join(ROOT, 'api', '_faq-context.js')
+    open(dest_ctx, 'w', encoding='utf-8').write(ctx_js)
+    print(f'api/_faq-context.js généré : {len(ctx_js) // 1024} ko.')
+
 
 if __name__ == '__main__':
     main()

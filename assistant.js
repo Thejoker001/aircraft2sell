@@ -248,6 +248,53 @@
   /* Seuil sous lequel on préfère avouer l'ignorance plutôt qu'inventer. */
   var THRESHOLD = 2.2;
 
+  /* Historique envoyé à l'agent IA (contexte court, jamais persisté). */
+  var aiHistory = [];
+
+  function typing(on) {
+    var el = document.getElementById('a2sbTyping');
+    if (on && !el) {
+      el = document.createElement('div');
+      el.id = 'a2sbTyping';
+      el.className = 'a2sb-msg a2sb-bot';
+      el.textContent = lang === 'en' ? 'Typing…' : 'Écrit…';
+      log.appendChild(el);
+      log.scrollTop = log.scrollHeight;
+    } else if (!on && el) {
+      el.remove();
+    }
+  }
+
+  /* Second niveau : agent IA (Groq), seulement si la recherche locale échoue.
+     Affiche le repli humain UNIQUEMENT si l'IA échoue aussi — éviter d'empiler
+     "je ne sais pas" puis une vraie réponse juste après (confus pour le visiteur). */
+  function askAI(q) {
+    typing(true);
+    fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: q, lang: lang, history: aiHistory })
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        typing(false);
+        if (!res.ok || !res.d || !res.d.reply) {
+          bubble(T.noAnswer, false);
+          chips((window.A2S_FAQ || []).slice(0, 4).map(function (e) { return e[lang].q; }), T.related);
+          return;
+        }
+        aiHistory.push({ role: 'user', content: q });
+        aiHistory.push({ role: 'assistant', content: res.d.reply });
+        bubble(esc(res.d.reply) +
+          '<div style="margin-top:.6rem;font-size:.8rem">' +
+          '<a href="' + T.contactUrl + '">' + T.contactLabel + '</a></div>', false);
+      })
+      .catch(function () {
+        typing(false);
+        bubble(T.noAnswer, false);
+        chips((window.A2S_FAQ || []).slice(0, 4).map(function (e) { return e[lang].q; }), T.related);
+      });
+  }
+
   function ask(q) {
     q = String(q || '').trim();
     if (!q) return;
@@ -258,8 +305,7 @@
     var best = res[0];
 
     if (!best || best.s < THRESHOLD) {
-      bubble(T.noAnswer, false);
-      chips((window.A2S_FAQ || []).slice(0, 4).map(function (e) { return e[lang].q; }), T.related);
+      askAI(q);
       return;
     }
 
