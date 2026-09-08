@@ -332,6 +332,11 @@
       <p class="muted" style="margin-bottom:1.1rem;font-size:.92rem">A free account lets you contact this seller and follow this listing.</p>
       <div id="qrAlert" class="alert" style="display:none;margin-bottom:1rem"></div>
       <div class="field"><label for="qrName">Your first name</label><input type="text" class="inp" id="qrName" placeholder="John" autocomplete="given-name"></div>
+      <div class="field">
+        <label for="qrPseudo">Public username <span class="req">*</span></label>
+        <input type="text" class="inp" id="qrPseudo" placeholder="e.g. SkyPilot75" maxlength="30" autocomplete="off">
+        <div class="field-hint">Shown on your listings instead of your name. 3 to 30 characters.</div>
+      </div>
       <div class="field"><label for="qrEmail">Your email</label><input type="email" class="inp" id="qrEmail" placeholder="you@example.com" autocomplete="email"></div>
       <div class="field"><label for="qrPw">Password</label><input type="password" class="inp" id="qrPw" placeholder="At least 8 characters" autocomplete="new-password"></div>
       <button type="button" class="btn-primary btn-block btn-lg" id="qrBtn" onclick="quickRegister()"><span>Create my account</span></button>
@@ -347,6 +352,14 @@
 <script>
 /* ── CONFIG ── */
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+/* Stable anonymised handle: never the real seller name. Same email/id
+   always produces the same suffix (no Math.random), so display stays
+   consistent across visits for a non-pseudonymised seller. */
+function anonSellerName(seed){
+  var s=String(seed||''),h=0;
+  for(var i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}
+  return 'Seller A2S-'+String(Math.abs(h)%10000).padStart(4,'0');
+}
 var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 var SB_URL=SB,SB_KEY=SK;
@@ -510,7 +523,10 @@ function render(l){
   document.getElementById('lDesc').textContent=l.description||'No description provided.';
 
   /* Seller */
-  var sellerDisplay=l.seller_pseudo||l.seller_name||'Private seller';
+  /* Display priority: company (pro accounts) > public pseudo > stable
+     anonymised handle — the real name (seller_name) is NEVER shown
+     publicly, it's used internally only (emails, moderation). */
+  var sellerDisplay=l.seller_company||l.seller_pseudo||anonSellerName(l.seller_email||l.seller_name||String(l.id));
   document.getElementById('sellerAvatar').textContent=sellerDisplay.charAt(0).toUpperCase();
   document.getElementById('sellerName').textContent=sellerDisplay;
   document.getElementById('sellerSince').textContent=l.submitted_at?'Member since '+new Date(l.submitted_at).toLocaleDateString('en-GB',{month:'long',year:'numeric'}):'';
@@ -796,10 +812,12 @@ function openQuickReg(){hideAlert(document.getElementById('qrAlert'));document.g
 function closeQuickReg(){document.getElementById('quickRegOverlay').classList.remove('open');document.body.style.overflow='';}
 async function quickRegister(){
   var name=document.getElementById('qrName').value.trim();
+  var pseudo=document.getElementById('qrPseudo').value.trim();
   var email=document.getElementById('qrEmail').value.trim().toLowerCase();
   var pw=document.getElementById('qrPw').value;
   var al=document.getElementById('qrAlert');
   if(!name||!email||!email.includes('@')){setAlert(al,'error','Please enter your first name and a valid email address.');return;}
+  if(!pseudo||!/^[a-zA-Z0-9_.\-éèàûôîùçëïü]{3,30}$/.test(pseudo)){setAlert(al,'error','Choose a valid public username (3 to 30 characters, letters, digits, _ - .).');return;}
   if(pw.length<8){setAlert(al,'error','Your password must contain at least 8 characters.');return;}
   var btn=document.getElementById('qrBtn');btn.disabled=true;btn.classList.add('is-loading');
   try{
@@ -808,9 +826,17 @@ async function quickRegister(){
     if(!r.ok)throw new Error(d.error_description||d.msg||'Unable to create the account.');
     localStorage.setItem('a2s_user_email',email);
     localStorage.setItem('a2s_user_name',name);
+    localStorage.setItem('a2s_user_pseudo',pseudo);
     if(d.access_token){
       sessionStorage.setItem('a2s_auth_token',d.access_token);
+      if(d.refresh_token)localStorage.setItem('a2s_refresh_token',d.refresh_token);
       localStorage.setItem('a2s_logged_in','true');
+      /* Create the users row: without this call (previous bug), the account
+         only existed on the Auth side, with no pseudo/plan/business data —
+         it leaked the real name since no pseudo was ever stored anywhere. */
+      try{
+        await fetch(SB+'/rest/v1/users',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({id:Date.now(),name:name,pseudo:pseudo,email:email,plan:'Essentiel',status:'active',registered_at:new Date().toISOString()})});
+      }catch(e2){}
       var n=document.getElementById('msgName');if(n)n.value=name;
       var e=document.getElementById('msgEmail');if(e)e.value=email;
       closeQuickReg();openMsgForm();
@@ -849,7 +875,7 @@ function injectSchema(l){
       "availability":"https://schema.org/InStock",
       "itemCondition":"https://schema.org/UsedCondition",
       "url":"https://aircraft2sell.eu/en/listing.html?id="+l.id,
-      "seller":{"@type":"Person","name":l.seller_pseudo||l.seller_name||'Private seller'}
+      "seller":{"@type":"Person","name":l.seller_company||l.seller_pseudo||anonSellerName(l.seller_email||l.seller_name||String(l.id))}
     },
     "@context":"https://schema.org"
   };

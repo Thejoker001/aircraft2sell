@@ -420,6 +420,7 @@
 <div id="a2sFooter"></div>
 
 <script src="/icons.js?v=20260906c"></script>
+<script src="/pseudo-gate.js?v=20260908"></script>
 <script>
 /* ── PHOTOS ── */
 var photos=[];
@@ -726,6 +727,27 @@ async function submitListing(){
     views:0,
     enquiries:0
   };
+
+  /* Copy the account's certification/pseudo/company onto the listing (same
+     logic as the FR page — was missing here, a divergence that let pro
+     sellers' listings skip the certified badge and company name). */
+  try{
+    if(sellerEmail){
+      var rCert=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(sellerEmail)+'&select=certified,is_pro,rating,pseudo,company',{
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
+      });
+      if(rCert.ok){
+        var uCert=await rCert.json();
+        if(uCert&&uCert[0]){
+          sbListing.seller_certified=!!uCert[0].certified;
+          sbListing.seller_is_pro=!!uCert[0].is_pro;
+          if(uCert[0].pseudo) sbListing.seller_pseudo=uCert[0].pseudo;
+          if(uCert[0].rating!=null) sbListing.seller_rating=uCert[0].rating;
+          if(uCert[0].is_pro&&uCert[0].company) sbListing.seller_company=uCert[0].company;
+        }
+      }
+    }
+  }catch(e){ /* certification stays false : listing still goes through */ }
 
   // Optional fields
   var ttVal=document.getElementById('fTT').value;

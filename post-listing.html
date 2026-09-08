@@ -420,6 +420,7 @@
 <div id="a2sFooter"></div>
 
 <script src="icons.js?v=20260906c"></script>
+<script src="pseudo-gate.js?v=20260908"></script>
 <script>
 /* ── PHOTOS ── */
 var photos=[];
@@ -735,15 +736,19 @@ async function submitListing(){
      les listes du site lisent seller_certified (pas users.certified). */
   try{
     if(sellerEmail){
-      var rCert=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(sellerEmail)+'&select=certified,is_pro,rating,pseudo',{
+      var rCert=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(sellerEmail)+'&select=certified,is_pro,rating,pseudo,company',{
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}
       });
       if(rCert.ok){
         var uCert=await rCert.json();
         if(uCert&&uCert[0]){
           sbListing.seller_certified=!!uCert[0].certified;
+          sbListing.seller_is_pro=!!uCert[0].is_pro;
           if(uCert[0].pseudo) sbListing.seller_pseudo=uCert[0].pseudo;
           if(uCert[0].rating!=null) sbListing.seller_rating=uCert[0].rating;
+          /* Les comptes professionnels affichent le nom de leur société plutôt
+             que le pseudo : c'est l'identité publique attendue pour un pro. */
+          if(uCert[0].is_pro&&uCert[0].company) sbListing.seller_company=uCert[0].company;
         }
       }
     }

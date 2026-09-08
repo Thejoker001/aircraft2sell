@@ -576,6 +576,7 @@
 <div id="a2sFooter"></div>
 
 <script src="icons.js?v=20260906c"></script>
+<script src="pseudo-gate.js?v=20260908"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 /* ── AUTH ── */
@@ -652,8 +653,10 @@ async function initAuth(){
   applyUserDisplay(name,email);
   if(email){
     try{
-      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at&limit=1',{
-        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}
+      var freshTk=await authToken();
+      if(!freshTk){throw new Error('session expirée');}
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company&limit=1',{
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+freshTk}
       });
       var data=await res.json();
       if(data&&data[0]){
@@ -665,6 +668,7 @@ async function initAuth(){
           localStorage.setItem('a2s_user_name',name);
           applyUserDisplay(name,email);
         }
+        var fc=document.getElementById('setCompany');if(fc)fc.value=data[0].company||'';
         if(data[0].registered_at||data[0].created_at){
           var ms=document.getElementById('memberSince');
           if(ms){var d=new Date(data[0].registered_at||data[0].created_at);ms.textContent=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});}
@@ -1125,27 +1129,29 @@ async function saveProfile(){
   var last=document.getElementById('setLast').value.trim();
   var email=document.getElementById('setEmail').value.trim();
   var pseudo=(document.getElementById('setPseudo')||{value:''}).value.trim();
+  var company=(document.getElementById('setCompany')||{value:''}).value.trim();
   if(first||last){var fn=(first+' '+last).trim();localStorage.setItem('a2s_user_name',fn);}
   if(email)localStorage.setItem('a2s_user_email',email);
-  if(pseudo){
-    if(pseudo.length<3||!/^[a-zA-Z0-9_.\-éèàûôîùçëïü]{3,30}$/.test(pseudo)){showToast('Pseudo invalide : 3 à 30 caractères, lettres, chiffres, _ - .');return;}
-    localStorage.setItem('a2s_user_pseudo',pseudo);
-  }
+  if(!pseudo||pseudo.length<3||!/^[a-zA-Z0-9_.\-éèàûôîùçëïü]{3,30}$/.test(pseudo)){showToast('Pseudo invalide : 3 à 30 caractères, lettres, chiffres, _ - .');return;}
+  localStorage.setItem('a2s_user_pseudo',pseudo);
   var userEmail=localStorage.getItem('a2s_user_email')||'';
-  var tk=sessionStorage.getItem('a2s_auth_token')||'';
+  var tk=await authToken();
+  if(!tk){showToast('Session expirée : reconnectez-vous.');return;}
   if(userEmail){
     var payload={};
     var nm=(first+' '+last).trim();
     if(nm)payload.name=nm;
-    if(pseudo)payload.pseudo=pseudo;
+    payload.pseudo=pseudo;
+    payload.company=company||null;
     if(Object.keys(payload).length){
       try{
-        await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(userEmail),{
+        var r=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(userEmail),{
           method:'PATCH',
-          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY),'Content-Type':'application/json','Prefer':'return=minimal'},
+          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'return=minimal'},
           body:JSON.stringify(payload)
         });
-      }catch(e){}
+        if(!r.ok){showToast('La mise à jour a échoué (HTTP '+r.status+').');return;}
+      }catch(e){showToast('Erreur réseau, la mise à jour a échoué.');return;}
     }
   }
   applyUserDisplay(localStorage.getItem('a2s_user_name')||'',userEmail);

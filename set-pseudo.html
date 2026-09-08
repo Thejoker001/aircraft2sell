@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Choisissez votre pseudo public Aircraft2Sell avant de continuer.">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Choisissez votre pseudo — Aircraft2Sell</title>
+<link rel="canonical" href="https://aircraft2sell.eu/set-pseudo.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="stylesheet" href="styles.css?v=20260906c">
+<link rel="stylesheet" href="mobile.css?v=20260906c">
+<style>
+.sp-wrap{min-height:calc(100vh - var(--nav-h));display:flex;align-items:center;justify-content:center;padding:2.5rem 1.25rem}
+.sp-card{width:100%;max-width:440px;padding:2rem}
+.sp-card h1{font-size:1.4rem;margin-bottom:.4rem}
+.sp-sub{color:var(--a2s-text-muted);margin-bottom:1.5rem;line-height:1.6;font-size:.92rem}
+.sp-card .btn-primary{width:100%;margin-top:.5rem}
+</style>
+</head>
+<body>
+
+<!-- nav injectée par nav.js -->
+<section class="sp-wrap">
+  <div class="card sp-card">
+    <span class="icon-box" style="margin-bottom:1rem"><i data-icon="user-check"></i></span>
+    <h1>Choisissez votre pseudo public</h1>
+    <p class="sp-sub">
+      Pour protéger votre vie privée, votre nom complet n'est jamais affiché sur le site.
+      Choisissez un pseudo public : il apparaîtra sur vos annonces et votre profil vendeur
+      à la place de votre identité réelle. Cette étape est obligatoire pour continuer.
+    </p>
+    <div id="spAlert" class="alert" style="display:none;margin-bottom:1rem"></div>
+    <div class="field">
+      <label for="spPseudo">Pseudo public <span class="req">*</span></label>
+      <input type="text" class="inp" id="spPseudo" placeholder="ex. AvioPilote75" maxlength="30" oninput="checkPseudo(this.value)" autocomplete="off">
+      <div class="field-hint" id="spHint">3 à 30 caractères : lettres, chiffres, _ - .</div>
+    </div>
+    <button type="button" class="btn-primary btn-lg" id="spBtn" onclick="submitPseudo()"><span>Valider mon pseudo</span></button>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20260906c"></script>
+<script>
+var SB_URL='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SB_KEY='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
+var PARAMS=new URLSearchParams(location.search);
+
+function safeDest(p){
+  if(!p) return 'dashboard.html';
+  try{
+    var u=new URL(p,location.origin);
+    if(u.origin!==location.origin) return 'dashboard.html';
+    return u.pathname.replace(/^\//,'')+u.search+u.hash;
+  }catch(e){ return 'dashboard.html'; }
+}
+
+/* Pas de compte connecté : rien à faire ici, retour à la connexion. */
+(function(){
+  var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
+  if(!loggedIn){window.location.href='login.html';}
+})();
+
+function checkPseudo(v){
+  var hint=document.getElementById('spHint'),inp=document.getElementById('spPseudo');
+  if(!v){hint.textContent='3 à 30 caractères : lettres, chiffres, _ - .';hint.style.color='';inp.classList.remove('err');return;}
+  var ok=/^[a-zA-Z0-9_.\-éèàûôîùçëïü]{3,30}$/.test(v);
+  hint.textContent=ok?'Pseudo disponible au format attendu.':'Uniquement lettres, chiffres, _ - . (3 à 30 caractères).';
+  hint.style.color=ok?'':'var(--a2s-danger,#c0392b)';
+  inp.classList.toggle('err',!ok&&v.length>0);
+}
+
+function setAlert(msg,kind){
+  var al=document.getElementById('spAlert');
+  al.style.display='';
+  al.className='alert alert-'+(kind||'error');
+  al.textContent=msg;
+}
+
+function tokenExpire(tk){
+  try{ var p=JSON.parse(atob(tk.split('.')[1])); return !p.exp||(p.exp*1000)<(Date.now()+60000); }
+  catch(e){ return true; }
+}
+async function authToken(){
+  var tk=sessionStorage.getItem('a2s_auth_token');
+  if(tk&&!tokenExpire(tk))return tk;
+  var rt=null; try{ rt=localStorage.getItem('a2s_refresh_token'); }catch(e){}
+  if(rt){
+    try{
+      var r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
+        method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({refresh_token:rt})});
+      if(r.ok){
+        var d=await r.json();
+        if(d.access_token){
+          try{ sessionStorage.setItem('a2s_auth_token',d.access_token);
+               if(d.refresh_token)localStorage.setItem('a2s_refresh_token',d.refresh_token); }catch(e){}
+          return d.access_token;
+        }
+      }
+    }catch(e){}
+  }
+  return null;
+}
+
+async function submitPseudo(){
+  var pseudo=document.getElementById('spPseudo').value.trim();
+  document.getElementById('spAlert').style.display='none';
+  if(!pseudo||pseudo.length<3||!/^[a-zA-Z0-9_.\-éèàûôîùçëïü]{3,30}$/.test(pseudo)){
+    setAlert('Pseudo invalide : 3 à 30 caractères, lettres, chiffres, _ - .');
+    return;
+  }
+  var email=localStorage.getItem('a2s_user_email')||'';
+  if(!email){setAlert('Session invalide, reconnectez-vous.');setTimeout(function(){window.location.href='login.html';},1500);return;}
+  var btn=document.getElementById('spBtn');btn.disabled=true;btn.classList.add('is-loading');
+  var tk=await authToken();
+  if(!tk){
+    btn.disabled=false;btn.classList.remove('is-loading');
+    setAlert('Votre session a expiré. Reconnectez-vous.');
+    setTimeout(function(){window.location.href='login.html?redirect=set-pseudo.html';},1500);
+    return;
+  }
+  try{
+    /* S'assurer qu'aucun autre compte n'utilise déjà ce pseudo (unicité visible). */
+    var chk=await fetch(SB_URL+'/rest/v1/users?pseudo=eq.'+encodeURIComponent(pseudo)+'&select=email',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
+    });
+    if(chk.ok){
+      var rows=await chk.json();
+      if(Array.isArray(rows)&&rows.some(function(u){return (u.email||'').toLowerCase()!==email.toLowerCase();})){
+        btn.disabled=false;btn.classList.remove('is-loading');
+        setAlert('Ce pseudo est déjà utilisé, choisissez-en un autre.');
+        return;
+      }
+    }
+    var r=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{
+      method:'PATCH',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({pseudo:pseudo})
+    });
+    if(!r.ok){
+      btn.disabled=false;btn.classList.remove('is-loading');
+      setAlert('Impossible d\'enregistrer le pseudo (HTTP '+r.status+'). Réessayez.');
+      return;
+    }
+    try{localStorage.setItem('a2s_user_pseudo',pseudo);}catch(e){}
+    try{sessionStorage.setItem('a2s_pseudo_ok','1');}catch(e){}
+    setAlert('Pseudo enregistré.','success');
+    setTimeout(function(){window.location.href=safeDest(PARAMS.get('redirect'));},700);
+  }catch(e){
+    btn.disabled=false;btn.classList.remove('is-loading');
+    setAlert('Erreur réseau : '+e.message);
+  }
+}
+</script>
+<script src="rgpd-consent.js" defer></script>
+<script src="nav.js?v=20260906c"></script>
+<script src="footer.js?v=20260906c"></script>
+</body>
+</html>
