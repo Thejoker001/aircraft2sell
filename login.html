@@ -193,6 +193,10 @@ async function handleLogin(e){
     var d=await r.json();
     if(!r.ok||!d.access_token)throw new Error(d.error_description||d.msg||'Email ou mot de passe incorrect.');
     sessionStorage.setItem('a2s_auth_token',d.access_token);
+    /* Le jeton d'accès expire en 1 h. Sans le refresh_token, l'utilisateur
+       reste « connecté » mais perd l'accès à ses messages (RLS) sans aucun
+       message d'erreur. On le conserve pour permettre le renouvellement. */
+    if(d.refresh_token)localStorage.setItem('a2s_refresh_token',d.refresh_token);
     localStorage.setItem('a2s_logged_in','true');
     localStorage.setItem('a2s_user_email',email);
     var meta=d.user&&d.user.user_metadata;
@@ -229,6 +233,10 @@ async function handleRegister(e){
     if(!r.ok)throw new Error(d.error_description||d.msg||'Impossible de créer le compte.');
     if(d.access_token){
       sessionStorage.setItem('a2s_auth_token',d.access_token);
+    /* Le jeton d'accès expire en 1 h. Sans le refresh_token, l'utilisateur
+       reste « connecté » mais perd l'accès à ses messages (RLS) sans aucun
+       message d'erreur. On le conserve pour permettre le renouvellement. */
+    if(d.refresh_token)localStorage.setItem('a2s_refresh_token',d.refresh_token);
       localStorage.setItem('a2s_logged_in','true');
       localStorage.setItem('a2s_user_email',email);
       localStorage.setItem('a2s_user_name',fullName);

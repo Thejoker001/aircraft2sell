@@ -1,6 +1,51 @@
 /* Aircraft2Sell — Supabase Client */
 var _SB='https://hlivysnlzlqdjcigqgvk.supabase.co',_SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
-async function sbReq(m,t,p,b){var url=_SB+'/rest/v1/'+t+(p?'?'+p:'');var h={'apikey':_SK,'Authorization':'Bearer '+_SK,'Content-Type':'application/json','Prefer':'return=representation'};var r=await fetch(url,{method:m,headers:h,body:b?JSON.stringify(b):undefined});var tx=await r.text();if(!r.ok)throw new Error(tx);return tx?JSON.parse(tx):[];}
+
+/* ── Jeton de session ───────────────────────────────────────────────
+   Les tables protégées par RLS (messages, favoris…) ne renvoient rien
+   si l'on présente la clé publique : il faut le jeton de l'utilisateur.
+   Le jeton d'accès expire au bout d'une heure ; on le renouvelle avec le
+   refresh_token plutôt que de laisser la boîte de réception se vider
+   silencieusement. */
+function _a2sToken(){
+  try{ return sessionStorage.getItem('a2s_auth_token'); }catch(e){ return null; }
+}
+function _a2sExpire(tk){
+  try{
+    var p = JSON.parse(atob(tk.split('.')[1]));
+    return !p.exp || (p.exp * 1000) < (Date.now() + 60000);   /* marge d'1 min */
+  }catch(e){ return true; }
+}
+async function _a2sRenouveler(){
+  var rt = null;
+  try{ rt = localStorage.getItem('a2s_refresh_token'); }catch(e){}
+  if(!rt) return null;
+  try{
+    var r = await fetch(_SB + '/auth/v1/token?grant_type=refresh_token', {
+      method:'POST',
+      headers:{ 'apikey': _SK, 'Content-Type':'application/json' },
+      body: JSON.stringify({ refresh_token: rt })
+    });
+    if(!r.ok) return null;
+    var d = await r.json();
+    if(d.access_token){
+      try{
+        sessionStorage.setItem('a2s_auth_token', d.access_token);
+        if(d.refresh_token) localStorage.setItem('a2s_refresh_token', d.refresh_token);
+      }catch(e){}
+      return d.access_token;
+    }
+  }catch(e){}
+  return null;
+}
+async function _a2sAuth(){
+  var tk = _a2sToken();
+  if(tk && !_a2sExpire(tk)) return tk;
+  var neuf = await _a2sRenouveler();
+  return neuf || tk || _SK;
+}
+
+async function sbReq(m,t,p,b){var url=_SB+'/rest/v1/'+t+(p?'?'+p:'');var tk=await _a2sAuth();var h={'apikey':_SK,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'return=representation'};var r=await fetch(url,{method:m,headers:h,body:b?JSON.stringify(b):undefined});var tx=await r.text();if(!r.ok)throw new Error(tx);return tx?JSON.parse(tx):[];}
 function sbGet(t,p){return sbReq('GET',t,p);}
 function sbPost(t,b){return sbReq('POST',t,null,b);}
 function sbPatch(t,p,b){return sbReq('PATCH',t,p,b);}

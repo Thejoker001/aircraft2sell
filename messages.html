@@ -143,16 +143,44 @@ var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 var ME=localStorage.getItem('a2s_user_email')||'';
 var ME_NAME=localStorage.getItem('a2s_user_name')||'Moi';
-var AUTH_TOKEN=sessionStorage.getItem('a2s_auth_token')||SK;
+/* Jeton relu à chaque requête, avec renouvellement : lu une seule fois au
+   chargement, il expirait au bout d'une heure et la boîte de réception se
+   vidait sans message d'erreur (la RLS ne renvoie rien à la clé publique). */
+function tokenActuel(){ try{ return sessionStorage.getItem('a2s_auth_token'); }catch(e){ return null; } }
+function tokenExpire(tk){
+  try{ var p=JSON.parse(atob(tk.split('.')[1])); return !p.exp||(p.exp*1000)<(Date.now()+60000); }
+  catch(e){ return true; }
+}
+async function authToken(){
+  var tk=tokenActuel();
+  if(tk&&!tokenExpire(tk))return tk;
+  var rt=null; try{ rt=localStorage.getItem('a2s_refresh_token'); }catch(e){}
+  if(rt){
+    try{
+      var r=await fetch(SB+'/auth/v1/token?grant_type=refresh_token',{
+        method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},
+        body:JSON.stringify({refresh_token:rt})});
+      if(r.ok){
+        var d=await r.json();
+        if(d.access_token){
+          try{ sessionStorage.setItem('a2s_auth_token',d.access_token);
+               if(d.refresh_token)localStorage.setItem('a2s_refresh_token',d.refresh_token); }catch(e){}
+          return d.access_token;
+        }
+      }
+    }catch(e){}
+  }
+  return tk||SK;
+}
 var CONVS=[];
 var activeConv=null;
 var pollTimer=null;
 
 async function sbGet(path,params){
-  try{var url=SB+'/rest/v1/'+path+(params?'?'+params:'');var r=await fetch(url,{headers:{'apikey':SK,'Authorization':'Bearer '+AUTH_TOKEN}});return r.ok?await r.json():[];}catch(e){return[];}
+  try{var tk=await authToken();var url=SB+'/rest/v1/'+path+(params?'?'+params:'');var r=await fetch(url,{headers:{'apikey':SK,'Authorization':'Bearer '+tk}});return r.ok?await r.json():[];}catch(e){return[];}
 }
 async function sbPost(path,body){
-  try{var r=await fetch(SB+'/rest/v1/'+path,{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+AUTH_TOKEN,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(body)});return r.ok?await r.json():null;}catch(e){return null;}
+  try{var tk=await authToken();var r=await fetch(SB+'/rest/v1/'+path,{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)});return r.ok?true:null;}catch(e){return null;}
 }
 
 function formatTime(iso){
@@ -167,7 +195,7 @@ async function loadConversations(){
   var threadMap={};
   threads.forEach(function(m){
     var tid=m.thread_id||(m.listing_id+'-'+[m.sender_email,m.receiver_email].sort().join('-'));
-    if(!threadMap[tid]){var other=m.sender_email===ME?m.receiver_email:m.sender_email;threadMap[tid]={id:tid,listingId:m.listing_id,name:other,aircraft:'Annonce #'+m.listing_id,price:'',time:'',messages:[],unread:0};}
+    if(!threadMap[tid]){var other=m.sender_email===ME?m.receiver_email:m.sender_email;threadMap[tid]={id:tid,listingId:m.listing_id,name:other,aircraft:m.listing_id?('Annonce #'+m.listing_id):'Message direct',price:'',time:'',messages:[],unread:0};}
     threadMap[tid].messages.push({from:m.sender_email===ME?'me':'them',text:m.content,time:formatTime(m.created_at),read:m.read,_raw_time:m.created_at});
     if(m.sender_email!==ME&&!m.read)threadMap[tid].unread++;
     threadMap[tid].time=m.created_at;
@@ -329,10 +357,29 @@ async function sendMsg(){
     content:text,
     read:false
   };
-  var result=await sbPost('messages',msgRow);
+  /* Envoi en return=minimal : la politique RLS de `messages` autorise
+     l'insertion mais PAS la relecture de la ligne insérée. Avec
+     Prefer: return=representation (le défaut de sbPost), PostgREST annule
+     toute la transaction et renvoie 401 — le message était perdu sans que
+     l'utilisateur en soit informé autrement que par « hors ligne ». */
+  var result = null;
+  try {
+    var resp = await fetch(SB + '/rest/v1/messages', {
+      method: 'POST',
+      headers: {
+        'apikey': SK, 'Authorization': 'Bearer ' + (await authToken()),
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(msgRow)
+    });
+    if (resp.ok) result = true;
+    else console.error('[messages] envoi refusé :', resp.status, await resp.text());
+  } catch (e) {
+    console.error('[messages] envoi impossible :', e.message);
+  }
   var meta=div.querySelector('.msg-read');
   if(result){
-    var rawTime=(Array.isArray(result)?result[0]:result).created_at||now.toISOString();
+    var rawTime=now.toISOString();
     conv.messages.push({from:'me',text:text,time:time,read:false,_raw_time:rawTime});
     if(meta){meta.innerHTML=A2SIcon('check');meta.title='Envoyé';}
     showToast('Message envoyé');
