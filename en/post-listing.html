@@ -621,6 +621,37 @@ var SB_KEY='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 /* All requests use SB_KEY (anon) — Supabase RLS active */
 var PLAN_SLOTS={Essentiel:1,Aviateur:3,Pro:999};
 
+/* Token re-read with renewal (same fix as messages.html / FR post-listing.html):
+   the form can take over an hour to fill in (photos, description), the access
+   token then expires mid-fill. Without this renewal, the INSERT was rejected
+   by RLS (expired token = anonymous) while appearing to succeed to the seller
+   (see submitListing, misleading success message fixed below). */
+function tokenExpire(tk){
+  try{ var p=JSON.parse(atob(tk.split('.')[1])); return !p.exp||(p.exp*1000)<(Date.now()+60000); }
+  catch(e){ return true; }
+}
+async function authToken(){
+  var tk=sessionStorage.getItem('a2s_auth_token');
+  if(tk&&!tokenExpire(tk))return tk;
+  var rt=null; try{ rt=localStorage.getItem('a2s_refresh_token'); }catch(e){}
+  if(rt){
+    try{
+      var r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
+        method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({refresh_token:rt})});
+      if(r.ok){
+        var d=await r.json();
+        if(d.access_token){
+          try{ sessionStorage.setItem('a2s_auth_token',d.access_token);
+               if(d.refresh_token)localStorage.setItem('a2s_refresh_token',d.refresh_token); }catch(e){}
+          return d.access_token;
+        }
+      }
+    }catch(e){}
+  }
+  return null;
+}
+
 async function submitListing(){
   clearFormError();
   var required=[{id:'fCategory',label:'the category'},{id:'fYear',label:'the year'},{id:'fAirport',label:'the home airport'},{id:'fPrice',label:'the price'},{id:'fDesc',label:'the description'}];
@@ -634,7 +665,12 @@ async function submitListing(){
 
   // Check plan and slots
   var email=localStorage.getItem('a2s_user_email')||'';
-  var tk=sessionStorage.getItem('a2s_auth_token');
+  var tk=await authToken();
+  if(!tk){
+    showFormError('Your session has expired. Please log in again to publish your listing.');
+    setTimeout(function(){window.location.href='/login.html?redirect=en/post-listing.html';},2000);
+    return;
+  }
   if(email){
     try{
       var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=plan&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}});
@@ -671,7 +707,8 @@ async function submitListing(){
   var sellerPseudo=localStorage.getItem('a2s_user_pseudo')||'';
   var sellerName=sellerPseudo||localStorage.getItem('a2s_user_name')||'';
   var sellerEmail=localStorage.getItem('a2s_user_email')||'';
-  var tk=sessionStorage.getItem('a2s_auth_token');
+  /* tk already resolved and verified valid at the top of the function
+     (authToken()) — do not re-read sessionStorage here. */
 
   var sbListing={
     make:fMakeEl.value||makeSelVal,
@@ -750,7 +787,12 @@ async function submitListing(){
       method:'POST',
       headers:{
         'apikey':SB_KEY,
-        'Authorization':'Bearer '+SB_KEY,
+        /* Session token required: after the RLS lockdown, only an
+           authenticated seller can insert a listing under their own name.
+           This was previously hardcoded to SB_KEY alone (anon role), which
+           made every English listing submission fail RLS silently — this
+           was a more severe bug than the FR page's token-expiry issue. */
+        'Authorization':'Bearer '+tk,
         'Content-Type':'application/json',
         'Prefer':'return=representation'
       },
@@ -792,32 +834,35 @@ async function submitListing(){
   };
   sessionStorage.setItem('a2s_last_listing',JSON.stringify(listing));
 
-  // Admin email via secure Edge Function
+  // Admin email via Vercel serverless function
   if(sbId){
-    fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/notify-new-listing',{
+    fetch('/api/notify-new-listing',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({listingId:String(sbId)})
     }).catch(function(){});
   }
+
   if(sbId){
     showToast('Listing submitted, awaiting review');
     try{localStorage.removeItem(DRAFT_KEY);}catch(e){}
-  }else{
-    showToast('Listing saved, syncing in progress');
+    setTimeout(function(){window.location.href='/listing-submitted.html';},1400);
+    return;
   }
-  /* Notify admin by email */
-  try{
-    fetch('https://hlivysnlzlqdjcigqgvk.supabase.co/functions/v1/notify-new-listing',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':'sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe','Authorization':'Bearer sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe'},
-      body:JSON.stringify(listing)
-    }).catch(function(){});
-  }catch(e2){}
-  setTimeout(function(){window.location.href='/listing-submitted.html';},1400);
+
+  /* REAL FAILURE: never show a success message or redirect to the
+     confirmation page when nothing was written to the database — this was
+     the cause of "nothing to moderate" on the admin side: listings appeared
+     submitted to the seller while the INSERT had failed silently (missing
+     auth token, network...). The precise error is already shown by
+     showFormError() above; just re-enable the form so the seller can retry. */
+  btn.classList.remove('is-loading');btn.disabled=false;
+  if(!document.getElementById('formAlert').innerHTML){
+    showFormError('Publishing failed. Check your connection and try again.');
+  }
 }
 
-/* Admin email handled by Edge Function notify-new-listing */
+/* Admin email handled by Vercel serverless function notify-new-listing */
 
 /* ── MAKE / MODEL CASCADE ── */
 (function(){

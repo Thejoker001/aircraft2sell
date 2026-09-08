@@ -621,6 +621,38 @@ var SB_KEY='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 /* Toutes les requêtes utilisent SB_KEY (anon) — RLS Supabase actives */
 var PLAN_SLOTS={Essentiel:1,Aviateur:3,Pro:999};
 
+/* Jeton relu avec renouvellement (même correctif que messages.html) : le
+   formulaire peut prendre plus d'une heure à remplir (photos, description),
+   le jeton d'accès expire alors pendant la saisie. Sans ce renouvellement,
+   l'INSERT était rejeté par la RLS (jeton expiré = anonyme) tout en semblant
+   réussir côté vendeur (voir submitListing, faux message de succès corrigé). */
+function tokenExpire(tk){
+  try{ var p=JSON.parse(atob(tk.split('.')[1])); return !p.exp||(p.exp*1000)<(Date.now()+60000); }
+  catch(e){ return true; }
+}
+async function authToken(){
+  var tk=sessionStorage.getItem('a2s_auth_token');
+  if(tk&&!tokenExpire(tk))return tk;
+  var rt=null; try{ rt=localStorage.getItem('a2s_refresh_token'); }catch(e){}
+  if(rt){
+    try{
+      var r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
+        method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({refresh_token:rt})});
+      if(r.ok){
+        var d=await r.json();
+        if(d.access_token){
+          try{ sessionStorage.setItem('a2s_auth_token',d.access_token);
+               if(d.refresh_token)localStorage.setItem('a2s_refresh_token',d.refresh_token); }catch(e){}
+          return d.access_token;
+        }
+      }
+    }catch(e){}
+  }
+  return null; /* jeton absent/expiré et non renouvelable : ne jamais retomber sur SB_KEY ici,
+                  l'appelant doit savoir que l'utilisateur n'est plus authentifié. */
+}
+
 async function submitListing(){
   clearFormError();
   var required=[{id:'fCategory',label:'la catégorie'},{id:'fYear',label:"l'année"},{id:'fAirport',label:"l'aéroport de base"},{id:'fPrice',label:'le prix'},{id:'fDesc',label:'la description'}];
@@ -634,7 +666,12 @@ async function submitListing(){
 
   // Vérifier plan et slots
   var email=localStorage.getItem('a2s_user_email')||'';
-  var tk=sessionStorage.getItem('a2s_auth_token');
+  var tk=await authToken();
+  if(!tk){
+    showFormError('Votre session a expiré. Reconnectez-vous pour publier votre annonce.');
+    setTimeout(function(){window.location.href='login.html?redirect=post-listing.html';},2000);
+    return;
+  }
   if(email){
     try{
       var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=plan&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}});
@@ -671,7 +708,9 @@ async function submitListing(){
   var sellerPseudo=localStorage.getItem('a2s_user_pseudo')||'';
   var sellerName=sellerPseudo||localStorage.getItem('a2s_user_name')||'';
   var sellerEmail=localStorage.getItem('a2s_user_email')||'';
-  var tk=sessionStorage.getItem('a2s_auth_token');
+  /* tk déjà résolu et vérifié valide en tête de fonction (authToken()) —
+     ne pas relire sessionStorage ici, ça écraserait un jeton fraîchement
+     renouvelé par la valeur expirée encore présente en storage. */
 
   var sbListing={
     make:fMakeEl.value||makeSelVal,
@@ -824,21 +863,24 @@ async function submitListing(){
       body:JSON.stringify({listingId:String(sbId)})
     }).catch(function(){});
   }
+
   if(sbId){
     showToast('Annonce envoyée, en attente de validation');
     try{localStorage.removeItem(DRAFT_KEY);}catch(e){}
-  }else{
-    showToast('Annonce sauvegardée, synchronisation en cours');
+    setTimeout(function(){window.location.href='listing-submitted.html';},1400);
+    return;
   }
-  /* Notifier l'admin par email */
-  try{
-    fetch('/api/notify-new-listing',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':'sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe','Authorization':'Bearer sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe'},
-      body:JSON.stringify(listing)
-    }).catch(function(){});
-  }catch(e2){}
-  setTimeout(function(){window.location.href='listing-submitted.html';},1400);
+
+  /* ÉCHEC RÉEL : ne jamais afficher un message de succès ni rediriger vers la
+     page de confirmation quand rien n'a été écrit en base — c'était la cause
+     du problème « rien à modérer côté admin » : des annonces croyaient être
+     déposées alors que l'INSERT avait échoué en silence (jeton expiré,
+     réseau...). L'erreur précise est déjà affichée par showFormError()
+     ci-dessus ; on réactive juste le formulaire pour permettre de réessayer. */
+  btn.classList.remove('is-loading');btn.disabled=false;
+  if(!document.getElementById('formAlert').innerHTML){
+    showFormError('La publication a échoué. Vérifiez votre connexion et réessayez.');
+  }
 }
 
 /* Email admin géré par Edge Function notify-new-listing */
