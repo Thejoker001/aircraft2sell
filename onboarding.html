@@ -172,8 +172,8 @@
       <div class="ob-step" id="stepSuccess">
         <div class="done-wrap">
           <span class="icon-box success"><i data-icon="check-circle"></i></span>
-          <h1>Votre espace est prêt</h1>
-          <p>Profil enregistré. Vous recevrez vos premières alertes dès qu'une annonce correspondra à vos critères.</p>
+          <h1 id="doneTitle">Votre espace est prêt</h1>
+          <p id="doneText">Profil enregistré. Vous recevrez vos premières alertes dès qu'une annonce correspondra à vos critères.</p>
           <div class="done-actions">
             <a href="post-listing.html" class="btn-primary btn-lg" id="doneBtnPost"><i data-icon="plus"></i>Déposer une annonce</a>
             <a href="search.html" class="btn-secondary" id="doneBtnBrowse"><i data-icon="search"></i>Parcourir les annonces</a>
@@ -197,6 +197,7 @@ function safeDest(d){if(!d||/^(https?:)?\/\/|^javascript:/i.test(d))return'';ret
 var REDIRECT=safeDest(PARAMS.get('redirect'));
 
 var profile={type:'',interests:[],budget:'',currency:'EUR',zone:'',phone:'',notifEmail:true,notifDigest:false,notifPrice:false};
+var promoResult=null;
 
 function selectType(el,type){
   document.querySelectorAll('.profiles .choice').forEach(function(c){c.classList.toggle('is-selected',c===el);});
@@ -274,7 +275,7 @@ async function finishOnboarding(){
     }catch(e){}
   }
 
-  if(email){
+  if (email){
     try{
       await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{
         method:'PATCH',
@@ -284,10 +285,29 @@ async function finishOnboarding(){
     }catch(e){}
   }
 
+  // Offre de lancement : Pro offert à vie pour les 5 premiers professionnels
+  // INSCRITS GRATUITEMENT (formule Essentiel). N'appelle jamais l'API pour un
+  // profil particulier/acheteur — seuls broker et club sont concernés.
+  promoResult=null;
+  if(email&&(profile.type==='broker'||profile.type==='club')){
+    try{
+      var rp=await fetch('/api/promo-pro5',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email:email})
+      });
+      if(rp.ok)promoResult=await rp.json();
+    }catch(e){/* silencieux : ne doit jamais bloquer l'onboarding */}
+  }
+
   btn.disabled=false;btn.classList.remove('is-loading');
   if(REDIRECT){window.location.href=REDIRECT;return;}
   ['st1','st2','st3'].forEach(function(id){var s=document.getElementById(id);s.classList.remove('active');s.classList.add('done');});
   hide('step3');show('stepSuccess');
+  if(promoResult&&promoResult.granted){
+    document.getElementById('doneTitle').textContent='Bienvenue — votre abonnement Pro est offert à vie !';
+    document.getElementById('doneText').innerHTML='Vous faites partie des 5 premiers professionnels inscrits sur Aircraft2Sell : annonces illimitées, badge vendeur certifié et mise en avant prioritaire, sans jamais payer d\'abonnement. Un email de confirmation vous a été envoyé.';
+  }
   document.getElementById('skipLink').style.display='none';
   window.scrollTo({top:0,behavior:'smooth'});
 }

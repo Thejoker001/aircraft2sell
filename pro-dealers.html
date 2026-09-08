@@ -96,6 +96,7 @@
 <section class="pro-hero">
   <div class="container">
     <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><span aria-current="page">Professionnels</span></nav>
+    <div class="alert alert-info" id="promoBanner" style="margin-bottom:1.5rem;background:rgba(255,179,122,.14);border-color:rgba(255,179,122,.4)"><i data-icon="award"></i><div><span class="alert-title">Offre de lancement</span><span id="promoBannerText">Abonnement Pro offert à vie pour les 5 premiers professionnels inscrits (formule gratuite). Places restantes en cours de calcul…</span></div></div>
     <div class="pro-hero-grid">
       <div>
         <p class="eyebrow"><i data-icon="building"></i>Espace professionnels</p>
@@ -321,6 +322,21 @@ async function submitPro(e){
   finally{btn.disabled=false;btn.classList.remove('is-loading');}
 }
 ['pCompany','pName','pEmail'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){this.closest('.field').classList.remove('has-error');});});
+
+/* Bandeau promo : places restantes de l'offre "Pro offert à vie" */
+(function(){
+  var el=document.getElementById('promoBannerText');
+  if(!el)return;
+  fetch('/api/promo-pro5').then(function(r){return r.json();}).then(function(d){
+    if(!d||typeof d.remaining!=='number')return;
+    var banner=document.getElementById('promoBanner');
+    if(d.remaining<=0){
+      if(banner)banner.style.display='none';
+      return;
+    }
+    el.textContent='Abonnement Pro offert à vie pour les 5 premiers professionnels inscrits (formule gratuite) — encore '+d.remaining+' place'+(d.remaining>1?'s':'')+' disponible'+(d.remaining>1?'s':'')+'.';
+  }).catch(function(){});
+})();
 </script>
 <script src="analytics.js" defer></script>
 <script src="rgpd-consent.js" defer></script>
