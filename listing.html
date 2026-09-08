@@ -352,6 +352,31 @@ var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 var SB_URL=SB,SB_KEY=SK;
 async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});return r.ok?await r.json():null;}catch(e){return null;}}
 
+/* Profil vendeur public : passe par la fonction get_seller_public(), qui
+   ne renvoie jamais l'email et empêche d'énumérer les membres avec la clé
+   publique du site. Repli sur la lecture directe tant que le SQL
+   (supabase/fuite-users.sql) n'est pas appliqué. */
+async function sbSellerPublic(email){
+  if(!email) return null;
+  try{
+    var r=await fetch(SB+'/rest/v1/rpc/get_seller_public',{
+      method:'POST',
+      headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
+      body:JSON.stringify({p_email:email})
+    });
+    if(r.ok){
+      var d=await r.json();
+      if(Array.isArray(d)) return d.length?d[0]:null;
+      if(d&&d.name!==undefined) return d;
+      return null;
+    }
+  }catch(e){}
+  try{
+    var rows=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,certified,is_pro,seller_type,company,rating,plan,registered_at&limit=1');
+    return (rows&&rows.length)?rows[0]:null;
+  }catch(e){ return null; }
+}
+
 var LISTING=null;
 var CAT_NAMES={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
@@ -497,7 +522,8 @@ function render(l){
     if(!badgeEl)return;
     if(!l.seller_email){badgeEl.innerHTML='<span class="badge-verified">Vendeur vérifié</span>';return;}
     try{
-      var userData=await sbGet('users','email=eq.'+encodeURIComponent(l.seller_email)+'&select=seller_type,is_pro,certified,rating,company&limit=1');
+      var _sp=await sbSellerPublic(l.seller_email);
+      var userData=_sp?[_sp]:[];
       var u=userData&&userData[0]?userData[0]:null;
       var badges='';
       if(u&&u.is_pro)badges+='<span class="badge badge-navy">'+A2SIcon('building')+'Pro vérifié</span>';

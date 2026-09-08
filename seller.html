@@ -219,6 +219,31 @@ var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});return r.ok?await r.json():[];}catch(e){return[];}}
 
+/* Profil vendeur public : passe par la fonction get_seller_public(), qui
+   ne renvoie jamais l'email et empêche d'énumérer les membres avec la clé
+   publique du site. Repli sur la lecture directe tant que le SQL
+   (supabase/fuite-users.sql) n'est pas appliqué. */
+async function sbSellerPublic(email){
+  if(!email) return null;
+  try{
+    var r=await fetch(SB+'/rest/v1/rpc/get_seller_public',{
+      method:'POST',
+      headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
+      body:JSON.stringify({p_email:email})
+    });
+    if(r.ok){
+      var d=await r.json();
+      if(Array.isArray(d)) return d.length?d[0]:null;
+      if(d&&d.name!==undefined) return d;
+      return null;
+    }
+  }catch(e){}
+  try{
+    var rows=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,certified,is_pro,seller_type,company,rating,plan,registered_at&limit=1');
+    return (rows&&rows.length)?rows[0]:null;
+  }catch(e){ return null; }
+}
+
 var CAT_LABELS={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
 var COUNTRY_NAMES={FR:'France',DE:'Allemagne',ES:'Espagne',IT:'Italie',BE:'Belgique',NL:'Pays-Bas',CH:'Suisse',GB:'Royaume-Uni',PT:'Portugal',AT:'Autriche',LU:'Luxembourg',US:'États-Unis',CA:'Canada',AU:'Australie'};
@@ -243,7 +268,10 @@ window.addEventListener('DOMContentLoaded',async function(){
     return;
   }
 
-  var userData=await sbGet('users','email=eq.'+encodeURIComponent(_sellerEmail)+'&select=*&limit=1');
+  /* Profil vendeur via RPC : ne renvoie jamais l'email, et empêche
+     l'énumération des membres avec la clé publique du site. */
+  var _sp=await sbSellerPublic(_sellerEmail);
+  var userData=_sp?[_sp]:[];
   var user=userData&&userData[0]?userData[0]:null;
 
   var rows=await sbGet('listings','seller_email=eq.'+encodeURIComponent(_sellerEmail)+'&status=eq.live&order=submitted_at.desc&select=*');

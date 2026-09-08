@@ -50,6 +50,38 @@ function sbGet(t,p){return sbReq('GET',t,p);}
 function sbPost(t,b){return sbReq('POST',t,null,b);}
 function sbPatch(t,p,b){return sbReq('PATCH',t,p,b);}
 function sbDelete(t,p){return sbReq('DELETE',t,p);}
+
+/* ── Profil vendeur public ──────────────────────────────────────────
+   La table `users` contient des données personnelles (email, nom) et ne
+   doit pas être lisible par un visiteur anonyme : la clé publique du site
+   permettrait sinon de télécharger la liste des membres.
+
+   On passe par la fonction get_seller_public(), qui renvoie le profil
+   affichable SANS l'email. Repli sur la lecture directe tant que le SQL
+   (supabase/fuite-users.sql) n'est pas appliqué : les pages vendeur
+   fonctionnent donc avant comme après le verrouillage. */
+async function sbSellerPublic(email){
+  if(!email) return null;
+  try{
+    var tk = await _a2sAuth();
+    var r = await fetch(_SB + '/rest/v1/rpc/get_seller_public', {
+      method:'POST',
+      headers:{ 'apikey': _SK, 'Authorization': 'Bearer ' + tk, 'Content-Type':'application/json' },
+      body: JSON.stringify({ p_email: email })
+    });
+    if(r.ok){
+      var d = await r.json();
+      if(Array.isArray(d) && d.length) return d[0];
+      if(d && !Array.isArray(d) && d.name !== undefined) return d;
+      return null;                       /* fonction présente, vendeur inconnu */
+    }
+  }catch(e){}
+  /* Repli : fonction pas encore créée en base */
+  try{
+    var rows = await sbGet('users','email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,certified,is_pro,seller_type,company,rating,plan,registered_at&limit=1');
+    return (rows && rows.length) ? rows[0] : null;
+  }catch(e){ return null; }
+}
 function sbRowListing(r){var ph=Array.isArray(r.photos)?r.photos:[];var th=ph.length?ph[0]:(r.icon||'✈');var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[r.currency||'EUR']||'€';var pn=r.price&&!isNaN(Number(r.price))?Number(r.price):null;return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'--',priceDisplay:pn?sym+pn.toLocaleString('fr-FR'):(r.price||'--'),currency:r.currency||'EUR',category:r.category||'light',catDisp:r.category||'light',airport:r.airport||'',loc:r.airport||r.country||'--',country:r.country||'',desc:r.description||'',description:r.description||'',status:r.status||'pending',sellerName:r.seller_name||'',sellerEmail:r.seller_email||'',seller_name:r.seller_name||'',seller_email:r.seller_email||'',views:r.views||0,enquiries:r.enquiries||0,hours:r.hours||'--',icon:th,photos:ph,submittedAt:r.submitted_at||r.created_at||'',submitted_at:r.submitted_at||r.created_at||'',seller_rating:r.seller_rating||0,seller_certified:r.seller_certified||false,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'--'};}
 function sbRowUser(r){return{id:r.id,name:r.name||'',email:r.email||'',plan:r.plan||'Essentiel',status:r.status||'active',registeredAt:r.registered_at||r.created_at||'',registered_at:r.registered_at||r.created_at||'',rating:r.rating||0,certified:r.certified||false};}
 var sbRow=sbRowListing;
