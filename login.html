@@ -202,6 +202,20 @@ async function handleLogin(e){
     localStorage.setItem('a2s_user_email',email);
     var meta=d.user&&d.user.user_metadata;
     localStorage.setItem('a2s_user_name',(meta&&meta.full_name)||email.split('@')[0]);
+    /* Compte banni : refuser l'accès (le statut est lu depuis public.users). */
+    try{
+      var banCheck=await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=status&limit=1',{headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token}});
+      if(banCheck.ok){
+        var banRows=await banCheck.json();
+        if(banRows&&banRows[0]&&banRows[0].status==='banned'){
+          sessionStorage.removeItem('a2s_auth_token');
+          localStorage.removeItem('a2s_logged_in');
+          throw new Error('Ce compte a été banni. Contactez le support : contact@aircraft2sell.eu');
+        }
+      }
+    }catch(banErr){ if(banErr.message&&banErr.message.indexOf('banni')!==-1) throw banErr; }
+    /* S10 — mémoriser la dernière connexion pour l'admin (fire-and-forget). */
+    try{await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({last_login_at:new Date().toISOString()})});}catch(eL){}
     window.location.href=safeDest(PARAMS.get('redirect'));
   }catch(err){showAlert('login',err.message,'err');document.getElementById('loginPw').value='';}
   finally{btn.disabled=false;btn.classList.remove('is-loading');}
