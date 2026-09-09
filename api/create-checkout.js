@@ -1,0 +1,102 @@
+/**
+ * api/create-checkout.js — Création d'une session de paiement Stripe
+ *
+ * Les montants sont calculés CÔTÉ SERVEUR (jamais fiables côté client) :
+ *   plan : essential (gratuit) / aviateur (29 €) / pro (79 €)
+ *   addon Photos+ : +10 € (Essentiel uniquement)
+ *   promo : AVIATION2026 (-5 €) / A2S2026 (-10 €)
+ *   TVA 20 % incluse dans le montant facturé.
+ *
+ *   POST /api/create-checkout
+ *   { email, plan, addon?, promo? }
+ *   -> { url } (redirection vers Stripe Checkout)
+ *
+ * Variables Vercel requises : STRIPE_SECRET_KEY, SUPABASE_URL,
+ * SUPABASE_SERVICE_ROLE_KEY.
+ */
+import { preambule } from './_lib.js';
+
+const STRIPE = 'https://api.stripe.com/v1';
+const PLANS = {
+  essential: { price: 0, label: 'Essentiel' },
+  aviateur: { price: 29, label: 'Aviateur' },
+  pro: { price: 79, label: 'Pro' },
+};
+const ADDON_PRICE = 10;
+const PROMOS = { AVIATION2026: 5, A2S2026: 10 };
+const VAT_RATE = 0.20;
+
+function eurToCents(n) {
+  return Math.round(n * 100);
+}
+
+export default async function handler(req, res) {
+  if (preambule(req, res)) return;
+
+  const cle = process.env.STRIPE_SECRET_KEY;
+  if (!cle) return res.status(503).json({ error: 'STRIPE_SECRET_KEY absente' });
+
+  const c = req.body || {};
+  const email = String(c.email || '').trim().toLowerCase();
+  const plan = String(c.plan || 'aviateur').toLowerCase();
+  const addon = !!c.addon;
+  const promo = String(c.promo || '').trim().toUpperCase();
+
+  if (!email || email.indexOf('@') === -1) {
+    return res.status(400).json({ error: 'Email invalide' });
+  }
+  const p = PLANS[plan];
+  if (!p) return res.status(400).json({ error: 'Formule inconnue' });
+
+  /* Formule gratuite : pas de session Stripe, retour direct. */
+  if (p.price === 0 && !addon) {
+    return res.status(200).json({ free: true });
+  }
+
+  /* Calcul serveur : sous-total = plan + addon - promo (jamais négatif). */
+  let sub = p.price;
+  if (addon) sub += ADDON_PRICE;
+  const remise = PROMOS[promo] || 0;
+  sub = Math.max(0, sub - remise);
+  const tax = Math.round(sub * VAT_RATE * 100) / 100;
+  const total = Math.round((sub + tax) * 100) / 100;
+
+  try {
+    /* Session d'abonnement récurrent (mensuel). Le nom de la formule et le
+       montant viennent du serveur : le client ne peut pas les modifier. */
+    const form = new URLSearchParams();
+    form.set('mode', 'subscription');
+    form.set('success_url', `https://aircraft2sell.eu/success.html?session_id={CHECKOUT_SESSION_ID}&plan=${plan}`);
+    form.set('cancel_url', 'https://aircraft2sell.eu/cancel.html');
+    form.set('client_reference_id', email);
+    form.set('customer_email', email);
+    form.set('locale', 'fr');
+    form.set('line_items[0][price_data][currency]', 'eur');
+    form.set('line_items[0][price_data][unit_amount]', String(eurToCents(total)));
+    form.set('line_items[0][price_data][product_data][name]', `Aircraft2Sell — ${p.label}`);
+    form.set('line_items[0][price_data][product_data][description]',
+      `Abonnement mensuel ${p.label}${addon ? ' + option Photos+' : ''}${remise ? ` — remise ${remise} €` : ''}. TVA incluse.`);
+    form.set('line_items[0][price_data][recurring][interval]', 'month');
+    form.set('line_items[0][quantity]', '1');
+    form.set('metadata[plan]', plan);
+    form.set('metadata[addon]', addon ? '1' : '0');
+    form.set('metadata[promo]', promo || '');
+
+    const r = await fetch(`${STRIPE}/checkout/sessions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cle}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: form.toString(),
+    });
+    const txt = await r.text();
+    if (!r.ok) {
+      return res.status(502).json({ error: `Stripe ${r.status} : ${txt.slice(0, 200)}` });
+    }
+    const data = JSON.parse(txt);
+    return res.status(200).json({ url: data.url, sessionId: data.id });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
