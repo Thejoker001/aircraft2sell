@@ -979,6 +979,7 @@ body.dense .kv{font-size:1.4rem}
         <div class="mfg"><label>Email</label><input type="email" id="mu-email" readonly class="is-readonly"></div>
         <div class="mfg"><label>Société (pro)</label><input type="text" id="mu-company" placeholder="Nom de la société" maxlength="120"></div>
       </div>
+      <div class="mfg"><label>Présentation (bio)</label><textarea id="mu-bio" style="min-height:80px;resize:vertical" maxlength="600" placeholder="Description publique affichée sur le profil vendeur"></textarea></div>
       <div class="mfg2">
         <div class="mfg"><label>Plan</label>
           <select id="mu-plan"><option value="Essentiel">Essentiel</option><option value="Aviateur">Aviateur</option><option value="Pro">Pro</option></select>
@@ -1812,10 +1813,10 @@ function clearSellerFilter(){
   var info=sel('ls-info');if(info)info.remove();
   renderList();
 }
-function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-pseudo').value=u.pseudo||'';sel('mu-company').value=u.company||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;sel('mu-free').checked=u.is_free||false;
+function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-pseudo').value=u.pseudo||'';sel('mu-company').value=u.company||'';var mb=sel('mu-bio');if(mb)mb.value=u.bio||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;sel('mu-free').checked=u.is_free||false;
   var mst=sel('mu-seller-type');if(mst)mst.value=u.seller_type||'';
   var mip=sel('mu-is-pro');if(mip)mip.checked=u.is_pro||false;var r=parseInt(u.rating)||0;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=r?'#f5c518':'rgba(200,220,240,.2)';});openM('mUser');}
-async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var isPro=sel('mu-is-pro')?sel('mu-is-pro').checked:false;var sellerType=sel('mu-seller-type')?sel('mu-seller-type').value:'';var body={name:sel('mu-name').value,pseudo:sel('mu-pseudo')?sel('mu-pseudo').value.trim():null,company:sel('mu-company')?sel('mu-company').value.trim():null,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree,is_pro:isPro,seller_type:sellerType};try{
+async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var isPro=sel('mu-is-pro')?sel('mu-is-pro').checked:false;var sellerType=sel('mu-seller-type')?sel('mu-seller-type').value:'';var body={name:sel('mu-name').value,pseudo:sel('mu-pseudo')?sel('mu-pseudo').value.trim():null,company:sel('mu-company')?sel('mu-company').value.trim():null,bio:sel('mu-bio')?sel('mu-bio').value.trim():null,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree,is_pro:isPro,seller_type:sellerType};try{
   var uEmail=sel('mu-email').value;
   /* Diagnostic : vérifier que la RLS reconnaît bien ce compte avant le PATCH.
      Un SELECT sur la ligne cible avec le jeton admin : s'il revient vide,

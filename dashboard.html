@@ -405,6 +405,11 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Très bon état, heures de vol faibl
               </div>
               <div class="field"><label for="setEmail">Adresse email</label><input type="email" class="inp" id="setEmail" placeholder="vous@exemple.com" autocomplete="email"></div>
               <div class="field"><label for="setPhone">Téléphone</label><input type="tel" class="inp" id="setPhone" placeholder="+33 6 00 00 00 00" autocomplete="tel"></div>
+              <div class="field">
+                <label for="setBio">Présentation <span class="muted" style="font-weight:500">(optionnel)</span></label>
+                <textarea class="txta" id="setBio" rows="4" maxlength="600" placeholder="Parlez de vous, de votre expérience aéronautique, de vos aéronefs… Cette description sera affichée sur votre page vendeur."></textarea>
+                <div class="field-hint">600 caractères max. Affichée publiquement sur votre profil.</div>
+              </div>
               <button type="button" class="btn-primary" onclick="saveProfile()">Enregistrer</button>
             </div>
           </div>
@@ -685,7 +690,7 @@ async function initAuth(){
     try{
       var freshTk=await authToken();
       if(!freshTk){throw new Error('session expirée');}
-      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company&limit=1',{
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company,bio&limit=1',{
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+freshTk}
       });
       var data=await res.json();
@@ -699,6 +704,7 @@ async function initAuth(){
           applyUserDisplay(name,email);
         }
         var fc=document.getElementById('setCompany');if(fc)fc.value=data[0].company||'';
+        var fb=document.getElementById('setBio');if(fb)fb.value=data[0].bio||'';
         if(data[0].registered_at||data[0].created_at){
           var ms=document.getElementById('memberSince');
           if(ms){var d=new Date(data[0].registered_at||data[0].created_at);ms.textContent=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});}
@@ -1262,6 +1268,8 @@ async function saveProfile(){
   var email=document.getElementById('setEmail').value.trim();
   var pseudo=(document.getElementById('setPseudo')||{value:''}).value.trim();
   var company=(document.getElementById('setCompany')||{value:''}).value.trim();
+  var bio=(document.getElementById('setBio')||{value:''}).value.trim();
+  if(bio.length>600)bio=bio.slice(0,600);
   if(first||last){var fn=(first+' '+last).trim();localStorage.setItem('a2s_user_name',fn);}
   if(email)localStorage.setItem('a2s_user_email',email);
   if(!pseudo||pseudo.length<3||!/^[a-zA-Z0-9_.\-éèàûôîùçëïü]{3,30}$/.test(pseudo)){showToast('Pseudo invalide : 3 à 30 caractères, lettres, chiffres, _ - .');return;}
@@ -1275,6 +1283,7 @@ async function saveProfile(){
     if(nm)payload.name=nm;
     payload.pseudo=pseudo;
     payload.company=company||null;
+    payload.bio=bio||null;
     if(Object.keys(payload).length){
       try{
         var r=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(userEmail),{

@@ -42,6 +42,10 @@
 .profile-pseudo{font-size:.84rem;color:var(--a2s-text-muted);margin-bottom:.6rem}
 .badges{display:flex;gap:.4rem;justify-content:center;flex-wrap:wrap;margin-bottom:.6rem}
 .profile-since{font-size:.8rem;color:var(--a2s-text-muted)}
+/* Présentation vendeur */
+.profile-bio{padding:1rem 1.25rem;border-bottom:1px solid var(--a2s-border)}
+.profile-bio-title{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--a2s-text-faint);font-weight:700;margin-bottom:.4rem}
+.profile-bio-text{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.7;white-space:pre-line}
 .stars{display:flex;gap:2px;justify-content:center;margin-bottom:.5rem;color:var(--a2s-border-2)}
 .stars .star .ic{width:18px;height:18px}
 .stars .star.on{color:var(--a2s-warning)}
@@ -116,6 +120,7 @@
           <div class="kpi"><div class="kpi-value" id="statListings">—</div><div class="kpi-label">Annonces</div></div>
           <div class="kpi"><div class="kpi-value" id="statViews">—</div><div class="kpi-label">Vues cumulées</div></div>
         </div>
+        <div class="profile-bio" id="sellerBio" style="display:none"></div>
         <div class="profile-info" id="sellerInfo"></div>
         <div class="profile-cta">
           <button type="button" class="btn-primary btn-block" onclick="openContact()"><i data-icon="message"></i>Contacter ce vendeur</button>
@@ -247,7 +252,7 @@ async function sbSellerPublic(email){
     }
   }catch(e){}
   try{
-    var rows=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,certified,is_pro,seller_type,company,rating,plan,registered_at&limit=1');
+    var rows=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,certified,is_pro,seller_type,company,rating,plan,registered_at,bio&limit=1');
     return (rows&&rows.length)?rows[0]:null;
   }catch(e){ return null; }
 }
@@ -346,6 +351,18 @@ function renderProfile(user,fallbackName){
   var rating=user&&user.rating?parseInt(user.rating):0;
   document.querySelectorAll('#sellerStars .star').forEach(function(s,i){s.classList.toggle('on',i<rating);});
   if(!rating)document.getElementById('sellerStars').style.display='none';
+
+  /* Présentation (bio) : affichée si renseignée, sinon masquée. */
+  var bioEl=document.getElementById('sellerBio');
+  if(bioEl){
+    if(user&&user.bio&&String(user.bio).trim()){
+      bioEl.style.display='';
+      bioEl.innerHTML='<div class="profile-bio-title">À propos</div><div class="profile-bio-text">'+esc(user.bio)+'</div>';
+    }else{
+      bioEl.style.display='none';
+      bioEl.innerHTML='';
+    }
+  }
 
   /* Statistiques */
   var totalViews=_allListings.reduce(function(s,l){return s+(l.views||0);},0);
