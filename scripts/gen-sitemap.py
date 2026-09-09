@@ -75,8 +75,36 @@ def robots_blocked():
     return set(re.findall(r'Disallow:\s*/([\w./-]+\.html)', txt))
 
 
+def staged_files():
+    """Fichiers indexés (staged) pour le commit en cours. Utilisé par le hook
+    pre-commit : au moment où il tourne, le commit n'existe pas encore, donc
+    `git log` pour ces fichiers renvoie la date du commit PRÉCÉDENT — un
+    sitemap régénéré à ce moment-là est donc structurellement périmé d'un
+    commit dès qu'une page HTML change, ce qui faisait échouer le check CI
+    `gen-sitemap.py --check` à répétition (vu 2026-09-08/09, plusieurs
+    workflows en échec). En dehors d'un pre-commit (rien de staged, ou script
+    lancé manuellement/en CI sur un checkout propre), cet ensemble est vide et
+    le comportement retombe sur git_lastmod normal — aucune régression.
+    """
+    try:
+        out = subprocess.run(
+            ['git', 'diff', '--cached', '--name-only'],
+            cwd=ROOT, capture_output=True, text=True, timeout=10)
+        return set(out.stdout.strip().splitlines())
+    except Exception:
+        return set()
+
+
+_STAGED = staged_files()
+
+
 def git_lastmod(relpath):
-    """Date du dernier commit touchant le fichier, sinon date du jour."""
+    """Date du dernier commit touchant le fichier, sinon date du jour.
+    Si le fichier est actuellement staged (commit en cours), sa date
+    effective une fois committé sera "aujourd'hui" : ne pas interroger un
+    historique qui ne le sait pas encore (voir staged_files())."""
+    if relpath in _STAGED:
+        return date.today().isoformat()
     try:
         out = subprocess.run(
             ['git', 'log', '-1', '--format=%cs', '--', relpath],
