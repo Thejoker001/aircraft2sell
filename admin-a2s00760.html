@@ -1014,14 +1014,58 @@ function esc(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').repla
 
 /* ── SUPABASE ── */
 var _sbToken=null;
+
+/* Jeton expiré ? (marge 60s) */
+function _sbTokenExpire(tk){
+  try{var p=JSON.parse(atob(tk.split('.')[1]));return !p.exp||(p.exp*1000)<(Date.now()+60000);}
+  catch(e){return true;}
+}
+/* Renouvelle le JWT via refresh_token si possible. Retourne le token
+   valide, ou null si la session est vraiment morte. */
+async function _sbRefresh(){
+  var tk=sessionStorage.getItem(SK);
+  if(tk&&!_sbTokenExpire(tk)){_sbToken=tk;return tk;}
+  var rt=null;try{rt=localStorage.getItem('a2s_refresh_token');}catch(e){}
+  if(rt){
+    try{
+      var r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
+        method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({refresh_token:rt})});
+      if(r.ok){
+        var d=await r.json();
+        if(d.access_token){
+          try{
+            sessionStorage.setItem(SK,d.access_token);
+            if(d.refresh_token)localStorage.setItem('a2s_refresh_token',d.refresh_token);
+          }catch(e){}
+          _sbToken=d.access_token;
+          return d.access_token;
+        }
+      }
+    }catch(e){}
+  }
+  return null;
+}
+
 async function sb(method,table,params,body){
   var url=SB_URL+'/rest/v1/'+table;if(params)url+='?'+params;
-  /* Toutes les requêtes utilisent le JWT de l'admin connecté (jamais de clé exposée) */
-  var token=_sbToken||SB_KEY;
-  var key=_sbToken?SB_KEY:SB_KEY;
+  /* Toutes les requêtes utilisent le JWT de l'admin connecté (jamais de clé exposée).
+     Le jeton est renouvelé automatiquement s'il a expiré (sinon 401 -> logout brutal
+     après 1h de session : c'était la cause des « je ne peux plus modifier »). */
+  var token=await _sbRefresh();
+  if(!token&&_sbToken)token=_sbToken;
+  if(!token)token=SB_KEY;
+  var key=SB_KEY;
   var opts={method:method,headers:{'apikey':key,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=representation'}};
   if(body)opts.body=JSON.stringify(body);
   var res=await fetch(url,opts);
+  /* Si 401 malgré un token frais : tenter UN renouvellement puis retry.
+     Ce n'est qu'après le retry échoué qu'on déconnecte. */
+  if(res.status===401&&!opts._retried){
+    opts._retried=true;
+    var tk2=await _sbRefresh();
+    if(tk2){opts.headers['Authorization']='Bearer '+tk2;res=await fetch(url,opts);}
+  }
   if(res.status===401){logout();return[];}
   var text=await res.text();
   if(!res.ok)throw new Error(text);
@@ -1091,6 +1135,9 @@ async function login(){
     
     sessionStorage.setItem(SK, data.access_token);
     sessionStorage.setItem('a2s_admin_email', em);
+    /* Conserver le refresh_token : le JWT expire en 1h, sans lui l'admin
+       est déconnecté brutalement à la première écriture (401 -> logout). */
+    if(data.refresh_token)localStorage.setItem('a2s_refresh_token',data.refresh_token);
     _loginAttempts=0;
     _sbToken=data.access_token;
     
