@@ -61,15 +61,25 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: `Supabase ${rpc.status} : ${(await rpc.text()).slice(0, 200)}` });
     }
     const lignes = await rpc.json();
-    const tuple = lignes && lignes[0] && lignes[0].grant_promo_campaign;
-    // Format PostgreSQL composite : "(rang,deja_accorde,complet)"
-    const m = tuple && tuple.match(/^\((\d+),([tf]),([tf])\)$/);
-    if (!m) {
-      return res.status(502).json({ error: 'Réponse inattendue de la fonction SQL' });
+    /* PostgREST renvoie un objet JSON (pas un tuple composite textuel) :
+       [{"rang":1,"deja_accorde":false,"complet":false}]. Ancien format
+       "(1,f,f)" attendu — bug d'interface constaté en prod (502). */
+    const row = Array.isArray(lignes) ? lignes[0] : lignes;
+    let rang = 0, dejaAccorde = false, complet = false;
+    if (row && typeof row === 'object' && typeof row.rang === 'number') {
+      rang = row.rang;
+      dejaAccorde = !!row.deja_accorde;
+      complet = !!row.complet;
+    } else {
+      const tuple = row && row.grant_promo_campaign;
+      const m = tuple && tuple.match(/^\((\d+),([tf]),([tf])\)$/);
+      if (!m) {
+        return res.status(502).json({ error: 'Réponse inattendue de la fonction SQL' });
+      }
+      rang = parseInt(m[1], 10);
+      dejaAccorde = m[2] === 't';
+      complet = m[3] === 't';
     }
-    const rang = parseInt(m[1], 10);
-    const dejaAccorde = m[2] === 't';
-    const complet = m[3] === 't';
     const remaining = Math.max(0, TOTAL_PLACES - rang);
 
     if (!dejaAccorde && !complet && rang >= 1) {
