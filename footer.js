@@ -6,12 +6,12 @@
    ============================================================ */
 (function(){
 
-  function currentLang(){ var m = location.pathname.match(/^\/(en|de|it|es)\//); return m ? m[1] : 'fr'; }
+  function currentLang(){ var m = location.pathname.match(/^\/(en|et)\//); return m ? m[1] : 'fr'; }
   var TRANSLATED_PAGES = ['index.html','search.html','listing.html','post-listing.html',
     'avions-legers.html','jets-affaires.html','helicopteres.html','turboprops.html','ulm.html','avions-de-ligne.html'];
   function isTranslatedPage(page){ return TRANSLATED_PAGES.indexOf(page.split(/[?#]/)[0]) > -1; }
   function href(page){ var lang = currentLang(); if(lang === 'fr') return '/' + page; return isTranslatedPage(page) ? '/' + lang + '/' + page : '/' + page; }
-  function currentPageBase(){ var m = location.pathname.match(/^\/(?:en|de|it|es)\/(.*)$/); var rel = m ? m[1] : location.pathname.replace(/^\//, ''); return rel || 'index.html'; }
+  function currentPageBase(){ var m = location.pathname.match(/^\/(?:en|et)\/(.*)$/); var rel = m ? m[1] : location.pathname.replace(/^\//, ''); return rel || 'index.html'; }
   function langSwitchHref(targetLang){ var base = currentPageBase().split(/[?#]/)[0] || 'index.html'; var target = isTranslatedPage(base) ? base : 'index.html'; return targetLang === 'fr' ? '/' + target : '/' + targetLang + '/' + target; }
   function ic(name, cls){ return window.A2SIcon ? window.A2SIcon(name, cls) : ''; }
 
@@ -45,7 +45,13 @@
       colBuy:'Comprar', allListings:'Todos los anuncios', catLight:'Aviones ligeros', catJet:'Jets privados', catTurbo:'Turbohélices', catHeli:'Helicópteros', catUlm:'Ultraligeros', comparator:'Comparador',
       colSell:'Vender', postListing:'Publicar un anuncio', proDealers:'Distribuidores & profesionales', pricing:'Precios', estimate:'Valorar mi avión', createAlert:'Crear una alerta', dashboard:'Panel',
       colResources:'Recursos', buyerGuide:'Guía del comprador', blog:'Blog & consejos', faq:'FAQ', inspection:'Inspección previa a la compra', financing:'Financiar tu avión',
-      colCompany:'Empresa', contact:'Contacto', legal:'Aviso legal', privacy:'Privacidad', sitemap:'Mapa del sitio', copy:'Todos los derechos reservados', cgv:'Términos', cookies:'Cookies' }
+      colCompany:'Empresa', contact:'Contacto', legal:'Aviso legal', privacy:'Privacidad', sitemap:'Mapa del sitio', copy:'Todos los derechos reservados', cgv:'Términos', cookies:'Cookies' },
+    et: { desc:'Euroopa lennukiturg. Osta ja müü õhusõidukeid eraomanike ja professionaalide vahel, vahendustasuta.',
+      trust1:'Vahendustasuta müük', trust2:'Käsitsi kontrollitud müüjad', trust3:'30+ Euroopa riiki',
+      colBuy:'Osta', allListings:'Kõik kuulutused', catLight:'Kerglennukid', catJet:'Ärijet\'id', catTurbo:'Turbopropellerid', catHeli:'Helikopterid', catUlm:'Mikrolennukid / ULM', comparator:'Võrdleja',
+      colSell:'Müü', postListing:'Paku oma õhusõiduk', proDealers:'Edasimüüjad ja professionaalid', pricing:'Hinnad', estimate:'Hinda oma õhusõidukit', createAlert:'Loo teavitus', dashboard:'Töölaud',
+      colResources:'Ressursid', buyerGuide:'Ostja juhend', blog:'Blogi ja nõuanded', faq:'KKK', inspection:'Ostueelne ülevaatus', financing:'Rahasta oma lennukit',
+      colCompany:'Ettevõte', contact:'Kontakt', legal:'Õiguslik teave', privacy:'Privaatsus', sitemap:'Saidi kaart', copy:'Kõik õigused kaitstud', cgv:'Tingimused', cookies:'Küpsised' }
   };
   function t(key){ var lang = currentLang(); return (I18N[lang] && I18N[lang][key]) || I18N.fr[key] || key; }
 

@@ -45,8 +45,11 @@ window.A2SFavs = (function(){
   }
 
   /* ── Langue / i18n des liens ─────────────────────────────── */
-  function currentLang(){ var m = location.pathname.match(/^\/(en|de|it|es)\//); return m ? m[1] : 'fr'; }
-  var LANG_NAMES = { fr:'Français', en:'English', de:'Deutsch', it:'Italiano', es:'Español' };
+  function currentLang(){ var m = location.pathname.match(/^\/(en|et)\//); return m ? m[1] : 'fr'; }
+  /* Seules les langues RÉELLEMENT traduites sont proposées (fr/en/et).
+     de/it/es ont été retirés : ils étaient affichés mais leurs pages
+     n'existaient pas (404 dans le sélecteur). */
+  var LANG_NAMES = { fr:'Français', en:'English', et:'Eesti' };
   var TRANSLATED_PAGES = ['index.html','search.html','listing.html','post-listing.html',
     'avions-legers.html','jets-affaires.html','helicopteres.html','turboprops.html',
     'ulm.html','avions-de-ligne.html'];
@@ -59,7 +62,7 @@ window.A2SFavs = (function(){
     return isTranslatedPage(page) ? '/' + lang + '/' + page : '/' + page;
   }
   function currentPageBase(){
-    var m = location.pathname.match(/^\/(?:en|de|it|es)\/(.*)$/);
+    var m = location.pathname.match(/^\/(?:en|et)\/(.*)$/);
     var rel = m ? m[1] : location.pathname.replace(/^\//, '');
     return rel || 'index.html';
   }
@@ -104,7 +107,14 @@ window.A2SFavs = (function(){
       dLight:'Mono y bimotores', dJet:'Jets privados y de negocios', dTurbo:'Hélices con turbina', dHeli:'Ocio, trabajo aéreo', dUlm:'Tres ejes, pendulares', dAirliner:'Transporte comercial',
       login:'Acceder', myFavs:'Favoritos', myAccount:'Mi cuenta', myDashboard:'Mi panel', myListings:'Mis anuncios', myMessages:'Mensajes', logout:'Cerrar sesión',
       postFull:'Publicar un anuncio', postShort:'Vender', chooseLang:'Elegir idioma', menu:'Menú',
-      mmBuy:'Comprar', mmSellPro:'Vender', mmSellMy:'Vender mi avión', mmResources:'Ayuda y recursos', mmGuide:'Guía del comprador', mmLogin:'Acceder', mmSignup:'Crear una cuenta', mmEstimate:'Valorar mi avión', mmAlerts:'Alertas por email' }
+      mmBuy:'Comprar', mmSellPro:'Vender', mmSellMy:'Vender mi avión', mmResources:'Ayuda y recursos', mmGuide:'Guía del comprador', mmLogin:'Acceder', mmSignup:'Crear una cuenta', mmEstimate:'Valorar mi avión', mmAlerts:'Alertas por email' },
+    et: { buy:'Osta', sell:'Müü', pro:'Edasimüüjad', guide:'Juhend', blog:'Blogi', faq:'KKK', contact:'Kontakt',
+      currencies:'Valuutad', converter:'Valuutakalkulaator', live:'Elus kursid', loading:'Laadimine…', invert:'Vaheta', ecbRate:'EKP indikatiivne kurss',
+      allListings:'Vaata kõiki kuulutusi', catLight:'Kerglennukid', catJet:'Ärijet\'id', catTurbo:'Turbopropellerid', catHeli:'Helikopterid', catUlm:'Mikrolennukid / ULM', catAirliner:'Reisilennukid',
+      dLight:'Ühe- ja kahemootorilised, reisimine', dJet:'Privaat- ja ärijet\'id', dTurbo:'Turbiin-propellermootorid', dHeli:'Harrastus, õhutöö', dUlm:'Mikrolennukid, autogüürid', dAirliner:'Kaubanduslik transport',
+      login:'Logi sisse', myFavs:'Lemmikud', myAccount:'Minu konto', myDashboard:'Minu töölaud', myListings:'Minu kuulutused', myMessages:'Sõnumid', logout:'Logi välja',
+      postFull:'Paku õhusõiduk', postShort:'Müü', chooseLang:'Vali keel', menu:'Menüü',
+      mmBuy:'Osta', mmSellPro:'Müü', mmSellMy:'Müü oma õhusõiduk', mmResources:'Abi ja ressursid', mmGuide:'Ostja juhend', mmLogin:'Logi sisse', mmSignup:'Loo konto', mmEstimate:'Hinda oma õhusõidukit', mmAlerts:'E-posti teavitused' }
   };
   function t(key){ var lang = currentLang(); return (I18N[lang] && I18N[lang][key]) || I18N.fr[key] || key; }
 

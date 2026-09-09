@@ -23,7 +23,10 @@
   window.__a2sAssistant = true;
 
   var lang = (document.documentElement.lang || 'fr').slice(0, 2).toLowerCase();
-  if (lang !== 'en') lang = 'fr';
+  /* Seules les FAQ FR/EN existent : sur /et/ (estonien), retomber sur
+     l'anglais plutôt que le français — plus pertinent pour un Estonien. */
+  if (lang === 'et') lang = 'en';
+  else if (lang !== 'en') lang = 'fr';
 
   var T = {
     fr: {
