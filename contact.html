@@ -265,30 +265,12 @@ async function submitForm(){
   var subjectLabel=subjectLabels[subject]||subject||'Contact';
 
   try{
-    var BKEY='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';
-    var res=await fetch('https://api.brevo.com/v3/smtp/email',{
+    var res=await fetch('/api/contact-form',{
       method:'POST',
-      headers:{'api-key':BKEY,'Content-Type':'application/json'},
-      body:JSON.stringify({
-        sender:{name:'Aircraft2Sell Contact',email:'contact@aircraft2sell.eu'},
-        to:[{email:'contact@aircraft2sell.eu'}],
-        replyTo:{email:email,name:first+' '+(last||'')},
-        subject:'[Contact A2S] '+subjectLabel+' — '+first+' '+(last||''),
-        htmlContent:'<div style="font-family:sans-serif;max-width:600px"><h2 style="color:#0B2545">Nouveau message</h2><p><b>De:</b> '+first+' '+(last||'')+' (<a href="mailto:'+email+'">'+email+'</a>)</p><p><b>Objet:</b> '+subjectLabel+'</p><p><b>Message:</b></p><p style="white-space:pre-wrap">'+msg+'</p></div>'
-      })
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({first:first,last:last,email:email,subject:subject,message:msg})
     });
-    if(!res.ok){var e=await res.json();throw new Error(e.message||'Erreur '+res.status);}
-    /* Confirmation visiteur */
-    fetch('https://api.brevo.com/v3/smtp/email',{
-      method:'POST',
-      headers:{'api-key':BKEY,'Content-Type':'application/json'},
-      body:JSON.stringify({
-        sender:{name:'Aircraft2Sell',email:'contact@aircraft2sell.eu'},
-        to:[{email:email,name:first}],
-        subject:'Nous avons bien reçu votre message — Aircraft2Sell',
-        htmlContent:'<p>Bonjour '+first+',</p><p>Nous avons bien reçu votre message. Notre équipe vous répondra sous 24 h, 7 jours sur 7.</p><p>— Aircraft2Sell</p>'
-      })
-    }).catch(function(){});
+    if(!res.ok){var e=await res.json();throw new Error(e.error||'Erreur '+res.status);}
     btn.classList.remove('is-loading');
     document.getElementById('formContent').style.display='none';
     document.getElementById('formSuccess').style.display='block';

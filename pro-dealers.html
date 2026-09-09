@@ -304,18 +304,12 @@ async function submitPro(e){
   var btn=document.getElementById('proBtn');btn.disabled=true;btn.classList.add('is-loading');
   var typeLabel=type.options[type.selectedIndex].text,volLabel=vol.options[vol.selectedIndex].text;
   try{
-    var res=await fetch('https://api.brevo.com/v3/smtp/email',{
+    var res=await fetch('/api/pro-request',{
       method:'POST',
-      headers:{'api-key':'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','Content-Type':'application/json'},
-      body:JSON.stringify({
-        sender:{name:'Aircraft2Sell Pro',email:'contact@aircraft2sell.eu'},
-        to:[{email:'contact@aircraft2sell.eu'}],
-        replyTo:{email:email,name:name},
-        subject:'[Pro A2S] '+company+' — '+volLabel+' aéronefs',
-        htmlContent:'<div style="font-family:sans-serif;max-width:600px"><h2 style="color:#0B2545">Demande professionnelle</h2><p><b>Société :</b> '+esc(company)+'</p><p><b>Contact :</b> '+esc(name)+' (<a href="mailto:'+esc(email)+'">'+esc(email)+'</a>'+(phone?', '+esc(phone):'')+')</p><p><b>Activité :</b> '+esc(typeLabel)+'</p><p><b>Volume :</b> '+esc(volLabel)+'</p><p><b>Message :</b></p><p style="white-space:pre-wrap">'+esc(msg)+'</p></div>'
-      })
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({company:company,name:name,email:email,phone:phone,type:type.value,volume:vol.value,message:msg})
     });
-    if(!res.ok){var d=await res.json();throw new Error(d.message||'Erreur '+res.status);}
+    if(!res.ok){var d=await res.json();throw new Error(d.error||'Erreur '+res.status);}
     document.getElementById('proForm').reset();
     proAlert('Merci. Votre demande a bien été envoyée, nous vous recontactons sous 24 h ouvrées.','ok');
   }catch(err){proAlert('Envoi impossible : '+err.message+'. Écrivez-nous à contact@aircraft2sell.eu.','err');}
