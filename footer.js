@@ -124,7 +124,7 @@
     injectCSS();
     loadChat();
     if(window.A2SIcon){ injectFooter(); return; }
-    var s = document.createElement('script'); s.src = '/icons.js?v=20260906c';
+    var s = document.createElement('script'); s.src = '/icons.js?v=20260909a';
     s.onload = injectFooter; s.onerror = injectFooter;
     document.head.appendChild(s);
   }

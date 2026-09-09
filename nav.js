@@ -126,7 +126,7 @@ window.A2SFavs = (function(){
   function ensureIcons(cb){
     if(window.A2SIcon){ cb(); return; }
     var s = document.createElement('script');
-    s.src = '/icons.js?v=20260906c';
+    s.src = '/icons.js?v=20260909a';
     s.onload = cb; s.onerror = cb;
     document.head.appendChild(s);
   }
