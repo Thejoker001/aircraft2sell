@@ -1119,18 +1119,20 @@ async function login(){
       throw new Error(msg);
     }
     
-    /* Vérifier que c'est bien le compte admin */
+    /* Vérifier que c'est bien le compte admin — CONNEXION STRICTE.
+       Les politiques RLS (users_admin_all, listings_admin_all…) ne
+       reconnaissent QUE ces emails : accepter un autre compte donnerait
+       un panneau admin qui semble fonctionner mais modifie 0 ligne en
+       silence (le toast disait « Membre mis à jour » sans rien changer). */
     var ADMIN_EMAILS=['contact@aircraft2sell.eu'];
-    if(ADMIN_EMAILS.indexOf(em)===-1){
-      /* Accepter quand même si le JWT contient le bon email — 
-         permet d'utiliser n'importe quel email configuré */
-      try{
-        var payload=JSON.parse(atob(data.access_token.split('.')[1]));
-        if(ADMIN_EMAILS.indexOf((payload.email||'').toLowerCase())===-1){
-          /* Log mais ne bloque pas — l'admin peut utiliser son vrai email */
-          console.warn('Login non-admin accepté:', em);
-        }
-      }catch(e2){}
+    var emLower=(em||'').toLowerCase();
+    var jwtEmail='';
+    try{jwtEmail=((JSON.parse(atob(data.access_token.split('.')[1])).email)||'').toLowerCase();}catch(e){}
+    if(ADMIN_EMAILS.indexOf(emLower)===-1 && ADMIN_EMAILS.indexOf(jwtEmail)===-1){
+      throw new Error('Ce compte ('+em+') n\'est pas autorisé sur le panneau admin. Connectez-vous avec contact@aircraft2sell.eu.');
+    }
+    if(ADMIN_EMAILS.indexOf(jwtEmail)===-1){
+      console.warn('Login admin avec email secondaire accepté:', em);
     }
     
     sessionStorage.setItem(SK, data.access_token);
@@ -1588,7 +1590,19 @@ function clearSellerFilter(){
 function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;sel('mu-free').checked=u.is_free||false;
   var mst=sel('mu-seller-type');if(mst)mst.value=u.seller_type||'';
   var mip=sel('mu-is-pro');if(mip)mip.checked=u.is_pro||false;var r=parseInt(u.rating)||0;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=r?'#f5c518':'rgba(200,220,240,.2)';});openM('mUser');}
-async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var isPro=sel('mu-is-pro')?sel('mu-is-pro').checked:false;var sellerType=sel('mu-seller-type')?sel('mu-seller-type').value:'';var body={name:sel('mu-name').value,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree,is_pro:isPro,seller_type:sellerType};try{await sb('PATCH','users','id=eq.'+id,body);var uEmail=sel('mu-email').value;if(uEmail)await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked});closeM('mUser');await refreshAll();showToast(isFree?'Abonnement offert, exclu du MRR':'Membre mis à jour');}catch(e){showToast('Erreur : '+e.message);}}
+async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var isPro=sel('mu-is-pro')?sel('mu-is-pro').checked:false;var sellerType=sel('mu-seller-type')?sel('mu-seller-type').value:'';var body={name:sel('mu-name').value,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree,is_pro:isPro,seller_type:sellerType};try{
+  /* Le PATCH users doit TOUCHER la ligne : avec Prefer=return=representation,
+     un tableau vide signifie 0 ligne affectée (droits RLS insuffisants ou
+     mauvais compte connecté) — on le détecte au lieu d'afficher un faux succès. */
+  var rUsers=await sb('PATCH','users','id=eq.'+id,body);
+  if(!Array.isArray(rUsers)||!rUsers.length){showToast('Aucune ligne modifiée — connectez-vous avec contact@aircraft2sell.eu.');return;}
+  var uEmail=sel('mu-email').value;
+  if(uEmail){
+    /* Certification/note propagées aux annonces : séparé du try principal,
+       un échec ici ne doit pas masquer le succès de la mise à jour membre. */
+    try{await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked});}catch(e2){console.warn('Propagation annonces:',e2.message);}
+  }
+  closeM('mUser');await refreshAll();showToast(isFree?'Abonnement offert, exclu du MRR':'Membre mis à jour');}catch(e){showToast('Erreur : '+e.message);}}
 async function delUser(id){if(!confirm('Supprimer ce membre ?'))return;try{await sb('DELETE','users','id=eq.'+id);await refreshAll();showToast('Membre supprimé');}catch(e){showToast('Erreur : '+e.message);}}
 async function delUserM(){var id=sel('mu-id').value;if(!confirm('Supprimer ?'))return;try{await sb('DELETE','users','id=eq.'+id);closeM('mUser');await refreshAll();showToast('Membre supprimé');}catch(e){showToast('Erreur : '+e.message);}}
 
