@@ -1455,7 +1455,7 @@ async function approve(id){
   try{
     await sb('PATCH','listings','id=eq.'+id,{status:'live'});
     /* Notifier le vendeur par email */
-    fetch('/api/notify-listing-moderated',{
+    fetch('/api/notify?type=moderated',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({listing_id:String(id),decision:'approved'})
@@ -1506,7 +1506,7 @@ async function doReject(id,reason){
     await sb('PATCH','listings','id=eq.'+id,{status:'rejected',rejection_reason:reason});
     /* Prévenir le vendeur : sans cet appel, l'annonce était rejetée en
        silence et le vendeur ne savait pas pourquoi elle n'apparaissait pas. */
-    fetch('/api/notify-listing-moderated',{
+    fetch('/api/notify?type=moderated',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({listing_id:String(id),decision:'rejected',reason:reason})

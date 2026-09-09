@@ -75,14 +75,21 @@ export default async function handler(req, res) {
       const addon = (session.metadata && session.metadata.addon) === '1';
       const featureId = (session.metadata && session.metadata.feature) || '';
 
-      /* Mise en avant d'annonce (B4) : paiement unique, pas d'abonnement. */
+      /* Mise en avant d'annonce (B4) : paiement unique, pas d'abonnement.
+         Action directe (PATCH listings featured) — plus de fonction
+         feature-listing.js (limite Hobby de 12 fonctions serverless). */
       if (featureId) {
-        const featRes = await fetch(`${SITE}/api/feature-listing`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-feature-secret': process.env.FEATURE_SECRET || '' },
-          body: JSON.stringify({ listing_id: String(featureId) }),
-        });
-        if (featRes.ok) {
+        try {
+          await fetch(`${process.env.SUPABASE_URL}/rest/v1/listings?id=eq.${encodeURIComponent(featureId)}`, {
+            method: 'PATCH',
+            headers: {
+              apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json',
+              Prefer: 'return=minimal',
+            },
+            body: JSON.stringify({ featured: true, featured_until: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString() }),
+          });
           if (email) {
             await envoyer({
               to: email,
@@ -96,6 +103,8 @@ export default async function handler(req, res) {
               }),
             }).catch(() => {});
           }
+        } catch (featErr) {
+          console.error('feature activation error:', featErr.message);
         }
         return res.status(200).json({ received: true, feature: featureId });
       }
