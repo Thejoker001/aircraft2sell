@@ -1591,6 +1591,19 @@ function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===Str
   var mst=sel('mu-seller-type');if(mst)mst.value=u.seller_type||'';
   var mip=sel('mu-is-pro');if(mip)mip.checked=u.is_pro||false;var r=parseInt(u.rating)||0;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=r?'#f5c518':'rgba(200,220,240,.2)';});openM('mUser');}
 async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var isPro=sel('mu-is-pro')?sel('mu-is-pro').checked:false;var sellerType=sel('mu-seller-type')?sel('mu-seller-type').value:'';var body={name:sel('mu-name').value,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree,is_pro:isPro,seller_type:sellerType};try{
+  var uEmail=sel('mu-email').value;
+  /* Diagnostic : vérifier que la RLS reconnaît bien ce compte avant le PATCH.
+     Un SELECT sur la ligne cible avec le jeton admin : s'il revient vide,
+     c'est que la RLS ne donne pas accès (le compte connecté n'est pas admin
+     ou le jeton est expiré/invalide). */
+  try{
+    var chk=await sb('GET','users','id=eq.'+id+'&select=id,email');
+    if(!Array.isArray(chk)||!chk.length){
+      var em=sessionStorage.getItem('a2s_admin_email')||'inconnu';
+      showToast('Compte '+em+' sans accès RLS à ce membre — reconnectez-vous avec contact@aircraft2sell.eu.');
+      return;
+    }
+  }catch(eChk){console.warn('Check RLS:',eChk.message);}
   /* Le PATCH users doit TOUCHER la ligne : avec Prefer=return=representation,
      un tableau vide signifie 0 ligne affectée (droits RLS insuffisants ou
      mauvais compte connecté) — on le détecte au lieu d'afficher un faux succès. */

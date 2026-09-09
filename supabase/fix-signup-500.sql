@@ -16,10 +16,16 @@
 --   Le trigger était pourtant déjà SECURITY DEFINER : le problème n'était
 --   pas la RLS, c'était le cast impossible.
 --
--- CORRECTIF : conversion UUID -> bigint déterministe et robuste, en
---   prenant les 8 premiers octets de l'UUID (jamais de cast texte).
---   La même valeur est reproductible pour un même compte, et reste un
---   bigint positif stable pour la table users.
+-- CORRECTIF (v1, 09/09) : conversion UUID -> bigint déterministe et robuste,
+--   en prenant les 8 premiers octets de l'UUID (jamais de cast texte).
+--
+-- CORRECTIF (v2, 09/09 — RÉGRESSION trouvée le même jour) : les 8 premiers
+--   octets (64 bits) dépassent 2^53-1 = 9007199254740991 (MAX_SAFE_INTEGER
+--   de JavaScript). Exemple réel : id 7667274840646729527 -> arrondi en JS
+--   à 7667274840646730000 -> PATCH id=eq.<arrondi> = 0 ligne -> l'admin
+--   affichait « aucune ligne modifiée » sur les profils des NOUVEAUX
+--   inscrits. On passe à 6 octets (48 bits, max 2^48-1) : unique, stable,
+--   et toujours sous la limite JS.
 --
 -- APPLICATION : Supabase → SQL Editor → coller → Run.
 -- ═══════════════════════════════════════════════════════════════
@@ -33,8 +39,10 @@ as $function$
 declare
   v_id bigint;
 begin
-  -- UUID -> bigint déterministe : 8 premiers octets, valeur positive.
-  v_id := ('x' || substr(replace(NEW.id::text, '-', ''), 1, 16))::bit(64)::bigint;
+  -- UUID -> bigint déterministe SOUS 2^53-1 : 6 premiers octets (48 bits).
+  -- 8 octets dépassaient MAX_SAFE_INTEGER et cassaient la précision
+  -- JavaScript côté admin (PATCH id=eq.<arrondi> -> 0 ligne).
+  v_id := ('x' || substr(replace(NEW.id::text, '-', ''), 1, 12))::bit(48)::bigint;
   if v_id < 0 then
     v_id := v_id * -1;
   end if;
