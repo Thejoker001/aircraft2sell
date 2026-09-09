@@ -199,6 +199,7 @@
             <button type="button" class="btn-ghost btn-sm" onclick="shareListing()" aria-expanded="false" id="shareBtn"><i data-icon="share"></i><span>Partager</span></button>
             <button type="button" class="btn-ghost btn-sm" onclick="printListing()"><i data-icon="printer"></i><span>Imprimer</span></button>
             <button type="button" class="btn-ghost btn-sm" onclick="copyLink()" id="copyBtn"><i data-icon="link"></i><span>Copier</span></button>
+            <button type="button" class="btn-ghost btn-sm" onclick="openReportForm()" id="reportBtn"><i data-icon="shield"></i><span>Signaler</span></button>
           </div>
           <div class="share-menu" id="shareMenu">
             <button type="button" class="btn-secondary btn-sm" onclick="shareWhatsApp()"><i data-icon="whatsapp"></i>WhatsApp</button>
@@ -347,6 +348,37 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- MODALE SIGNALEMENT -->
+<div class="modal-overlay" id="repOverlay" onclick="if(event.target===this)closeReportForm()">
+  <div class="modal">
+    <div class="modal-title">Signaler cette annonce</div>
+    <div id="repAlert" class="alert" style="display:none;margin-bottom:1rem"></div>
+    <p class="field-hint" style="margin-bottom:1rem">Aidez-nous à garder la marketplace fiable. Votre signalement est transmis à la modération.</p>
+    <div class="field">
+      <label>Motif <span class="req">*</span></label>
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.3rem">
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.85rem"><input type="radio" name="repReason" value="Annonce frauduleuse" checked style="accent-color:var(--a2s-accent,#EA6A16)"> Annonce frauduleuse / arnaque suspecte</label>
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.85rem"><input type="radio" name="repReason" value="Informations erronées" style="accent-color:var(--a2s-accent,#EA6A16)"> Informations erronées ou trompeuses</label>
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.85rem"><input type="radio" name="repReason" value="Doublon" style="accent-color:var(--a2s-accent,#EA6A16)"> Annonce en doublon</label>
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.85rem"><input type="radio" name="repReason" value="Contenu inapproprié" style="accent-color:var(--a2s-accent,#EA6A16)"> Contenu inapproprié</label>
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.85rem"><input type="radio" name="repReason" value="Autre" style="accent-color:var(--a2s-accent,#EA6A16)"> Autre</label>
+      </div>
+    </div>
+    <div class="field" style="margin-top:1rem">
+      <label for="repEmail">Votre email</label>
+      <input type="email" class="inp" id="repEmail" placeholder="vous@exemple.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label for="repDetails">Précisions (optionnel)</label>
+      <textarea class="txta" id="repDetails" maxlength="500" placeholder="Décrivez le problème…"></textarea>
+    </div>
+    <div style="display:flex;gap:.6rem;margin-top:1rem">
+      <button type="button" class="btn-secondary" style="flex:1" onclick="closeReportForm()">Annuler</button>
+      <button type="button" class="btn-primary" id="repSendBtn" style="flex:1" onclick="submitReport()"><i data-icon="shield"></i>Envoyer le signalement</button>
+    </div>
+  </div>
+</div>
 <div id="a2sFooter"></div>
 
 <script src="icons.js?v=20260909a"></script>
@@ -753,6 +785,44 @@ async function toggleFav(){
   }
 }
 
+/* ── SIGNALEMENT ── */
+function openReportForm(){
+  hideAlert(document.getElementById('repAlert'));
+  var em=document.getElementById('repEmail');
+  if(em){var known=localStorage.getItem('a2s_user_email')||'';if(known)em.value=known;}
+  document.getElementById('repOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeReportForm(){document.getElementById('repOverlay').classList.remove('open');document.body.style.overflow='';}
+async function submitReport(){
+  var id=LISTING?String(LISTING.id):'';
+  if(!id){showToast('Annonce introuvable');return;}
+  var reason='';
+  var radios=document.querySelectorAll('#repOverlay input[name="repReason"]');
+  for(var i=0;i<radios.length;i++){if(radios[i].checked){reason=radios[i].value;break;}}
+  var email=(document.getElementById('repEmail').value||'').trim().toLowerCase();
+  var details=(document.getElementById('repDetails').value||'').trim();
+  if(!reason){setAlert(document.getElementById('repAlert'),'error','Choisissez un motif.');return;}
+  if(!email||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){setAlert(document.getElementById('repAlert'),'error','Indiquez un email valide pour le suivi.');return;}
+  var btn=document.getElementById('repSendBtn');
+  btn.disabled=true;btn.classList.add('is-loading');
+  try{
+    var r=await fetch('/api/report-listing',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({listing_id:parseInt(id),reporter_email:email,reason:reason,details:details})
+    });
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok||!d.ok){throw new Error(d.error||'Erreur lors de l\'envoi (HTTP '+r.status+').');}
+    closeReportForm();
+    showToast('Signalement envoyé. Merci !');
+  }catch(e){
+    setAlert(document.getElementById('repAlert'),'error',e.message);
+  }finally{
+    btn.disabled=false;btn.classList.remove('is-loading');
+  }
+}
+
 /* ── CONTACT ── */
 function openMsgForm(){
   var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
@@ -764,7 +834,7 @@ function openMsgForm(){
   var f=document.getElementById('msgText');if(f)setTimeout(function(){f.focus();},50);
 }
 function closeMsgForm(){document.getElementById('msgOverlay').classList.remove('open');document.body.style.overflow='';}
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMsgForm();closeOfferForm();closeQuickReg();}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMsgForm();closeOfferForm();closeQuickReg();closeReportForm();}});
 
 async function sendMsg(){
   var name=document.getElementById('msgName').value.trim();

@@ -94,6 +94,20 @@
 .li-price{font-weight:800;color:var(--a2s-navy);font-size:1.05rem;white-space:nowrap}
 .li-acts{display:flex;gap:.4rem;flex-wrap:wrap;justify-content:flex-end}
 .li-note{font-size:.78rem;color:var(--a2s-text-muted);margin-top:.3rem}
+.li-stats{display:flex;align-items:center;gap:.45rem;font-size:.78rem;color:var(--a2s-text-muted);margin-top:.15rem}
+.li-stats .ic{width:13px;height:13px;color:var(--a2s-text-faint)}
+.li-stats-sep{color:var(--a2s-text-faint)}
+.li-summary{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.7rem 1.25rem;background:var(--a2s-bg);border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-btn);margin-bottom:.75rem;font-size:.85rem;font-weight:600;color:var(--a2s-navy)}
+.li-summary .ic{width:15px;height:15px;color:var(--a2s-accent)}
+.feat-badge{background:var(--a2s-accent-soft);color:var(--a2s-accent-hover);border:1px solid rgba(234,106,22,.35)}
+.feat-badge .ic{color:var(--a2s-accent)}
+.csv-tpl{background:var(--a2s-bg);border:1px dashed var(--a2s-border-2);border-radius:var(--a2s-radius-btn);padding:.7rem .9rem;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.74rem;color:var(--a2s-text-muted);line-height:1.6;margin-bottom:.75rem;overflow-x:auto;white-space:pre}
+.csv-tpl b{color:var(--a2s-navy)}
+.csv-actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.75rem}
+.csv-file-btn{cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;margin:0}
+.csv-errs{margin-top:.75rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-btn);overflow:hidden}
+.csv-err{padding:.45rem .8rem;font-size:.8rem;color:var(--a2s-danger)}
+.csv-err + .csv-err{border-top:1px solid var(--a2s-border)}
 .sc-periods{display:flex;gap:.4rem}
 .sc-period.on{background:var(--a2s-navy);border-color:var(--a2s-navy);color:#fff}
 .chart-bars{display:flex;gap:4px;align-items:flex-end;height:120px;padding-top:.5rem}
@@ -283,6 +297,21 @@
       </div>
       <div id="listingsList">
         <div class="card"><div class="empty-state"><span class="icon-box"><i data-icon="plane"></i></span><div class="empty-title">Aucune annonce</div><p class="empty-sub">Publiez votre premier aéronef. Zéro commission sur la vente.</p><a href="post-listing.html" class="btn-secondary"><i data-icon="plus"></i>Déposer une annonce</a></div></div>
+      </div>
+      <div class="card" id="csvImportCard">
+        <div class="dc-head"><h3>Import d'annonces (CSV)</h3></div>
+        <div class="dc-body">
+          <p class="muted" style="font-size:.85rem;margin-bottom:.75rem;line-height:1.6">Collez votre fichier CSV ci-dessous ou chargez-le depuis votre ordinateur. Séparateur : <strong>point-virgule</strong>, une annonce par ligne. La première ligne (en-tête) est ignorée. Les annonces importées passent en <strong>attente de validation</strong>.</p>
+          <div class="csv-tpl"><b>make;model;year;price;currency;category;airport;country;description</b>
+Cessna;172;1980;45000;EUR;light;LFPG;France;Très bon état, heures de vol faibles</div>
+          <label class="sr-only" for="csvInput">Contenu CSV</label>
+          <textarea class="txta" id="csvInput" rows="6" placeholder="make;model;year;price;currency;category;airport;country;description&#10;Cessna;172;1980;45000;EUR;light;LFPG;France;Très bon état&#10;Robin;DR400;1975;32000;EUR;light;LFQQ;France;Entretien suivi"></textarea>
+          <div class="csv-actions">
+            <label class="btn-secondary btn-sm csv-file-btn"><i data-icon="upload"></i>Charger un fichier<input type="file" id="csvFile" accept=".csv,.txt,text/csv" style="display:none" onchange="readCsvFile(this)"></label>
+            <button type="button" class="btn-primary btn-sm" id="btnCsvImport" onclick="importCsv()"><i data-icon="upload"></i>Importer</button>
+          </div>
+          <div id="csvResult"></div>
+        </div>
       </div>
       <div class="card">
         <div class="dc-head">
@@ -786,6 +815,8 @@ async function loadListingsFromSupabase(email){
         sellerEmail:r.seller_email||'',
         views:r.views||0,
         enquiries:r.enquiries||0,
+        featured:!!r.featured,
+        featuredUntil:r.featured_until||'',
         _supabase:true
       };
     });
@@ -849,22 +880,27 @@ async function renderListings(){
       +'<span style="flex:1">Limite d\'annonces atteinte pour la formule <strong>'+esc(_userPlan)+'</strong>. <a href="checkout.html?plan=aviateur" style="font-weight:700;text-decoration:underline">Passer à Aviateur</a> pour publier davantage.</span></div>';
   }
 
-  el.innerHTML=limitBanner+listings.map(function(l){
+  var totalViews=listings.reduce(function(s,l){return s+(l.views||0);},0);
+  var totalEnq=listings.reduce(function(s,l){return s+(l.enquiries||0);},0);
+  var summary='<div class="li-summary"><span>'+A2SIcon('eye')+'Vues : '+totalViews.toLocaleString('fr-FR')+'</span><span class="li-stats-sep">·</span><span>'+A2SIcon('message')+'Contacts : '+totalEnq.toLocaleString('fr-FR')+'</span></div>';
+
+  el.innerHTML=limitBanner+summary+listings.map(function(l){
     var st=l.status||'pending';
     var note='';
     if(st==='pending')note='<div class="li-note">En attente de validation par notre équipe.</div>';
     if(st==='rejected')note='<div class="li-note" style="color:var(--a2s-danger)">Annonce refusée. Modifiez-la puis soumettez-la à nouveau.</div>';
-    var meta='<span>'+A2SIcon('eye')+(l.views||0)+' vue'+((l.views||0)>1?'s':'')+'</span>'
-      +'<span>'+A2SIcon('message')+(l.enquiries||0)+' contact'+((l.enquiries||0)>1?'s':'')+'</span>'
-      +(l.year?'<span>'+A2SIcon('calendar')+esc(l.year)+'</span>':'')
+    var stats='<div class="li-stats"><span>'+A2SIcon('eye')+'Vues : '+(l.views||0)+'</span><span class="li-stats-sep">·</span><span>'+A2SIcon('message')+'Contacts : '+(l.enquiries||0)+'</span></div>';
+    var meta=(l.year?'<span>'+A2SIcon('calendar')+esc(l.year)+'</span>':'')
       +(l.airport?'<span>'+A2SIcon('map-pin')+esc(l.airport)+'</span>':'');
+    var feat=l.featured?'<span class="badge feat-badge">'+A2SIcon('star')+'En vedette</span>':'';
     return'<div class="card listing-item">'+thumbHtml(l)
-      +'<div class="li-body"><div class="li-title">'+esc(listingTitle(l))+'</div><div class="li-meta">'+meta+'</div>'+note+'</div>'
+      +'<div class="li-body"><div class="li-title">'+esc(listingTitle(l))+'</div>'+stats+(meta?'<div class="li-meta">'+meta+'</div>':'')+note+'</div>'
       +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:.45rem">'
-      +'<div class="li-price">'+esc(fmtPrice(l))+'</div>'+statusPillDash(st)
+      +'<div class="li-price">'+esc(fmtPrice(l))+'</div>'+statusPillDash(st)+feat
       +'</div>'
       +'<div class="li-acts">'
       +(st==='live'?'<a href="listing.html?id='+encodeURIComponent(l.id)+'" class="btn-secondary btn-sm" target="_blank" rel="noopener">'+A2SIcon('eye')+'Voir</a>':'')
+      +(st==='live'?'<a href="checkout.html?feature='+encodeURIComponent(l.id)+'" class="btn-ghost btn-sm">'+A2SIcon('star')+'Mettre en avant</a>':'')
       +'<button type="button" class="btn-secondary btn-sm" onclick="openEditListing(\''+esc(String(l.id))+'\')">'+A2SIcon('edit')+'Modifier</button>'
       +(st!=='sold'?'<button type="button" class="btn-secondary btn-sm" onclick="markSold(\''+esc(String(l.id))+'\')">'+A2SIcon('check')+'Marquer vendu</button>':'')
       +'<button type="button" class="btn-danger btn-sm" onclick="delListing(\''+esc(String(l.id))+'\')">'+A2SIcon('trash')+'Supprimer</button>'
@@ -947,6 +983,101 @@ async function delListing(listingId){
   await renderListings();
   renderChart(currentPeriod);
   showToast('Annonce supprimée.');
+}
+
+/* ── IMPORT CSV ── */
+function readCsvFile(input){
+  var f=input&&input.files&&input.files[0];
+  if(!f)return;
+  var reader=new FileReader();
+  reader.onload=function(){
+    var ta=document.getElementById('csvInput');
+    if(ta)ta.value=String(reader.result||'');
+    showToast('Fichier chargé : '+f.name);
+  };
+  reader.readAsText(f,'UTF-8');
+  input.value='';
+}
+function parseCsvData(text){
+  var lines=String(text||'').split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
+  if(!lines.length)return{listings:[],errors:[]};
+  lines.shift(); /* ignore l'en-tête */
+  var listings=[],errors=[];
+  lines.forEach(function(line,i){
+    var c=line.split(';').map(function(x){return x.trim();});
+    var row={
+      make:c[0]||'',
+      model:c[1]||'',
+      year:c[2]||'',
+      price:c[3]||'',
+      currency:c[4]||'EUR',
+      category:c[5]||'',
+      airport:c[6]||'',
+      country:c[7]||'',
+      description:c.slice(8).join(';') /* la description peut contenir des ; */
+    };
+    var missing=[];
+    if(!row.make)missing.push('make');
+    if(!row.model)missing.push('model');
+    if(!row.price)missing.push('price');
+    if(!row.category)missing.push('category');
+    if(missing.length){errors.push({line:i+2,error:'Champs requis manquants : '+missing.join(', ')});return;}
+    if(isNaN(Number(row.price))||Number(row.price)<0){errors.push({line:i+2,error:'Prix invalide'});return;}
+    listings.push(row);
+  });
+  return{listings:listings,errors:errors};
+}
+async function importCsv(){
+  var ta=document.getElementById('csvInput');
+  var resEl=document.getElementById('csvResult');
+  var btn=document.getElementById('btnCsvImport');
+  if(!ta||!resEl)return;
+  var txt=ta.value;
+  if(!txt.trim()){showToast('Collez ou chargez d\'abord un CSV.');return;}
+  var parsed=parseCsvData(txt);
+  if(!parsed.listings.length&&!parsed.errors.length){showToast('CSV vide.');return;}
+  if(!parsed.listings.length){
+    resEl.innerHTML='<div class="alert alert-error" style="margin-top:.75rem">'+A2SIcon('alert-triangle')
+      +'<span>Aucune ligne valide : vérifiez le format (make;model;year;price;currency;category;airport;country;description).</span></div>';
+    return;
+  }
+  var email=localStorage.getItem('a2s_user_email')||'';
+  if(!email){showToast('Reconnectez-vous pour importer des annonces.');return;}
+  if(btn)btn.disabled=true;
+  try{
+    var r=await fetch('/api/import-csv.js',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        email:email,
+        seller_name:localStorage.getItem('a2s_user_name')||'',
+        listings:parsed.listings
+      })
+    });
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok){
+      resEl.innerHTML='<div class="alert alert-error" style="margin-top:.75rem">'+A2SIcon('alert-triangle')
+        +'<span>'+(d.error||'Import impossible (HTTP '+r.status+').')+'</span></div>';
+      return;
+    }
+    var nb=d.imported||0;
+    var errs=d.errors||[];
+    var msg=nb+' annonce'+(nb>1?'s':'')+' importée'+(nb>1?'s':'')+(errs.length?' en attente de validation.':' et en attente de validation.');
+    resEl.innerHTML='<div class="alert alert-'+(errs.length?'warning':'success')+'" style="margin-top:.75rem">'
+      +A2SIcon(errs.length?'alert-triangle':'check-circle')+'<span>'+esc(msg)+'</span></div>';
+    if(errs.length){
+      resEl.innerHTML+='<div class="csv-errs">'+errs.map(function(e){
+        return'<div class="csv-err">'+A2SIcon('alert-triangle')+'Ligne '+e.line+' : '+esc(e.error)+'</div>';
+      }).join('')+'</div>';
+    }
+    showToast(msg);
+    if(nb>0){ta.value='';await renderListings();}
+  }catch(e){
+    resEl.innerHTML='<div class="alert alert-error" style="margin-top:.75rem">'+A2SIcon('alert-triangle')
+      +'<span>Erreur réseau : '+esc(e.message)+'</span></div>';
+  }finally{
+    if(btn)btn.disabled=false;
+  }
 }
 
 /* ── MODALE MODIFICATION ── */

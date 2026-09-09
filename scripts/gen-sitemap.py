@@ -40,6 +40,12 @@ PRIORITY = {
     '': (1.00, 'daily'),
     'search.html': (0.95, 'daily'),
     'avions-legers.html': (0.90, 'weekly'),
+    'avions-a-vendre-france.html': (0.85, 'weekly'),
+    'avions-a-vendre-allemagne.html': (0.85, 'weekly'),
+    'avions-a-vendre-espagne.html': (0.85, 'weekly'),
+    'avions-a-vendre-italie.html': (0.85, 'weekly'),
+    'avions-a-vendre-suisse.html': (0.85, 'weekly'),
+    'avions-a-vendre-royaume-uni.html': (0.85, 'weekly'),
     'jets-affaires.html': (0.90, 'weekly'),
     'helicopteres.html': (0.88, 'weekly'),
     'post-listing.html': (0.88, 'weekly'),
@@ -151,6 +157,15 @@ def collect():
                 'loc': loc, 'priority': prio, 'changefreq': freq,
                 'lastmod': git_lastmod(rel), 'alts': alts,
             })
+
+    # rss.xml n'est pas une page HTML : on l'ajoute explicitement s'il existe.
+    rss_path = os.path.join(ROOT, 'rss.xml')
+    if os.path.exists(rss_path):
+        entries.append({
+            'loc': BASE + '/rss.xml', 'priority': 0.70,
+            'changefreq': 'daily', 'lastmod': git_lastmod('rss.xml'),
+            'alts': [],
+        })
 
     entries.sort(key=lambda e: (-e['priority'], e['loc']))
     return entries

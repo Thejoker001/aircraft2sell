@@ -248,6 +248,12 @@
           </div>
         </div>
 
+        <!-- MODE MISE EN AVANT (B4) : affiché quand ?feature= est dans l'URL -->
+        <div id="featureBox" style="display:none;border:1.5px solid var(--a2s-navy);border-radius:var(--a2s-radius-btn);padding:1rem;margin-bottom:.75rem">
+          <div style="font-size:.95rem;font-weight:800;color:var(--a2s-navy)"><i data-icon="star"></i> Mise en avant de votre annonce</div>
+          <div style="font-size:.78rem;color:var(--a2s-text-muted);margin-top:.3rem;line-height:1.6">Votre annonce apparaîtra en tête des recherches avec le badge « En vedette » pendant <strong>30 jours</strong>.</div>
+        </div>
+
         <div class="addon-box" id="addonBox" onclick="toggleAddon()" role="checkbox" aria-checked="false" tabindex="0" style="display:none">
           <div class="addon-chk" id="addonChk"><i data-icon="check"></i></div>
           <div class="addon-info">
@@ -293,9 +299,26 @@ var addonActive=false;
 var discount=0;
 var VAT_RATE=0.20;
 var payMethod='card';
+/* Mise en avant (B4) : si l'URL contient ?feature=<id>, on bascule en
+   paiement unique de 9 € pour mettre l'annonce en vedette 30 jours. */
+var featureId=(new URLSearchParams(location.search)).get('feature')||'';
 /* Clé publique Stripe : safe côté client (les montants sont recalculés et
    fiabilisés côté serveur dans /api/create-checkout). */
 window.STRIPE_KEY='pk_test_51TEQ0WCC9XnaCmSL6msMaaP55tPaoOzNEmQ5rMR8cr3CnKxVWbDY5KoXyqOdDifiwrWMcNKC8wTE2YWg4wcE0xnY00idfoBE5y';
+
+function initFeatureMode(){
+  if(!featureId)return;
+  document.getElementById('planSelector').style.display='none';
+  document.getElementById('addonBox').style.display='none';
+  document.getElementById('promoRow')&&(document.getElementById('promoRow').style.display='none');
+  document.getElementById('featureBox').style.display='';
+  document.getElementById('tvPlan').textContent='Mise en avant (30 jours)';
+  document.getElementById('tvTax').textContent=eur(1.5);
+  document.getElementById('tvTotal').textContent=eur(9);
+  var lbl=document.querySelector('#payBtn .pay-lbl');
+  if(lbl)lbl.textContent='Payer '+eur(9);
+  var promo=document.getElementById('promoCode');if(promo)promo.disabled=true;
+}
 
 function eur(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
 
@@ -390,24 +413,27 @@ async function handlePay(){
   var btn=document.getElementById('payBtn');
   btn.classList.add('is-loading');btn.disabled=true;
 
-  /* Formule gratuite : pas de paiement, activation directe. */
+  /* Formule gratuite : pas de paiement, activation directe (hors mise en avant). */
   var base=plans[currentPlan].price;
-  if(base===0&&!addonActive){
+  if(base===0&&!addonActive&&!featureId){
     showToast('Formule gratuite activée');
     setTimeout(function(){window.location.href='success.html?plan='+currentPlan;},600);
     return;
   }
 
   try{
+    var payload={
+      email:email,
+      plan:currentPlan,
+      addon:addonActive,
+      promo:document.getElementById('promoCode').value.trim()
+    };
+    /* Mise en avant : la session Stripe est un paiement unique 9 € (B4). */
+    if(featureId)payload.feature=featureId;
     var r=await fetch('/api/create-checkout',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        email:email,
-        plan:currentPlan,
-        addon:addonActive,
-        promo:document.getElementById('promoCode').value.trim()
-      })
+      body:JSON.stringify(payload)
     });
     var d=await r.json();
     if(!r.ok||!d.url){
@@ -431,7 +457,8 @@ function showToast(msg){var el=document.getElementById('toast');el.textContent=m
 (function(){
   var params=new URLSearchParams(location.search);
   var p=PLAN_ALIASES[(params.get('plan')||'').toLowerCase()];
-  if(p)selectPlan(p);else updateTotal();
+  if(featureId){initFeatureMode();}
+  else if(p)selectPlan(p);else updateTotal();
   if(params.get('addon')==='true'&&currentPlan==='essential')toggleAddon();
   var em=localStorage.getItem('a2s_user_email')||'';
   var nm=localStorage.getItem('a2s_user_name')||'';

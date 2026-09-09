@@ -14,10 +14,12 @@ export default async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
 
-  /* Protection minimale : ce diagnostic révèle l'état de la configuration. */
-  const attendue = process.env.ADMIN_DIAG_KEY;
+  /* Protection obligatoire : ce diagnostic révèle l'état de la configuration.
+     Refus systématique si la clé attendue n'est pas définie dans l'environnement
+     (aucun contournement possible). */
+  const attendue = process.env.ADMIN_DIAG_KEY || '';
   const fournie = (req.query && req.query.cle) || '';
-  if (attendue && fournie !== attendue) {
+  if (!attendue || fournie !== attendue) {
     return res.status(403).json({ error: 'Clé de diagnostic invalide' });
   }
 

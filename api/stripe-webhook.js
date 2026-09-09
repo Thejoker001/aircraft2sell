@@ -73,6 +73,32 @@ export default async function handler(req, res) {
       const email = session.client_reference_id || session.customer_details?.email || '';
       const plan = (session.metadata && session.metadata.plan) || 'aviateur';
       const addon = (session.metadata && session.metadata.addon) === '1';
+      const featureId = (session.metadata && session.metadata.feature) || '';
+
+      /* Mise en avant d'annonce (B4) : paiement unique, pas d'abonnement. */
+      if (featureId) {
+        const featRes = await fetch(`${SITE}/api/feature-listing`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-feature-secret': process.env.FEATURE_SECRET || '' },
+          body: JSON.stringify({ listing_id: String(featureId) }),
+        });
+        if (featRes.ok) {
+          if (email) {
+            await envoyer({
+              to: email,
+              toName: email,
+              sujet: 'Votre annonce est en vedette — Aircraft2Sell',
+              html: gabarit({
+                titre: 'Annonce mise en avant',
+                intro: 'Votre annonce est <strong>en vedette</strong> sur Aircraft2Sell pour 30 jours. Elle apparaît en tête des recherches.',
+                cta: `${SITE}/dashboard.html`,
+                ctaLabel: 'Voir mon tableau de bord',
+              }),
+            }).catch(() => {});
+          }
+        }
+        return res.status(200).json({ received: true, feature: featureId });
+      }
 
       if (email) {
         const planFinal = plan === 'pro' ? 'Pro' : 'Aviateur';

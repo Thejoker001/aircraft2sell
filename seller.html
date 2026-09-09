@@ -124,9 +124,9 @@
 
       <div class="card" id="reviewsSection" style="display:none">
         <div class="card-body">
-          <div class="reviews-head"><h3 style="font-size:1rem">Avis des membres</h3></div>
+          <div class="reviews-head"><h3 style="font-size:1rem">Avis des acheteurs</h3></div>
           <div id="reviewsList"></div>
-          <button type="button" class="btn-secondary btn-block btn-sm" id="btnWriteReview" onclick="openReview()" style="display:none;margin-top:.75rem"><i data-icon="edit"></i>Laisser un avis</button>
+          <button type="button" class="btn-secondary btn-block btn-sm" id="btnWriteReview" onclick="openReview()" style="display:none;margin-top:.75rem"><i data-icon="edit"></i>Donner mon avis</button>
         </div>
       </div>
     </aside>
@@ -191,6 +191,7 @@
     </div>
     <div class="modal-body">
       <div id="reviewAlert" class="alert" style="display:none;margin-bottom:1rem"></div>
+      <div class="field"><label for="reviewName">Votre nom</label><input type="text" class="inp" id="reviewName" placeholder="Jean Dupont" autocomplete="name"></div>
       <div class="field">
         <label>Votre note</label>
         <div class="star-picker" id="starPicker" role="radiogroup" aria-label="Note sur 5">
@@ -205,7 +206,7 @@
     </div>
     <div class="modal-footer">
       <button type="button" class="btn-secondary" onclick="closeReview()">Annuler</button>
-      <button type="button" class="btn-primary" onclick="submitReview()">Publier l'avis</button>
+      <button type="button" class="btn-primary" onclick="submitReview()">Envoyer</button>
     </div>
   </div>
 </div>
@@ -443,6 +444,7 @@ function setReviewStar(n){
 function openReview(){
   var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
   if(!loggedIn){showToast('Connectez-vous pour laisser un avis');setTimeout(function(){window.location.href='login.html?redirect='+encodeURIComponent('seller.html'+location.search);},1200);return;}
+  document.getElementById('reviewName').value=localStorage.getItem('a2s_user_name')||'';
   document.getElementById('reviewText').value='';
   _reviewStar=0;
   hideAlert(document.getElementById('reviewAlert'));
@@ -457,21 +459,27 @@ function closeReview(){
 function submitReview(){
   var al=document.getElementById('reviewAlert');
   if(!_reviewStar){setAlert(al,'error','Sélectionnez une note de 1 à 5 étoiles.');return;}
+  var name=(document.getElementById('reviewName')||{value:''}).value.trim();
   var text=(document.getElementById('reviewText')||{value:''}).value.trim();
+  if(!name){setAlert(al,'error','Indiquez votre nom.');return;}
   if(!text){setAlert(al,'error','Écrivez un commentaire pour accompagner votre note.');return;}
-  var reviewerName=localStorage.getItem('a2s_user_name')||'Acheteur vérifié';
-  var review={seller_email:_sellerEmail,reviewer_name:reviewerName,rating:_reviewStar,text:text,created_at:new Date().toISOString()};
-  var key='a2s_reviews_'+btoa(_sellerEmail||'unknown').replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
-  var reviews=[];try{reviews=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){}
-  reviews.unshift(review);
-  localStorage.setItem(key,JSON.stringify(reviews.slice(0,50)));
-  closeReview();
-  showToast('Merci, votre avis est publié');
-  loadReviews(_sellerEmail);
+  if(text.length>1000){setAlert(al,'error','Commentaire trop long (1000 caractères maximum).');return;}
+  var authorEmail='';
+  var tk=sessionStorage.getItem('a2s_auth_token');
+  if(tk){try{authorEmail=JSON.parse(atob(tk.split('.')[1])).email||'';}catch(e){authorEmail='';}}
+  setAlert(al,'success','Envoi de votre avis…');
+  fetch('/api/testimonials',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({listing_id:null,seller_email:_sellerEmail,author_name:name,author_email:authorEmail,rating:_reviewStar,comment:text})
+  }).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+    .then(function(res){
+      if(res.ok&&res.d&&res.d.ok){closeReview();showToast('Merci ! Votre avis sera publié après modération.');}
+      else{setAlert(al,'error',(res.d&&res.d.error)||'Une erreur est survenue, réessayez plus tard.');}
+    })
+    .catch(function(){setAlert(al,'error','Une erreur est survenue, réessayez plus tard.');});
 }
 function loadReviews(sellerEmail){
-  var key='a2s_reviews_'+btoa(sellerEmail||'unknown').replace(/[^a-zA-Z0-9]/g,'').substring(0,20);
-  var reviews=[];try{reviews=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){}
   var section=document.getElementById('reviewsSection');
   var list=document.getElementById('reviewsList');
   var btn=document.getElementById('btnWriteReview');
@@ -479,18 +487,24 @@ function loadReviews(sellerEmail){
   section.style.display='';
   var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
   if(btn)btn.style.display=loggedIn?'':'none';
-  if(!reviews.length){
-    list.innerHTML='<p class="pi-empty">Aucun avis pour l\'instant.'+(loggedIn?'':' <a href="login.html" style="color:var(--a2s-blue);font-weight:700">Connectez-vous</a> pour être le premier à en laisser un.')+'</p>';
-    return;
-  }
-  var avg=reviews.reduce(function(s,r){return s+r.rating;},0)/reviews.length;
-  list.innerHTML='<div class="review-avg">'+starsHtml(Math.round(avg))+'<strong style="color:var(--a2s-navy)">'+avg.toFixed(1)+'/5</strong><span>('+reviews.length+' avis)</span></div>'
-    +reviews.slice(0,5).map(function(r){
-      return '<div class="review-item">'
-        +'<div class="review-meta">'+starsHtml(r.rating)+'<span class="review-author">'+esc(r.reviewer_name)+'</span><span class="review-date">'+new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})+'</span></div>'
-        +'<div class="review-text">'+esc(r.text)+'</div>'
-        +'</div>';
-    }).join('');
+  list.innerHTML='<p class="pi-empty">Chargement des avis…</p>';
+  fetch('/api/testimonials?seller_email='+encodeURIComponent(sellerEmail||''))
+    .then(function(r){return r.ok?r.json():[];})
+    .catch(function(){return[];})
+    .then(function(reviews){
+      if(!reviews||!reviews.length){
+        list.innerHTML='<p class="pi-empty">Aucun avis pour l\'instant.'+(loggedIn?' ':' <a href="login.html" style="color:var(--a2s-blue);font-weight:700">Connectez-vous</a> pour être le premier à en laisser un.')+'</p>';
+        return;
+      }
+      var avg=reviews.reduce(function(s,r){return s+Number(r.rating||0);},0)/reviews.length;
+      list.innerHTML='<div class="review-avg">'+starsHtml(Math.round(avg))+'<strong style="color:var(--a2s-navy)">'+avg.toFixed(1)+'/5</strong><span>('+reviews.length+' avis)</span></div>'
+        +reviews.slice(0,10).map(function(r){
+          return '<div class="review-item">'
+            +'<div class="review-meta">'+starsHtml(Number(r.rating)||0)+'<span class="review-author">'+esc(r.author_name)+'</span><span class="review-date">'+(r.created_at?new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):'')+'</span></div>'
+            +'<div class="review-text">'+esc(r.comment)+'</div>'
+            +'</div>';
+        }).join('');
+    });
 }
 </script>
 <script src="rgpd-consent.js" defer></script>

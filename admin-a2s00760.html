@@ -34,7 +34,7 @@ body{font-family:var(--font-body);background:var(--a2s-bg);color:var(--a2s-text)
 .lb-err{color:var(--a2s-danger);font-size:.8rem;font-weight:600;margin-top:.6rem;min-height:1rem}
 
 /* ── STRUCTURE ── */
-#app{display:none;height:100vh;overflow:hidden}
+#app{display:none;height:100vh;width:100%;overflow:hidden}
 #app.visible{display:flex}
 
 /* ── BARRE LATÉRALE ── */
@@ -80,8 +80,8 @@ body{font-family:var(--font-body);background:var(--a2s-bg);color:var(--a2s-text)
 .sb-b-btn.danger:hover{border-color:var(--a2s-danger)}
 
 /* ── ZONE PRINCIPALE ── */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
-.topbar{background:var(--a2s-surface);border-bottom:1px solid var(--a2s-border);padding:0 1.25rem;height:54px;display:flex;align-items:center;gap:.7rem;flex-shrink:0}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;width:100%}
+.topbar{background:var(--a2s-surface);border-bottom:1px solid var(--a2s-border);padding:0 1.25rem;height:54px;display:flex;align-items:center;gap:.7rem;flex-shrink:0;width:100%;box-sizing:border-box}
 .admin-burger{background:none;border:none;color:var(--a2s-text-muted);cursor:pointer;padding:.3rem;display:none;align-items:center}
 .admin-burger .ic{width:22px;height:22px}
 .tb-title{font-family:var(--font-display);font-weight:800;font-size:1rem;color:var(--a2s-navy);white-space:nowrap}
@@ -107,7 +107,7 @@ body{font-family:var(--font-body);background:var(--a2s-bg);color:var(--a2s-text)
 .tb-btn.is-busy{pointer-events:none;opacity:.6}
 
 /* ── CONTENU ── */
-.content-wrap{flex:1;overflow-y:auto;padding:1.25rem;scrollbar-width:thin}
+.content-wrap{flex:1;overflow-y:auto;overflow-x:hidden;padding:1.25rem;scrollbar-width:thin;min-width:0}
 .sec{display:none;flex-direction:column;gap:.9rem}
 .toolbar{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
 .sec-title{font-family:var(--font-display);font-weight:800;font-size:1.2rem;color:var(--a2s-navy);flex:1;min-width:180px}
@@ -397,6 +397,7 @@ body.dense .kv{font-size:1.4rem}
       <div class="sg-label">Suivi</div>
       <button type="button" class="sn" id="sn-stats" onclick="showTab('stats',this)"><span class="sn-ico"><i data-icon="bar-chart"></i></span><span class="sn-txt">Statistiques</span><span class="sn-key">8</span></button>
       <button type="button" class="sn" id="sn-msgs" onclick="showTab('msgs',this)"><span class="sn-ico"><i data-icon="mail"></i></span><span class="sn-txt">Messages</span><span class="sn-badge nb-blue" id="msgs-badge" style="display:none"></span><span class="sn-key">9</span></button>
+      <button type="button" class="sn" id="sn-reports" onclick="showTab('reports',this)"><span class="sn-ico"><i data-icon="alert-triangle"></i></span><span class="sn-txt">Signalements</span><span class="sn-badge nb-red" id="badge-reports" style="display:none"></span><span class="sn-key">10</span></button>
       <button type="button" class="sn" id="sn-set" onclick="showTab('set',this)"><span class="sn-ico"><i data-icon="settings"></i></span><span class="sn-txt">Paramètres</span><span class="sn-key">0</span></button>
     </nav>
 
@@ -759,6 +760,35 @@ body.dense .kv{font-size:1.4rem}
         </div>
       </div>
 
+      <!-- SIGNALEMENTS -->
+      <div class="sec" id="tab-reports">
+        <div class="toolbar">
+          <div class="sec-title">Signalements <em>reçus</em></div>
+          <button class="tb-btn" onclick="renderReports()"><i data-icon="refresh"></i>Actualiser</button>
+        </div>
+        <div class="krow">
+          <div class="kc"><div class="kl">Total signalements</div><div class="kv" id="rep-total">—</div></div>
+          <div class="kc r"><div class="kl">En attente</div><div class="kv" id="rep-pending">—</div></div>
+          <div class="kc g"><div class="kl">Traités</div><div class="kv" id="rep-done">—</div></div>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Annonce</th>
+                <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Déclaré par</th>
+                <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Motif</th>
+                <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Détails</th>
+                <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Date</th>
+                <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Statut</th>
+                <th style="padding:.6rem .9rem"></th>
+              </tr></thead>
+              <tbody id="reports-body"><tr><td colspan="7" class="loading-row">Chargement…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- PARAMÈTRES -->
       <div class="sec" id="tab-set">
         <div class="sec-title"><em>Paramètres</em></div>
@@ -943,7 +973,11 @@ body.dense .kv{font-size:1.4rem}
       <input type="hidden" id="mu-id">
       <div class="mfg2">
         <div class="mfg"><label>Nom</label><input type="text" id="mu-name"></div>
+        <div class="mfg"><label>Pseudo public</label><input type="text" id="mu-pseudo" placeholder="ex. AvioPilote75" maxlength="30"></div>
+      </div>
+      <div class="mfg2">
         <div class="mfg"><label>Email</label><input type="email" id="mu-email" readonly class="is-readonly"></div>
+        <div class="mfg"><label>Société (pro)</label><input type="text" id="mu-company" placeholder="Nom de la société" maxlength="120"></div>
       </div>
       <div class="mfg2">
         <div class="mfg"><label>Plan</label>
@@ -1141,7 +1175,8 @@ function fmtAuditAction(a){
     'listing.update':'Modification annonce','listing.feature':'Mise en vedette',
     'user.update':'Modification membre','user.delete':'Suppression membre','user.ban':'Bannissement',
     'user.verify':'Certification vendeur','bulk.approve':'Approbation groupée','bulk.reject':'Rejet groupé',
-    'bulk.delete':'Suppression groupée','message.read':'Message lu'
+    'bulk.delete':'Suppression groupée','message.read':'Message lu','report.done':'Signalement traité',
+    'report.delete':'Suppression signalement','report.unpublish':'Dépubliation (signalement)'
   };
   return map[a]||a;
 }
@@ -1293,13 +1328,13 @@ function statusPill(s){if(s==='live')return'<span class="pill p-live">Publiée</
 function planPill(p){if(p==='Pro')return'<span class="pill p-pro">Pro</span>';if(p==='Aviateur')return'<span class="pill p-avi">Aviateur</span>';return'<span class="pill p-ess">Essentiel</span>';}
 
 /* ── STATE ── */
-var TABS=['dash','mod','list','new','users','subs','stats','msgs','set'];
+var TABS=['dash','mod','list','new','users','subs','stats','msgs','reports','set'];
 var CURRENT_TAB='dash';
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
 var _allListings=[],_allUsers=[];
 
 /* ── NAV ── */
-var TITLES={dash:'Tableau de <em>bord</em>',mod:'File de <em>modération</em>',list:'Toutes les <em>annonces</em>',new:'Créer une <em>annonce</em>',users:'Gestion des <em>membres</em>',subs:'<em>Abonnements</em>',stats:'<em>Statistiques</em>',set:'<em>Paramètres</em>'};
+var TITLES={dash:'Tableau de <em>bord</em>',mod:'File de <em>modération</em>',list:'Toutes les <em>annonces</em>',new:'Créer une <em>annonce</em>',users:'Gestion des <em>membres</em>',subs:'<em>Abonnements</em>',stats:'<em>Statistiques</em>',reports:'Gestion des <em>signalements</em>',set:'<em>Paramètres</em>'};
 function showTab(id,navEl){
   TABS.forEach(function(t){var s=sel('tab-'+t);if(s)s.style.display='none';});
   document.querySelectorAll('.sn').forEach(function(n){n.classList.remove('active');});
@@ -1309,10 +1344,10 @@ function showTab(id,navEl){
   CURRENT_TAB=id;
   if((id==='users'||id==='subs'||id==='mod'||id==='list')&&_allUsers.length===0&&_allListings.length===0){
     refreshAll().then(function(){
-      if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();
+      if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();
     });return;
   }
-  if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='set')loadAuditLogs();
+  if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();if(id==='set')loadAuditLogs();
 }
 
 /* ── REFRESH ── */
@@ -1777,10 +1812,10 @@ function clearSellerFilter(){
   var info=sel('ls-info');if(info)info.remove();
   renderList();
 }
-function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;sel('mu-free').checked=u.is_free||false;
+function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-pseudo').value=u.pseudo||'';sel('mu-company').value=u.company||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;sel('mu-free').checked=u.is_free||false;
   var mst=sel('mu-seller-type');if(mst)mst.value=u.seller_type||'';
   var mip=sel('mu-is-pro');if(mip)mip.checked=u.is_pro||false;var r=parseInt(u.rating)||0;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=r?'#f5c518':'rgba(200,220,240,.2)';});openM('mUser');}
-async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var isPro=sel('mu-is-pro')?sel('mu-is-pro').checked:false;var sellerType=sel('mu-seller-type')?sel('mu-seller-type').value:'';var body={name:sel('mu-name').value,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree,is_pro:isPro,seller_type:sellerType};try{
+async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var isPro=sel('mu-is-pro')?sel('mu-is-pro').checked:false;var sellerType=sel('mu-seller-type')?sel('mu-seller-type').value:'';var body={name:sel('mu-name').value,pseudo:sel('mu-pseudo')?sel('mu-pseudo').value.trim():null,company:sel('mu-company')?sel('mu-company').value.trim():null,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree,is_pro:isPro,seller_type:sellerType};try{
   var uEmail=sel('mu-email').value;
   /* Diagnostic : vérifier que la RLS reconnaît bien ce compte avant le PATCH.
      Un SELECT sur la ligne cible avec le jeton admin : s'il revient vide,
@@ -2190,6 +2225,88 @@ async function toggleMsgRead(id,markUnread){
   }catch(e){showToast('Erreur : '+e.message);}
 }
 
+/* ── SIGNALEMENTS (A3/D1) ──
+   Onglet admin dédié : liste les signalements d'annonces (public.reports),
+   joint les listings pour afficher make + model, et permet de traiter,
+   dépublier l'annonce concernée ou supprimer le signalement. */
+var _allReports=[];
+async function renderReports(){
+  var el=sel('reports-body');if(el)el.innerHTML='<tr><td colspan="7" class="loading-row">Chargement…</td></tr>';
+  try{
+    var rows=await sb('GET','reports','order=created_at.desc&limit=200');
+    _allReports=rows||[];
+    var pending=_allReports.filter(function(r){return r.status==='pending';}).length;
+    var done=_allReports.filter(function(r){return r.status==='done';}).length;
+    setText('rep-total',_allReports.length.toLocaleString('fr-FR'));
+    setText('rep-pending',pending.toLocaleString('fr-FR'));
+    setText('rep-done',done.toLocaleString('fr-FR'));
+    /* Références annonces pour afficher make + model */
+    var listingIds={};
+    _allReports.forEach(function(r){if(r.listing_id)listingIds[r.listing_id]=true;});
+    var titleMap={};
+    try{
+      var ids=Object.keys(listingIds).slice(0,200);
+      if(ids.length){
+        var ls=await sb('GET','listings','id=in.('+ids.join(',')+')&select=id,make,model,year');
+        (ls||[]).forEach(function(l){titleMap[l.id]=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ');});
+      }
+    }catch(e){}
+    var tb=sel('reports-body');if(!tb)return;
+    if(!_allReports.length){tb.innerHTML='<tr><td colspan="7" class="loading-row">Aucun signalement</td></tr>';return;}
+    tb.innerHTML=_allReports.map(function(r){
+      var title=titleMap[r.listing_id]||('Annonce #'+(r.listing_id||'—'));
+      var pill=r.status==='done'?'<span class="pill p-live">Traitée</span>':'<span class="pill p-pend">En attente</span>';
+      return '<tr>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text);font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(title)+'">'+esc(title)+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.78rem">'+esc(r.reporter_email||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text);font-size:.78rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.reason||'')+'">'+esc(r.reason||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.76rem;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.details||'')+'">'+esc(r.details||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-faint);font-size:.68rem;white-space:nowrap">'+fmtDate(r.created_at)+'</td>'
+        +'<td style="padding:.65rem .9rem">'+pill+'</td>'
+        +'<td style="padding:.65rem .9rem"><div class="acts">'
+        +(r.status==='pending'?'<button class="act ap" onclick="markReportDone('+r.id+')" title="Marquer traité">'+A2SIcon('check')+'</button>':'')
+        +'<button class="act rj" onclick="unpublishFromReport('+r.id+','+(r.listing_id||'null')+')" title="Dépublier l\'annonce">'+A2SIcon('close')+'</button>'
+        +'<button class="act rj" onclick="delReport('+r.id+')" title="Supprimer le signalement">'+A2SIcon('trash')+'</button>'
+        +'</div></td></tr>';
+    }).join('');
+  }catch(e){
+    console.error('renderReports:',e);
+    var tb2=sel('reports-body');if(tb2)tb2.innerHTML='<tr><td colspan="7" style="color:var(--a2s-danger);font-size:.8rem">Erreur : '+esc(e.message)+'</td></tr>';
+  }
+}
+async function markReportDone(id){
+  try{
+    await sb('PATCH','reports','id=eq.'+id,{status:'done'});
+    logAdmin('report.done','report',String(id),{});
+    showToast('Signalement marqué traité');
+    updateSidebarBadges();
+    renderReports();
+  }catch(e){showToast('Erreur : '+e.message);}
+}
+async function delReport(id){
+  if(!confirm('Supprimer ce signalement ?'))return;
+  try{
+    await sb('DELETE','reports','id=eq.'+id);
+    logAdmin('report.delete','report',String(id),{});
+    showToast('Signalement supprimé');
+    updateSidebarBadges();
+    renderReports();
+  }catch(e){showToast('Erreur : '+e.message);}
+}
+async function unpublishFromReport(reportId,listingId){
+  if(!listingId){showToast('Annonce introuvable pour ce signalement');return;}
+  if(!confirm("Dépublier cette annonce ? Elle sera rejetée et masquée du site."))return;
+  try{
+    await sb('PATCH','listings','id=eq.'+listingId,{status:'rejected',rejection_reason:'Annonce signalée par un utilisateur'});
+    await sb('PATCH','reports','id=eq.'+reportId,{status:'done'});
+    logAdmin('report.unpublish','listing',String(listingId),{report_id:reportId,rejection_reason:'Annonce signalée par un utilisateur'});
+    showToast('Annonce dépubliée, signalement traité');
+    await refreshAll();
+    updateSidebarBadges();
+    renderReports();
+  }catch(e){showToast('Erreur : '+e.message);}
+}
+
 /* ── STARS ── */
 function muSetRating(n){sel('mu-rating').value=n;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=n?'var(--a2s-accent)':'var(--a2s-border-2)';});}
 function setRating(n){if(!_viewListingId)return;document.querySelectorAll('#ratingStars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=n?'var(--a2s-accent)':'var(--a2s-border-2)';});sb('PATCH','listings','id=eq.'+_viewListingId,{seller_rating:n}).then(function(){showToast('Note de '+n+' sur 5 enregistrée');refreshAll();}).catch(function(e){showToast('Erreur: '+e.message);});}
@@ -2267,6 +2384,11 @@ function updateSidebarBadges(){
   /* badge msgs */
   var totalEnq=_allListings.reduce(function(s,l){return s+(l.enquiries||0);},0);
   var mb2=sel('msgs-badge');if(mb2){mb2.textContent=totalEnq||'';mb2.style.display=totalEnq?'':'none';};
+  /* badge reports — nombre de signalements en attente (A3/D1) */
+  sb('GET','reports','status=eq.pending&select=id').then(function(reps){
+    var n=(reps||[]).length;
+    var rb=sel('badge-reports');if(rb){rb.textContent=n||'';rb.style.display=n?'':'none';}
+  }).catch(function(){});
 }
 
 /* ── BOOT — restauration session au chargement ── */
@@ -2638,6 +2760,7 @@ var CMDS = [
   {label:'Abonnements', icon:'credit-card', hint:'7', run:function(){ showTab('subs', document.getElementById('sn-subs')); }},
   {label:'Statistiques', icon:'bar-chart', hint:'8', run:function(){ showTab('stats', document.getElementById('sn-stats')); }},
   {label:'Messages', icon:'mail', hint:'9', run:function(){ showTab('msgs', document.getElementById('sn-msgs')); }},
+  {label:'Signalements', icon:'alert-triangle', hint:'10', run:function(){ showTab('reports', document.getElementById('sn-reports')); }},
   {label:'Paramètres', icon:'settings', hint:'0', run:function(){ showTab('set', document.getElementById('sn-set')); }},
   {label:'Actualiser les données', icon:'refresh', hint:'R', run:manualRefresh},
   {label:'Exporter les annonces (CSV)', icon:'download', run:function(){ exportCSV('list'); }},

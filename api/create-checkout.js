@@ -23,6 +23,7 @@ const PLANS = {
   pro: { price: 79, label: 'Pro' },
 };
 const ADDON_PRICE = 10;
+const FEATURE_PRICE = 9;  /* mise en avant d'une annonce 30 jours (paiement unique) */
 const PROMOS = { AVIATION2026: 5, A2S2026: 10 };
 const VAT_RATE = 0.20;
 
@@ -41,10 +42,56 @@ export default async function handler(req, res) {
   const plan = String(c.plan || 'aviateur').toLowerCase();
   const addon = !!c.addon;
   const promo = String(c.promo || '').trim().toUpperCase();
+  const featureId = c.feature ? String(c.feature) : '';
 
   if (!email || email.indexOf('@') === -1) {
     return res.status(400).json({ error: 'Email invalide' });
   }
+
+  /* Mise en avant d'une annonce (B4) : paiement UNIQUE de 9 € TTC pour
+     30 jours de featured. La session embarque listing_id en metadata. */
+  if (featureId) {
+    if (!/^\d+$/.test(featureId)) {
+      return res.status(400).json({ error: 'Annonce invalide' });
+    }
+    const sub = FEATURE_PRICE;
+    const tax = Math.round(sub * VAT_RATE * 100) / 100;
+    const total = Math.round((sub + tax) * 100) / 100;
+    try {
+      const form = new URLSearchParams();
+      form.set('mode', 'payment');
+      form.set('success_url', `https://aircraft2sell.eu/success.html?session_id={CHECKOUT_SESSION_ID}&feature=${featureId}`);
+      form.set('cancel_url', 'https://aircraft2sell.eu/cancel.html');
+      form.set('client_reference_id', email);
+      form.set('customer_email', email);
+      form.set('locale', 'fr');
+      form.set('line_items[0][price_data][currency]', 'eur');
+      form.set('line_items[0][price_data][unit_amount]', String(eurToCents(total)));
+      form.set('line_items[0][price_data][product_data][name]', 'Aircraft2Sell — Mise en avant annonce');
+      form.set('line_items[0][price_data][product_data][description]',
+        'Mise en avant de votre annonce pendant 30 jours. TVA incluse.');
+      form.set('line_items[0][quantity]', '1');
+      form.set('metadata[feature]', featureId);
+      form.set('metadata[plan]', '');
+      const r = await fetch(`${STRIPE}/checkout/sessions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${cle}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: form.toString(),
+      });
+      const txt = await r.text();
+      if (!r.ok) {
+        return res.status(502).json({ error: `Stripe ${r.status} : ${txt.slice(0, 200)}` });
+      }
+      const data = JSON.parse(txt);
+      return res.status(200).json({ url: data.url, sessionId: data.id });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   const p = PLANS[plan];
   if (!p) return res.status(400).json({ error: 'Formule inconnue' });
 
