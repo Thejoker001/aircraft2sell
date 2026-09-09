@@ -1198,11 +1198,16 @@ async function login(){
       body:JSON.stringify({email:em,password:pw})
     });
     console.log('[A2S Admin] HTTP status:', res.status);
-    var data=await res.json();
-    console.log('[A2S Admin] Réponse:', JSON.stringify(data).substring(0,200));
+    /* Le service Auth Supabase peut renvoyer du texte brut (503) quand il
+       est indisponible : res.json() jetterait « Unexpected token » sans
+       message compréhensible. On parse le texte manuellement. */
+    var text=await res.text();
+    var data=null;
+    try{data=JSON.parse(text);}catch(e){data=null;}
+    console.log('[A2S Admin] Réponse:', String(text).substring(0,200));
     
-    if(!res.ok||!data.access_token){
-      var msg=data.error_description||data.msg||data.error||'Identifiants incorrects';
+    if(!res.ok||!data||!data.access_token){
+      var msg=(data&&(data.error_description||data.msg||data.error))||((res.status===503||res.status===502)&&text.indexOf('upstream')!==-1?'Service de connexion (Supabase Auth) momentanément indisponible. Réessayez dans quelques minutes.':'Réponse inattendue du serveur (HTTP '+res.status+').');
       throw new Error(msg);
     }
     

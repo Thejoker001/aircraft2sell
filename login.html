@@ -191,8 +191,17 @@ async function handleLogin(e){
   var btn=document.getElementById('loginBtn');btn.disabled=true;btn.classList.add('is-loading');
   try{
     var r=await fetch(SB+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw})});
-    var d=await r.json();
-    if(!r.ok||!d.access_token)throw new Error(d.error_description||d.msg||'Email ou mot de passe incorrect.');
+    /* La réponse Supabase peut être du texte brut (503 « upstream connect
+       error… ») quand le service Auth est indisponible : r.json() jetterait
+       « Unexpected token » — on parse le texte manuellement pour afficher
+       un message clair à la place. */
+    var text=await r.text();
+    var d=null;
+    try{d=JSON.parse(text);}catch(e){d=null;}
+    if(!r.ok||!d||!d.access_token){
+      var msg=(d&&(d.error_description||d.msg))||((r.status===503||r.status===502)&&text.indexOf('upstream')!==-1?'Le service de connexion (Supabase Auth) est momentanément indisponible. Réessayez dans quelques minutes.':'Réponse inattendue du serveur (HTTP '+r.status+'). Réessayez.');
+      throw new Error(msg);
+    }
     sessionStorage.setItem('a2s_auth_token',d.access_token);
     /* Le jeton d'accès expire en 1 h. Sans le refresh_token, l'utilisateur
        reste « connecté » mais perd l'accès à ses messages (RLS) sans aucun
