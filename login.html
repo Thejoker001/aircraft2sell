@@ -242,8 +242,21 @@ async function handleRegister(e){
       localStorage.setItem('a2s_user_name',fullName);
       localStorage.setItem('a2s_user_pseudo',pseudo);
       await fetch(SB+'/rest/v1/users',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({id:Date.now(),name:fullName,pseudo:pseudo,email:email,plan:'Essentiel',status:'active',registered_at:new Date().toISOString()})});
+      /* Campagne de prospection : si l'utilisateur arrive avec le marqueur
+         de campagne, on tente l'attribution "Pro offert à vie" (5 places max,
+         atomique côté base). L'échec ne doit jamais bloquer l'inscription. */
+      var promoGranted=false;
+      if(PARAMS.get('campaign')==='pro5-prospection-2026-09'){
+        try{
+          var pr=await fetch('/api/promo-pro5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
+          var pj=await pr.json();
+          promoGranted=!!(pj&&pj.granted);
+        }catch(e2){}
+      }
       var red=PARAMS.get('redirect');
-      window.location.href='onboarding.html'+(red?'?redirect='+encodeURIComponent(safeDest(red)):'');
+      var redirectUrl='onboarding.html'+(red?'?redirect='+encodeURIComponent(safeDest(red)):'');
+      if(promoGranted)redirectUrl=(redirectUrl.indexOf('?')>-1?'&':'?')+'promo=won';
+      window.location.href=redirectUrl;
     }else{
       showAlert('register','Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.','ok');
     }
