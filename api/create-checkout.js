@@ -5,7 +5,8 @@
  *   plan : essential (gratuit) / aviateur (29 €) / pro (79 €)
  *   addon Photos+ : +10 € (Essentiel uniquement)
  *   promo : AVIATION2026 (-5 €) / A2S2026 (-10 €)
- *   TVA 20 % incluse dans le montant facturé.
+ *   TVA : Aircraft2Sell OÜ n'est pas assujettie — aucun montant de TVA n'est
+ *   collecté (le prix affiché est le prix final).
  *
  *   POST /api/create-checkout
  *   { email, plan, addon?, promo? }
@@ -25,7 +26,6 @@ const PLANS = {
 const ADDON_PRICE = 10;
 const FEATURE_PRICE = 9;  /* mise en avant d'une annonce 30 jours (paiement unique) */
 const PROMOS = { AVIATION2026: 5, A2S2026: 10 };
-const VAT_RATE = 0.20;
 
 function eurToCents(n) {
   return Math.round(n * 100);
@@ -48,15 +48,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Email invalide' });
   }
 
-  /* Mise en avant d'une annonce (B4) : paiement UNIQUE de 9 € TTC pour
+  /* Mise en avant d'une annonce (B4) : paiement UNIQUE de 9 € pour
      30 jours de featured. La session embarque listing_id en metadata. */
   if (featureId) {
     if (!/^\d+$/.test(featureId)) {
       return res.status(400).json({ error: 'Annonce invalide' });
     }
-    const sub = FEATURE_PRICE;
-    const tax = Math.round(sub * VAT_RATE * 100) / 100;
-    const total = Math.round((sub + tax) * 100) / 100;
+    const total = FEATURE_PRICE;
     try {
       const form = new URLSearchParams();
       form.set('mode', 'payment');
@@ -69,7 +67,7 @@ export default async function handler(req, res) {
       form.set('line_items[0][price_data][unit_amount]', String(eurToCents(total)));
       form.set('line_items[0][price_data][product_data][name]', 'Aircraft2Sell — Mise en avant annonce');
       form.set('line_items[0][price_data][product_data][description]',
-        'Mise en avant de votre annonce pendant 30 jours. TVA incluse.');
+        'Mise en avant de votre annonce pendant 30 jours. Aucune TVA facturée.');
       form.set('line_items[0][quantity]', '1');
       form.set('metadata[feature]', featureId);
       form.set('metadata[plan]', '');
@@ -100,13 +98,14 @@ export default async function handler(req, res) {
     return res.status(200).json({ free: true });
   }
 
-  /* Calcul serveur : sous-total = plan + addon - promo (jamais négatif). */
+  /* Calcul serveur : sous-total = plan + addon - promo (jamais négatif).
+     Aircraft2Sell OÜ n'étant pas assujettie à la TVA, le prix affiché est
+     le prix final — aucun montant de TVA n'est ajouté. */
   let sub = p.price;
   if (addon) sub += ADDON_PRICE;
   const remise = PROMOS[promo] || 0;
   sub = Math.max(0, sub - remise);
-  const tax = Math.round(sub * VAT_RATE * 100) / 100;
-  const total = Math.round((sub + tax) * 100) / 100;
+  const total = sub;
 
   try {
     /* Session d'abonnement récurrent (mensuel). Le nom de la formule et le
@@ -122,7 +121,7 @@ export default async function handler(req, res) {
     form.set('line_items[0][price_data][unit_amount]', String(eurToCents(total)));
     form.set('line_items[0][price_data][product_data][name]', `Aircraft2Sell — ${p.label}`);
     form.set('line_items[0][price_data][product_data][description]',
-      `Abonnement mensuel ${p.label}${addon ? ' + option Photos+' : ''}${remise ? ` — remise ${remise} €` : ''}. TVA incluse.`);
+      `Abonnement mensuel ${p.label}${addon ? ' + option Photos+' : ''}${remise ? ` — remise ${remise} €` : ''}. Aucune TVA facturée.`);
     form.set('line_items[0][price_data][recurring][interval]', 'month');
     form.set('line_items[0][quantity]', '1');
     form.set('metadata[plan]', plan);

@@ -194,7 +194,7 @@
           <div class="field"><label for="zip">Code postal</label><input type="text" class="inp" id="zip" placeholder="75001" autocomplete="postal-code"></div>
           <div class="field"><label for="city">Ville</label><input type="text" class="inp" id="city" placeholder="Paris" autocomplete="address-level2"></div>
         </div>
-        <div class="field" id="vatRow"><label for="vat">Numéro de TVA intracommunautaire <span class="muted" style="font-weight:500">(optionnel)</span></label><input type="text" class="inp" id="vat" placeholder="FR 12 345 678 901"><div class="field-hint">Pour les professionnels : permet la facturation hors taxe si applicable.</div></div>
+        <div class="field" id="vatRow" style="display:none"><label for="vat">Numéro de TVA intracommunautaire <span class="muted" style="font-weight:500">(optionnel)</span></label><input type="text" class="inp" id="vat" placeholder="FR 12 345 678 901"><div class="field-hint">Pour les professionnels : permet la facturation hors taxe si applicable.</div></div>
       </div>
 
       <!-- Code promo -->
@@ -267,10 +267,10 @@
           <div class="total-row"><span class="total-label">Formule</span><span class="total-val" id="tvPlan">29 € / mois</span></div>
           <div class="total-row" id="addonRow" style="display:none"><span class="total-label">Photos+</span><span class="total-val">+10 € / mois</span></div>
           <div class="total-row" id="discountRow" style="display:none"><span class="total-label">Réduction</span><span class="total-val" style="color:var(--a2s-success)" id="tvDiscount">−0 €</span></div>
-          <div class="total-row"><span class="total-label">TVA (20 %)</span><span class="total-val" id="tvTax">5,80 €</span></div>
+          <div class="total-row" id="taxRow" style="display:none"><span class="total-label">TVA</span><span class="total-val" id="tvTax">0,00 €</span></div>
           <div class="total-row total-grand-row">
             <span class="total-label">Total</span>
-            <div style="text-align:right"><div class="total-grand" id="tvTotal">34,80 €</div><div class="total-period">par mois, résiliable à tout moment</div></div>
+            <div style="text-align:right"><div class="total-grand" id="tvTotal">29,00 €</div><div class="total-period">par mois, résiliable à tout moment</div></div>
           </div>
         </div>
 
@@ -297,7 +297,7 @@ var PLAN_ALIASES={essentiel:'essential',essential:'essential',aviateur:'aviateur
 var currentPlan='aviateur';
 var addonActive=false;
 var discount=0;
-var VAT_RATE=0.20;
+var VAT_RATE=0;
 var payMethod='card';
 /* Mise en avant (B4) : si l'URL contient ?feature=<id>, on bascule en
    paiement unique de 9 € pour mettre l'annonce en vedette 30 jours. */
@@ -313,7 +313,7 @@ function initFeatureMode(){
   document.getElementById('promoRow')&&(document.getElementById('promoRow').style.display='none');
   document.getElementById('featureBox').style.display='';
   document.getElementById('tvPlan').textContent='Mise en avant (30 jours)';
-  document.getElementById('tvTax').textContent=eur(1.5);
+  document.getElementById('taxRow')&&(document.getElementById('taxRow').style.display='none');
   document.getElementById('tvTotal').textContent=eur(9);
   var lbl=document.querySelector('#payBtn .pay-lbl');
   if(lbl)lbl.textContent='Payer '+eur(9);
@@ -343,13 +343,13 @@ function updateTotal(){
   var base=plans[currentPlan].price;
   var addon=addonActive?10:0;
   var sub=Math.max(0,base+addon-discount);
-  var tax=Math.round(sub*VAT_RATE*100)/100;
-  var total=Math.round((sub+tax)*100)/100;
+  var tax=0; /* Aircraft2Sell OÜ non assujettie : aucun montant de TVA n'est collecté. */
+  var total=sub;
   document.getElementById('tvPlan').textContent=plans[currentPlan].label;
   document.getElementById('addonRow').style.display=addonActive?'flex':'none';
   document.getElementById('discountRow').style.display=discount>0?'flex':'none';
   if(discount>0)document.getElementById('tvDiscount').textContent='−'+eur(discount);
-  document.getElementById('tvTax').textContent=eur(tax);
+  document.getElementById('taxRow')&&(document.getElementById('taxRow').style.display='none');
   var free=base===0&&!addonActive;
   document.getElementById('tvTotal').textContent=free?'Gratuit':eur(total);
   var lbl=document.querySelector('#payBtn .pay-lbl');
