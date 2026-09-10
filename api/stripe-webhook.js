@@ -161,6 +161,40 @@ export default async function handler(req, res) {
     }
   }
 
+  if (event.type === 'customer.subscription.deleted') {
+    try {
+      const sub = event.data.object || {};
+      const cusId = sub.customer;
+      if (cusId && process.env.STRIPE_SECRET_KEY) {
+        const r = await fetch(`${STRIPE}/customers/${cusId}`, {
+          headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+        });
+        if (r.ok) {
+          const cust = await r.json();
+          const email = String(cust.email || '').trim().toLowerCase();
+          if (email) {
+            const rows = await sb(`users?email=eq.${encodeURIComponent(email)}&select=id&limit=1`);
+            const user = rows && rows[0];
+            if (user) {
+              await fetch(`${process.env.SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`, {
+                method: 'PATCH',
+                headers: {
+                  apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+                  Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                  'Content-Type': 'application/json',
+                  Prefer: 'return=minimal',
+                },
+                body: JSON.stringify({ plan: 'Essentiel', is_pro: false }),
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('webhook subscription.deleted:', e.message);
+    }
+  }
+
   /* Toujours accuser réception (200) pour les événements connus/ignorés. */
   return res.status(200).json({ received: true });
 }
