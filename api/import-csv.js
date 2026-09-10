@@ -81,6 +81,7 @@ export default async function handler(req, res) {
     }
 
     const row = {
+      id: (Date.now() * 1000) + (Math.floor(Math.random() * 999) + 1),
       make,
       model,
       year: ligne.year ? String(ligne.year).trim() : null,
