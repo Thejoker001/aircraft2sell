@@ -15,12 +15,30 @@ import { sb, envoyer, gabarit, esc, ADMIN_EMAIL, SITE } from './_lib.js';
 
 const STRIPE = 'https://api.stripe.com/v1';
 
+/* Empêche Vercel de parser automatiquement le JSON en objet — la
+   vérification de signature Stripe exige le corps BRUT, octet pour octet,
+   tel qu'envoyé. JSON.stringify(objet reparsé) ne correspond PAS forcément
+   au texte original (ordre des clés, espaces, unicode) : la signature HMAC
+   échouait silencieusement sur les paiements réels (pending_webhooks bloqué
+   côté Stripe), alors que des tests manuels avec un payload trivial
+   « marchaient » par coïncidence. */
+export const config = { api: { bodyParser: false } };
+
+function lireCorpsBrut(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (chunk) => { data += chunk; });
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
+  });
+}
+
 export default async function handler(req, res) {
   /* Le webhook Stripe envoie un body brut (pas du JSON par défaut) et la
      signature dans l'en-tête stripe-signature. */
   let raw = '';
   try {
-    raw = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    raw = await lireCorpsBrut(req);
   } catch (e) {
     raw = '';
   }
