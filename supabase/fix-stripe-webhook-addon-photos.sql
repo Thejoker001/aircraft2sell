@@ -1,0 +1,22 @@
+-- ═══════════════════════════════════════════════════════════════
+-- Aircraft2Sell — CORRECTIF : plan non activé après paiement Stripe
+-- « Could not find the 'addon_photos' column of 'users' »
+--
+-- CONSTAT (vérifié en prod, 2026-09-11) :
+-- api/stripe-webhook.js PATCH users avec le champ addon_photos, colonne
+-- absente du schéma -> PostgREST 400 -> catché silencieusement (try/catch
+-- large autour du traitement checkout.session.completed) -> le plan
+-- n'était JAMAIS mis à jour après un paiement réel, alors que Stripe
+-- recevait un 200 et ne réessayait donc jamais.
+-- Repéré via Stripe : GET /v1/events/{id} -> pending_webhooks:1 (jamais
+-- livré avec succès) sur le paiement réel de rbell.aviation2@gmail.com
+-- (evt_1UECqgCCPBw6yJxHhok3Cnxk, 29 EUR, plan aviateur, 2026-09-10 18:37).
+--
+-- Un 2e bug corrigé le même jour a précédé celui-ci : la vérification de
+-- signature utilisait JSON.stringify(req.body) sur un objet DÉJÀ PARSÉ par
+-- Vercel -> texte reconstruit non identique à l'octet-stream signé par
+-- Stripe -> HMAC toujours invalide sur les vrais paiements (corrigé par
+-- config.api.bodyParser=false + lecture du flux brut, commit 8e380fe).
+-- ═══════════════════════════════════════════════════════════════
+
+alter table public.users add column if not exists addon_photos boolean default false;
