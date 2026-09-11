@@ -21,7 +21,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Paiement — Aircraft2Sell</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
-<script src="https://js.stripe.com/v3/"></script>
 <link rel="stylesheet" href="styles.css?v=20260909a">
 <link rel="stylesheet" href="mobile.css?v=20260909a">
 <style>
@@ -32,16 +31,6 @@
 .form-section{margin-bottom:1.75rem}
 .form-section-title{font-size:.95rem;font-weight:800;color:var(--a2s-navy);margin-bottom:.9rem;padding-bottom:.55rem;border-bottom:1px solid var(--a2s-border);display:flex;align-items:center;gap:.5rem}
 .form-section-title .ic{width:18px;height:18px;color:var(--a2s-text-muted)}
-.pay-methods{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1.5rem}
-.pay-method{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:46px;padding:.5rem;border:1.5px solid var(--a2s-border-2);border-radius:var(--a2s-radius-btn);background:var(--a2s-surface);font-size:.86rem;font-weight:700;color:var(--a2s-text);cursor:pointer;transition:border-color .15s,background .15s}
-.pay-method:hover{border-color:var(--a2s-navy)}
-.pay-method.active{border-color:var(--a2s-navy);background:var(--a2s-blue-soft);color:var(--a2s-navy)}
-.pay-method .ic{width:18px;height:18px}
-.pay-method svg.brand{width:18px;height:18px}
-.stripe-wrap{min-height:46px;background:var(--a2s-surface);border:1.5px solid var(--a2s-border-2);border-radius:var(--a2s-radius-btn);padding:.8rem .95rem;transition:border-color .15s,box-shadow .15s}
-.stripe-wrap.focused{border-color:var(--a2s-blue);box-shadow:0 0 0 3px rgba(30,95,204,.14)}
-#card-errors,#sepa-errors{font-size:.78rem;color:var(--a2s-danger);font-weight:600;min-height:1rem;margin-top:.3rem}
-.sepa-mandate{font-size:.8rem;color:var(--a2s-text-muted);line-height:1.6;margin-top:.5rem}
 .promo-wrap{display:flex;gap:.5rem}
 .promo-wrap .inp{flex:1}
 .security-note{display:flex;align-items:center;justify-content:center;gap:.45rem;font-size:.8rem;color:var(--a2s-text-muted);margin-top:.85rem}
@@ -81,7 +70,7 @@
 .reassure span{display:inline-flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--a2s-text-muted)}
 .reassure .ic{width:16px;height:16px;color:var(--a2s-success)}
 @media(max-width:960px){.checkout-wrap{grid-template-columns:1fr}.order-summary{position:static;order:-1}}
-@media(max-width:600px){.pay-methods{grid-template-columns:1fr 1fr}.form-card{padding:1.25rem}}
+@media(max-width:600px){.form-card{padding:1.25rem}}
 </style>
 </head>
 <body>
@@ -103,19 +92,6 @@
     <div class="card form-card">
       <h2>Détails du paiement</h2>
 
-      <div class="pay-methods" role="group" aria-label="Moyen de paiement">
-        <button type="button" class="pay-method active" id="pm-card" onclick="setPayMethod('card')"><i data-icon="credit-card"></i>Carte</button>
-        <button type="button" class="pay-method" id="pm-sepa" onclick="setPayMethod('sepa')"><i data-icon="building"></i>SEPA</button>
-        <button type="button" class="pay-method" id="pm-apple" onclick="setPayMethod('apple')">
-          <svg class="brand" viewBox="0 0 814 1000" fill="currentColor" aria-hidden="true"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-38.8-165.8-127.3C92.3 813.1 69 734.2 69 656.5c0-220.4 144.7-337.4 287.7-337.4 75.7 0 138.7 48.5 186.8 48.5 46.1 0 118.6-51.7 200.1-51.7 32.3 0 136.9 2.9 210.1 116.1zm-165.1-130.9c37.4-44.2 64.7-105.7 64.7-167.2 0-8.4-.6-16.8-2.1-23.9-61.3 2.3-135.2 41.7-179 91.9-33.1 37.5-64 99.1-64 161.8 0 9 1.4 18 2.1 20.9 3.8.6 10 1.6 16.2 1.6 54.9 0 124.3-36.8 162.1-84.8z"/></svg>
-          Apple Pay
-        </button>
-        <button type="button" class="pay-method" id="pm-google" onclick="setPayMethod('google')">
-          <svg class="brand" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 11v2.8h4.6c-.2 1.1-.8 2-1.7 2.6l2.7 2.1c1.6-1.5 2.5-3.7 2.5-6.2 0-.6-.1-1.1-.2-1.7H12Z"/><path d="M6.9 13.9 6.3 14.4 4.1 16c1.4 2.7 4.3 4.6 7.9 4.6 2.4 0 4.4-.8 5.9-2.2l-2.7-2.1c-.8.5-1.8.9-3.2.9-2.5 0-4.6-1.7-5.3-3.9l.2.6Z"/><path d="M4.1 8c-.6 1.2-.9 2.6-.9 4s.3 2.8.9 4l2.9-2.2c-.2-.5-.3-1.1-.3-1.8s.1-1.3.3-1.8L4.1 8Z"/><path d="M12 6.8c1.4 0 2.6.5 3.5 1.4l2.4-2.4C16.4 4.4 14.4 3.4 12 3.4 8.4 3.4 5.5 5.3 4.1 8l2.9 2.2c.7-2.2 2.8-3.4 5-3.4Z"/></svg>
-          Google Pay
-        </button>
-      </div>
-
       <div id="payAlert"></div>
 
       <!-- Infos compte -->
@@ -127,74 +103,6 @@
           <div class="field span2"><label for="email">Adresse email <span class="req">*</span></label><input type="email" class="inp" id="email" placeholder="vous@exemple.com" autocomplete="email" required><div class="field-hint">Le reçu et la facture seront envoyés à cette adresse.</div></div>
           <div class="field span2"><label for="company">Entreprise <span class="muted" style="font-weight:500">(optionnel)</span></label><input type="text" class="inp" id="company" placeholder="Aviation SAS" autocomplete="organization"></div>
         </div>
-      </div>
-
-      <!-- Carte -->
-      <div class="form-section" id="cardSection">
-        <div class="form-section-title"><i data-icon="credit-card"></i>Carte bancaire</div>
-        <div class="field">
-          <label for="card-element">Numéro de carte</label>
-          <div class="stripe-wrap" id="card-element"></div>
-          <div id="card-errors" aria-live="polite"></div>
-        </div>
-        <div class="form-grid">
-          <div class="field"><label for="card-expiry">Date d'expiration</label><div class="stripe-wrap" id="card-expiry"></div></div>
-          <div class="field"><label for="card-cvc">Code de sécurité (CVC)</label><div class="stripe-wrap" id="card-cvc"></div></div>
-        </div>
-      </div>
-
-      <!-- SEPA -->
-      <div class="form-section" id="sepaSection" style="display:none">
-        <div class="form-section-title"><i data-icon="building"></i>Prélèvement SEPA</div>
-        <div class="field">
-          <label for="iban-element">IBAN</label>
-          <div class="stripe-wrap" id="iban-element"></div>
-          <div id="sepa-errors" aria-live="polite"></div>
-        </div>
-        <p class="sepa-mandate">En fournissant votre IBAN et en confirmant ce paiement, vous autorisez Aircraft2Sell à prélever votre compte pour les paiements récurrents de votre abonnement.</p>
-      </div>
-
-      <!-- Wallets -->
-      <div class="form-section" id="walletSection" style="display:none">
-        <div class="alert alert-info"><i data-icon="info"></i><span>Vous serez invité à confirmer le paiement dans votre portefeuille après avoir cliqué sur « Payer ».</span></div>
-      </div>
-
-      <!-- Adresse de facturation -->
-      <div class="form-section">
-        <div class="form-section-title"><i data-icon="map-pin"></i>Adresse de facturation</div>
-        <div class="field">
-          <label for="country">Pays</label>
-          <select class="sel" id="country" autocomplete="country">
-            <optgroup label="Europe">
-              <option value="FR">France</option>
-              <option value="DE">Allemagne</option>
-              <option value="ES">Espagne</option>
-              <option value="IT">Italie</option>
-              <option value="BE">Belgique</option>
-              <option value="NL">Pays-Bas</option>
-              <option value="PT">Portugal</option>
-              <option value="AT">Autriche</option>
-              <option value="PL">Pologne</option>
-              <option value="SE">Suède</option>
-              <option value="CH">Suisse</option>
-              <option value="GB">Royaume-Uni</option>
-              <option value="LU">Luxembourg</option>
-            </optgroup>
-            <optgroup label="Reste du monde">
-              <option value="US">États-Unis</option>
-              <option value="CA">Canada</option>
-              <option value="AE">Émirats arabes unis</option>
-              <option value="AU">Australie</option>
-              <option value="OTHER">Autre</option>
-            </optgroup>
-          </select>
-        </div>
-        <div class="field"><label for="address">Adresse</label><input type="text" class="inp" id="address" placeholder="12 rue de l'Aviation" autocomplete="street-address"></div>
-        <div class="form-grid">
-          <div class="field"><label for="zip">Code postal</label><input type="text" class="inp" id="zip" placeholder="75001" autocomplete="postal-code"></div>
-          <div class="field"><label for="city">Ville</label><input type="text" class="inp" id="city" placeholder="Paris" autocomplete="address-level2"></div>
-        </div>
-        <div class="field" id="vatRow" style="display:none"><label for="vat">Numéro de TVA intracommunautaire <span class="muted" style="font-weight:500">(optionnel)</span></label><input type="text" class="inp" id="vat" placeholder="FR 12 345 678 901"><div class="field-hint">Pour les professionnels : permet la facturation hors taxe si applicable.</div></div>
       </div>
 
       <!-- Code promo -->
@@ -210,8 +118,8 @@
         </div>
       </div>
 
-      <button type="button" class="btn-primary btn-lg btn-block" id="payBtn" onclick="handlePay()"><i data-icon="lock"></i><span class="pay-lbl">Payer maintenant</span></button>
-      <div class="security-note"><i data-icon="lock"></i>Paiement sécurisé par Stripe. Données chiffrées, aucune information bancaire stockée par Aircraft2Sell.</div>
+      <button type="button" class="btn-primary btn-lg btn-block" id="payBtn" onclick="handlePay()"><i data-icon="lock"></i><span class="pay-lbl">Continuer vers le paiement</span></button>
+      <div class="security-note"><i data-icon="lock"></i>Vous saisirez votre carte (ou SEPA / Apple Pay / Google Pay) sur la page sécurisée Stripe qui suit. Aucune donnée bancaire n'est stockée par Aircraft2Sell.</div>
     </div>
   </div>
 
@@ -297,14 +205,9 @@ var PLAN_ALIASES={essentiel:'essential',essential:'essential',aviateur:'aviateur
 var currentPlan='aviateur';
 var addonActive=false;
 var discount=0;
-var VAT_RATE=0;
-var payMethod='card';
 /* Mise en avant (B4) : si l'URL contient ?feature=<id>, on bascule en
    paiement unique de 9 € pour mettre l'annonce en vedette 30 jours. */
 var featureId=(new URLSearchParams(location.search)).get('feature')||'';
-/* Clé publique Stripe : safe côté client (les montants sont recalculés et
-   fiabilisés côté serveur dans /api/create-checkout). */
-window.STRIPE_KEY='pk_live_51TEQ0BCCPBw6yJxHoobnUM87SIaKzaDI1o1BS7aXuUCepmBx9kzB8qACsc4kIRZMkzWEP8u7ZaEapHXZ52qM5pCT005BLWCG0I';
 
 function initFeatureMode(){
   if(!featureId)return;
@@ -356,16 +259,6 @@ function updateTotal(){
   if(lbl)lbl.textContent=free?'Activer la formule gratuite':'Payer '+eur(total);
 }
 
-/* ── MOYENS DE PAIEMENT ── */
-function setPayMethod(m){
-  payMethod=m;
-  document.querySelectorAll('.pay-method').forEach(function(el){el.classList.remove('active');});
-  document.getElementById('pm-'+m).classList.add('active');
-  document.getElementById('cardSection').style.display=m==='card'?'block':'none';
-  document.getElementById('sepaSection').style.display=m==='sepa'?'block':'none';
-  document.getElementById('walletSection').style.display=(m==='apple'||m==='google')?'block':'none';
-}
-
 /* ── CODE PROMO ── */
 var PROMOS={'AVIATION2026':5,'A2S2026':10};
 function applyPromo(){
@@ -373,26 +266,6 @@ function applyPromo(){
   var hint=document.getElementById('promoHint');
   if(PROMOS[code]){discount=PROMOS[code];updateTotal();hint.textContent='Code appliqué : −'+eur(discount)+' par mois.';hint.style.color='var(--a2s-success)';showToast('Code promotionnel appliqué.');}
   else{discount=0;updateTotal();hint.textContent='Ce code n\'est pas valide.';hint.style.color='var(--a2s-danger)';}
-}
-
-/* ── STRIPE ── */
-var stripe=null,cardElement=null,expiryElement=null,cvcElement=null,ibanElement=null;
-function initStripe(){
-  try{
-    if(typeof Stripe==='undefined')return;
-    stripe=Stripe(window.STRIPE_KEY||'pk_live_51TEQ0BCCPBw6yJxHoobnUM87SIaKzaDI1o1BS7aXuUCepmBx9kzB8qACsc4kIRZMkzWEP8u7ZaEapHXZ52qM5pCT005BLWCG0I');
-    var elements=stripe.elements({locale:'fr'});
-    var style={base:{color:'#14213D',fontFamily:'Manrope, system-ui, sans-serif',fontSize:'15px','::placeholder':{color:'#8B97AB'}},invalid:{color:'#C8321F'}};
-    cardElement=elements.create('cardNumber',{style:style});cardElement.mount('#card-element');
-    expiryElement=elements.create('cardExpiry',{style:style});expiryElement.mount('#card-expiry');
-    cvcElement=elements.create('cardCvc',{style:style});cvcElement.mount('#card-cvc');
-    ibanElement=elements.create('iban',{style:style,supportedCountries:['SEPA']});ibanElement.mount('#iban-element');
-    [cardElement,expiryElement,cvcElement,ibanElement].forEach(function(el){
-      el.on('change',function(e){var err=document.getElementById(e.elementType==='iban'?'sepa-errors':'card-errors');if(err)err.textContent=e.error?e.error.message:'';});
-      el.on('focus',function(){el._frame&&el._frame.parentElement&&el._frame.parentElement.classList.add('focused');});
-      el.on('blur',function(){el._frame&&el._frame.parentElement&&el._frame.parentElement.classList.remove('focused');});
-    });
-  }catch(e){console.warn('Stripe non initialisé :',e);}
 }
 
 /* ── PAIEMENT ── */
@@ -465,7 +338,6 @@ function showToast(msg){var el=document.getElementById('toast');el.textContent=m
   if(em&&!document.getElementById('email').value)document.getElementById('email').value=em;
   if(nm){var parts=nm.split(' ');if(!document.getElementById('firstName').value)document.getElementById('firstName').value=parts[0]||'';if(!document.getElementById('lastName').value)document.getElementById('lastName').value=parts.slice(1).join(' ')||'';}
   document.querySelectorAll('.plan-option,.addon-box').forEach(function(el){el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click();}});});
-  initStripe();
 })();
 </script>
 <script src="rgpd-consent.js" defer></script>
