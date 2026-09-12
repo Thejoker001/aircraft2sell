@@ -394,6 +394,7 @@ async function sbSellerPublic(email){
 }
 
 var LISTING=null;
+var DISPLAY_VIEWS=0; /* vaatamiste loendur, määratakse sünkroonselt render()-is enne load()-i kasutust */
 var CAT_NAMES={light:'Kerglennuk',jet:"Ärijet'id",turbo:'Turbopropeller',heli:'Helikopter',ulm:'Mikrolennuk-ULM',airliner:'Reisilennuk'};
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
 var COUNTRY_NAMES={FR:'Prantsusmaa',DE:'Saksamaa',ES:'Hispaania',IT:'Itaalia',BE:'Belgia',NL:'Holland',CH:'Šveits',GB:'Ühendkuningriik',PT:'Portugal',AT:'Austria',LU:'Luksemburg',US:'Ameerika Ühendriigid',CA:'Kanada',AU:'Austraalia',SE:'Rootsi',NO:'Norra',DK:'Taani',PL:'Poola',AE:'Araabia Ühendemiraadid'};
@@ -410,25 +411,21 @@ async function load(){
   if(!rows||!rows.length){showError("Seda kuulutust pole olemas või see pole enam saadaval.");return;}
   LISTING=rows[0];
   render(LISTING);
-  /* Vaatamiste loendur: külastus salvestatakse tabelisse listing_views,
-     mitte ei tehta anonüümset PATCH'i tabelile listings. Pärast RLS-i
-     lukustamist (supabase/securite-base.sql) ei saa külastaja kuulutust
-     enam muuta — ja see on soovitud: see PATCH võimaldas igalühel
-     igasuguse kuulutuse igat välja üle kirjutada. */
-  fetch(SB+'/rest/v1/listing_views',{
-    method:'POST',
-    headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body:JSON.stringify({listing_id:parseInt(id)||null,session_id:(function(){try{var k=sessionStorage.getItem('a2s_sid');if(!k){k=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('a2s_sid',k);}return k;}catch(e){return null;}})()})
-  }).catch(function(){});
+  /* Vaatamiste jälgimine: listing_views (koos geolokatsiooniga) salvestab
+     ainult analytics.js (laetakse lehe lõpus) — mitte dubleerida siin
+     (viga parandatud 2026-09-12: see leht ja analytics.js kirjutasid
+     mõlemad ühe rea sama külastuse kohta, kahekordistades admini
+     "Vues annonces" KPI-d). Kuvatav loendur (listings.views) suureneb
+     render()-is rpc/increment_views kaudu. */
   var urgStrip=document.getElementById('urgStrip');
   if(urgStrip){
     urgStrip.style.display='flex';
     var uv=document.getElementById('urgViews');
-    if(uv)uv.textContent=newViews.toLocaleString('et-EE')+' vaatamine'+(newViews>1?'t':'');
+    if(uv)uv.textContent=DISPLAY_VIEWS.toLocaleString('et-EE')+' vaatamine'+(DISPLAY_VIEWS>1?'t':'');
     var ue=document.getElementById('urgEnq');
     if(ue)ue.textContent=(LISTING.enquiries||0)+' päring'+(LISTING.enquiries>1?'ut':'');
     /* "Populaarne" märk alates 50 vaatamisest */
-    if(newViews>=50){
+    if(DISPLAY_VIEWS>=50){
       var badge=document.getElementById('trendBadge');
       if(badge){badge.style.display='inline-flex';badge.innerHTML=A2SIcon('trending-up')+'Populaarne kuulutus';}
     }
@@ -445,21 +442,18 @@ function render(l){
   var loc=l.airport?esc(l.airport)+(l.country?' — '+countryLabel(l.country):''):countryLabel(l.country)||'—';
 
   document.title='Aircraft2Sell — '+title;
-  /* Vaatamiste loendur serveris (üks kord seansi kohta) */
+  /* Vaatamiste loendur serveris (üks kord seansi kohta). DISPLAY_VIEWS
+     määratakse sünkroonselt, et load() saaks seda kohe kasutada. */
+  DISPLAY_VIEWS=l.views||0;
   (function(){
     var viewed=sessionStorage.getItem('a2s_viewed_'+l.id);
     if(!viewed){
       sessionStorage.setItem('a2s_viewed_'+l.id,'1');
+      DISPLAY_VIEWS+=1;
       fetch(SB_URL+'/rest/v1/rpc/increment_views',{
         method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
         body:JSON.stringify({listing_id:l.id})
-      }).catch(function(){
-        fetch(SB_URL+'/rest/v1/listings?id=eq.'+l.id,{
-          method:'PATCH',
-          headers:{'apikey':SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-          body:JSON.stringify({views:(l.views||0)+1})
-        }).catch(function(){});
-      });
+      }).catch(function(){});
     }
   })();
   injectSchema(l);

@@ -424,6 +424,7 @@ async function sbSellerPublic(email){
 }
 
 var LISTING=null;
+var DISPLAY_VIEWS=0; /* client-side view counter, set synchronously in render() before load() uses it */
 var CAT_NAMES={light:'Light aircraft',jet:'Business jet',turbo:'Turboprop',heli:'Helicopter',ulm:'ULM',airliner:'Airliner'};
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
 var COUNTRY_NAMES={FR:'France',DE:'Germany',ES:'Spain',IT:'Italy',BE:'Belgium',NL:'Netherlands',CH:'Switzerland',GB:'United Kingdom',PT:'Portugal',AT:'Austria',LU:'Luxembourg',US:'United States',CA:'Canada',AU:'Australia',SE:'Sweden',NO:'Norway',DK:'Denmark',PL:'Poland',AE:'United Arab Emirates'};
@@ -440,25 +441,21 @@ async function load(){
   if(!rows||!rows.length){showError("This listing does not exist or is no longer available.");return;}
   LISTING=rows[0];
   render(LISTING);
-  /* Compteur de vues : on enregistre la visite dans listing_views plutôt
-     que de faire un PATCH anonyme sur listings. Après le verrouillage RLS
-     (supabase/securite-base.sql), un visiteur ne peut plus modifier une
-     annonce — et c'est voulu : ce PATCH permettait à n'importe qui de
-     réécrire n'importe quel champ de n'importe quelle annonce. */
-  fetch(SB+'/rest/v1/listing_views',{
-    method:'POST',
-    headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body:JSON.stringify({listing_id:parseInt(id)||null,session_id:(function(){try{var k=sessionStorage.getItem('a2s_sid');if(!k){k=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('a2s_sid',k);}return k;}catch(e){return null;}})()})
-  }).catch(function(){});
+  /* View tracking: listing_views (with geolocation) is recorded once by
+     analytics.js, loaded at the end of the page — do not duplicate the
+     insert here (bug fixed 2026-09-12: this page and analytics.js each
+     wrote a row for the same visit, doubling the admin "Vues annonces"
+     KPI). The displayed counter (listings.views) is incremented in
+     render() via rpc/increment_views. */
   var urgStrip=document.getElementById('urgStrip');
   if(urgStrip){
     urgStrip.style.display='flex';
     var uv=document.getElementById('urgViews');
-    if(uv)uv.textContent=newViews.toLocaleString('en-GB')+' view'+(newViews>1?'s':'');
+    if(uv)uv.textContent=DISPLAY_VIEWS.toLocaleString('en-GB')+' view'+(DISPLAY_VIEWS>1?'s':'');
     var ue=document.getElementById('urgEnq');
     if(ue)ue.textContent=(LISTING.enquiries||0)+' enquir'+(LISTING.enquiries>1?'ies':'y');
     /* Badge "populaire" à partir de 50 vues */
-    if(newViews>=50){
+    if(DISPLAY_VIEWS>=50){
       var badge=document.getElementById('trendBadge');
       if(badge){badge.style.display='inline-flex';badge.innerHTML=A2SIcon('trending-up')+'Popular listing';}
     }
@@ -475,21 +472,18 @@ function render(l){
   var loc=l.airport?esc(l.airport)+(l.country?' — '+countryLabel(l.country):''):countryLabel(l.country)||'—';
 
   document.title='Aircraft2Sell — '+title;
-  /* Compteur de vues côté serveur (une fois par session) */
+  /* Server-side view counter (once per session). DISPLAY_VIEWS is set
+     synchronously here so load() can use it right away. */
+  DISPLAY_VIEWS=l.views||0;
   (function(){
     var viewed=sessionStorage.getItem('a2s_viewed_'+l.id);
     if(!viewed){
       sessionStorage.setItem('a2s_viewed_'+l.id,'1');
+      DISPLAY_VIEWS+=1;
       fetch(SB_URL+'/rest/v1/rpc/increment_views',{
         method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
         body:JSON.stringify({listing_id:l.id})
-      }).catch(function(){
-        fetch(SB_URL+'/rest/v1/listings?id=eq.'+l.id,{
-          method:'PATCH',
-          headers:{'apikey':SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-          body:JSON.stringify({views:(l.views||0)+1})
-        }).catch(function(){});
-      });
+      }).catch(function(){});
     }
   })();
   injectSchema(l);

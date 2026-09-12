@@ -424,6 +424,7 @@ async function sbSellerPublic(email){
 }
 
 var LISTING=null;
+var DISPLAY_VIEWS=0; /* vues affichées côté client, calculées dans render() avant usage par load() */
 var CAT_NAMES={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
 var COUNTRY_NAMES={FR:'France',DE:'Allemagne',ES:'Espagne',IT:'Italie',BE:'Belgique',NL:'Pays-Bas',CH:'Suisse',GB:'Royaume-Uni',PT:'Portugal',AT:'Autriche',LU:'Luxembourg',US:'États-Unis',CA:'Canada',AU:'Australie',SE:'Suède',NO:'Norvège',DK:'Danemark',PL:'Pologne',AE:'Émirats arabes unis'};
@@ -440,25 +441,21 @@ async function load(){
   if(!rows||!rows.length){showError("Cette annonce n'existe pas ou n'est plus disponible.");return;}
   LISTING=rows[0];
   render(LISTING);
-  /* Compteur de vues : on enregistre la visite dans listing_views plutôt
-     que de faire un PATCH anonyme sur listings. Après le verrouillage RLS
-     (supabase/securite-base.sql), un visiteur ne peut plus modifier une
-     annonce — et c'est voulu : ce PATCH permettait à n'importe qui de
-     réécrire n'importe quel champ de n'importe quelle annonce. */
-  fetch(SB+'/rest/v1/listing_views',{
-    method:'POST',
-    headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body:JSON.stringify({listing_id:parseInt(id)||null,session_id:(function(){try{var k=sessionStorage.getItem('a2s_sid');if(!k){k=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('a2s_sid',k);}return k;}catch(e){return null;}})()})
-  }).catch(function(){});
+  /* Compteur de vues : le suivi listing_views (avec géolocalisation) est
+     assuré une seule fois par analytics.js, chargé en fin de page — ne pas
+     dupliquer l'insertion ici (bug corrigé le 2026-09-12 : cette page et
+     analytics.js écrivaient chacun une ligne pour la même visite, doublant
+     le KPI "Vues annonces" de l'admin). L'incrément du compteur affiché
+     (listings.views) est géré dans render() via rpc/increment_views. */
   var urgStrip=document.getElementById('urgStrip');
   if(urgStrip){
     urgStrip.style.display='flex';
     var uv=document.getElementById('urgViews');
-    if(uv)uv.textContent=newViews.toLocaleString('fr-FR')+' vue'+(newViews>1?'s':'');
+    if(uv)uv.textContent=DISPLAY_VIEWS.toLocaleString('fr-FR')+' vue'+(DISPLAY_VIEWS>1?'s':'');
     var ue=document.getElementById('urgEnq');
     if(ue)ue.textContent=(LISTING.enquiries||0)+' contact'+(LISTING.enquiries>1?'s':'');
     /* Badge "populaire" à partir de 50 vues */
-    if(newViews>=50){
+    if(DISPLAY_VIEWS>=50){
       var badge=document.getElementById('trendBadge');
       if(badge){badge.style.display='inline-flex';badge.innerHTML=A2SIcon('trending-up')+'Annonce populaire';}
     }
@@ -475,21 +472,25 @@ function render(l){
   var loc=l.airport?esc(l.airport)+(l.country?' — '+countryLabel(l.country):''):countryLabel(l.country)||'—';
 
   document.title='Aircraft2Sell — '+title;
-  /* Compteur de vues côté serveur (une fois par session) */
+  /* Compteur de vues côté serveur (une fois par session).
+     DISPLAY_VIEWS (variable globale) est calculé de façon SYNCHRONE ici,
+     avant l'appel réseau, pour être utilisable immédiatement par load()
+     (affichage optimiste : pas besoin d'attendre la réponse RPC). La
+     fonction rpc/increment_views existe côté base depuis le 2026-09-12
+     (supabase/fix-increment-views.sql) : avant ce correctif, aucun compteur
+     ne s'incrémentait jamais (404 sur le RPC, PATCH direct bloqué par la
+     RLS) et cette variable s'appelait "newViews" sans jamais être déclarée
+     (ReferenceError silencieuse empêchant l'affichage du badge de vues). */
+  DISPLAY_VIEWS=l.views||0;
   (function(){
     var viewed=sessionStorage.getItem('a2s_viewed_'+l.id);
     if(!viewed){
       sessionStorage.setItem('a2s_viewed_'+l.id,'1');
+      DISPLAY_VIEWS+=1;
       fetch(SB_URL+'/rest/v1/rpc/increment_views',{
         method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
         body:JSON.stringify({listing_id:l.id})
-      }).catch(function(){
-        fetch(SB_URL+'/rest/v1/listings?id=eq.'+l.id,{
-          method:'PATCH',
-          headers:{'apikey':SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-          body:JSON.stringify({views:(l.views||0)+1})
-        }).catch(function(){});
-      });
+      }).catch(function(){});
     }
   })();
   injectSchema(l);
