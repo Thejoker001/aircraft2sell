@@ -356,7 +356,7 @@
           <div><h2 class="sec-title">Fotod</h2><p class="sec-sub">Mida vajame: teravad ja hiljutised fotod. Esimesest saab kuulutuse põhipilt.</p></div>
         </div>
         <div class="card-body">
-          <div class="alert alert-info plan-reminder"><i data-icon="info"></i><span><strong>Essential-plaan:</strong> maksimaalselt 5 fotot. <a href="/checkout.html?plan=aviateur">Uuenda Aviateur-plaanile 20 foto jaoks <i data-icon="arrow-right" class="ic-sm"></i></a></span></div>
+          <div class="alert alert-info plan-reminder" id="planPhotoReminder"><i data-icon="info"></i><span><strong>Essential-plaan:</strong> maksimaalselt 5 fotot. <a href="/checkout.html?plan=aviateur">Uuenda Aviateur-plaanile 20 foto jaoks <i data-icon="arrow-right" class="ic-sm"></i></a></span></div>
           <div class="dropzone" id="dropZone" role="button" tabindex="0" aria-label="Lisa fotosid" onclick="document.getElementById('fileInput').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('fileInput').click();}" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFiles(event)">
             <span class="icon-box"><i data-icon="camera"></i></span>
             <span class="dropzone-title">Lohistage fotod siia või klõpsake</span>
@@ -427,8 +427,32 @@
 <script>
 /* ── FOTOD ── */
 var photos=[];
-var MAX_PHOTOS=5;
+var PLAN_MAX_PHOTOS={Essentiel:5,Aviateur:20,Pro:20};
+var MAX_PHOTOS=5; /* vaikeväärtus enne plaani lahendamist (vt resolvePhotoLimit) */
 var CURR_SYMBOLS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',AED:'AED '};
+
+async function resolvePhotoLimit(){
+  var email=localStorage.getItem('a2s_user_email')||'';
+  var plan='Essentiel';
+  if(email){
+    try{
+      var tk=await authToken();
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=plan&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}});
+      var userData=await res.json();
+      plan=(userData&&userData[0]&&userData[0].plan)||'Essentiel';
+    }catch(e){console.warn('Fotopiirangu lahendamine:',e);}
+  }
+  MAX_PHOTOS=PLAN_MAX_PHOTOS[plan]||5;
+  var reminder=document.getElementById('planPhotoReminder');
+  if(reminder){
+    if(plan==='Essentiel'){
+      reminder.innerHTML='<i data-icon="info"></i><span><strong>Essential-plaan:</strong> maksimaalselt 5 fotot. <a href="/checkout.html?plan=aviateur">Uuenda Aviateur-plaanile 20 foto jaoks <i data-icon="arrow-right" class="ic-sm"></i></a></span>';
+    }else{
+      reminder.innerHTML='<i data-icon="info"></i><span><strong>'+plan+'-plaan:</strong> maksimaalselt '+MAX_PHOTOS+' fotot.</span>';
+    }
+    if(window.A2SIcon&&typeof A2SIcon.hydrate==='function')A2SIcon.hydrate(reminder);
+  }
+}
 
 function handleFiles(files){
   Array.from(files).forEach(function(f){
@@ -969,6 +993,7 @@ window.addEventListener('DOMContentLoaded',function(){
   var av=document.getElementById('navAvatar');
   if(nu)nu.style.display='flex';
   if(av)av.textContent=(first[0]||'U').toUpperCase();
+  resolvePhotoLimit();
 })();
 </script>
 <script>

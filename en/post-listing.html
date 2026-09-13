@@ -354,7 +354,7 @@
           <div><h2 class="sec-title">Photos</h2><p class="sec-sub">What we need: sharp, recent photos. The first one becomes the main image of the listing.</p></div>
         </div>
         <div class="card-body">
-          <div class="alert alert-info plan-reminder"><i data-icon="info"></i><span><strong>Essential plan:</strong> 5 photos maximum. <a href="/checkout.html?plan=aviateur">Upgrade to Aviateur for 20 photos <i data-icon="arrow-right" class="ic-sm"></i></a></span></div>
+          <div class="alert alert-info plan-reminder" id="planPhotoReminder"><i data-icon="info"></i><span><strong>Essential plan:</strong> 5 photos maximum. <a href="/checkout.html?plan=aviateur">Upgrade to Aviateur for 20 photos <i data-icon="arrow-right" class="ic-sm"></i></a></span></div>
           <div class="dropzone" id="dropZone" role="button" tabindex="0" aria-label="Add photos" onclick="document.getElementById('fileInput').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('fileInput').click();}" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFiles(event)">
             <span class="icon-box"><i data-icon="camera"></i></span>
             <span class="dropzone-title">Drag your photos here or click</span>
@@ -425,8 +425,32 @@
 <script>
 /* ── PHOTOS ── */
 var photos=[];
-var MAX_PHOTOS=5;
+var PLAN_MAX_PHOTOS={Essentiel:5,Aviateur:20,Pro:20};
+var MAX_PHOTOS=5; /* default before plan resolution (see resolvePhotoLimit) */
 var CURR_SYMBOLS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',AED:'AED '};
+
+async function resolvePhotoLimit(){
+  var email=localStorage.getItem('a2s_user_email')||'';
+  var plan='Essentiel';
+  if(email){
+    try{
+      var tk=await authToken();
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=plan&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}});
+      var userData=await res.json();
+      plan=(userData&&userData[0]&&userData[0].plan)||'Essentiel';
+    }catch(e){console.warn('Photo limit resolution:',e);}
+  }
+  MAX_PHOTOS=PLAN_MAX_PHOTOS[plan]||5;
+  var reminder=document.getElementById('planPhotoReminder');
+  if(reminder){
+    if(plan==='Essentiel'){
+      reminder.innerHTML='<i data-icon="info"></i><span><strong>Essential plan:</strong> 5 photos maximum. <a href="/checkout.html?plan=aviateur">Upgrade to Aviateur for 20 photos <i data-icon="arrow-right" class="ic-sm"></i></a></span>';
+    }else{
+      reminder.innerHTML='<i data-icon="info"></i><span><strong>'+plan+' plan:</strong> '+MAX_PHOTOS+' photos maximum.</span>';
+    }
+    if(window.A2SIcon&&typeof A2SIcon.hydrate==='function')A2SIcon.hydrate(reminder);
+  }
+}
 
 function handleFiles(files){
   Array.from(files).forEach(function(f){
@@ -967,6 +991,7 @@ window.addEventListener('DOMContentLoaded',function(){
   var av=document.getElementById('navAvatar');
   if(nu)nu.style.display='flex';
   if(av)av.textContent=(first[0]||'U').toUpperCase();
+  resolvePhotoLimit();
 })();
 </script>
 <script>
