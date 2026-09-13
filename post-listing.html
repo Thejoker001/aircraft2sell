@@ -462,6 +462,39 @@ function handleFiles(files){
   });
   var fi=document.getElementById('fileInput');if(fi)fi.value='';
 }
+
+/* Compression côté navigateur avant upload : Supabase Storage ne propose pas
+   de redimensionnement automatique sur notre offre (endpoint /render/image/
+   renvoie 403 FeatureNotEnabled). Sans ça, chaque photo (souvent 2 à 8 Mo
+   en sortie d'appareil photo/smartphone) était uploadée telle quelle, ce
+   qui ralentissait fortement le chargement des annonces. On redimensionne
+   à 1920px de large maximum et on recompresse en JPEG qualité 82 %. */
+function compressImage(file){
+  return new Promise(function(resolve){
+    if(!file.type||file.type.indexOf('image/')!==0){resolve(file);return;}
+    var img=new Image();
+    var objUrl=URL.createObjectURL(file);
+    img.onload=function(){
+      URL.revokeObjectURL(objUrl);
+      var maxW=1920,maxH=1920;
+      var w=img.naturalWidth,h=img.naturalHeight;
+      if(w<=maxW&&h<=maxH&&file.size<=800*1024){resolve(file);return;} /* déjà raisonnable, pas de gain */
+      var scale=Math.min(maxW/w,maxH/h,1);
+      var cw=Math.round(w*scale),ch=Math.round(h*scale);
+      var canvas=document.createElement('canvas');
+      canvas.width=cw;canvas.height=ch;
+      var ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,cw,ch);
+      canvas.toBlob(function(blob){
+        if(!blob||blob.size>=file.size){resolve(file);return;} /* garde l'original si la compression n'aide pas */
+        var newName=file.name.replace(/\.(png|jpe?g|webp|heic|heif)$/i,'')+'.jpg';
+        resolve(new File([blob],newName,{type:'image/jpeg'}));
+      },'image/jpeg',0.82);
+    };
+    img.onerror=function(){URL.revokeObjectURL(objUrl);resolve(file);};
+    img.src=objUrl;
+  });
+}
 function renderPhotos(){
   var grid=document.getElementById('photoGrid');
   grid.innerHTML=photos.map(function(p,i){
@@ -811,10 +844,10 @@ async function submitListing(){
   // ── Upload photos vers Supabase Storage ──
   var uploadedPhotoUrls=[];
   if(photos.length>0){
-    showToast('Envoi des photos en cours…');
+    showToast('Compression et envoi des photos en cours…');
     for(var pi=0;pi<photos.length;pi++){
       try{
-        var f=photos[pi].file;
+        var f=await compressImage(photos[pi].file);
         var ext=f.name.split('.').pop().toLowerCase();
         var fname='listings/'+Date.now()+'-'+pi+'.'+ext;
         var uploadRes=await fetch(SB_URL+'/storage/v1/object/photos/'+fname,{

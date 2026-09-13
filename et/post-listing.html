@@ -464,6 +464,37 @@ function handleFiles(files){
   });
   var fi=document.getElementById('fileInput');if(fi)fi.value='';
 }
+
+/* Brauseripoolne tihendamine enne üleslaadimist: Supabase Storage
+   pilditeisendus pole meie plaanil aktiveeritud (/render/image/ tagastab
+   403 FeatureNotEnabled). Suurus vähendatakse kuni 1920px laiuseks ja
+   tihendatakse JPEG kvaliteediga 82%. */
+function compressImage(file){
+  return new Promise(function(resolve){
+    if(!file.type||file.type.indexOf('image/')!==0){resolve(file);return;}
+    var img=new Image();
+    var objUrl=URL.createObjectURL(file);
+    img.onload=function(){
+      URL.revokeObjectURL(objUrl);
+      var maxW=1920,maxH=1920;
+      var w=img.naturalWidth,h=img.naturalHeight;
+      if(w<=maxW&&h<=maxH&&file.size<=800*1024){resolve(file);return;}
+      var scale=Math.min(maxW/w,maxH/h,1);
+      var cw=Math.round(w*scale),ch=Math.round(h*scale);
+      var canvas=document.createElement('canvas');
+      canvas.width=cw;canvas.height=ch;
+      var ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,cw,ch);
+      canvas.toBlob(function(blob){
+        if(!blob||blob.size>=file.size){resolve(file);return;}
+        var newName=file.name.replace(/\.(png|jpe?g|webp|heic|heif)$/i,'')+'.jpg';
+        resolve(new File([blob],newName,{type:'image/jpeg'}));
+      },'image/jpeg',0.82);
+    };
+    img.onerror=function(){URL.revokeObjectURL(objUrl);resolve(file);};
+    img.src=objUrl;
+  });
+}
 function renderPhotos(){
   var grid=document.getElementById('photoGrid');
   grid.innerHTML=photos.map(function(p,i){
@@ -808,10 +839,10 @@ async function submitListing(){
   // ── Upload photos to Supabase Storage ──
   var uploadedPhotoUrls=[];
   if(photos.length>0){
-    showToast('Fotode üleslaadimine…');
+    showToast('Fotode tihendamine ja üleslaadimine…');
     for(var pi=0;pi<photos.length;pi++){
       try{
-        var f=photos[pi].file;
+        var f=await compressImage(photos[pi].file);
         var ext=f.name.split('.').pop().toLowerCase();
         var fname='listings/'+Date.now()+'-'+pi+'.'+ext;
         var uploadRes=await fetch(SB_URL+'/storage/v1/object/photos/'+fname,{
