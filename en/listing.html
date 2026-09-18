@@ -833,39 +833,25 @@ async function sendMsg(){
   if(!email.includes('@')){setAlert(alertEl,'error','This email address looks invalid.');return;}
   setAlert(alertEl,'success','Message sent. The seller will reply by email.');
   var _t=LISTING&&LISTING.make?(LISTING.make+' '+(LISTING.model||'')).trim():'A2S listing';
-  var _ve=LISTING?LISTING.seller_email:'';
-  var _vn=LISTING?(LISTING.seller_pseudo||LISTING.seller_name||'Seller'):'Seller';
   var _lid=LISTING?String(LISTING.id):'';
-  /* 1. Email via Edge Function (Brevo) */
+  /* The server resolves the recipient from listingId and writes to the
+     messages table itself (service_role key) — the browser no longer
+     needs to know the seller's email (GDPR, audit 2026-09-18). */
   fetch('/api/notify?type=message',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({buyerName:name,buyerEmail:email,buyerPhone:phone,message:msg,listingId:_lid})
-  }).catch(function(){});
-
-  /* 2. Enregistrement dans la table messages */
-  var threadId=_lid+'-'+[email,_ve].sort().join('-');
-  fetch(SB_URL+'/rest/v1/messages',{
-    method:'POST',
-    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body:JSON.stringify({
-      thread_id:threadId,
-      listing_id:_lid?parseInt(_lid):null,
-      sender_email:email,
-      receiver_email:_ve||'contact@aircraft2sell.eu',
-      content:'['+name+(phone?' — '+phone:'')+'] '+msg,
-      read:false
-    })
-  }).then(function(r){
-    /* 3. Mémoriser la conversation pour messages.html */
-    try{
-      sessionStorage.setItem('a2s_open_conv',JSON.stringify({
-        listingId:_lid?parseInt(_lid):null,
-        sellerEmail:_ve,
-        aircraft:_t,
-        price:LISTING&&LISTING.price?LISTING.price:''
-      }));
-    }catch(e){}
+    body:JSON.stringify({buyerName:name,buyerEmail:email,buyerPhone:phone,message:msg,listingId:_lid,prefixContent:'['+name+(phone?' — '+phone:'')+'] '})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.threadId){
+      try{
+        sessionStorage.setItem('a2s_open_conv',JSON.stringify({
+          listingId:_lid?parseInt(_lid):null,
+          sellerEmail:d.sellerEmail||'',
+          aircraft:_t,
+          price:LISTING&&LISTING.price?LISTING.price:''
+        }));
+      }catch(e){}
+    }
   }).catch(function(){});
 
   document.getElementById('msgText').value='';
@@ -1005,16 +991,10 @@ async function sendOffer(){
   setAlert(alertEl,'success','Offer sent. The seller will reply by email.');
   var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[curr]||'€';
   var offerText='PRICE OFFER: '+sym+Number(amount).toLocaleString('en-GB')+' '+curr+(msg?'\n\n'+msg:'');
-  var _ve=LISTING?LISTING.seller_email:'';
   var _lid=LISTING?String(LISTING.id):'';
   fetch('/api/notify?type=message',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({buyerName:name,buyerEmail:email,message:offerText,listingId:_lid})
-  }).catch(function(){});
-  var threadId=_lid+'-'+[email,_ve].sort().join('-');
-  fetch(SB+'/rest/v1/messages',{
-    method:'POST',headers:{'apikey':SK,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body:JSON.stringify({thread_id:threadId,listing_id:_lid?parseInt(_lid):null,sender_email:email,receiver_email:_ve||'contact@aircraft2sell.eu',content:'[OFFER '+sym+Number(amount).toLocaleString('en-GB')+' '+curr+'] '+name+(msg?' — '+msg:''),read:false})
+    body:JSON.stringify({buyerName:name,buyerEmail:email,message:offerText,listingId:_lid,prefixContent:'[OFFER '+sym+Number(amount).toLocaleString('en-GB')+' '+curr+'] '+name+(msg?' — ':'')})
   }).catch(function(){});
   setTimeout(closeOfferForm,2500);
 }

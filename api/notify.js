@@ -9,7 +9,7 @@
  *
  * Les corps acceptés sont identiques à ceux des anciennes fonctions.
  */
-import { preambule, sb, envoyer, gabarit, esc, prix, titreAeronef, ADMIN_EMAIL, SITE } from './_lib.js';
+import { preambule, sb, sbEcrire, envoyer, gabarit, esc, prix, titreAeronef, ADMIN_EMAIL, SITE } from './_lib.js';
 
 export default async function handler(req, res) {
   if (preambule(req, res)) return;
@@ -48,6 +48,28 @@ async function message(req, res) {
       return res.status(200).json({ ok: true, ignore: 'expéditeur = destinataire' });
     }
 
+    /* Enregistrement dans la table messages, côté serveur (clé service_role).
+       Avant : listing.html écrivait directement dans messages depuis le
+       navigateur, ce qui exigeait que LISTING.seller_email soit connu
+       côté client — donc lisible par n'importe qui via l'API publique
+       (cf. audit RGPD, étapes 1 et 2). Le navigateur n'a plus besoin de
+       connaître l'email du vendeur : il envoie listingId, le serveur
+       résout le destinataire lui-même et fait l'écriture. */
+    const threadId = String(listingId || '') + '-' + [expediteurEmail, destinataire].sort().join('-');
+    const prefixe = c.prefixContent || '';
+    try {
+      await sbEcrire('messages', {
+        thread_id: threadId,
+        listing_id: listingId ? parseInt(listingId, 10) : null,
+        sender_email: expediteurEmail,
+        receiver_email: destinataire,
+        content: prefixe ? `${prefixe}${contenu}` : contenu,
+        read: false,
+      });
+    } catch (e) {
+      /* On ne bloque pas l'email transactionnel si l'écriture échoue */
+    }
+
     const titre = l ? titreAeronef(l) : null;
     const lien = l ? `${SITE}/listing.html?id=${encodeURIComponent(l.id)}` : `${SITE}/messages.html`;
     const corpsMessage = esc(contenu).replace(/\n/g, '<br>');
@@ -80,7 +102,7 @@ async function message(req, res) {
     });
 
     if (!r.ok) return res.status(502).json({ error: r.erreur });
-    return res.status(200).json({ ok: true, messageId: r.id });
+    return res.status(200).json({ ok: true, messageId: r.id, threadId, sellerEmail: destinataire });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

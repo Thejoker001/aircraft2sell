@@ -57,6 +57,25 @@ export async function sb(chemin) {
   return r.json();
 }
 
+/** Écriture Supabase avec la clé de service (contourne la RLS). */
+export async function sbEcrire(chemin, corps) {
+  const url = process.env.SUPABASE_URL;
+  const cle = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !cle) throw new Error('Configuration Supabase absente');
+  const r = await fetch(`${url}/rest/v1/${chemin}`, {
+    method: 'POST',
+    headers: {
+      apikey: cle,
+      Authorization: `Bearer ${cle}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(corps),
+  });
+  if (!r.ok) throw new Error(`Supabase ${r.status} : ${(await r.text()).slice(0, 200)}`);
+}
+
+
 /** Gabarit commun : en-tête, contenu, pied de page. */
 export function gabarit({ titre, intro, blocs = [], cta, ctaLabel, pied }) {
   const lignes = blocs.map(([k, v]) =>
