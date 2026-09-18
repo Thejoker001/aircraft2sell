@@ -82,6 +82,29 @@ async function sbSellerPublic(email){
     return (rows && rows.length) ? rows[0] : null;
   }catch(e){ return null; }
 }
+/* ── Annonces d'un vendeur, sans exposer son email (RGPD) ──────────────
+   seller.html avait besoin de lister les annonces d'un vendeur en
+   filtrant par seller_email=eq.<email de l'URL> directement sur la
+   table listings — ce qui exigeait un accès SELECT complet à listings
+   pour un anonyme, donc email/téléphone lisibles pour n'importe qui.
+   get_seller_listings() (SECURITY DEFINER) reçoit l'email en paramètre
+   d'entrée et ne le renvoie jamais en sortie : même usage, sans fuite. */
+async function sbSellerListings(email){
+  if(!email) return [];
+  try{
+    var tk = await _a2sAuth();
+    var r = await fetch(_SB + '/rest/v1/rpc/get_seller_listings', {
+      method:'POST',
+      headers:{ 'apikey': _SK, 'Authorization': 'Bearer ' + tk, 'Content-Type':'application/json' },
+      body: JSON.stringify({ p_email: email })
+    });
+    if(r.ok) return await r.json();
+  }catch(e){}
+  /* Repli : fonction pas encore créée en base */
+  try{
+    return await sbGet('listings','seller_email=eq.'+encodeURIComponent(email)+'&status=eq.live&order=submitted_at.desc&select=*');
+  }catch(e){ return []; }
+}
 function sbRowListing(r){var ph=Array.isArray(r.photos)?r.photos:[];var th=ph.length?ph[0]:(r.icon||'✈');var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[r.currency||'EUR']||'€';var pn=r.price&&!isNaN(Number(r.price))?Number(r.price):null;return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'--',priceDisplay:pn?sym+pn.toLocaleString('fr-FR'):(r.price||'--'),currency:r.currency||'EUR',category:r.category||'light',catDisp:r.category||'light',airport:r.airport||'',loc:r.airport||r.country||'--',country:r.country||'',desc:r.description||'',description:r.description||'',status:r.status||'pending',sellerName:r.seller_name||'',sellerEmail:r.seller_email||'',seller_name:r.seller_name||'',seller_email:r.seller_email||'',views:r.views||0,enquiries:r.enquiries||0,hours:r.hours||'--',icon:th,photos:ph,submittedAt:r.submitted_at||r.created_at||'',submitted_at:r.submitted_at||r.created_at||'',seller_rating:r.seller_rating||0,seller_certified:r.seller_certified||false,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'--'};}
 function sbRowUser(r){return{id:r.id,name:r.name||'',email:r.email||'',plan:r.plan||'Essentiel',status:r.status||'active',registeredAt:r.registered_at||r.created_at||'',registered_at:r.registered_at||r.created_at||'',rating:r.rating||0,certified:r.certified||false};}
 var sbRow=sbRowListing;
