@@ -256,6 +256,53 @@ async function sbSellerPublic(email){
     return (rows&&rows.length)?rows[0]:null;
   }catch(e){ return null; }
 }
+/* Annonces d'un vendeur, sans exposer son email (RGPD) : même pattern
+   que sbSellerPublic(), reçoit l'email en paramètre d'entrée uniquement. */
+async function sbSellerListings(email){
+  if(!email) return [];
+  try{
+    var r=await fetch(SB+'/rest/v1/rpc/get_seller_listings',{
+      method:'POST',
+      headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
+      body:JSON.stringify({p_email:email})
+    });
+    if(r.ok) return await r.json();
+  }catch(e){}
+  try{
+    return await sbGet('listings','seller_email=eq.'+encodeURIComponent(email)+'&status=eq.live&order=submitted_at.desc&select=*');
+  }catch(e){ return []; }
+}
+/* Variantes par pseudo — identifiant public du vendeur, jamais l'email.
+   seller.html construit désormais ses liens avec ?pseudo=... */
+async function sbSellerPublicByPseudo(pseudo){
+  if(!pseudo) return null;
+  try{
+    var r=await fetch(SB+'/rest/v1/rpc/get_seller_public_by_pseudo',{
+      method:'POST',
+      headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
+      body:JSON.stringify({p_pseudo:pseudo})
+    });
+    if(r.ok){
+      var d=await r.json();
+      if(Array.isArray(d)) return d.length?d[0]:null;
+      if(d&&d.name!==undefined) return d;
+      return null;
+    }
+  }catch(e){}
+  return null;
+}
+async function sbSellerListingsByPseudo(pseudo){
+  if(!pseudo) return [];
+  try{
+    var r=await fetch(SB+'/rest/v1/rpc/get_seller_listings_by_pseudo',{
+      method:'POST',
+      headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
+      body:JSON.stringify({p_pseudo:pseudo})
+    });
+    if(r.ok) return await r.json();
+  }catch(e){}
+  return [];
+}
 
 var CAT_LABELS={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
