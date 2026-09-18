@@ -82,7 +82,12 @@
           col(t('colBuy'), [
             [href('search.html'), t('allListings')], [href('avions-legers.html'), t('catLight')], [href('jets-affaires.html'), t('catJet')],
             [href('turboprops.html'), t('catTurbo')], [href('helicopteres.html'), t('catHeli')], [href('ulm.html'), t('catUlm')], [href('comparateur.html'), t('comparator')]
-          ]),
+          ].concat(lang === 'fr' ? [
+            ['/map.html', 'Carte des annonces'],
+            ['/avions-a-vendre-france.html', 'Avions en France'], ['/avions-a-vendre-allemagne.html', 'Avions en Allemagne'],
+            ['/avions-a-vendre-espagne.html', 'Avions en Espagne'], ['/avions-a-vendre-italie.html', 'Avions en Italie'],
+            ['/avions-a-vendre-royaume-uni.html', 'Avions au Royaume-Uni'], ['/avions-a-vendre-suisse.html', 'Avions en Suisse']
+          ] : [])),
           col(t('colSell'), [
             [href('post-listing.html'), t('postListing')], [href('pro-dealers.html'), t('proDealers')], [href('pricing.html'), t('pricing')],
             [href('estimation.html'), t('estimate')], [href('alerts.html'), t('createAlert')], [href('dashboard.html'), t('dashboard')]
