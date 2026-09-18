@@ -206,7 +206,8 @@
     <div class="sb-plan-box">
       <div class="sbp-label">Formule actuelle</div>
       <div class="sbp-name" id="sbPlanName">Essentiel</div>
-      <a href="checkout.html?plan=aviateur" class="sbp-link">Passer à Aviateur<i data-icon="arrow-right"></i></a>
+      <a href="checkout.html?plan=aviateur" class="sbp-link" id="sbpUpgradeLink">Passer à Aviateur<i data-icon="arrow-right"></i></a>
+      <a href="#" class="sbp-link" id="sbpManageLink" style="display:none;margin-top:.4rem" onclick="openBillingPortal();return false;">Gérer mon abonnement<i data-icon="arrow-right"></i></a>
     </div>
   </aside>
 
@@ -726,6 +727,43 @@ function applyPlanDisplay(plan){
   var slots=PLAN_SLOTS[plan]||1;
   var ss=document.getElementById('subSlots');if(ss)ss.textContent=slots>=999?'Illimitées':slots+' maximum';
   var ub=document.getElementById('upgradeBanner');if(ub)ub.style.display=plan==='Essentiel'?'':'none';
+  /* Le portail de résiliation Stripe n'a de sens que sur un plan payant
+     (Essentiel est gratuit, rien à résilier ni à gérer côté Stripe). */
+  var upLink=document.getElementById('sbpUpgradeLink');
+  var mgLink=document.getElementById('sbpManageLink');
+  if(plan==='Essentiel'){
+    if(upLink)upLink.style.display='';
+    if(mgLink)mgLink.style.display='none';
+  }else{
+    if(upLink)upLink.style.display='none';
+    if(mgLink)mgLink.style.display='';
+  }
+}
+
+/* Résiliation / gestion d'abonnement en libre-service (Stripe Customer
+   Portal) — trouvé lors de l'audit du 18/09 : la FAQ et les CGV promettent
+   une résiliation "à tout moment" depuis le dashboard, qui n'existait pas
+   avant ce correctif (aucun bouton, aucune route ne le permettait). */
+async function openBillingPortal(){
+  var email=localStorage.getItem('a2s_user_email');
+  if(!email){alert('Veuillez vous reconnecter.');return;}
+  var link=document.getElementById('sbpManageLink');
+  var original=link?link.innerHTML:'';
+  if(link)link.innerHTML='Ouverture…';
+  try{
+    var r=await fetch('/api/create-checkout',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:email,action:'portal'})
+    });
+    var d=await r.json();
+    if(r.ok&&d.url){window.location.href=d.url;return;}
+    alert(d.error||'Impossible d\'ouvrir la gestion de votre abonnement pour le moment. Écrivez-nous à contact@aircraft2sell.eu.');
+  }catch(e){
+    alert('Impossible d\'ouvrir la gestion de votre abonnement pour le moment. Écrivez-nous à contact@aircraft2sell.eu.');
+  }finally{
+    if(link)link.innerHTML=original;
+  }
 }
 
 function doLogout(){

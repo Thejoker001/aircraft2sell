@@ -48,6 +48,47 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Email invalide' });
   }
 
+  /* Résiliation en libre-service (Stripe Customer Portal) : le client
+     retrouve son client Stripe par email (Stripe ne permet pas de
+     rechercher par email exact via l'API classique customers/search
+     utilise une recherche floue — on utilise plutôt list?email= qui est
+     un match exact), puis on crée une session de portail hébergée par
+     Stripe où il peut résilier, changer de moyen de paiement, voir ses
+     factures. Ajouté ici plutôt que dans une nouvelle fonction pour
+     rester sous la limite Hobby de 12 fonctions serverless. */
+  const action = String(c.action || req.query?.action || '').toLowerCase();
+  if (action === 'portal') {
+    try {
+      const rc = await fetch(`${STRIPE}/customers?email=${encodeURIComponent(email)}&limit=1`, {
+        headers: { Authorization: `Bearer ${cle}` },
+      });
+      const cd = await rc.json();
+      const customer = cd.data && cd.data[0];
+      if (!customer) {
+        return res.status(404).json({ error: 'Aucun abonnement Stripe trouvé pour cet email' });
+      }
+      const form = new URLSearchParams();
+      form.set('customer', customer.id);
+      form.set('return_url', 'https://aircraft2sell.eu/dashboard.html');
+      const rp = await fetch(`${STRIPE}/billing_portal/sessions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${cle}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: form.toString(),
+      });
+      const txt = await rp.text();
+      if (!rp.ok) {
+        return res.status(502).json({ error: `Stripe ${rp.status} : ${txt.slice(0, 200)}` });
+      }
+      const data = JSON.parse(txt);
+      return res.status(200).json({ url: data.url });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   /* Mise en avant d'une annonce (B4) : paiement UNIQUE de 9 € pour
      30 jours de featured. La session embarque listing_id en metadata. */
   if (featureId) {
