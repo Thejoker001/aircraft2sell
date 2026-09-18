@@ -525,7 +525,7 @@ function filterListings(btn,cat){
 async function loadListings(){
   var grid=document.getElementById('listingsGrid');
   grid.innerHTML='';for(var i=0;i<4;i++)grid.appendChild(skeletonCard());
-  var rows=await sbGet('listings','status=eq.live&order=featured.desc.nullslast,submitted_at.desc&limit=50');
+  var rows=await sbGet('listings_public','order=featured.desc.nullslast,submitted_at.desc&limit=50');
   _all=(rows||[]).map(function(r){return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'',currency:r.currency||'EUR',category:r.category||'',airport:r.airport||'',country:r.country||'',hours:r.hours||'',photos:r.photos||[],title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' '),desc:r.description||'',seller_certified:r.seller_certified||false};});
   grid.innerHTML='';
   if(!_all.length){
@@ -538,7 +538,7 @@ async function loadListings(){
   _all.slice(0,8).forEach(function(l){grid.appendChild(renderCard(l));});
   var cats={};_all.forEach(function(l){cats[l.category]=true;});
   document.querySelectorAll('#catPills .pill[data-cat]').forEach(function(b){if(b.dataset.cat&&!cats[b.dataset.cat])b.style.display='none';});
-  var all=await sbGet('listings','status=eq.live&select=id,category,seller_pseudo');
+  var all=await sbGet('listings_public','select=id,category,seller_pseudo');
   animCount('sn1',all.length);
   loadCertifiedCount(new Set(all.map(function(x){return x.seller_pseudo;}).filter(Boolean)).size);
   ['light','jet','turbo','heli','ulm','airliner'].forEach(function(c){var el=document.getElementById('cc-'+c);if(el){var n=all.filter(function(x){return x.category===c;}).length;el.textContent=n+' kuulutus'+(n!==1?'t':'');}});
