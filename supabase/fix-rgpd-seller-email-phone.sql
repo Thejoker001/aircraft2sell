@@ -1,0 +1,39 @@
+-- ═══════════════════════════════════════════════════════════════
+-- Aircraft2Sell — CORRECTIF RGPD : email/téléphone vendeur exposés
+-- à un visiteur anonyme via l'API publique (audit du 18/09/2026)
+--
+-- CONSTAT : n'importe qui pouvait récupérer seller_email et
+-- seller_phone de TOUTES les annonces via une simple requête REST
+-- avec la clé publique (déjà visible dans le code front) :
+--   GET /rest/v1/listings?select=seller_email,seller_phone
+-- La RLS filtre les LIGNES (quelles annonces sont visibles), pas les
+-- COLONNES — une annonce "live" est légitimement lisible par un
+-- anonyme, mais ses colonnes seller_email/seller_phone ne devraient
+-- jamais l'être. Contredit la FAQ du site : "Votre email n'est
+-- jamais affiché publiquement sur les annonces."
+--
+-- CORRECTIF : révocation du privilège SELECT au niveau COLONNE pour
+-- le rôle `anon` uniquement, sur seller_email et seller_phone. Le
+-- rôle `authenticated` garde l'accès complet (un acheteur connecté
+-- doit pouvoir contacter le vendeur ; le vendeur doit voir ses
+-- propres données). `postgres`/`service_role` ne sont jamais
+-- affectés par ce type de révocation (bypass RLS + tous privilèges).
+--
+-- IMPACT FRONT vérifié avant application : aucun code du site
+-- n'affiche seller_email/seller_phone à un visiteur anonyme.
+-- index.html (FR/EN/ET) utilisait seller_email uniquement pour
+-- compter les vendeurs distincts (Set de valeurs, jamais affiché) —
+-- corrigé pour utiliser seller_pseudo (public par conception) à la
+-- place, AVANT ce correctif SQL, donc aucune régression de comptage.
+-- Les autres appels sbGet('listings', ...) sans select= explicite
+-- récupèrent l'objet mais n'affichent jamais ces 2 champs.
+-- ═══════════════════════════════════════════════════════════════
+
+revoke select (seller_email, seller_phone) on public.listings from anon;
+
+-- Vérification (à exécuter séparément) :
+-- select grantee, privilege_type
+-- from information_schema.role_column_grants
+-- where table_name='listings' and column_name in ('seller_email','seller_phone')
+-- order by grantee;
+-- -> ne doit plus JAMAIS lister 'anon' pour ces 2 colonnes.

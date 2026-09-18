@@ -541,12 +541,14 @@ async function loadListings(){
   _all.slice(0,8).forEach(function(l){grid.appendChild(renderCard(l));});
   var cats={};_all.forEach(function(l){cats[l.category]=true;});
   document.querySelectorAll('#catPills .pill[data-cat]').forEach(function(b){if(b.dataset.cat&&!cats[b.dataset.cat])b.style.display='none';});
-  var all=await sbGet('listings','status=eq.live&select=id,category,seller_email');
+  var all=await sbGet('listings','status=eq.live&select=id,category,seller_pseudo');
   animCount('sn1',all.length);
   /* "Verified sellers" must count actually certified accounts. The previous
      version counted distinct emails with a live listing: a certified seller
-     without a published listing was never counted. */
-  loadCertifiedCount(new Set(all.map(function(x){return x.seller_email;}).filter(Boolean)).size);
+     without a published listing was never counted. Uses seller_pseudo (public
+     by design) instead of seller_email (never exposed to an anonymous
+     visitor, see column-level RLS on listings). */
+  loadCertifiedCount(new Set(all.map(function(x){return x.seller_pseudo;}).filter(Boolean)).size);
   ['light','jet','turbo','heli','ulm','airliner'].forEach(function(c){var el=document.getElementById('cc-'+c);if(el){var n=all.filter(function(x){return x.category===c;}).length;el.textContent=n+' listing'+(n!==1?'s':'');}});
 }
 
