@@ -107,7 +107,7 @@ EN = {
         "rejected refused approval pending moderation why blocked declined"),
     "Combien de photos puis-je ajouter ?": (
         "How many photos can I add?",
-        "Essential plan: up to 5 photos. Aviator plan: up to 20 photos. Pro plan: unlimited. We "
+        "Essential plan: up to 5 photos. Aviator and Pro plans: up to 20 photos. We "
         "recommend at least 6 photos covering the exterior (front and rear three-quarter views, "
         "side), the cockpit, the engine and the documents. Good photos significantly increase the "
         "number of enquiries you receive.",
