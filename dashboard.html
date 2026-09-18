@@ -598,6 +598,13 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Très bon état, heures de vol faibl
           <select id="el-currency" class="sel"><option value="EUR">EUR</option><option value="USD">USD</option><option value="GBP">GBP</option><option value="CHF">CHF</option></select></div>
         <div class="field span2"><label for="el-airport">Aéroport de base (code OACI)</label><input type="text" id="el-airport" class="inp" placeholder="ex. LFPG"></div>
         <div class="field span2"><label for="el-desc">Description</label><textarea id="el-desc" class="txta"></textarea></div>
+        <div class="field span2">
+          <label>Photos</label>
+          <div id="el-photo-grid" class="photo-grid" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem"></div>
+          <input type="file" id="el-photo-input" accept="image/*" multiple style="display:none" onchange="handleEditPhotoFiles(this.files)">
+          <button type="button" class="btn-ghost btn-sm" onclick="document.getElementById('el-photo-input').click()"><i data-icon="image"></i>Ajouter des photos</button>
+          <div id="el-photo-hint" class="muted small" style="margin-top:.3rem"></div>
+        </div>
       </div>
       <div id="el-alert"></div>
     </div>
@@ -1125,6 +1132,8 @@ async function importCsv(){
 }
 
 /* ── MODALE MODIFICATION ── */
+var PLAN_MAX_PHOTOS={Essentiel:5,Aviateur:20,Pro:20};
+var _editPhotos=[]; /* {url, file?, existing:bool} — file absent si photo déjà en ligne (URL Supabase) */
 function openEditListing(listingId){
   var l=_userListings.find(function(x){return String(x.id)===String(listingId);});
   if(!l){showToast('Annonce introuvable.');return;}
@@ -1138,8 +1147,64 @@ function openEditListing(listingId){
   document.getElementById('el-airport').value=l.airport||'';
   document.getElementById('el-desc').value=l.description||'';
   document.getElementById('el-alert').innerHTML='';
+  _editPhotos=(Array.isArray(l.photos)?l.photos:[]).map(function(u){return{url:u,existing:true};});
+  renderEditPhotos();
   document.getElementById('mEditListing').classList.add('open');
   document.getElementById('el-make').focus();
+}
+function editPhotoMax(){return PLAN_MAX_PHOTOS[_userPlan]||5;}
+function renderEditPhotos(){
+  var grid=document.getElementById('el-photo-grid');
+  if(!grid)return;
+  grid.innerHTML=_editPhotos.map(function(p,i){
+    return'<div class="photo-thumb" style="position:relative;width:80px;height:60px">'
+      +'<img src="'+esc(p.url)+'" alt="Photo '+(i+1)+'" style="width:100%;height:100%;object-fit:cover;border-radius:6px">'
+      +(i===0?'<div class="photo-main-badge" style="position:absolute;top:2px;left:2px;background:var(--a2s-orange);color:#fff;font-size:.6rem;padding:1px 4px;border-radius:4px">Principale</div>':'')
+      +'<button type="button" onclick="removeEditPhoto('+i+')" aria-label="Supprimer" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:18px;height:18px;line-height:1;cursor:pointer">×</button>'
+      +'</div>';
+  }).join('');
+  var hint=document.getElementById('el-photo-hint');
+  if(hint)hint.textContent=_editPhotos.length+' / '+editPhotoMax()+' photos ('+_userPlan+')';
+}
+function removeEditPhoto(i){_editPhotos.splice(i,1);renderEditPhotos();}
+function handleEditPhotoFiles(files){
+  var max=editPhotoMax();
+  Array.from(files).forEach(function(f){
+    if(_editPhotos.length>=max){showToast('Maximum '+max+' photos avec votre formule');return;}
+    if(f.size>10*1024*1024){showToast('Photo trop lourde (10 Mo maximum) : '+f.name);return;}
+    _editPhotos.push({url:URL.createObjectURL(f),file:f,existing:false});
+  });
+  renderEditPhotos();
+  var fi=document.getElementById('el-photo-input');if(fi)fi.value='';
+}
+/* Même compression que post-listing.html (Canvas API, 1920px max, JPEG 82%) :
+   Supabase Image Transformation payante indisponible sur notre offre (403
+   FeatureNotEnabled), la compression se fait donc côté navigateur. */
+function compressImageForEdit(file){
+  return new Promise(function(resolve){
+    if(!file.type||file.type.indexOf('image/')!==0){resolve(file);return;}
+    var img=new Image();
+    var objUrl=URL.createObjectURL(file);
+    img.onload=function(){
+      URL.revokeObjectURL(objUrl);
+      var maxW=1920,maxH=1920;
+      var w=img.naturalWidth,h=img.naturalHeight;
+      if(w<=maxW&&h<=maxH&&file.size<=800*1024){resolve(file);return;}
+      var scale=Math.min(maxW/w,maxH/h,1);
+      var cw=Math.round(w*scale),ch=Math.round(h*scale);
+      var canvas=document.createElement('canvas');
+      canvas.width=cw;canvas.height=ch;
+      var ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,cw,ch);
+      canvas.toBlob(function(blob){
+        if(!blob||blob.size>=file.size){resolve(file);return;}
+        var newName=file.name.replace(/\.(png|jpe?g|webp|heic|heif)$/i,'')+'.jpg';
+        resolve(new File([blob],newName,{type:'image/jpeg'}));
+      },'image/jpeg',0.82);
+    };
+    img.onerror=function(){URL.revokeObjectURL(objUrl);resolve(file);};
+    img.src=objUrl;
+  });
 }
 function closeEditListing(){document.getElementById('mEditListing').classList.remove('open');}
 async function saveEditListing(){
@@ -1160,6 +1225,32 @@ async function saveEditListing(){
     airport:document.getElementById('el-airport').value.trim().toUpperCase(),
     description:document.getElementById('el-desc').value.trim()
   };
+  /* Upload des nouvelles photos (celles avec .file), on garde telles
+     quelles les photos déjà en ligne (.existing, déjà une URL Supabase). */
+  var newOnes=_editPhotos.filter(function(p){return p.file;});
+  if(newOnes.length>0){
+    showToast('Compression et envoi des photos…');
+    var tk=await authToken();
+    for(var pi=0;pi<newOnes.length;pi++){
+      try{
+        var f=await compressImageForEdit(newOnes[pi].file);
+        var ext=f.name.split('.').pop().toLowerCase();
+        var fname='listings/'+Date.now()+'-'+pi+'.'+ext;
+        var uploadRes=await fetch(SB_URL+'/storage/v1/object/photos/'+fname,{
+          method:'POST',
+          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY),'Content-Type':f.type,'x-upsert':'true'},
+          body:f
+        });
+        if(uploadRes.ok){
+          newOnes[pi].url=SB_URL+'/storage/v1/object/public/photos/'+fname;
+          newOnes[pi].uploaded=true;
+        }
+      }catch(e){}
+    }
+  }
+  /* On ne garde que les photos réussies (existantes ou nouvellement
+     uploadées) dans l'ordre affiché par l'utilisateur. */
+  payload.photos=_editPhotos.filter(function(p){return p.existing||p.uploaded;}).map(function(p){return p.url;});
   var res=await patchListing(l,payload);
   if(!res.ok){
     al.innerHTML='<div class="alert alert-error">'+A2SIcon('alert-triangle')+'<span>'+(res.erreur==='session_expiree'?'Session expirée : reconnectez-vous.':'La mise à jour a échoué. Réessayez.')+'</span></div>';
