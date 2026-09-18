@@ -18,12 +18,66 @@ const SUJETS = {
   other: 'Autre',
 };
 
+const BREVO_NEWSLETTER_LIST_ID = 6;
+
 function estEmailValide(e) {
   return typeof e === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
+/** Inscription newsletter — crée/actualise le contact Brevo avec opt-in, l'ajoute à la liste. */
+async function inscrireNewsletter(req, res) {
+  const corps = req.body || {};
+  const email = String(corps.email || '').trim().toLowerCase();
+  const lang = String(corps.lang || 'fr').trim().slice(0, 2);
+
+  if (!estEmailValide(email)) {
+    return res.status(400).json({ error: 'Email invalide' });
+  }
+
+  const cle = process.env.BREVO_API_KEY;
+  if (!cle) return res.status(500).json({ error: 'Configuration email absente' });
+
+  try {
+    const r = await fetch('https://api.brevo.com/v3/contacts', {
+      method: 'POST',
+      headers: { 'api-key': cle, 'Content-Type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({
+        email,
+        attributes: { OPT_IN: true, _DETECTED_LANGUAGE: lang.toUpperCase() },
+        listIds: [BREVO_NEWSLETTER_LIST_ID],
+        updateEnabled: true,
+      }),
+    });
+    // Brevo renvoie 204 (déjà existant, mis à jour) ou 201 (créé) — les deux sont un succès.
+    if (!r.ok && r.status !== 400) {
+      const txt = await r.text();
+      return res.status(502).json({ error: `Brevo ${r.status} : ${txt.slice(0, 200)}` });
+    }
+    // 400 "Contact already exist" : on force quand même l'ajout à la liste.
+    if (r.status === 400) {
+      const r2 = await fetch('https://api.brevo.com/v3/contacts/lists/' + BREVO_NEWSLETTER_LIST_ID + '/contacts/add', {
+        method: 'POST',
+        headers: { 'api-key': cle, 'Content-Type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ emails: [email] }),
+      });
+      if (!r2.ok) {
+        const txt2 = await r2.text();
+        return res.status(502).json({ error: `Brevo ${r2.status} : ${txt2.slice(0, 200)}` });
+      }
+    }
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
+
 export default async function handler(req, res) {
   if (preambule(req, res)) return;
+
+  const corps = req.body || {};
+  if (corps.action === 'newsletter') {
+    return inscrireNewsletter(req, res);
+  }
 
   try {
     const corps = req.body || {};

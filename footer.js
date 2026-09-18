@@ -18,36 +18,42 @@
   var I18N = {
     fr: { desc:'La marketplace aéronautique européenne. Achetez et vendez un aéronef entre particuliers et professionnels, sans commission.',
       trust1:'Zéro commission sur vos ventes', trust2:'Vendeurs vérifiés manuellement', trust3:'30+ pays européens',
+      newsTitle:'Nouvelles annonces par email', newsPlaceholder:'Votre email', newsBtn:'S\'inscrire', newsOk:'Inscrit ! Vérifiez votre boîte mail.', newsErr:'Email invalide ou erreur, réessayez.',
       colBuy:'Acheter', allListings:'Toutes les annonces', catLight:'Avions légers', catJet:'Jets d\'affaires', catTurbo:'Turbopropulseurs', catHeli:'Hélicoptères', catUlm:'ULM', comparator:'Comparateur',
       colSell:'Vendre', postListing:'Déposer une annonce', proDealers:'Professionnels & dealers', pricing:'Tarifs', estimate:'Estimer mon aéronef', createAlert:'Créer une alerte', dashboard:'Tableau de bord',
       colResources:'Ressources', buyerGuide:'Guide de l\'acheteur', blog:'Blog & conseils', faq:'FAQ', inspection:'Inspection pré-achat', financing:'Financer son avion',
       colCompany:'Entreprise', contact:'Contact', legal:'Mentions légales', privacy:'Confidentialité', sitemap:'Plan du site', copy:'Tous droits réservés', cgv:'CGV', cookies:'Cookies' },
     en: { desc:'The European aircraft marketplace. Buy and sell aircraft between private owners and professionals, with zero commission.',
       trust1:'Zero commission on your sales', trust2:'Manually verified sellers', trust3:'30+ European countries',
+      newsTitle:'New listings by email', newsPlaceholder:'Your email', newsBtn:'Subscribe', newsOk:'Subscribed! Check your inbox.', newsErr:'Invalid email or error, try again.',
       colBuy:'Buy', allListings:'All listings', catLight:'Light aircraft', catJet:'Business jets', catTurbo:'Turboprops', catHeli:'Helicopters', catUlm:'Light sport / ULM', comparator:'Comparator',
       colSell:'Sell', postListing:'List your aircraft', proDealers:'Dealers & professionals', pricing:'Pricing', estimate:'Value my aircraft', createAlert:'Create an alert', dashboard:'Dashboard',
       colResources:'Resources', buyerGuide:'Buyer\'s guide', blog:'Blog & advice', faq:'FAQ', inspection:'Pre-purchase inspection', financing:'Finance your aircraft',
       colCompany:'Company', contact:'Contact', legal:'Legal notice', privacy:'Privacy', sitemap:'Sitemap', copy:'All rights reserved', cgv:'Terms', cookies:'Cookies' },
     de: { desc:'Der europäische Marktplatz für Luftfahrzeuge. Kaufen und verkaufen Sie zwischen Privatpersonen und Profis – ohne Provision.',
       trust1:'Keine Provision auf Ihre Verkäufe', trust2:'Manuell verifizierte Verkäufer', trust3:'30+ europäische Länder',
+      newsTitle:'Neue Anzeigen per E-Mail', newsPlaceholder:'Ihre E-Mail', newsBtn:'Abonnieren', newsOk:'Angemeldet! Prüfen Sie Ihr Postfach.', newsErr:'Ungültige E-Mail oder Fehler.',
       colBuy:'Kaufen', allListings:'Alle Anzeigen', catLight:'Leichtflugzeuge', catJet:'Geschäftsjets', catTurbo:'Turboprops', catHeli:'Hubschrauber', catUlm:'Ultraleicht (UL)', comparator:'Vergleich',
       colSell:'Verkaufen', postListing:'Flugzeug inserieren', proDealers:'Händler & Profis', pricing:'Preise', estimate:'Flugzeug bewerten', createAlert:'Suchauftrag erstellen', dashboard:'Dashboard',
       colResources:'Ressourcen', buyerGuide:'Käuferratgeber', blog:'Blog & Tipps', faq:'FAQ', inspection:'Vorkaufinspektion', financing:'Flugzeug finanzieren',
       colCompany:'Unternehmen', contact:'Kontakt', legal:'Impressum', privacy:'Datenschutz', sitemap:'Sitemap', copy:'Alle Rechte vorbehalten', cgv:'AGB', cookies:'Cookies' },
     it: { desc:'Il marketplace aeronautico europeo. Compra e vendi aeromobili tra privati e professionisti, senza commissioni.',
       trust1:'Zero commissioni sulle vendite', trust2:'Venditori verificati manualmente', trust3:'30+ paesi europei',
+      newsTitle:'Nuovi annunci via email', newsPlaceholder:'La tua email', newsBtn:'Iscriviti', newsOk:'Iscritto! Controlla la tua casella.', newsErr:'Email non valida o errore.',
       colBuy:'Acquista', allListings:'Tutti gli annunci', catLight:'Aerei leggeri', catJet:'Jet privati', catTurbo:'Turboelica', catHeli:'Elicotteri', catUlm:'Ultraleggeri', comparator:'Comparatore',
       colSell:'Vendi', postListing:'Pubblica un annuncio', proDealers:'Rivenditori & professionisti', pricing:'Prezzi', estimate:'Valuta il mio aereo', createAlert:'Crea un avviso', dashboard:'Pannello',
       colResources:'Risorse', buyerGuide:'Guida per l\'acquirente', blog:'Blog & consigli', faq:'FAQ', inspection:'Ispezione pre-acquisto', financing:'Finanzia il tuo aereo',
       colCompany:'Azienda', contact:'Contatto', legal:'Note legali', privacy:'Privacy', sitemap:'Mappa del sito', copy:'Tutti i diritti riservati', cgv:'Termini', cookies:'Cookie' },
     es: { desc:'El marketplace aeronáutico europeo. Compra y vende aeronaves entre particulares y profesionales, sin comisión.',
       trust1:'Cero comisión en tus ventas', trust2:'Vendedores verificados manualmente', trust3:'30+ países europeos',
+      newsTitle:'Nuevos anuncios por email', newsPlaceholder:'Tu email', newsBtn:'Suscribirse', newsOk:'¡Suscrito! Revisa tu correo.', newsErr:'Email inválido o error.',
       colBuy:'Comprar', allListings:'Todos los anuncios', catLight:'Aviones ligeros', catJet:'Jets privados', catTurbo:'Turbohélices', catHeli:'Helicópteros', catUlm:'Ultraligeros', comparator:'Comparador',
       colSell:'Vender', postListing:'Publicar un anuncio', proDealers:'Distribuidores & profesionales', pricing:'Precios', estimate:'Valorar mi avión', createAlert:'Crear una alerta', dashboard:'Panel',
       colResources:'Recursos', buyerGuide:'Guía del comprador', blog:'Blog & consejos', faq:'FAQ', inspection:'Inspección previa a la compra', financing:'Financiar tu avión',
       colCompany:'Empresa', contact:'Contacto', legal:'Aviso legal', privacy:'Privacidad', sitemap:'Mapa del sitio', copy:'Todos los derechos reservados', cgv:'Términos', cookies:'Cookies' },
     et: { desc:'Euroopa lennukiturg. Osta ja müü õhusõidukeid eraomanike ja professionaalide vahel, vahendustasuta.',
       trust1:'Vahendustasuta müük', trust2:'Käsitsi kontrollitud müüjad', trust3:'30+ Euroopa riiki',
+      newsTitle:'Uued kuulutused e-postiga', newsPlaceholder:'Sinu email', newsBtn:'Telli', newsOk:'Tellitud! Kontrolli oma postkasti.', newsErr:'Vale email või viga.',
       colBuy:'Osta', allListings:'Kõik kuulutused', catLight:'Kerglennukid', catJet:'Ärijet\'id', catTurbo:'Turbopropellerid', catHeli:'Helikopterid', catUlm:'Mikrolennukid / ULM', comparator:'Võrdleja',
       colSell:'Müü', postListing:'Paku oma õhusõiduk', proDealers:'Edasimüüjad ja professionaalid', pricing:'Hinnad', estimate:'Hinda oma õhusõidukit', createAlert:'Loo teavitus', dashboard:'Töölaud',
       colResources:'Ressursid', buyerGuide:'Ostja juhend', blog:'Blogi ja nõuanded', faq:'KKK', inspection:'Ostueelne ülevaatus', financing:'Rahasta oma lennukit',
@@ -77,6 +83,14 @@
               '<span>' + ic('percent') + t('trust1') + '</span>',
               '<span>' + ic('shield-check') + t('trust2') + '</span>',
               '<span>' + ic('globe') + t('trust3') + '</span>',
+            '</div>',
+            '<div class="f-news">',
+              '<div class="f-news-title">' + t('newsTitle') + '</div>',
+              '<form class="f-news-form" id="a2sNewsForm">',
+                '<input type="email" class="f-news-input" id="a2sNewsEmail" placeholder="' + t('newsPlaceholder') + '" required autocomplete="email">',
+                '<button type="submit" class="f-news-btn" id="a2sNewsBtn">' + t('newsBtn') + '</button>',
+              '</form>',
+              '<div class="f-news-msg" id="a2sNewsMsg"></div>',
             '</div>',
           '</div>',
           col(t('colBuy'), [
@@ -118,11 +132,49 @@
     if(document.querySelector('footer.a2s-footer')) return;
     var mount = document.getElementById('a2sFooter');
     var html = buildFooterHTML();
-    if(mount){ mount.outerHTML = html; return; }
-    var wrapper = document.createElement('div'); wrapper.innerHTML = html;
-    var node = wrapper.firstChild;
-    var firstScript = document.body.querySelector('script');
-    if(firstScript) document.body.insertBefore(node, firstScript); else document.body.appendChild(node);
+    if(mount){ mount.outerHTML = html; } else {
+      var wrapper = document.createElement('div'); wrapper.innerHTML = html;
+      var node = wrapper.firstChild;
+      var firstScript = document.body.querySelector('script');
+      if(firstScript) document.body.insertBefore(node, firstScript); else document.body.appendChild(node);
+    }
+    wireNewsletterForm();
+  }
+
+  function wireNewsletterForm(){
+    var form = document.getElementById('a2sNewsForm');
+    if(!form) return;
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var input = document.getElementById('a2sNewsEmail');
+      var btn = document.getElementById('a2sNewsBtn');
+      var msg = document.getElementById('a2sNewsMsg');
+      var email = (input.value || '').trim();
+      if(!email){ return; }
+      btn.disabled = true;
+      msg.className = 'f-news-msg';
+      msg.textContent = '';
+      fetch('/api/contact-form', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'newsletter', email: email, lang: currentLang() })
+      }).then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
+        .then(function(res){
+          btn.disabled = false;
+          if(res.ok && res.data && res.data.ok){
+            msg.className = 'f-news-msg ok';
+            msg.textContent = t('newsOk');
+            input.value = '';
+          } else {
+            msg.className = 'f-news-msg err';
+            msg.textContent = t('newsErr');
+          }
+        }).catch(function(){
+          btn.disabled = false;
+          msg.className = 'f-news-msg err';
+          msg.textContent = t('newsErr');
+        });
+    });
   }
 
   function boot(){
