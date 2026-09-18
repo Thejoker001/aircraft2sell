@@ -52,10 +52,25 @@ module.exports = async function handler(req, res) {
 
   /* ── GET : témoignages publiés d'un vendeur ── */
   if (req.method === 'GET') {
-    const email = (req.query && req.query.seller_email
+    let email = (req.query && req.query.seller_email
       ? String(req.query.seller_email) : '').trim().toLowerCase();
+    const pseudo = (req.query && req.query.seller_pseudo
+      ? String(req.query.seller_pseudo) : '').trim();
+    /* Résolution par pseudo (RGPD) : seller.html appelle désormais cette
+       route avec seller_pseudo plutôt que seller_email, pour que l'email
+       du vendeur n'apparaisse jamais dans une requête réseau émise par
+       un visiteur anonyme, même en dehors de l'URL de page (DevTools). */
+    if (!email && pseudo) {
+      try {
+        const ru = await supabase('users?select=email&pseudo=eq.' + encodeURIComponent(pseudo) + '&limit=1');
+        if (ru.ok) {
+          const urows = await ru.json();
+          if (urows && urows[0]) email = String(urows[0].email || '').toLowerCase();
+        }
+      } catch (e) { /* email reste vide, gérée par le contrôle isEmail ci-dessous */ }
+    }
     if (!isEmail(email)) {
-      res.status(400).json({ error: 'Paramètre seller_email invalide ou manquant' });
+      res.status(400).json({ error: 'Paramètre seller_email ou seller_pseudo invalide ou manquant' });
       return;
     }
     try {
@@ -82,7 +97,21 @@ module.exports = async function handler(req, res) {
   }
 
   const b = (req.body && typeof req.body === 'object') ? req.body : {};
-  const sellerEmail = (b.seller_email || '').trim().toLowerCase();
+  let sellerEmail = (b.seller_email || '').trim().toLowerCase();
+  const sellerPseudo = (b.seller_pseudo || '').trim();
+  /* Résolution par pseudo (RGPD) : le formulaire d'avis de seller.html
+     n'a plus besoin de connaître l'email du vendeur affiché — il envoie
+     son pseudo (déjà visible sur la page), le serveur résout l'email
+     lui-même pour l'écriture en base. */
+  if (!sellerEmail && sellerPseudo) {
+    try {
+      const ru = await supabase('users?select=email&pseudo=eq.' + encodeURIComponent(sellerPseudo) + '&limit=1');
+      if (ru.ok) {
+        const urows = await ru.json();
+        if (urows && urows[0]) sellerEmail = String(urows[0].email || '').toLowerCase();
+      }
+    } catch (e) { /* sellerEmail reste vide, géré par isEmail ci-dessous */ }
+  }
   const authorName = (b.author_name || '').trim();
   const authorEmail = (b.author_email || '').trim().toLowerCase();
   const comment = (b.comment || '').trim();

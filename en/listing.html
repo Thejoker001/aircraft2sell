@@ -402,13 +402,13 @@ async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{h
    ne renvoie jamais l'email et empêche d'énumérer les membres avec la clé
    publique du site. Repli sur la lecture directe tant que le SQL
    (supabase/fuite-users.sql) n'est pas appliqué. */
-async function sbSellerPublic(email){
-  if(!email) return null;
+async function sbSellerPublic(pseudo){
+  if(!pseudo) return null;
   try{
-    var r=await fetch(SB+'/rest/v1/rpc/get_seller_public',{
+    var r=await fetch(SB+'/rest/v1/rpc/get_seller_public_by_pseudo',{
       method:'POST',
       headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
-      body:JSON.stringify({p_email:email})
+      body:JSON.stringify({p_pseudo:pseudo})
     });
     if(r.ok){
       var d=await r.json();
@@ -417,10 +417,7 @@ async function sbSellerPublic(email){
       return null;
     }
   }catch(e){}
-  try{
-    var rows=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,certified,is_pro,seller_type,company,rating,plan,registered_at&limit=1');
-    return (rows&&rows.length)?rows[0]:null;
-  }catch(e){ return null; }
+  return null;
 }
 
 var LISTING=null;
@@ -437,7 +434,10 @@ function hideAlert(el){if(el){el.style.display='none';el.innerHTML='';}}
 async function load(){
   var id=new URLSearchParams(location.search).get('id');
   if(!id){showError('Listing not found.');return;}
-  var rows=await sbGet('listings','id=eq.'+encodeURIComponent(id)+'&select=*');
+  var rows=await sbGet('listings_public','id=eq.'+encodeURIComponent(id)+'&select=*');
+  if(!rows||!rows.length){
+    rows=await sbGet('listings','id=eq.'+encodeURIComponent(id)+'&select=*');
+  }
   if(!rows||!rows.length){showError("This listing does not exist or is no longer available.");return;}
   LISTING=rows[0];
   render(LISTING);
@@ -560,9 +560,9 @@ function render(l){
   (async function(){
     var badgeEl=document.getElementById('sellerBadge');
     if(!badgeEl)return;
-    if(!l.seller_email){badgeEl.innerHTML='<span class="badge-verified">Verified seller</span>';return;}
+    if(!l.seller_pseudo){badgeEl.innerHTML='<span class="badge-verified">Verified seller</span>';return;}
     try{
-      var _sp=await sbSellerPublic(l.seller_email);
+      var _sp=await sbSellerPublic(l.seller_pseudo);
       var userData=_sp?[_sp]:[];
       var u=userData&&userData[0]?userData[0]:null;
       var badges='';
@@ -580,7 +580,7 @@ function render(l){
       badgeEl.innerHTML='<span class="badge-verified">Verified seller</span>';
     }
   })();
-  var sellerUrl='/seller.html?email='+encodeURIComponent(l.seller_email||'')+'&name='+encodeURIComponent(sellerDisplay);
+  var sellerUrl='/seller.html?pseudo='+encodeURIComponent(l.seller_pseudo||'')+'&name='+encodeURIComponent(sellerDisplay);
   document.getElementById('sellerHead').dataset.url=sellerUrl;
   document.getElementById('sellerProfileLink').href=sellerUrl;
 

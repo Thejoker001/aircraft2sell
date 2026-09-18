@@ -105,6 +105,42 @@ async function sbSellerListings(email){
     return await sbGet('listings','seller_email=eq.'+encodeURIComponent(email)+'&status=eq.live&order=submitted_at.desc&select=*');
   }catch(e){ return []; }
 }
+/* ── Variantes par pseudo (identifiant public, pas l'email) ──────────
+   seller.html construit désormais ses URLs avec ?pseudo=... plutôt que
+   ?email=... : le pseudo est déjà l'identifiant public du vendeur
+   (unique en base, règle produit "pseudo public obligatoire"), il ne
+   fuit aucune donnée personnelle même dans une URL indexée par Google. */
+async function sbSellerPublicByPseudo(pseudo){
+  if(!pseudo) return null;
+  try{
+    var tk = await _a2sAuth();
+    var r = await fetch(_SB + '/rest/v1/rpc/get_seller_public_by_pseudo', {
+      method:'POST',
+      headers:{ 'apikey': _SK, 'Authorization': 'Bearer ' + tk, 'Content-Type':'application/json' },
+      body: JSON.stringify({ p_pseudo: pseudo })
+    });
+    if(r.ok){
+      var d = await r.json();
+      if(Array.isArray(d) && d.length) return d[0];
+      if(d && !Array.isArray(d) && d.name !== undefined) return d;
+      return null;
+    }
+  }catch(e){}
+  return null;
+}
+async function sbSellerListingsByPseudo(pseudo){
+  if(!pseudo) return [];
+  try{
+    var tk = await _a2sAuth();
+    var r = await fetch(_SB + '/rest/v1/rpc/get_seller_listings_by_pseudo', {
+      method:'POST',
+      headers:{ 'apikey': _SK, 'Authorization': 'Bearer ' + tk, 'Content-Type':'application/json' },
+      body: JSON.stringify({ p_pseudo: pseudo })
+    });
+    if(r.ok) return await r.json();
+  }catch(e){}
+  return [];
+}
 function sbRowListing(r){var ph=Array.isArray(r.photos)?r.photos:[];var th=ph.length?ph[0]:(r.icon||'✈');var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[r.currency||'EUR']||'€';var pn=r.price&&!isNaN(Number(r.price))?Number(r.price):null;return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'--',priceDisplay:pn?sym+pn.toLocaleString('fr-FR'):(r.price||'--'),currency:r.currency||'EUR',category:r.category||'light',catDisp:r.category||'light',airport:r.airport||'',loc:r.airport||r.country||'--',country:r.country||'',desc:r.description||'',description:r.description||'',status:r.status||'pending',sellerName:r.seller_name||'',sellerEmail:r.seller_email||'',seller_name:r.seller_name||'',seller_email:r.seller_email||'',views:r.views||0,enquiries:r.enquiries||0,hours:r.hours||'--',icon:th,photos:ph,submittedAt:r.submitted_at||r.created_at||'',submitted_at:r.submitted_at||r.created_at||'',seller_rating:r.seller_rating||0,seller_certified:r.seller_certified||false,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')||'--'};}
 function sbRowUser(r){return{id:r.id,name:r.name||'',email:r.email||'',plan:r.plan||'Essentiel',status:r.status||'active',registeredAt:r.registered_at||r.created_at||'',registered_at:r.registered_at||r.created_at||'',rating:r.rating||0,certified:r.certified||false};}
 var sbRow=sbRowListing;

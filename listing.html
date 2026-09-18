@@ -398,17 +398,18 @@ var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 var SB_URL=SB,SB_KEY=SK;
 async function sbGet(t,p){try{var r=await fetch(SB+'/rest/v1/'+t+(p?'?'+p:''),{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});return r.ok?await r.json():null;}catch(e){return null;}}
 
-/* Profil vendeur public : passe par la fonction get_seller_public(), qui
-   ne renvoie jamais l'email et empêche d'énumérer les membres avec la clé
-   publique du site. Repli sur la lecture directe tant que le SQL
-   (supabase/fuite-users.sql) n'est pas appliqué. */
-async function sbSellerPublic(email){
-  if(!email) return null;
+/* Profil vendeur public : passe par la fonction get_seller_public_by_pseudo(),
+   qui ne renvoie jamais l'email et empêche d'énumérer les membres avec la
+   clé publique du site. Le pseudo est déjà visible sur la carte annonce
+   (seller_pseudo, colonne exposée par listings_public) : plus besoin de
+   l'email pour identifier le vendeur (RGPD, audit du 18/09). */
+async function sbSellerPublic(pseudo){
+  if(!pseudo) return null;
   try{
-    var r=await fetch(SB+'/rest/v1/rpc/get_seller_public',{
+    var r=await fetch(SB+'/rest/v1/rpc/get_seller_public_by_pseudo',{
       method:'POST',
       headers:{'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'},
-      body:JSON.stringify({p_email:email})
+      body:JSON.stringify({p_pseudo:pseudo})
     });
     if(r.ok){
       var d=await r.json();
@@ -417,10 +418,7 @@ async function sbSellerPublic(email){
       return null;
     }
   }catch(e){}
-  try{
-    var rows=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,certified,is_pro,seller_type,company,rating,plan,registered_at&limit=1');
-    return (rows&&rows.length)?rows[0]:null;
-  }catch(e){ return null; }
+  return null;
 }
 
 var LISTING=null;
@@ -437,7 +435,15 @@ function hideAlert(el){if(el){el.style.display='none';el.innerHTML='';}}
 async function load(){
   var id=new URLSearchParams(location.search).get('id');
   if(!id){showError('Annonce introuvable.');return;}
-  var rows=await sbGet('listings','id=eq.'+encodeURIComponent(id)+'&select=*');
+  /* Vue publique d'abord (pas d'email/téléphone, couvre le cas normal :
+     annonce en ligne consultée par un visiteur). Repli sur la table
+     brute uniquement si la vue ne trouve rien — cas de la prévisualisation
+     admin d'une annonce encore en attente de modération (admin-a2s00760.html,
+     bouton "Voir public"), qui doit rester possible avant publication. */
+  var rows=await sbGet('listings_public','id=eq.'+encodeURIComponent(id)+'&select=*');
+  if(!rows||!rows.length){
+    rows=await sbGet('listings','id=eq.'+encodeURIComponent(id)+'&select=*');
+  }
   if(!rows||!rows.length){showError("Cette annonce n'existe pas ou n'est plus disponible.");return;}
   LISTING=rows[0];
   render(LISTING);
@@ -574,9 +580,9 @@ function render(l){
   (async function(){
     var badgeEl=document.getElementById('sellerBadge');
     if(!badgeEl)return;
-    if(!l.seller_email){badgeEl.innerHTML='<span class="badge-verified">Vendeur vérifié</span>';return;}
+    if(!l.seller_pseudo){badgeEl.innerHTML='<span class="badge-verified">Vendeur vérifié</span>';return;}
     try{
-      var _sp=await sbSellerPublic(l.seller_email);
+      var _sp=await sbSellerPublic(l.seller_pseudo);
       var userData=_sp?[_sp]:[];
       var u=userData&&userData[0]?userData[0]:null;
       var badges='';
@@ -594,7 +600,7 @@ function render(l){
       badgeEl.innerHTML='<span class="badge-verified">Vendeur vérifié</span>';
     }
   })();
-  var sellerUrl='seller.html?email='+encodeURIComponent(l.seller_email||'')+'&name='+encodeURIComponent(sellerDisplay);
+  var sellerUrl='seller.html?pseudo='+encodeURIComponent(l.seller_pseudo||'')+'&name='+encodeURIComponent(sellerDisplay);
   document.getElementById('sellerHead').dataset.url=sellerUrl;
   document.getElementById('sellerProfileLink').href=sellerUrl;
 

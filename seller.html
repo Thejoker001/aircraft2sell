@@ -266,15 +266,16 @@ function setAlert(el,type,msg){if(!el)return;el.className='alert alert-'+type;el
 function hideAlert(el){if(el){el.style.display='none';el.innerHTML='';}}
 function starsHtml(n,size){var h='<span class="review-stars">';for(var i=1;i<=5;i++)h+='<span class="'+(i<=n?'on':'')+'">'+A2SIcon('star')+'</span>';return h+'</span>';}
 
-var _allListings=[],_sellerEmail='',_sellerName='';
+var _allListings=[],_sellerEmail='',_sellerName='',_sellerPseudo='';
 
 /* ── BOOT ── */
 window.addEventListener('DOMContentLoaded',async function(){
   var params=new URLSearchParams(location.search);
+  var pseudoParam=params.get('pseudo')||'';
   _sellerEmail=params.get('email')||'';
   var sellerNameParam=params.get('name')||'';
 
-  if(!_sellerEmail){
+  if(!pseudoParam&&!_sellerEmail){
     document.getElementById('listingsWrap').innerHTML='<div class="card"><div class="empty-state"><span class="icon-box">'+A2SIcon('user')+'</span><div class="empty-title">Vendeur introuvable</div><p class="empty-sub">Ce lien ne désigne aucun vendeur. Parcourez les annonces pour trouver un vendeur.</p><a class="btn-primary" href="search.html" style="margin-top:.5rem">'+A2SIcon('search')+'Voir les annonces</a></div></div>';
     document.getElementById('sellerName').textContent='Vendeur inconnu';
     document.getElementById('catTabs').style.display='none';
@@ -282,18 +283,37 @@ window.addEventListener('DOMContentLoaded',async function(){
   }
 
   /* Profil vendeur via RPC : ne renvoie jamais l'email, et empêche
-     l'énumération des membres avec la clé publique du site. */
-  var _sp=await sbSellerPublic(_sellerEmail);
+     l'énumération des membres avec la clé publique du site.
+     ?pseudo= est prioritaire (identifiant public, nouveaux liens) ;
+     ?email= reste supporté pour les liens déjà partagés/indexés avant
+     ce correctif (RGPD, audit du 18/09). */
+  var _sp, rows;
+  if(pseudoParam){
+    _sellerPseudo=pseudoParam;
+    _sp=await sbSellerPublicByPseudo(pseudoParam);
+    rows=await sbSellerListingsByPseudo(pseudoParam);
+  }else{
+    _sp=await sbSellerPublic(_sellerEmail);
+    rows=await sbSellerListings(_sellerEmail);
+    if(_sp&&_sp.pseudo)_sellerPseudo=_sp.pseudo;
+  }
   var userData=_sp?[_sp]:[];
   var user=userData&&userData[0]?userData[0]:null;
 
-  var rows=await sbSellerListings(_sellerEmail);
   _allListings=rows||[];
+  /* Dès qu'on connaît le pseudo (via ?pseudo= direct ou résolu depuis le
+     profil), on corrige l'URL affichée dans la barre d'adresse sans
+     recharger la page — pour que tout lien copié/partagé désormais soit
+     un lien par pseudo, jamais par email. */
+  if(_sellerPseudo&&window.history&&window.history.replaceState){
+    var newUrl='seller.html?pseudo='+encodeURIComponent(_sellerPseudo)+(sellerNameParam?'&name='+encodeURIComponent(sellerNameParam):'');
+    window.history.replaceState(null,'',newUrl);
+  }
 
   renderProfile(user,sellerNameParam);
   renderListings(_allListings);
   updateCatTabs();
-  loadReviews(_sellerEmail);
+  loadReviews(_sellerPseudo,_sellerEmail);
 
   var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
   var tk=sessionStorage.getItem('a2s_auth_token');
@@ -488,7 +508,7 @@ function submitReview(){
   fetch('/api/testimonials',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({listing_id:null,seller_email:_sellerEmail,author_name:name,author_email:authorEmail,rating:_reviewStar,comment:text})
+    body:JSON.stringify({listing_id:null,seller_pseudo:_sellerPseudo,seller_email:_sellerPseudo?undefined:_sellerEmail,author_name:name,author_email:authorEmail,rating:_reviewStar,comment:text})
   }).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
     .then(function(res){
       if(res.ok&&res.d&&res.d.ok){closeReview();showToast('Merci ! Votre avis sera publié après modération.');}
@@ -496,7 +516,7 @@ function submitReview(){
     })
     .catch(function(){setAlert(al,'error','Une erreur est survenue, réessayez plus tard.');});
 }
-function loadReviews(sellerEmail){
+function loadReviews(sellerPseudo,sellerEmail){
   var section=document.getElementById('reviewsSection');
   var list=document.getElementById('reviewsList');
   var btn=document.getElementById('btnWriteReview');
@@ -505,7 +525,8 @@ function loadReviews(sellerEmail){
   var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
   if(btn)btn.style.display=loggedIn?'':'none';
   list.innerHTML='<p class="pi-empty">Chargement des avis…</p>';
-  fetch('/api/testimonials?seller_email='+encodeURIComponent(sellerEmail||''))
+  var qs=sellerPseudo?('seller_pseudo='+encodeURIComponent(sellerPseudo)):('seller_email='+encodeURIComponent(sellerEmail||''));
+  fetch('/api/testimonials?'+qs)
     .then(function(r){return r.ok?r.json():[];})
     .catch(function(){return[];})
     .then(function(reviews){
