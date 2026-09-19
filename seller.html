@@ -268,9 +268,10 @@ async function sbSellerListings(email){
     });
     if(r.ok) return await r.json();
   }catch(e){}
-  try{
-    return await sbGet('listings','seller_email=eq.'+encodeURIComponent(email)+'&status=eq.live&order=submitted_at.desc&select=*');
-  }catch(e){ return []; }
+  /* Repli fail-safe : si le RPC échoue, ne JAMAIS retomber sur la table brute
+     'listings' (exposerait seller_email/seller_phone à un visiteur anonyme).
+     Retourner une liste vide plutôt que fuiter des données personnelles. */
+  return [];
 }
 /* Variantes par pseudo — identifiant public du vendeur, jamais l'email.
    seller.html construit désormais ses liens avec ?pseudo=... */
