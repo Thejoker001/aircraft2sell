@@ -20,7 +20,7 @@
       trust1:'Zéro commission sur vos ventes', trust2:'Vendeurs vérifiés manuellement', trust3:'30+ pays européens',
       newsTitle:'Nouvelles annonces par email', newsPlaceholder:'Votre email', newsBtn:'S\'inscrire', newsOk:'Inscrit ! Vérifiez votre boîte mail.', newsErr:'Email invalide ou erreur, réessayez.',
       colBuy:'Acheter', allListings:'Toutes les annonces', catLight:'Avions légers', catJet:'Jets d\'affaires', catTurbo:'Turbopropulseurs', catHeli:'Hélicoptères', catUlm:'ULM', comparator:'Comparateur',
-      colSell:'Vendre', postListing:'Déposer une annonce', proDealers:'Professionnels & dealers', pricing:'Tarifs', estimate:'Estimer mon aéronef', createAlert:'Créer une alerte', dashboard:'Tableau de bord',
+      colSell:'Vendre', postListing:'Déposer une annonce', proDealers:'Professionnels & dealers', pricing:'Tarifs', estimate:'Estimer mon aéronef', createAlert:'Créer une alerte', dashboard:'Tableau de bord', widget:'Widget pour votre site',
       colResources:'Ressources', buyerGuide:'Guide de l\'acheteur', blog:'Blog & conseils', faq:'FAQ', inspection:'Inspection pré-achat', financing:'Financer son avion',
       colCompany:'Entreprise', contact:'Contact', legal:'Mentions légales', privacy:'Confidentialité', sitemap:'Plan du site', copy:'Tous droits réservés', cgv:'CGV', cookies:'Cookies' },
     en: { desc:'The European aircraft marketplace. Buy and sell aircraft between private owners and professionals, with zero commission.',
@@ -105,7 +105,7 @@
           col(t('colSell'), [
             [href('post-listing.html'), t('postListing')], [href('pro-dealers.html'), t('proDealers')], [href('pricing.html'), t('pricing')],
             [href('estimation.html'), t('estimate')], [href('alerts.html'), t('createAlert')], [href('dashboard.html'), t('dashboard')]
-          ]),
+          ].concat(lang === 'fr' ? [['/widget.html', t('widget')]] : [])),
           col(t('colResources'), [
             [href('guide-acheteur.html'), t('buyerGuide')], [href('blog.html'), t('blog')], [href('faq.html'), t('faq')],
             [href('inspection-pre-achat-avion.html'), t('inspection')], [href('comment-financer-avion-leger.html'), t('financing')]
