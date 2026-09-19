@@ -29,7 +29,7 @@ async function isAdmin(authHeader) {
   try {
     const r = await fetch(process.env.SUPABASE_URL + '/auth/v1/user', {
       headers: {
-        apikey: process.env.SUPABASE_ANON_KEY || '',
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
         Authorization: 'Bearer ' + token,
       },
     });
