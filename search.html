@@ -525,6 +525,7 @@ function renderCard(l){
   var priceEUR=toEUR(l.price,l.currency);
   var displayPrice=priceEUR?fromEUR(priceEUR,_dispCur):null;
   var pr=displayPrice?Math.round(displayPrice).toLocaleString(LOCALE)+' '+sym:'Prix sur demande';
+  var usdApprox=(window.A2SExchangeRate&&priceEUR)?window.A2SExchangeRate.usdApproxText(priceEUR,_dispCur):null;
   var title=esc(l.title||[l.make,l.model].filter(Boolean).join(' ')||'Sans titre');
   var cat=CAT_LABELS[l.category]||esc(l.category||'');
   var loc=l.airport?esc(l.airport):countryLabel(l.country);
@@ -552,7 +553,7 @@ function renderCard(l){
     +'</div>'
     +'<div class="lc-trust lc-badges">'+trust+badges+'</div>'
     +'<div class="lc-footer">'
-    +'<div class="lc-price">'+pr+'</div>'
+    +'<div class="lc-price">'+pr+(usdApprox?'<span class="lc-price-usd">'+usdApprox+'</span>':'')+'</div>'
     +(loc?'<div class="lc-loc">'+A2SIcon('map-pin')+loc+'</div>':'')
     +'</div></div></a>';
 }
@@ -643,5 +644,7 @@ window.addEventListener('DOMContentLoaded',function(){
 <script src="analytics.js" defer></script>
 <script src="nav.js?v=20260909a"></script>
 <script src="footer.js?v=20260919a"></script>
+<script src="exchange-rate.js?v=20260920a"></script>
+<script>A2SExchangeRate.load().then(function(){renderPage();});</script>
 </body>
 </html>

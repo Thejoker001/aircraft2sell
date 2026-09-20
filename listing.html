@@ -607,7 +607,18 @@ function render(l){
 
   /* Colonne droite */
   document.getElementById('lPrice').textContent=pr;
-  if(pn)document.getElementById('lPriceSub').textContent='Soit environ '+Math.round(pn*1.08).toLocaleString('fr-FR')+' $ USD';
+  (function(){
+    var sub=document.getElementById('lPriceSub');
+    if(!sub||!pn||l.currency==='USD'||!window.A2SExchangeRate)return;
+    window.A2SExchangeRate.load().then(function(rates){
+      if(!rates||!rates.USD)return;
+      var cur=l.currency||'EUR';
+      var priceEUR=(cur==='EUR')?pn:(rates[cur]?pn/rates[cur]:null);
+      if(!priceEUR)return;
+      var usd=Math.round(priceEUR*rates.USD);
+      sub.textContent='Soit environ '+usd.toLocaleString('fr-FR')+' $ USD';
+    });
+  })();
   document.getElementById('iRef').textContent='#'+String(l.id||'').substring(0,8).toUpperCase();
   document.getElementById('iLoc').textContent=loc;
   document.getElementById('iDate').textContent=l.submitted_at?new Date(l.submitted_at).toLocaleDateString('fr-FR'):'—';
@@ -1049,5 +1060,6 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
 <script src="analytics.js" defer></script>
 <script src="nav.js?v=20260909a"></script>
 <script src="footer.js?v=20260919a"></script>
+<script src="exchange-rate.js?v=20260920a"></script>
 </body>
 </html>
