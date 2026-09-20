@@ -34,7 +34,12 @@
   /* Pages disponibles en anglais (même liste que nav.js/footer.js). */
   var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
     'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
-    'ulm.html', 'avions-de-ligne.html'];
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html'];
 
   var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
   if (TRANSLATED_PAGES.indexOf(page) === -1) return;
