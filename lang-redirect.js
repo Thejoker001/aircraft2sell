@@ -11,15 +11,34 @@
    - sur les pages déjà sous /en/ ou /et/ (pas de boucle)
    - si un choix de langue a déjà été fait une fois (a2s_lang_choice_made)
    - si la page n'a pas d'équivalent EN (TRANSLATED_PAGES)
-   - pour les crawlers (les moteurs de recherche envoient rarement
-     Accept-Language avec une préférence forte, et de toute façon le HTML
-     brut FR reste servi et indexable : cette redirection est seulement
-     déclenchée côté client APRÈS que le crawler ait déjà lu le contenu ;
-     un vrai crawler n'exécute pas ce script de la même façon qu'un
-     navigateur humain interactif, donc pas d'impact sur l'indexation FR).
+   - pour les crawlers (voir isLikelyBot ci-dessous)
+
+   CORRECTIF 2026-09-21 : contrairement à l'hypothèse initiale, Googlebot rend
+   la page avec Chrome headless (navigator.language = "en-US" par défaut) et
+   EXÉCUTE ce script — confirmé via Search Console URL Inspection sur la page
+   d'accueil (userCanonical basculait sur /en/index.html malgré une visite de
+   l'URL FR). Impact : le "signal utilisateur" observé par Google pour la
+   page racine pouvait dériver vers la version anglaise. Un filtrage sur
+   navigator.webdriver + une liste d'UA de crawlers connus élimine ce risque
+   sans changer le comportement pour un vrai visiteur humain.
    ========================================================================== */
 (function () {
   'use strict';
+
+  /* Détection best-effort des crawlers : navigator.webdriver est vrai pour
+     Chrome headless (Googlebot, Bingbot, Puppeteer/Playwright...) ; on
+     couvre aussi les UA de crawlers connus au cas où webdriver ne serait pas
+     exposé. Un faux négatif reste sans danger (au pire, ancien comportement) ;
+     un faux positif ne fait que priver un humain de la redirection auto,
+     jamais casser la navigation (le sélecteur de langue manuel reste dispo). */
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
 
   var path = location.pathname;
   /* Déjà sur une version traduite : ne rien faire. */
