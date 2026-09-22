@@ -230,6 +230,7 @@
           <div><div class="stat-num" id="sn1">—</div><div class="stat-lbl">Annonces actives</div></div>
           <div><div class="stat-num" id="sn2">—</div><div class="stat-lbl">Vendeurs vérifiés</div></div>
           <div><div class="stat-num" id="sn3">32</div><div class="stat-lbl">Pays couverts</div></div>
+          <div id="soldStatBlock" style="display:none"><div class="stat-num" id="sn4">—</div><div class="stat-lbl">Aéronefs vendus</div></div>
         </div>
       </div>
 
@@ -566,6 +567,25 @@ async function loadCertifiedCount(fallback){
   }catch(e){}
   animCount('sn2',fallback||0);
 }
+
+/* ── Compteur "aéronefs vendus" ──
+   status='sold' n'est pas lisible par la clé anon (RLS), donc calculé côté
+   serveur (clé de service) via /api/notify?type=stats — voir api/notify.js.
+   Volontairement masqué tant que le total est à 0 : afficher "0 vendus"
+   nuirait à la crédibilité au lieu de la renforcer. Échec réseau = masqué
+   également, jamais d'erreur visible pour un simple chiffre décoratif. */
+async function loadSoldCount(){
+  try{
+    var r=await fetch('/api/notify?type=stats');
+    var d=await r.json();
+    if(d&&d.ok&&d.sold>0){
+      var block=document.getElementById('soldStatBlock');
+      if(block)block.style.display='';
+      animCount('sn4',d.sold);
+    }
+  }catch(e){}
+}
+loadSoldCount();
 
 /* ── Annonce de la semaine ── */
 async function loadWeekly(){

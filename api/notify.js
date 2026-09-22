@@ -6,19 +6,45 @@
  *   POST /api/notify?type=message      → message reçu (formulaire annonce / messagerie)
  *   POST /api/notify?type=new-listing  → annonce déposée, à modérer (admin)
  *   POST /api/notify?type=moderated    → annonce approuvée / rejetée (vendeur)
+ *   GET  /api/notify?type=stats        → compteur public "aéronefs vendus"
+ *                                         (aucune donnée personnelle, agrégat
+ *                                         only — status=sold est invisible à
+ *                                         la clé anon, cf. RLS listings)
  *
  * Les corps acceptés sont identiques à ceux des anciennes fonctions.
  */
 import { preambule, sb, sbEcrire, envoyer, gabarit, esc, prix, titreAeronef, ADMIN_EMAIL, SITE } from './_lib.js';
 
 export default async function handler(req, res) {
-  if (preambule(req, res)) return;
-
   const type = (req.query && req.query.type) || '';
+
+  if (req.method === 'GET' && type === 'stats') return stats(req, res);
+
+  if (preambule(req, res)) return;
 
   if (type === 'new-listing') return newListing(req, res);
   if (type === 'moderated') return moderated(req, res);
   return message(req, res); /* défaut : message (compatibilité /api/notify sans type) */
+}
+
+/* ── TYPE stats : compteur public, sans donnée personnelle ──
+   La table listings n'expose que status='live' à l'anonyme (RLS) : le
+   nombre d'annonces vendues n'est donc pas calculable côté navigateur.
+   Cette route lit avec la clé de service et renvoie UNIQUEMENT un total,
+   jamais les lignes elles-mêmes. Cache navigateur/CDN 10 min : ce chiffre
+   n'a pas besoin d'être temps réel. */
+async function stats(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=3600');
+  try {
+    const rows = await sb('listings?select=id&status=eq.sold');
+    const sold = Array.isArray(rows) ? rows.length : 0;
+    return res.status(200).json({ ok: true, sold });
+  } catch (e) {
+    /* Échec silencieux côté front : mieux vaut ne rien afficher qu'une
+       erreur visible pour un simple compteur décoratif. */
+    return res.status(200).json({ ok: false, sold: 0 });
+  }
 }
 
 /* ── TYPE message : destinataire notifié d'un message reçu ── */
