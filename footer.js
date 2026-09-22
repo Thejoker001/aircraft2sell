@@ -113,7 +113,7 @@
           ].concat(lang === 'fr' ? [['/widget.html', t('widget')]] : [])),
           col(t('colResources'), [
             [href('guide-acheteur.html'), t('buyerGuide')], [href('blog.html'), t('blog')], [href('faq.html'), t('faq')],
-            [href('inspection-pre-achat-avion.html'), t('inspection')], [href('comment-financer-avion-leger.html'), t('financing')]
+            [href('inspection-pre-achat-avion.html'), t('inspection')], [href('financement.html'), t('financing')]
           ]),
           col(t('colCompany'), [
             [href('contact.html'), t('contact')], [href('legal.html'), t('legal')], [href('legal.html') + '#privacy', t('privacy')], [href('sitemap.html'), t('sitemap')]

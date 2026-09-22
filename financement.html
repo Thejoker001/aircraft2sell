@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script src="/confirm-handler.js"></script>
+<script src="/lang-redirect.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Simulateur de financement aéronef | Aircraft2Sell</title>
+<meta name="description" content="Simulez gratuitement la mensualité de financement de votre avion, hélicoptère ou jet : prix, apport, taux, durée. Sans engagement.">
+<meta name="keywords" content="financement avion, crédit aéronef, mensualité avion, simulateur crédit aviation, prêt aéronef">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://aircraft2sell.eu/financement.html">
+<meta property="og:title" content="Simulateur de financement aéronef | Aircraft2Sell">
+<meta property="og:description" content="Simulez gratuitement la mensualité de financement de votre avion, hélicoptère ou jet. Sans engagement.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://aircraft2sell.eu/financement.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script type="application/ld+json">
+{
+  "@type": "WebPage",
+  "name": "Simulateur de financement aéronef — Aircraft2Sell",
+  "url": "https://aircraft2sell.eu/financement.html",
+  "description": "Simulez gratuitement la mensualité de financement d'un aéronef : prix, apport, taux, durée.",
+  "@context": "https://schema.org"
+}
+</script>
+<link rel="stylesheet" href="styles.css?v=20260921a">
+<link rel="stylesheet" href="mobile.css?v=20260909a">
+<style>
+.fin-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:1.5rem;align-items:start}
+.fin-form .card-body{padding:1.5rem;display:flex;flex-direction:column;gap:1.1rem}
+.fin-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.fin-slider-row{display:flex;flex-direction:column;gap:.4rem}
+.fin-slider-row label{display:flex;justify-content:space-between;align-items:baseline;font-size:.86rem;font-weight:700;color:var(--a2s-navy)}
+.fin-slider-row label span{font-weight:800;color:var(--a2s-blue)}
+.fin-slider-row input[type=range]{width:100%;accent-color:var(--a2s-blue);height:6px}
+.fin-result{display:none}
+.fin-result.show{display:block}
+.fin-result-head{text-align:center;padding:2rem 1.5rem 1.5rem;border-bottom:1px solid var(--a2s-border)}
+.fin-monthly{font-family:var(--font-display);font-weight:800;font-size:clamp(2rem,5vw,3rem);color:var(--a2s-navy);letter-spacing:-.02em;line-height:1.1;margin:.5rem 0 .4rem}
+.fin-monthly span{font-size:1rem;font-weight:600;color:var(--a2s-text-muted)}
+.fin-detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;padding:1.25rem 1.5rem}
+.fin-detail-item{text-align:center}
+.fin-detail-val{font-family:var(--font-display);font-weight:800;font-size:1.15rem;color:var(--a2s-navy)}
+.fin-detail-lbl{font-size:.74rem;color:var(--a2s-text-muted);margin-top:.15rem}
+.fin-lead-card{padding:0 1.5rem 1.5rem}
+.fin-lead-card .card{background:var(--a2s-bg);border:1px dashed var(--a2s-border-2)}
+.fin-lead-card .card-body{padding:1.25rem}
+.side-card .card-body{display:flex;flex-direction:column;gap:.9rem}
+.side-card h3{font-size:1rem}
+.side-list{display:flex;flex-direction:column;gap:.7rem}
+.side-list li{display:flex;gap:.6rem;font-size:.86rem;color:var(--a2s-text-muted);line-height:1.5}
+.side-list .ic{width:18px;height:18px;color:var(--a2s-success);flex-shrink:0;margin-top:.15rem}
+@media(max-width:900px){.fin-layout{grid-template-columns:1fr}.fin-row{grid-template-columns:1fr}}
+@media(max-width:600px){.fin-detail-grid{grid-template-columns:1fr;gap:.6rem}}
+</style>
+</head>
+<body>
+
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><span aria-current="page">Simulateur de financement</span></nav>
+    <h1>Simulateur de financement</h1>
+    <p>Estimez votre mensualité en quelques secondes. Sans engagement, sans inscription.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container fin-layout">
+
+    <div class="stack">
+      <form class="card fin-form" onsubmit="event.preventDefault();calcFinancement()" novalidate>
+        <div class="card-head"><h3>Votre simulation</h3><span class="badge badge-success">Gratuit</span></div>
+        <div class="card-body">
+          <div class="fin-row">
+            <div class="field">
+              <label for="finPrice">Prix de l'aéronef <span class="req">*</span></label>
+              <div class="input-group"><input type="number" class="inp" id="finPrice" placeholder="250000" min="0" inputmode="numeric" oninput="calcFinancement()"><span class="addon">€</span></div>
+            </div>
+            <div class="field">
+              <label for="finApport">Apport personnel</label>
+              <div class="input-group"><input type="number" class="inp" id="finApport" placeholder="50000" min="0" inputmode="numeric" oninput="calcFinancement()"><span class="addon">€</span></div>
+            </div>
+          </div>
+          <div class="fin-slider-row">
+            <label for="finDuree">Durée du financement <span id="finDureeVal">7 ans</span></label>
+            <input type="range" id="finDuree" min="1" max="20" value="7" oninput="calcFinancement()">
+          </div>
+          <div class="fin-slider-row">
+            <label for="finTaux">Taux d'intérêt annuel <span id="finTauxVal">4,5 %</span></label>
+            <input type="range" id="finTaux" min="1" max="12" step="0.1" value="4.5" oninput="calcFinancement()">
+          </div>
+          <div class="field-hint">Taux et conditions à titre indicatif — Aircraft2Sell n'est pas un établissement de crédit. Renseignez le prix d'une annonce ou une estimation.</div>
+        </div>
+      </form>
+
+      <div class="card fin-result" id="finResultBox" aria-live="polite">
+        <div class="fin-result-head">
+          <span class="eyebrow">Mensualité estimée</span>
+          <div class="fin-monthly" id="finMonthly">— <span>€ / mois</span></div>
+          <div class="result-sub" id="finSub"></div>
+        </div>
+        <div class="fin-detail-grid">
+          <div class="fin-detail-item"><div class="fin-detail-val" id="finCapital">—</div><div class="fin-detail-lbl">Capital emprunté</div></div>
+          <div class="fin-detail-item"><div class="fin-detail-val" id="finInterest">—</div><div class="fin-detail-lbl">Intérêts totaux</div></div>
+          <div class="fin-detail-item"><div class="fin-detail-val" id="finTotal">—</div><div class="fin-detail-lbl">Coût total</div></div>
+        </div>
+        <div class="fin-lead-card">
+          <div class="card">
+            <div class="card-body" id="finLeadWrap">
+              <h3 style="margin-bottom:.4rem">Être recontacté pour ce financement</h3>
+              <p class="muted" style="font-size:.85rem;margin-bottom:1rem;line-height:1.6">Laissez votre email : nous transmettons votre simulation à un partenaire financement (aucune donnée vendue à des tiers, aucun engagement).</p>
+              <div id="finLeadAlert"></div>
+              <div class="input-group has-icon" style="margin-bottom:.6rem"><i data-icon="mail"></i><input type="email" class="inp" id="finLeadEmail" placeholder="vous@exemple.com" autocomplete="email"></div>
+              <button type="button" class="btn-primary btn-block" id="finLeadBtn" onclick="submitFinancementLead()"><i data-icon="send"></i>Être recontacté</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="stack">
+      <div class="card side-card">
+        <div class="card-body">
+          <span class="icon-box"><i data-icon="calculator"></i></span>
+          <h3>Comment est calculée la mensualité ?</h3>
+          <ul class="side-list">
+            <li><i data-icon="check-circle"></i>Amortissement classique (capital + intérêts constants).</li>
+            <li><i data-icon="check-circle"></i>Capital emprunté = prix − apport personnel.</li>
+            <li><i data-icon="check-circle"></i>Taux et durée ajustables selon votre profil.</li>
+          </ul>
+          <div class="alert alert-info"><i data-icon="info"></i><span>Simulation indicative, hors frais de dossier et assurance. Les conditions réelles dépendent de votre banque ou organisme de financement.</span></div>
+        </div>
+      </div>
+      <div class="card side-card">
+        <div class="card-body">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <h3>Trouvez votre prochain aéronef</h3>
+          <p class="muted" style="font-size:.88rem;line-height:1.6">Parcourez les annonces disponibles en Europe et affinez selon votre budget.</p>
+          <a href="search.html" class="btn-link">Voir les annonces <i data-icon="arrow-right"></i></a>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+
+<script src="icons.js?v=20260909a"></script>
+<script>
+function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+
+var _finLastResult=null;
+
+function calcFinancement(){
+  var price=parseFloat(document.getElementById('finPrice').value)||0;
+  var apport=parseFloat(document.getElementById('finApport').value)||0;
+  var duree=parseInt(document.getElementById('finDuree').value)||7;
+  var taux=parseFloat(document.getElementById('finTaux').value)||4.5;
+
+  document.getElementById('finDureeVal').textContent=duree+' an'+(duree>1?'s':'');
+  document.getElementById('finTauxVal').textContent=taux.toFixed(1).replace('.',',')+' %';
+
+  var box=document.getElementById('finResultBox');
+  if(!price){box.classList.remove('show');_finLastResult=null;return;}
+
+  var capital=Math.max(0,price-apport);
+  var r=taux/100/12;
+  var n=duree*12;
+  var monthly=r===0?capital/n:capital*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
+  var totalPay=monthly*n;
+  var totalInt=totalPay-capital;
+
+  box.classList.add('show');
+  document.getElementById('finMonthly').innerHTML=Math.round(monthly).toLocaleString('fr-FR')+' <span>€ / mois</span>';
+  document.getElementById('finSub').textContent='Sur '+duree+' an'+(duree>1?'s':'')+' à '+taux.toFixed(1).replace('.',',')+' % — '+n+' mensualités.';
+  document.getElementById('finCapital').textContent=Math.round(capital).toLocaleString('fr-FR')+' €';
+  document.getElementById('finInterest').textContent=Math.round(totalInt).toLocaleString('fr-FR')+' €';
+  document.getElementById('finTotal').textContent=Math.round(totalPay+apport).toLocaleString('fr-FR')+' €';
+
+  _finLastResult={price:price,apport:apport,duree:duree,taux:taux,monthly:Math.round(monthly)};
+}
+
+function setFinAlert(msg,type){
+  var el=document.getElementById('finLeadAlert');
+  if(!el)return;
+  if(!msg){el.innerHTML='';return;}
+  el.innerHTML='<div class="alert alert-'+(type||'error')+'" style="margin-bottom:.75rem">'+A2SIcon(type==='success'?'check-circle':'alert-triangle')+'<span>'+esc(msg)+'</span></div>';
+}
+
+/* ── Capture du lead ──
+   Pas de nouvelle fonction serverless (limite Hobby 12 fonctions déjà
+   atteinte) : réutilise api/contact-form.js, déjà générique (first/last/
+   email/subject/message), avec un sujet dédié pour distinguer ces leads
+   dans la boîte admin. */
+async function submitFinancementLead(){
+  setFinAlert('');
+  var email=document.getElementById('finLeadEmail').value.trim();
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    setFinAlert('Indiquez une adresse email valide.');
+    return;
+  }
+  if(!_finLastResult){
+    setFinAlert('Complétez d\'abord la simulation (prix de l\'aéronef).');
+    return;
+  }
+  var btn=document.getElementById('finLeadBtn');
+  btn.disabled=true;btn.classList.add('is-loading');
+  var r=_finLastResult;
+  var message='Simulation de financement complétée sur le site.\n\n'
+    +'Prix aéronef : '+r.price.toLocaleString('fr-FR')+' €\n'
+    +'Apport : '+r.apport.toLocaleString('fr-FR')+' €\n'
+    +'Durée : '+r.duree+' an(s)\n'
+    +'Taux simulé : '+r.taux+' %\n'
+    +'Mensualité estimée : '+r.monthly.toLocaleString('fr-FR')+' €/mois\n\n'
+    +'Le visiteur souhaite être recontacté au sujet d\'un financement pour cet aéronef.';
+  try{
+    var res=await fetch('/api/contact-form',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({first:'Visiteur',last:'(simulateur financement)',email:email,subject:'financement',message:message})
+    });
+    var d=await res.json().catch(function(){return{};});
+    if(!res.ok){setFinAlert(d.error||'Une erreur est survenue, réessayez plus tard.');return;}
+    setFinAlert('Merci ! Votre demande a bien été transmise, nous revenons vers vous rapidement.','success');
+    document.getElementById('finLeadEmail').value='';
+  }catch(e){
+    setFinAlert('Erreur réseau, réessayez plus tard.');
+  }finally{
+    btn.disabled=false;btn.classList.remove('is-loading');
+  }
+}
+
+/* Pré-remplissage depuis une fiche annonce (?price=250000) */
+window.addEventListener('DOMContentLoaded',function(){
+  var p=new URLSearchParams(location.search).get('price');
+  if(p){document.getElementById('finPrice').value=p;calcFinancement();}
+});
+</script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js" defer></script>
+<script src="nav.js?v=20260909a"></script>
+<script src="footer.js?v=20260919a"></script>
+</body>
+</html>
