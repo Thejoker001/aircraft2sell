@@ -1127,7 +1127,7 @@ async function _sbRefresh(){
   return null;
 }
 
-async function sb(method,table,params,body){
+async function sb(method,table,params,body,minimalReturn){
   var url=SB_URL+'/rest/v1/'+table;if(params)url+='?'+params;
   /* Toutes les requêtes utilisent le JWT de l'admin connecté (jamais de clé exposée).
      Le jeton est renouvelé automatiquement s'il a expiré (sinon 401 -> logout brutal
@@ -1136,7 +1136,15 @@ async function sb(method,table,params,body){
   if(!token&&_sbToken)token=_sbToken;
   if(!token)token=SB_KEY;
   var key=SB_KEY;
-  var opts={method:method,headers:{'apikey':key,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=representation'}};
+  /* minimalReturn=true (Prefer:return=minimal) pour les écritures sur
+     listings : le RGPD-hardening du 2026-09-22 a retiré seller_email/
+     seller_phone du GRANT SELECT accordé à authenticated (n'importe quel
+     compte pouvait lire les coordonnées de TOUS les vendeurs). Un PATCH/
+     POST/DELETE avec return=representation exige un SELECT sur les
+     colonnes renvoyées (RETURNING *), donc échouerait désormais avec 403
+     sur listings. Aucun appel sb(...,'listings',...) de ce fichier
+     n'exploite la ligne renvoyée (vérifié par grep) — sans risque. */
+  var opts={method:method,headers:{'apikey':key,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return='+(minimalReturn?'minimal':'representation')}};
   if(body)opts.body=JSON.stringify(body);
   var res=await fetch(url,opts);
   /* Si 401 malgré un token frais : tenter UN renouvellement puis retry.
@@ -1356,7 +1364,15 @@ function showTab(id,navEl){
 async function refreshAll(){
   setTimeout(updateSidebarBadges,800);
   try{
-    var rows=await sb('GET','listings','order=submitted_at.desc&limit=500');
+    /* listings_admin (vue) au lieu de listings (table brute) : le
+       RGPD-hardening du 2026-09-22 a retiré seller_email/seller_phone
+       du GRANT SELECT table-level accordé à authenticated (fuite corrigée
+       — n'importe quel compte pouvait lire les coordonnées de TOUS les
+       vendeurs). listings_admin est une vue security_definer qui ne
+       renvoie des lignes QUE si le JWT appelant est contact@aircraft2sell.eu
+       (vérifié en base, pas côté client) — l'admin garde un accès complet
+       à toutes les colonnes de toutes les annonces. */
+    var rows=await sb('GET','listings_admin','order=submitted_at.desc&limit=500');
     _allListings=rows.map(sbToL);
     setConnStatus(true);
   }catch(e){
@@ -1447,7 +1463,7 @@ function renderMod(){
 }
 async function toggleFeatured(id,current){
   try{
-    await sb('PATCH','listings','id=eq.'+id,{featured:!current});
+    await sb('PATCH','listings','id=eq.'+id,{featured:!current},true);
     logAdmin('listing.feature','listing',String(id),{featured:!current});
     showToast(current?'Vedette retirée':'Annonce mise en vedette');
     await refreshAll();
@@ -1455,7 +1471,7 @@ async function toggleFeatured(id,current){
 }
 async function approve(id){
   try{
-    await sb('PATCH','listings','id=eq.'+id,{status:'live'});
+    await sb('PATCH','listings','id=eq.'+id,{status:'live'},true);
     /* Notifier le vendeur par email */
     fetch('/api/notify?type=moderated',{
       method:'POST',
@@ -1505,7 +1521,7 @@ async function doReject(id,reason){
   reason=(reason||'').trim();
   if(!reason) reason='Annonce rejetée';
   try{
-    await sb('PATCH','listings','id=eq.'+id,{status:'rejected',rejection_reason:reason});
+    await sb('PATCH','listings','id=eq.'+id,{status:'rejected',rejection_reason:reason},true);
     /* Prévenir le vendeur : sans cet appel, l'annonce était rejetée en
        silence et le vendeur ne savait pas pourquoi elle n'apparaissait pas. */
     fetch('/api/notify?type=moderated',{
@@ -1518,7 +1534,7 @@ async function doReject(id,reason){
     await refreshAll();
   }catch(e){showToast('Erreur : '+e.message);}
 }
-async function approveAll(){var pending=_allListings.filter(function(l){return l.status==='pending';});if(!pending.length){showToast('Aucune annonce en attente');return;}if(!confirm('Approuver les '+pending.length+' annonce(s) ?'))return;try{await sb('PATCH','listings','status=eq.pending',{status:'live'});showToast(pending.length+' annonce(s) approuvée(s)');await refreshAll();}catch(e){showToast('Erreur : '+e.message);}}
+async function approveAll(){var pending=_allListings.filter(function(l){return l.status==='pending';});if(!pending.length){showToast('Aucune annonce en attente');return;}if(!confirm('Approuver les '+pending.length+' annonce(s) ?'))return;try{await sb('PATCH','listings','status=eq.pending',{status:'live'},true);showToast(pending.length+' annonce(s) approuvée(s)');await refreshAll();}catch(e){showToast('Erreur : '+e.message);}}
 
 /* ── LISTE ANNONCES ── */
 function renderList(){
@@ -1773,16 +1789,16 @@ async function saveListingM() {
   };
   if(photos !== undefined) body.photos = photos;
   try {
-    await sb('PATCH','listings','id=eq.'+id, body);
+    await sb('PATCH','listings','id=eq.'+id, body,true);
     logAdmin('listing.update','listing',String(id),{status:body.status,category:body.category});
     closeM('mListing');
     await refreshAll();
     showToast('Annonce enregistrée');
   } catch(e) { showToast('Erreur : '+e.message); }
 }
-async function delListing(id){if(!confirm('Supprimer cette annonce ?'))return;try{await sb('DELETE','listings','id=eq.'+id);logAdmin('listing.delete','listing',String(id),{});await refreshAll();showToast('Annonce supprimée');}catch(e){showToast('Erreur : '+e.message);}}
-async function delListingM(){var id=sel('ml-id').value;if(!id||!confirm('Supprimer ?'))return;try{await sb('DELETE','listings','id=eq.'+id);logAdmin('listing.delete','listing',String(id),{});closeM('mListing');await refreshAll();showToast('Annonce supprimée');}catch(e){showToast('Erreur : '+e.message);}}
-async function deleteAllListings(){try{await sb('DELETE','listings','id=gt.0');await refreshAll();showToast('Toutes les annonces supprimées');}catch(e){showToast('Erreur : '+e.message);}}
+async function delListing(id){if(!confirm('Supprimer cette annonce ?'))return;try{await sb('DELETE','listings','id=eq.'+id,null,true);logAdmin('listing.delete','listing',String(id),{});await refreshAll();showToast('Annonce supprimée');}catch(e){showToast('Erreur : '+e.message);}}
+async function delListingM(){var id=sel('ml-id').value;if(!id||!confirm('Supprimer ?'))return;try{await sb('DELETE','listings','id=eq.'+id,null,true);logAdmin('listing.delete','listing',String(id),{});closeM('mListing');await refreshAll();showToast('Annonce supprimée');}catch(e){showToast('Erreur : '+e.message);}}
+async function deleteAllListings(){try{await sb('DELETE','listings','id=gt.0',null,true);await refreshAll();showToast('Toutes les annonces supprimées');}catch(e){showToast('Erreur : '+e.message);}}
 
 /* ── USER EDIT ── */
 function viewSellerListings(email){
@@ -1840,11 +1856,11 @@ async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rat
   if(uEmail){
     /* Certification/note propagées aux annonces : séparé du try principal,
        un échec ici ne doit pas masquer le succès de la mise à jour membre. */
-    try{await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked});}catch(e2){console.warn('Propagation annonces:',e2.message);}
+    try{await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked},true);}catch(e2){console.warn('Propagation annonces:',e2.message);}
     /* Bannissement (S8) : le compte ne peut plus rien faire et ses annonces
        publiques sont masquées immédiatement (rejet avec motif explicite). */
     if((sel('mu-status').value)==='banned'){
-      try{await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail)+'&status=in.(pending,live)',{status:'rejected',rejection_reason:'Compte banni par l\'administration'});}catch(e3){console.warn('Masquage annonces banni:',e3.message);}
+      try{await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail)+'&status=in.(pending,live)',{status:'rejected',rejection_reason:'Compte banni par l\'administration'},true);}catch(e3){console.warn('Masquage annonces banni:',e3.message);}
     }
   }
   logAdmin('user.update','user',id,{plan:body.plan,status:body.status,certified:body.certified,rating:_r,is_free:isFree});
@@ -1855,7 +1871,7 @@ async function delUserM(){var id=sel('mu-id').value;if(!confirm('Supprimer ?'))r
 
 /* ── TEST ── */
 var _ti=0,_td=[{make:'Cessna',model:'172 Skyhawk',year:'2019',price:'85000',airport:'LFPG'},{make:'Piper',model:'Seneca V',year:'2017',price:'310000',airport:'LFPO'},{make:'Robinson',model:'R66 Turbine',year:'2021',price:'680000',airport:'LFMN'}];
-async function injectTestListing(){var t=_td[_ti%_td.length];_ti++;var body={id:Date.now(),make:t.make,model:t.model,year:t.year,price:t.price,currency:'EUR',category:'light',airport:t.airport,description:'Annonce de test.',status:'pending',seller_name:'Vendeur Test',seller_email:'test@aircraft2sell.eu',views:0,enquiries:0,submitted_at:new Date().toISOString()};try{await sb('POST','listings',null,body);await refreshAll();showTab('mod',sel('sn-mod'));showToast('Annonce test créée !');}catch(e){showToast('Erreur : '+e.message);}}
+async function injectTestListing(){var t=_td[_ti%_td.length];_ti++;var body={id:Date.now(),make:t.make,model:t.model,year:t.year,price:t.price,currency:'EUR',category:'light',airport:t.airport,description:'Annonce de test.',status:'pending',seller_name:'Vendeur Test',seller_email:'test@aircraft2sell.eu',views:0,enquiries:0,submitted_at:new Date().toISOString()};try{await sb('POST','listings',null,body,true);await refreshAll();showTab('mod',sel('sn-mod'));showToast('Annonce test créée !');}catch(e){showToast('Erreur : '+e.message);}}
 
 /* ── CSV ── */
 function exportCSV(type){
@@ -1878,7 +1894,7 @@ async function submitNewListing(){
   var make=(sel('new-make')||{}).value.trim();var model=(sel('new-model')||{}).value.trim();var year=(sel('new-year')||{}).value.trim();var price=(sel('new-price')||{}).value.trim();var currency=(sel('new-currency')||{}).value||'EUR';var category=(sel('new-category')||{}).value||'light';var airport=(sel('new-airport')||{}).value.trim();var country=(sel('new-country')||{}).value.trim();var sName=(sel('new-seller-name')||{}).value.trim();var sEmail=(sel('new-seller-email')||{}).value.trim();var status=(sel('new-status')||{}).value||'live';var hours=(sel('new-hours')||{}).value.trim();var desc=(sel('new-desc')||{}).value.trim();
   if(!make||!model||!year||!price||!desc){showToast('Remplissez les champs obligatoires (*)');return;}
   var listing={id:Date.now(),make,model,year,price,currency,category,airport,country,description:desc,status,seller_name:sName,seller_email:sEmail,hours,views:0,enquiries:0,submitted_at:new Date().toISOString()};
-  try{await sb('POST','listings',null,listing);showToast('Annonce créée !');await refreshAll();clearNewListing();showTab('list',sel('sn-list'));}catch(e){showToast('Erreur : '+e.message);}
+  try{await sb('POST','listings',null,listing,true);showToast('Annonce créée !');await refreshAll();clearNewListing();showTab('list',sel('sn-list'));}catch(e){showToast('Erreur : '+e.message);}
 }
 
 /* ── VOIR ANNONCE ── */
@@ -2299,7 +2315,7 @@ async function unpublishFromReport(reportId,listingId){
   if(!listingId){showToast('Annonce introuvable pour ce signalement');return;}
   if(!confirm("Dépublier cette annonce ? Elle sera rejetée et masquée du site."))return;
   try{
-    await sb('PATCH','listings','id=eq.'+listingId,{status:'rejected',rejection_reason:'Annonce signalée par un utilisateur'});
+    await sb('PATCH','listings','id=eq.'+listingId,{status:'rejected',rejection_reason:'Annonce signalée par un utilisateur'},true);
     await sb('PATCH','reports','id=eq.'+reportId,{status:'done'});
     logAdmin('report.unpublish','listing',String(listingId),{report_id:reportId,rejection_reason:'Annonce signalée par un utilisateur'});
     showToast('Annonce dépubliée, signalement traité');
@@ -2311,7 +2327,7 @@ async function unpublishFromReport(reportId,listingId){
 
 /* ── STARS ── */
 function muSetRating(n){sel('mu-rating').value=n;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=n?'var(--a2s-accent)':'var(--a2s-border-2)';});}
-function setRating(n){if(!_viewListingId)return;document.querySelectorAll('#ratingStars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=n?'var(--a2s-accent)':'var(--a2s-border-2)';});sb('PATCH','listings','id=eq.'+_viewListingId,{seller_rating:n}).then(function(){showToast('Note de '+n+' sur 5 enregistrée');refreshAll();}).catch(function(e){showToast('Erreur: '+e.message);});}
+function setRating(n){if(!_viewListingId)return;document.querySelectorAll('#ratingStars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=n?'var(--a2s-accent)':'var(--a2s-border-2)';});sb('PATCH','listings','id=eq.'+_viewListingId,{seller_rating:n},true).then(function(){showToast('Note de '+n+' sur 5 enregistrée');refreshAll();}).catch(function(e){showToast('Erreur: '+e.message);});}
 /* Certification depuis la fiche d'une annonce.
    La v2 ne modifiait QUE l'annonce ouverte : le compte et les autres annonces
    du même vendeur restaient désynchronisés. On applique désormais au compte
@@ -2324,10 +2340,10 @@ async function toggleCertified(){
   try{
     if(email){
       await sb('PATCH','users','email=eq.'+encodeURIComponent(email),{certified:checked});
-      await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(email),{seller_certified:checked});
+      await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(email),{seller_certified:checked},true);
       showToast(checked?'Vendeur certifié (compte + annonces)':'Certification retirée (compte + annonces)');
     }else{
-      await sb('PATCH','listings','id=eq.'+_viewListingId,{seller_certified:checked});
+      await sb('PATCH','listings','id=eq.'+_viewListingId,{seller_certified:checked},true);
       showToast(checked?'Annonce certifiée':'Certification retirée');
     }
     await refreshAll();
@@ -2423,13 +2439,13 @@ async function setWeeklyListing(id){
      La v2 imposait un confirm() natif bloquant. */
   try{
     var prev=_allListings.filter(function(l){return l.weekly_pick;}).map(function(l){return l.id;});
-    await sb('PATCH','listings','weekly_pick=eq.true',{weekly_pick:false});
-    await sb('PATCH','listings','id=eq.'+id,{weekly_pick:true,featured:true});
+    await sb('PATCH','listings','weekly_pick=eq.true',{weekly_pick:false},true);
+    await sb('PATCH','listings','id=eq.'+id,{weekly_pick:true,featured:true},true);
     await refreshAll();
     toastUndo('Annonce de la semaine définie', async function(){
       try{
-        await sb('PATCH','listings','id=eq.'+id,{weekly_pick:false,featured:false});
-        for(var i=0;i<prev.length;i++) await sb('PATCH','listings','id=eq.'+prev[i],{weekly_pick:true});
+        await sb('PATCH','listings','id=eq.'+id,{weekly_pick:false,featured:false},true);
+        for(var i=0;i<prev.length;i++) await sb('PATCH','listings','id=eq.'+prev[i],{weekly_pick:true},true);
         await refreshAll();
         showToast('Annulé');
       }catch(e){showToast('Erreur: '+e.message);}
@@ -2489,14 +2505,14 @@ async function approveVerif(id,email){
     /* Propager sur les annonces du vendeur : le site lit listings.seller_certified,
        pas users.certified. Sans cette ligne, un vendeur certifié restait affiché
        comme simple « Vendeur vérifié » sur l'accueil et la recherche. */
-    await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(email),{seller_certified:true});
+    await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(email),{seller_certified:true},true);
     logAdmin('user.verify','user',email,{action:'approve'});
     loadVerifRequests(); refreshAll();
     toastUndo(email+' certifié', async function(){
       try{
         await sb('PATCH','verification_requests','id=eq.'+id,{status:'pending'});
         await sb('PATCH','users','email=eq.'+encodeURIComponent(email),{certified:false});
-        await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(email),{seller_certified:false});
+        await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(email),{seller_certified:false},true);
         loadVerifRequests(); refreshAll(); showToast('Certification annulée');
       }catch(e){showToast('Erreur: '+e.message);}
     });
@@ -2648,7 +2664,7 @@ async function bulkApprove(){
   if(!ids.length) return;
   var ok=0, ko=0;
   for(var i=0;i<ids.length;i++){
-    try { await sb('PATCH','listings','id=eq.'+ids[i],{status:'live'}); ok++; logAdmin('bulk.approve','listing',ids[i],{}); }
+    try { await sb('PATCH','listings','id=eq.'+ids[i],{status:'live'},true); ok++; logAdmin('bulk.approve','listing',ids[i],{}); }
     catch(e){ ko++; }
   }
   clearSelection('list');
@@ -2661,7 +2677,7 @@ async function bulkReject(){
   if(!ids.length) return;
   var ok=0, ko=0;
   for(var i=0;i<ids.length;i++){
-    try { await sb('PATCH','listings','id=eq.'+ids[i],{status:'rejected'}); ok++; logAdmin('bulk.reject','listing',ids[i],{}); }
+    try { await sb('PATCH','listings','id=eq.'+ids[i],{status:'rejected'},true); ok++; logAdmin('bulk.reject','listing',ids[i],{}); }
     catch(e){ ko++; }
   }
   clearSelection('list');
@@ -2677,7 +2693,7 @@ async function bulkDelete(){
   if(!confirm('Supprimer définitivement '+ids.length+' annonce(s) ? Cette action est irréversible.')) return;
   var ok=0, ko=0;
   for(var i=0;i<ids.length;i++){
-    try { await sb('DELETE','listings','id=eq.'+ids[i]); ok++; logAdmin('bulk.delete','listing',ids[i],{}); }
+    try { await sb('DELETE','listings','id=eq.'+ids[i],null,true); ok++; logAdmin('bulk.delete','listing',ids[i],{}); }
     catch(e){ ko++; }
   }
   clearSelection('list');
