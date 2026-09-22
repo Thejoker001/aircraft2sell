@@ -86,6 +86,16 @@
 .pgbtn .ic{width:16px;height:16px}
 .pg-dots{color:var(--a2s-text-faint);padding:0 .3rem}
 
+/* ── Saved searches ── */
+.saved-searches-bar{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.75rem 1rem;background:var(--a2s-bg);border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-btn);margin:1rem 0}
+.ssb-label{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;font-weight:700;color:var(--a2s-text-muted);flex-shrink:0}
+.ssb-label .ic{width:15px;height:15px}
+.ssb-list{display:flex;gap:.5rem;flex-wrap:wrap;flex:1}
+.ssb-chip{display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .5rem .35rem .75rem;background:var(--a2s-surface);border:1px solid var(--a2s-border-2);border-radius:999px;font-size:.8rem;font-weight:600;color:var(--a2s-navy);cursor:pointer;transition:border-color .15s}
+.ssb-chip:hover{border-color:var(--a2s-navy)}
+.ssb-chip .ic{width:13px;height:13px;color:var(--a2s-text-faint);flex-shrink:0}
+.ssb-chip .ic:hover{color:var(--a2s-danger)}
+
 @media(max-width:1024px){.search-layout{grid-template-columns:240px 1fr}}
 @media(max-width:768px){
   .search-layout{grid-template-columns:1fr}
@@ -140,6 +150,14 @@
         <button type="button" class="btn-icon" id="listBtn" onclick="setView('list')" title="List view" aria-label="List view"><i data-icon="list"></i></button>
       </div>
       <a href="/alerts.html" id="alertBtn" class="btn-secondary" title="Create an alert for this search"><i data-icon="bell"></i>Create an alert</a>
+      <button type="button" class="btn-secondary" id="saveSearchBtn" title="Save this search to find it later" onclick="saveCurrentSearch()"><i data-icon="bookmark"></i>Save</button>
+    </div>
+
+    <!-- Saved searches: replay criteria in one click, no email/notification
+         (unlike alerts, which push an email for each new matching listing). -->
+    <div id="savedSearchesBar" class="saved-searches-bar" style="display:none">
+      <span class="ssb-label"><i data-icon="bookmark"></i>My searches</span>
+      <div id="savedSearchesList" class="ssb-list"></div>
     </div>
 
     <div class="search-layout">
@@ -609,6 +627,100 @@ function updateAlertBtn(){
   btn.href='/alerts.html'+(params.toString()?'?'+params.toString():'');
 }
 
+/* ── SAVED SEARCHES ──
+   Distinct from alerts (which email on every new matching listing): here we
+   simply replay criteria in one click, no email, no commitment — stored in
+   localStorage. */
+var SAVED_SEARCHES_KEY='a2s_saved_searches';
+var SAVED_SEARCHES_MAX=10;
+function currentSearchCriteria(){
+  var g=function(id){var el=document.getElementById(id);return el?el.value:'';};
+  var gc=function(id){var el=document.getElementById(id);return el?el.checked:false;};
+  return{
+    cat:selCat||'',
+    q:g('searchInput').trim(),
+    minPrice:g('minPrice'),maxPrice:g('maxPrice'),
+    minYear:g('minYear'),maxYear:g('maxYear'),
+    minHours:g('minHours'),maxHours:g('maxHours'),
+    minSmoh:g('minSmoh'),maxSmoh:g('maxSmoh'),
+    country:g('filterCountry'),
+    ifr:gc('fIFR'),rvsm:gc('fRVSM'),adsb:gc('fADSB'),
+    sort:g('sortSel')
+  };
+}
+function searchCriteriaLabel(c){
+  var CAT_LABELS={light:'Light aircraft',jet:'Business jet',turbo:'Turboprop',heli:'Helicopter',ulm:'Microlight',airliner:'Airliner'};
+  var parts=[];
+  if(c.cat)parts.push(CAT_LABELS[c.cat]||c.cat);
+  if(c.q)parts.push('"'+c.q+'"');
+  if(c.maxPrice)parts.push('< '+Number(c.maxPrice).toLocaleString('en-US')+' €');
+  else if(c.minPrice)parts.push('> '+Number(c.minPrice).toLocaleString('en-US')+' €');
+  if(c.country)parts.push(c.country);
+  return parts.length?parts.join(' · '):'All listings';
+}
+function getSavedSearches(){
+  try{return JSON.parse(localStorage.getItem(SAVED_SEARCHES_KEY)||'[]');}catch(e){return[];}
+}
+function saveCurrentSearch(){
+  var c=currentSearchCriteria();
+  var hasAnyCriteria=c.cat||c.q||c.minPrice||c.maxPrice||c.minYear||c.maxYear||c.country||c.ifr||c.rvsm||c.adsb;
+  if(!hasAnyCriteria){showToast('Add at least one filter before saving.');return;}
+  var list=getSavedSearches();
+  var label=searchCriteriaLabel(c);
+  var key=JSON.stringify(c);
+  if(list.some(function(s){return JSON.stringify(s.criteria)===key;})){
+    showToast('This search is already saved.');
+    return;
+  }
+  list.unshift({label:label,criteria:c,savedAt:new Date().toISOString()});
+  if(list.length>SAVED_SEARCHES_MAX)list=list.slice(0,SAVED_SEARCHES_MAX);
+  try{localStorage.setItem(SAVED_SEARCHES_KEY,JSON.stringify(list));}catch(e){}
+  renderSavedSearches();
+  showToast('Search saved.');
+}
+function applySavedSearch(i){
+  var list=getSavedSearches();
+  var s=list[i];if(!s)return;
+  var c=s.criteria;
+  selCat=c.cat||'';
+  document.querySelectorAll('.fcat').forEach(function(el){el.classList.toggle('active',el.dataset.cat===selCat);});
+  var set=function(id,v){var el=document.getElementById(id);if(el)el.value=v||'';};
+  var setChk=function(id,v){var el=document.getElementById(id);if(el)el.checked=!!v;};
+  var si=document.getElementById('searchInput');if(si)si.value=c.q||'';
+  set('minPrice',c.minPrice);set('maxPrice',c.maxPrice);
+  set('minYear',c.minYear);set('maxYear',c.maxYear);
+  set('minHours',c.minHours);set('maxHours',c.maxHours);
+  set('minSmoh',c.minSmoh);set('maxSmoh',c.maxSmoh);
+  set('filterCountry',c.country);
+  setChk('fIFR',c.ifr);setChk('fRVSM',c.rvsm);setChk('fADSB',c.adsb);
+  if(c.sort)set('sortSel',c.sort);
+  curPage=1;
+  applyFilters();
+  showToast('Search applied: '+s.label);
+}
+function deleteSavedSearch(i,ev){
+  if(ev){ev.stopPropagation();ev.preventDefault();}
+  var list=getSavedSearches();
+  list.splice(i,1);
+  try{localStorage.setItem(SAVED_SEARCHES_KEY,JSON.stringify(list));}catch(e){}
+  renderSavedSearches();
+}
+function renderSavedSearches(){
+  var bar=document.getElementById('savedSearchesBar');
+  var list=document.getElementById('savedSearchesList');
+  if(!bar||!list)return;
+  var searches=getSavedSearches();
+  if(!searches.length){bar.style.display='none';return;}
+  bar.style.display='flex';
+  list.innerHTML=searches.map(function(s,i){
+    return'<span class="ssb-chip" onclick="applySavedSearch('+i+')" title="Apply this search">'
+      +esc(s.label)
+      +'<i data-icon="close" onclick="deleteSavedSearch('+i+',event)" title="Delete" aria-label="Delete this search"></i>'
+      +'</span>';
+  }).join('');
+  if(window.A2SIcon&&window.A2SIcon.hydrate)window.A2SIcon.hydrate(list);
+}
+
 /* ── SCHEMA ITEMLIST SEO ── */
 function injectSearchSchema(listings){
   var existing=document.getElementById('search-schema');
@@ -636,6 +748,7 @@ window.addEventListener('DOMContentLoaded',function(){
   try{var v=localStorage.getItem('a2s_search_view');if(v==='list'){viewMode='list';var g=document.getElementById('gridBtn'),lb=document.getElementById('listBtn');if(g)g.classList.remove('active');if(lb)lb.classList.add('active');}}catch(e){}
   var si=document.getElementById('searchInput');
   if(si)si.addEventListener('input',function(){clearTimeout(si._t);si._t=setTimeout(applyFilters,250);});
+  renderSavedSearches();
   loadAll();
 });
 </script>

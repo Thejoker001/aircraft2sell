@@ -11,6 +11,7 @@
   var P = {
     /* Navigation & actions */
     search:      '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    bookmark:    '<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>',
     menu:        '<path d="M4 7h16M4 12h16M4 17h16"/>',
     close:       '<path d="M6 6l12 12M18 6 6 18"/>',
     'chevron-down':  '<path d="m6 9 6 6 6-6"/>',
