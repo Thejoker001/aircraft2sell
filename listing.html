@@ -84,6 +84,9 @@
 .price-sub{font-size:.8rem;color:var(--a2s-text-muted);margin-bottom:1rem}
 .urg-strip{display:flex;gap:1rem;flex-wrap:wrap;font-size:.78rem;color:var(--a2s-text-muted);margin-bottom:1rem}
 .urg-item{display:inline-flex;align-items:center;gap:.35rem}
+.price-drop-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(30,142,90,.1);color:#1E8E5A;border-radius:999px;padding:.35rem .75rem;font-size:.8rem;font-weight:700;margin-bottom:1rem}
+.price-drop-badge .old{text-decoration:line-through;color:var(--a2s-text-faint);font-weight:500;margin-right:.3rem}
+.price-drop-badge .ic{width:14px;height:14px}
 .urg-item .ic{width:15px;height:15px}
 .cta-stack{display:flex;flex-direction:column;gap:.5rem}
 .side-actions{display:flex;gap:.3rem;margin-top:.75rem;border-top:1px solid var(--a2s-border);padding-top:.75rem;flex-wrap:wrap}
@@ -194,6 +197,7 @@
             <span class="urg-item"><i data-icon="eye"></i><span id="urgViews">0 vues</span></span>
             <span class="urg-item"><i data-icon="message"></i><span id="urgEnq">0 contacts</span></span>
           </div>
+          <div id="priceDropBadge" style="display:none"></div>
           <div class="cta-stack">
             <button type="button" class="btn-primary btn-block btn-lg" onclick="openMsgForm()"><i data-icon="message"></i>Contacter le vendeur</button>
             <button type="button" class="btn-secondary btn-block" id="offerBtn" onclick="openOfferForm()" style="display:none"><i data-icon="tag"></i>Faire une offre</button>
@@ -612,6 +616,7 @@ function render(l){
 
   /* Colonne droite */
   document.getElementById('lPrice').textContent=pr;
+  loadPriceHistory(l.id,l.currency);
   (function(){
     var sub=document.getElementById('lPriceSub');
     if(!sub||!pn||l.currency==='USD'||!window.A2SExchangeRate)return;
@@ -792,6 +797,31 @@ function setFavUI(liked){
     if(span)span.textContent=liked?'Enregistrée':'Favori';
     else b.setAttribute('aria-label',liked?'Retirer des favoris':'Ajouter aux favoris');
   });
+}
+/* ── Historique de prix (badge "prix baissé") ──
+   price_history est alimenté par un trigger SQL (log_price_change) côté
+   Supabase à chaque modification de listings.price — lecture publique
+   seule, aucune écriture possible depuis le client. */
+function fmtPriceCompact(n,cur){
+  var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr'}[cur||'EUR']||'€';
+  return Math.round(Number(n)).toLocaleString('fr-FR')+' '+sym;
+}
+async function loadPriceHistory(id,currency){
+  var badge=document.getElementById('priceDropBadge');
+  if(!badge||!id)return;
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/price_history?listing_id=eq.'+encodeURIComponent(id)+'&order=changed_at.desc&limit=1',{headers:{'apikey':SB_KEY}});
+    var rows=r.ok?await r.json():[];
+    if(!rows.length)return;
+    var last=rows[0];
+    var oldP=Number(last.old_price),newP=Number(last.new_price);
+    if(!oldP||!newP||newP>=oldP)return; // uniquement les vraies baisses
+    var pct=Math.round((1-newP/oldP)*100);
+    badge.style.display='';
+    badge.className='price-drop-badge';
+    badge.innerHTML='<i data-icon="trending-down" class="ic"></i><span class="old">'+fmtPriceCompact(oldP,currency)+'</span>Prix baissé de '+pct+'%';
+    if(window.A2SIcon&&A2SIcon.hydrate)A2SIcon.hydrate(badge);
+  }catch(e){/* silencieux : ne bloque jamais l'affichage de la fiche */}
 }
 async function toggleFav(){
   var id=LISTING?String(LISTING.id):'';

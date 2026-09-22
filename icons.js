@@ -72,6 +72,7 @@
     euro:        '<path d="M18 6.5A7 7 0 0 0 7.5 9M18 17.5A7 7 0 0 1 7.5 15M4 10.5h11M4 13.5h11"/>',
     'credit-card': '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/>',
     'trending-up': '<path d="m3 17 6-6 4 4 8-8M15 7h6v6"/>',
+    'trending-down': '<path d="m3 7 6 6 4-4 8 8M15 17h6v-6"/>',
     'bar-chart':  '<path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/>',
     calculator:  '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 18h.01M12 18h.01M16 18h.01"/>',
     tag:         '<path d="M3 12V4h8l9 9-8 8-9-9Z"/><path d="M7.5 7.5h.01"/>',

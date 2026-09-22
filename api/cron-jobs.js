@@ -287,6 +287,102 @@ async function jobExpire() {
   return { expired: expirees, emails_sent: emailsSent };
 }
 
+/* ── JOB price-drop : alerte email sur baisse de prix d'un favori ── */
+function gabaritBaissePrix({ annonces }) {
+  const lignes = annonces.map((l) => {
+    const titre = [l.make, l.model, l.year ? `(${l.year})` : ''].filter(Boolean).join(' ') || 'Aéronef';
+    const lien = `${SITE}/listing.html?id=${encodeURIComponent(l.id)}`;
+    const baisse = l.old_price && l.new_price ? Math.round((1 - l.new_price / l.old_price) * 100) : null;
+    return `<tr>
+      <td style="padding:14px 0;border-top:1px solid #E4EAF2">
+        <div style="color:#0B2545;font-size:15px;font-weight:700">${esc(titre)}</div>
+        <div style="color:#5B6B7F;font-size:13px;margin-top:3px">
+          <span style="text-decoration:line-through;color:#9AA7B8">${esc(prix(l.old_price, l.currency))}</span>
+          &nbsp;→&nbsp;
+          <strong style="color:#1E8E5A">${esc(prix(l.new_price, l.currency))}</strong>
+          ${baisse != null ? ` (-${baisse}%)` : ''}
+        </div>
+        <a href="${lien}" style="color:#EA6A16;font-size:13px;font-weight:600;text-decoration:none">Voir l'annonce</a>
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Baisse de prix — Aircraft2Sell</title></head>
+<body style="margin:0;padding:0;background:#F4F7FB;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F7FB;padding:24px 12px">
+ <tr><td align="center">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(11,37,69,.08)">
+   <tr><td style="background:#0B2545;padding:20px 28px">
+     <div style="color:#FFFFFF;font-size:19px;font-weight:800;letter-spacing:-.3px">
+       Aircraft2<span style="color:#EA6A16">Sell</span></div>
+   </td></tr>
+   <tr><td style="padding:28px">
+     <h1 style="margin:0 0 12px;color:#0B2545;font-size:20px;font-weight:800;line-height:1.3">Baisse de prix sur un de vos favoris</h1>
+     <p style="margin:0 0 8px;color:#3D4F63;font-size:15px;line-height:1.6">
+       Le vendeur a baissé le prix ${annonces.length > 1 ? 'de ces annonces' : 'de cette annonce'} que vous suivez.</p>
+     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid #E4EAF2;margin:0 0 22px">${lignes}</table>
+   </td></tr>
+   <tr><td style="background:#F9FBFD;padding:18px 28px;border-top:1px solid #E4EAF2">
+     <p style="margin:0;color:#8494A8;font-size:12px;line-height:1.6">
+       Vous recevez cet email car cette annonce est dans vos favoris sur Aircraft2Sell.<br>
+       Retirez-la de vos favoris depuis votre tableau de bord pour ne plus être notifié.
+     </p>
+   </td></tr>
+  </table>
+ </td></tr>
+</table>
+</body></html>`;
+}
+
+async function jobPriceDrop() {
+  const maintenant = new Date();
+  const iso24 = new Date(maintenant.getTime() - 24 * 3600 * 1000).toISOString();
+
+  /* Baisses de prix enregistrées par le trigger SQL log_price_change()
+     dans les dernières 24h (uniquement les vraies baisses, pas les hausses). */
+  const baisses = await sbGet(
+    `price_history?select=listing_id,old_price,new_price,changed_at&changed_at=gte.${encodeURIComponent(iso24)}&new_price=not.is.null&old_price=not.is.null&limit=200`
+  );
+  const reellesBaisses = baisses.filter((b) => Number(b.new_price) < Number(b.old_price));
+  if (!reellesBaisses.length) return { drops_found: 0, emails_sent: 0 };
+
+  const idsAnnonces = [...new Set(reellesBaisses.map((b) => b.listing_id))];
+  const annonces = await sbGet(
+    `listings?select=id,make,model,year,currency,status&id=in.(${idsAnnonces.join(',')})&status=eq.live`
+  );
+  const annoncesParId = new Map(annonces.map((l) => [String(l.id), l]));
+
+  let emailsSent = 0;
+  for (const idAnnonce of idsAnnonces) {
+    const annonce = annoncesParId.get(String(idAnnonce));
+    if (!annonce) continue; // annonce retirée/vendue depuis, pas de notif
+    const baisse = reellesBaisses.filter((b) => String(b.listing_id) === String(idAnnonce)).sort((a, b) => new Date(a.changed_at) - new Date(b.changed_at))[0];
+
+    const favoris = await sbGet(`favorites?select=user_email&listing_id=eq.${encodeURIComponent(idAnnonce)}&limit=500`);
+    for (const fav of favoris) {
+      try {
+        const html = gabaritBaissePrix({
+          annonces: [{ ...annonce, old_price: baisse.old_price, new_price: baisse.new_price, currency: annonce.currency }],
+        });
+        const r = await envoyer({
+          to: fav.user_email,
+          toName: fav.user_email,
+          sujet: 'Baisse de prix sur un de vos favoris — Aircraft2Sell',
+          html,
+        });
+        if (r.ok) emailsSent += 1;
+        else console.error(`Baisse prix ${idAnnonce} (${fav.user_email}) : ${r.erreur}`);
+      } catch (e) {
+        console.error(`Baisse prix ${idAnnonce} (${fav.user_email}) : ${e.message}`);
+      }
+    }
+  }
+  return { drops_found: idsAnnonces.length, emails_sent: emailsSent };
+}
+
 /* ── Handler principal ── */
 module.exports = async function handler(req, res) {
   const cronSecretOk = req.headers['x-cron-secret'] === process.env.CRON_SECRET;
@@ -303,8 +399,20 @@ module.exports = async function handler(req, res) {
     if (job === 'expire') {
       return res.status(200).json(await jobExpire());
     }
-    /* défaut : alerts */
-    return res.status(200).json(await jobAlerts());
+    if (job === 'price-drop') {
+      return res.status(200).json(await jobPriceDrop());
+    }
+    /* défaut : alerts. Le job quotidien 08h00 UTC (vercel.json) déclenche
+       aussi price-drop dans la même invocation — on reste à 2 entrées
+       cron dans vercel.json (limite Hobby : 2 crons distincts max). */
+    const resultatsAlerts = await jobAlerts();
+    let resultatsPriceDrop = { drops_found: 0, emails_sent: 0 };
+    try {
+      resultatsPriceDrop = await jobPriceDrop();
+    } catch (e) {
+      console.error(`price-drop (appelé depuis alerts) : ${e.message}`);
+    }
+    return res.status(200).json({ alerts: resultatsAlerts, price_drop: resultatsPriceDrop });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
