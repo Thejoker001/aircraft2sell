@@ -83,6 +83,7 @@
 .slot-fill{height:100%;background:var(--a2s-success);transition:width .3s}
 .slot-count{font-size:.85rem;font-weight:700;color:var(--a2s-navy);white-space:nowrap}
 .listing-item{display:flex;align-items:center;gap:1rem;padding:.9rem 1rem;flex-wrap:wrap}
+.listing-item.is-selected{background:var(--a2s-blue-soft);border-color:var(--a2s-blue)}
 .listing-item + .listing-item{margin-top:.75rem}
 .li-thumb{width:88px;height:66px;border-radius:var(--a2s-radius-btn);background:var(--a2s-surface-2);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--a2s-text-faint)}
 .li-thumb img{width:100%;height:100%;object-fit:cover}
@@ -120,6 +121,28 @@
 .top-row .spread{font-size:.85rem;margin-bottom:.25rem}
 .top-track{height:5px;background:var(--a2s-surface-2);border-radius:3px;overflow:hidden}
 .top-fill{height:100%;background:var(--a2s-blue);border-radius:3px}
+
+/* ── Sélection multiple & actions groupées (dealer) ── */
+.li-check{display:flex;align-items:center;padding-right:.25rem;flex-shrink:0}
+.li-check input{width:16px;height:16px;cursor:pointer;accent-color:var(--a2s-blue)}
+.select-all-row{display:flex;align-items:center;gap:.5rem;padding:.5rem 1rem;font-size:.82rem;color:var(--a2s-text-muted)}
+.select-all-row input{width:15px;height:15px;cursor:pointer;accent-color:var(--a2s-blue)}
+.dash-bulkbar{position:sticky;top:calc(var(--nav-h) + .5rem);z-index:3;display:none;align-items:center;gap:.6rem;padding:.65rem .9rem;background:var(--a2s-navy);color:#fff;border-radius:var(--a2s-radius-btn);box-shadow:var(--a2s-shadow);margin-bottom:.75rem;flex-wrap:wrap}
+.dash-bulkbar.show{display:flex}
+.dash-bulkbar .bb-count{font-weight:800;font-size:.85rem}
+.dash-bulkbar .bb-spacer{flex:1}
+.dash-bulkbar button{background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:var(--a2s-radius-sm,6px);padding:.4rem .75rem;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.3rem;transition:background .15s;min-height:34px}
+.dash-bulkbar button:hover{background:rgba(255,255,255,.26)}
+.dash-bulkbar button .ic{width:14px;height:14px}
+.dash-bulkbar button.danger:hover{background:var(--a2s-danger)}
+.li-acts{align-items:center}
+.perf-table-wrap{margin-top:1.25rem}
+.perf-table-wrap h4{margin-bottom:.6rem}
+.perf-table .cell-num{text-align:right;font-variant-numeric:tabular-nums}
+.perf-table th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+.perf-table th.sortable:hover{color:var(--a2s-navy)}
+.perf-table th.sortable .ic{width:12px;height:12px;margin-left:.2rem;vertical-align:-1px;opacity:.5}
+@media(max-width:768px){.dash-bulkbar{position:static}}
 
 /* ── Messages ── */
 .msg-compose{display:flex;gap:.6rem;padding:1rem 1.25rem;border-top:1px solid var(--a2s-border)}
@@ -297,6 +320,21 @@
         <div class="slot-track"><div class="slot-fill" id="slotFill" style="width:0%"></div></div>
         <span class="slot-count" id="slotCount">0 / 1</span>
       </div>
+      <!-- Sélection multiple : utile aux comptes Pro/dealer avec plusieurs
+           annonces (republier, marquer vendu ou exporter en masse). -->
+      <div class="select-all-row" id="selectAllRow" style="display:none">
+        <input type="checkbox" id="selectAllListings" onchange="toggleAllListings(this)" aria-label="Tout sélectionner">
+        <span>Tout sélectionner</span>
+      </div>
+      <div class="dash-bulkbar" id="dashBulkbar">
+        <span class="bb-count" id="bbCount">0 sélectionnée</span>
+        <div class="bb-spacer"></div>
+        <button type="button" onclick="bulkMarkSold()"><i data-icon="check"></i>Marquer vendues</button>
+        <button type="button" onclick="bulkRepublish()"><i data-icon="refresh"></i>Republier</button>
+        <button type="button" onclick="bulkExportCsv()"><i data-icon="download"></i>Exporter CSV</button>
+        <button type="button" class="danger" onclick="bulkDeleteListings()"><i data-icon="trash"></i>Supprimer</button>
+        <button type="button" onclick="clearListingSelection()">Annuler</button>
+      </div>
       <div id="listingsList">
         <div class="card"><div class="empty-state"><span class="icon-box"><i data-icon="plane"></i></span><div class="empty-title">Aucune annonce</div><p class="empty-sub">Publiez votre premier aéronef. Zéro commission sur la vente.</p><a href="post-listing.html" class="btn-secondary"><i data-icon="plus"></i>Déposer une annonce</a></div></div>
       </div>
@@ -327,6 +365,28 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Très bon état, heures de vol faibl
         <div class="dc-body">
           <div class="chart-bars" id="statChart"></div>
           <div id="topListings" style="margin-top:1.25rem"></div>
+        </div>
+      </div>
+      <!-- Tableau de performance comparatif : utile dès 3-4 annonces pour
+           repérer celles qui sous-performent (vues élevées, peu de contacts
+           = prix ou photos à revoir). Colonnes triables au clic. -->
+      <div class="card perf-table-wrap" id="perfTableCard" style="display:none">
+        <div class="dc-head">
+          <h3>Performance comparée</h3>
+          <button type="button" class="btn-secondary btn-sm" onclick="exportAllListingsCsv()"><i data-icon="download"></i>Exporter tout</button>
+        </div>
+        <div class="dc-body table-wrap">
+          <table class="table perf-table">
+            <thead><tr>
+              <th class="sortable" onclick="sortPerfTable('title')">Aéronef<i data-icon="sort"></i></th>
+              <th class="sortable" onclick="sortPerfTable('views')">Vues<i data-icon="sort"></i></th>
+              <th class="sortable" onclick="sortPerfTable('enquiries')">Contacts<i data-icon="sort"></i></th>
+              <th class="sortable" onclick="sortPerfTable('ratio')">Contacts / 100 vues<i data-icon="sort"></i></th>
+              <th class="sortable" onclick="sortPerfTable('price')">Prix<i data-icon="sort"></i></th>
+              <th>Statut</th>
+            </tr></thead>
+            <tbody id="perfTableBody"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -945,7 +1005,9 @@ async function renderListings(){
     var meta=(l.year?'<span>'+A2SIcon('calendar')+esc(l.year)+'</span>':'')
       +(l.airport?'<span>'+A2SIcon('map-pin')+esc(l.airport)+'</span>':'');
     var feat=l.featured?'<span class="badge feat-badge">'+A2SIcon('star')+'En vedette</span>':'';
-    return'<div class="card listing-item">'+thumbHtml(l)
+    return'<div class="card listing-item" data-listing-id="'+esc(String(l.id))+'">'
+      +'<span class="li-check"><input type="checkbox" class="listing-check" data-id="'+esc(String(l.id))+'" onchange="toggleListingCheck(this)" aria-label="Sélectionner cette annonce"></span>'
+      +thumbHtml(l)
       +'<div class="li-body"><div class="li-title">'+esc(listingTitle(l))+'</div>'+stats+(meta?'<div class="li-meta">'+meta+'</div>':'')+note+'</div>'
       +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:.45rem">'
       +'<div class="li-price">'+esc(fmtPrice(l))+'</div>'+statusPillDash(st)+feat
@@ -954,12 +1016,17 @@ async function renderListings(){
       +(st==='live'?'<a href="listing.html?id='+encodeURIComponent(l.id)+'" class="btn-secondary btn-sm" target="_blank" rel="noopener">'+A2SIcon('eye')+'Voir</a>':'')
       +(st==='live'?'<a href="checkout.html?feature='+encodeURIComponent(l.id)+'" class="btn-ghost btn-sm">'+A2SIcon('star')+'Mettre en avant</a>':'')
       +'<button type="button" class="btn-secondary btn-sm" onclick="openEditListing(\''+esc(String(l.id))+'\')">'+A2SIcon('edit')+'Modifier</button>'
+      +'<button type="button" class="btn-secondary btn-sm" onclick="duplicateListing(\''+esc(String(l.id))+'\')">'+A2SIcon('copy')+'Dupliquer</button>'
       +(st!=='sold'?'<button type="button" class="btn-secondary btn-sm" onclick="markSold(\''+esc(String(l.id))+'\')">'+A2SIcon('check')+'Marquer vendu</button>':'')
       +'<button type="button" class="btn-danger btn-sm" onclick="delListing(\''+esc(String(l.id))+'\')">'+A2SIcon('trash')+'Supprimer</button>'
       +'</div></div>';
   }).join('');
 
   updateNewListingBtn(slotsLeft);
+  var selRow=document.getElementById('selectAllRow');
+  if(selRow)selRow.style.display=listings.length>1?'flex':'none';
+  _listingSelection.clear();
+  renderBulkbar();
 
   if(ovEl)ovEl.innerHTML=listings.slice(0,3).map(function(l){
     return'<div class="listing-item" style="padding:.6rem 0">'+thumbHtml(l).replace('li-thumb','li-thumb" style="width:64px;height:48px')
@@ -1036,6 +1103,154 @@ async function delListing(listingId){
   renderChart(currentPeriod);
   showToast('Annonce supprimée.');
 }
+
+/* ── DUPLICATION D'ANNONCE ──
+   Utile aux dealers qui vendent plusieurs appareils du même modèle : on
+   réutilise le mécanisme de brouillon déjà présent dans post-listing.html
+   (DRAFT_KEY='a2s_listing_draft') pour pré-remplir le formulaire, sans
+   dupliquer l'id ni les photos (une nouvelle annonce doit avoir ses propres
+   photos, jamais recopier des URLs Supabase d'une autre annonce). */
+function duplicateListing(listingId){
+  var l=_userListings.find(function(x){return String(x.id)===String(listingId);});
+  if(!l){showToast('Annonce introuvable.');return;}
+  var draft={
+    fMake:l.make||'',fModel:l.model||'',fMakeCustom:l.make||'',fModelCustom:l.model||'',
+    fYear:l.year||'',fTT:l.hours||'',fPrice:l.price||'',fPriceCurr:l.currency||'EUR',
+    fCountry:'',fAirport:l.airport||'',fDesc:l.description||'',
+    _savedAt:new Date().toISOString(),_fromDuplicate:true
+  };
+  try{
+    localStorage.setItem('a2s_listing_draft',JSON.stringify(draft));
+    showToast('Annonce dupliquée — complétez et publiez le formulaire.');
+    window.location.href='post-listing.html';
+  }catch(e){showToast('Impossible de préparer la duplication.');}
+}
+
+/* ── SÉLECTION MULTIPLE & ACTIONS GROUPÉES (dealer) ──
+   Même approche que l'admin (admin-a2s00760.html) : Set d'ids sélectionnés,
+   actions séquentielles avec comptage des échecs plutôt qu'un abandon
+   silencieux — la RLS peut refuser une ligne isolée sans faire échouer le
+   reste du lot. */
+var _listingSelection=new Set();
+function toggleListingCheck(box){
+  var id=box.getAttribute('data-id');
+  if(box.checked)_listingSelection.add(id);else _listingSelection.delete(id);
+  var card=box.closest('.listing-item');if(card)card.classList.toggle('is-selected',box.checked);
+  renderBulkbar();
+}
+function toggleAllListings(master){
+  document.querySelectorAll('#listingsList .listing-check').forEach(function(b){
+    b.checked=master.checked;
+    var id=b.getAttribute('data-id');
+    if(master.checked)_listingSelection.add(id);else _listingSelection.delete(id);
+    var card=b.closest('.listing-item');if(card)card.classList.toggle('is-selected',master.checked);
+  });
+  renderBulkbar();
+}
+function clearListingSelection(){
+  _listingSelection.clear();
+  document.querySelectorAll('#listingsList .listing-check').forEach(function(b){b.checked=false;var c=b.closest('.listing-item');if(c)c.classList.remove('is-selected');});
+  var sa=document.getElementById('selectAllListings');if(sa)sa.checked=false;
+  renderBulkbar();
+}
+function renderBulkbar(){
+  var bar=document.getElementById('dashBulkbar');if(!bar)return;
+  var n=_listingSelection.size;
+  bar.classList.toggle('show',n>0);
+  var c=document.getElementById('bbCount');
+  if(c)c.textContent=n+(n>1?' sélectionnées':' sélectionnée');
+}
+function selectedListingObjs(){
+  var out=[];
+  _listingSelection.forEach(function(id){
+    var l=_userListings.find(function(x){return String(x.id)===String(id);});
+    if(l)out.push(l);
+  });
+  return out;
+}
+async function bulkMarkSold(){
+  var items=selectedListingObjs();if(!items.length)return;
+  if(!confirm('Marquer '+items.length+' annonce(s) comme vendue(s) ? Elles ne seront plus visibles par les acheteurs.'))return;
+  var ok=0,ko=0;
+  for(var i=0;i<items.length;i++){
+    var res=await patchListing(items[i],{status:'sold'});
+    if(res.ok)ok++;else ko++;
+  }
+  clearListingSelection();
+  await renderListings();
+  showToast(ok+' annonce(s) marquée(s) vendue(s)'+(ko?' — '+ko+' en échec':''));
+}
+async function bulkRepublish(){
+  /* « Republier » = renvoyer l'annonce en tête de liste (submitted_at à
+     maintenant), utile pour redonner de la visibilité sans repasser par la
+     modération. On ne touche PAS au statut : une annonce rejetée reste
+     rejetée, seule une annonce live/pending est concernée. */
+  var items=selectedListingObjs().filter(function(l){return l.status!=='rejected'&&l.status!=='sold';});
+  if(!items.length){showToast('Aucune annonce republiable dans la sélection.');return;}
+  var ok=0,ko=0;
+  for(var i=0;i<items.length;i++){
+    var res=await patchListing(items[i],{submitted_at:new Date().toISOString()});
+    if(res.ok)ok++;else ko++;
+  }
+  clearListingSelection();
+  await renderListings();
+  showToast(ok+' annonce(s) republiée(s)'+(ko?' — '+ko+' en échec':''));
+}
+async function bulkDeleteListings(){
+  var items=selectedListingObjs();if(!items.length)return;
+  if(!confirm('Supprimer définitivement '+items.length+' annonce(s) ? Cette action est irréversible.'))return;
+  var ok=0,ko=0;
+  for(var i=0;i<items.length;i++){
+    await delListingSilent(items[i]) ? ok++ : ko++;
+  }
+  clearListingSelection();
+  await renderListings();
+  renderChart(currentPeriod);
+  showToast(ok+' annonce(s) supprimée(s)'+(ko?' — '+ko+' en échec':''));
+}
+/* Variante silencieuse de delListing (sans confirm() individuelle ni toast,
+   la confirmation groupée a déjà eu lieu dans bulkDeleteListings). */
+async function delListingSilent(l){
+  if(l&&l._supabase&&l.id){
+    var tk=await authToken();
+    if(!tk)return false;
+    try{
+      var r=await fetch(SB_URL+'/rest/v1/listings?id=eq.'+encodeURIComponent(l.id),{
+        method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
+      });
+      if(!r.ok)return false;
+    }catch(e){return false;}
+  }
+  var arr=getListings().filter(function(x){return String(x.id)!==String(l.id);});
+  localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));
+  return true;
+}
+function csvCell(v){return'"'+String(v==null?'':v).split('"').join('""')+'"';}
+function bulkExportCsv(){
+  var items=selectedListingObjs();if(!items.length)return;
+  exportListingsCsv(items,'a2s_annonces_selection');
+}
+function exportAllListingsCsv(){
+  if(!_userListings.length){showToast('Aucune annonce à exporter.');return;}
+  exportListingsCsv(_userListings,'a2s_annonces');
+}
+function exportListingsCsv(items,filenamePrefix){
+  var h=['Aéronef','Catégorie','Année','Prix','Devise','Aéroport','Statut','Vues','Contacts','Publiée le'];
+  var rows=items.map(function(l){
+    return[listingTitle(l),CAT_LABEL[l.category]||l.category||'',l.year||'',l.price||'',l.currency||'EUR',l.airport||'',statusLabelCsv(l.status),l.views||0,l.enquiries||0,l.submittedAt?new Date(l.submittedAt).toLocaleDateString('fr-FR'):''];
+  });
+  var csv=[h].concat(rows).map(function(r){return r.map(csvCell).join(',');}).join('\n');
+  var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filenamePrefix+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('CSV téléchargé ('+items.length+' annonce(s)).');
+}
+function statusLabelCsv(s){
+  return{live:'En ligne',sold:'Vendue',rejected:'Refusée',pending:'En attente'}[s]||s||'';
+}
+
 
 /* ── IMPORT CSV ── */
 function readCsvFile(input){
@@ -1300,10 +1515,55 @@ async function renderChart(days){
     html='<div class="cbar-g"><div class="cbar" style="height:'+h+'%" title="'+(baseViews>0?h+' vues':'Aucune donnée')+'"></div><span class="cbar-l">'+labels[dow]+'</span></div>'+html;
   }
   el.innerHTML=html;
+  renderPerfTable();
 }
 function setChartPeriod(days,btn){
   document.querySelectorAll('.sc-period').forEach(function(b){b.classList.remove('on');});
   btn.classList.add('on');renderChart(days);
+}
+
+/* ── TABLEAU DE PERFORMANCE COMPARATIF ──
+   Complète le graphique agrégé ci-dessus par un détail annonce par annonce,
+   triable, pour repérer celles qui sous-performent (beaucoup de vues, peu
+   de contacts). Utile dès que le vendeur a plusieurs annonces (dealer). */
+var _perfSort={col:'views',dir:-1};
+function perfRatio(l){
+  var v=l.views||0,e=l.enquiries||0;
+  return v>0?(e/v*100):0;
+}
+function renderPerfTable(){
+  var card=document.getElementById('perfTableCard');
+  var body=document.getElementById('perfTableBody');
+  if(!card||!body)return;
+  var listings=(_userListings||[]).filter(function(l){return l.status!=='rejected';});
+  if(listings.length<2){card.style.display='none';return;}
+  card.style.display='';
+  var col=_perfSort.col,dir=_perfSort.dir;
+  var sorted=listings.slice().sort(function(a,b){
+    var va,vb;
+    if(col==='title'){va=listingTitle(a).toLowerCase();vb=listingTitle(b).toLowerCase();}
+    else if(col==='ratio'){va=perfRatio(a);vb=perfRatio(b);}
+    else if(col==='price'){va=Number(a.price)||0;vb=Number(b.price)||0;}
+    else{va=Number(a[col])||0;vb=Number(b[col])||0;}
+    if(va<vb)return -1*dir;
+    if(va>vb)return 1*dir;
+    return 0;
+  });
+  body.innerHTML=sorted.map(function(l){
+    return'<tr>'
+      +'<td>'+esc(listingTitle(l))+'</td>'
+      +'<td class="cell-num">'+(l.views||0)+'</td>'
+      +'<td class="cell-num">'+(l.enquiries||0)+'</td>'
+      +'<td class="cell-num">'+perfRatio(l).toFixed(1)+'</td>'
+      +'<td class="cell-num">'+esc(fmtPrice(l))+'</td>'
+      +'<td>'+statusPillDash(l.status||'pending')+'</td>'
+      +'</tr>';
+  }).join('');
+}
+function sortPerfTable(col){
+  if(_perfSort.col===col)_perfSort.dir*=-1;
+  else{_perfSort.col=col;_perfSort.dir=col==='title'?1:-1;}
+  renderPerfTable();
 }
 
 /* ── MESSAGES ── */
