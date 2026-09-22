@@ -438,18 +438,25 @@ var CURR_SYMBOLS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',AED:'A
 async function resolvePhotoLimit(){
   var email=localStorage.getItem('a2s_user_email')||'';
   var plan='Essentiel';
+  var addonPhotos=false;
   if(email){
     try{
       var tk=await authToken();
-      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=plan&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}});
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=plan,addon_photos&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY)}});
       var userData=await res.json();
       plan=(userData&&userData[0]&&userData[0].plan)||'Essentiel';
+      addonPhotos=!!(userData&&userData[0]&&userData[0].addon_photos);
     }catch(e){console.warn('Résolution limite photos:',e);}
   }
-  MAX_PHOTOS=PLAN_MAX_PHOTOS[plan]||5;
+  /* addon_photos (débloqué par l'admin ou souscrit via l'option Photos+)
+     porte la limite à 20 quelle que soit la formule de base — jamais en
+     dessous de la limite normale du plan. */
+  MAX_PHOTOS=addonPhotos?Math.max(PLAN_MAX_PHOTOS[plan]||5,20):(PLAN_MAX_PHOTOS[plan]||5);
   var reminder=document.getElementById('planPhotoReminder');
   if(reminder){
-    if(plan==='Essentiel'){
+    if(addonPhotos){
+      reminder.innerHTML='<i data-icon="info"></i><span><strong>Option Photos+ active :</strong> '+MAX_PHOTOS+' photos maximum.</span>';
+    }else if(plan==='Essentiel'){
       reminder.innerHTML='<i data-icon="info"></i><span><strong>Formule Essentiel :</strong> 5 photos maximum. <a href="checkout.html?plan=aviateur">Passer à Aviateur pour 20 photos <i data-icon="arrow-right" class="ic-sm"></i></a></span>';
     }else{
       reminder.innerHTML='<i data-icon="info"></i><span><strong>Formule '+plan+' :</strong> '+MAX_PHOTOS+' photos maximum.</span>';
