@@ -901,7 +901,13 @@ async function loadListingsFromSupabase(email){
                           mieux vaut échouer explicitement que masquer les
                           annonces pending/rejected du vendeur. */
   try{
-    var res=await fetch(SB_URL+'/rest/v1/listings?seller_email=eq.'+encodeURIComponent(email)+'&order=submitted_at.desc&select=*',{
+    /* listings_mine (vue) au lieu de listings (table brute) : le
+       RGPD-hardening du 2026-09-22 a retiré seller_email/seller_phone
+       du GRANT SELECT accordé à authenticated (fuite corrigée — n'importe
+       quel compte pouvait lire les coordonnées de TOUS les vendeurs).
+       listings_mine est une vue security_definer qui ne renvoie que les
+       annonces du JWT appelant, avec toutes les colonnes. */
+    var res=await fetch(SB_URL+'/rest/v1/listings_mine?order=submitted_at.desc&select=*',{
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
     });
     if(!res.ok)return null;
