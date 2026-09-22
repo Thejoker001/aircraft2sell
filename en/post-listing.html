@@ -345,6 +345,11 @@
             <label for="fDocs">Available documents</label>
             <input type="text" class="inp" id="fDocs" placeholder="Certificate of airworthiness, logbooks, EASA Form 1…">
           </div>
+          <div class="field">
+            <label for="fVideo">Video link (YouTube or Vimeo)</label>
+            <input type="url" class="inp" id="fVideo" placeholder="https://www.youtube.com/watch?v=..." oninput="validateVideoUrl()">
+            <div class="field-hint" id="fVideoHint">A video walkthrough builds buyer trust — optional.</div>
+          </div>
         </div>
       </div>
 
@@ -550,6 +555,19 @@ function updatePreview(){
 
 function updateCharCount(){
   document.getElementById('charCount').textContent=document.getElementById('fDesc').value.length;
+}
+
+/* ── Video (YouTube/Vimeo only — no file hosting) ── */
+function isValidVideoUrl(u){
+  return /^https?:\/\/(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|vimeo\.com\/)/i.test(u);
+}
+function validateVideoUrl(){
+  var inp=document.getElementById('fVideo'),hint=document.getElementById('fVideoHint');
+  if(!inp||!hint)return;
+  var v=inp.value.trim();
+  if(!v){hint.textContent='A video walkthrough builds buyer trust — optional.';hint.classList.remove('field-hint-error');return;}
+  if(isValidVideoUrl(v)){hint.textContent='Valid video link.';hint.classList.remove('field-hint-error');}
+  else{hint.textContent='Expected a YouTube or Vimeo link (e.g. https://www.youtube.com/watch?v=…).';hint.classList.add('field-hint-error');}
 }
 
 function updateChecklist(){
@@ -825,6 +843,8 @@ async function submitListing(){
   if(serialVal)sbListing.registration=serialVal;
   var docsVal=document.getElementById('fDocs').value;
   if(docsVal)sbListing.documents=docsVal;
+  var videoVal=document.getElementById('fVideo').value.trim();
+  if(videoVal&&isValidVideoUrl(videoVal))sbListing.video_url=videoVal;
   var ptVal=document.getElementById('fPriceType').value;
   if(ptVal)sbListing.price_type=ptVal;
   var countryVal=document.getElementById('fCountry').value;
@@ -873,20 +893,24 @@ async function submitListing(){
            was a more severe bug than the FR page's token-expiry issue. */
         'Authorization':'Bearer '+tk,
         'Content-Type':'application/json',
-        'Prefer':'return=representation'
+        /* return=minimal (not representation): the 2026-09-22 RGPD
+           hardening removed seller_email/seller_phone from the SELECT
+           granted to authenticated (any account could read every
+           seller's contact details). return=representation requires a
+           SELECT on the returned columns (RETURNING *), so it would now
+           fail with 403. The id is already known client-side
+           (sbListing.id, generated above) — no need to read back the row. */
+        'Prefer':'return=minimal'
       },
       body:JSON.stringify(sbListing)
     });
-    var sbData=await sbRes.json();
-    if(sbRes.ok&&Array.isArray(sbData)&&sbData[0]){
-      sbId=sbData[0].id;
-      console.log('Listing created, Supabase ID:', sbId);
-    }else if(sbRes.ok&&sbData&&sbData.id){
-      sbId=sbData.id;
+    if(sbRes.ok){
+      sbId=sbListing.id;
       console.log('Listing created, Supabase ID:', sbId);
     }else{
-      console.error('Supabase insert failed:', sbRes.status, JSON.stringify(sbData));
-      showFormError('Error while saving ('+sbRes.status+'): '+(sbData&&sbData.message||'please try again in a moment.'));
+      var sbErrText='';try{sbErrText=await sbRes.text();}catch(e2){}
+      console.error('Supabase insert failed:', sbRes.status, sbErrText);
+      showFormError('Error while saving ('+sbRes.status+'): please try again in a moment.');
     }
   }catch(e){
     console.error('Supabase exception:', e.message);

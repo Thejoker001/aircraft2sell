@@ -345,6 +345,11 @@
             <label for="fDocs">Documents disponibles</label>
             <input type="text" class="inp" id="fDocs" placeholder="Certificat de navigabilité, carnets de vol, EASA Form 1…">
           </div>
+          <div class="field">
+            <label for="fVideo">Lien vidéo (YouTube ou Vimeo)</label>
+            <input type="url" class="inp" id="fVideo" placeholder="https://www.youtube.com/watch?v=..." oninput="validateVideoUrl()">
+            <div class="field-hint" id="fVideoHint">Une visite vidéo augmente la confiance des acheteurs — facultatif.</div>
+          </div>
         </div>
       </div>
 
@@ -553,6 +558,19 @@ function updatePreview(){
 
 function updateCharCount(){
   document.getElementById('charCount').textContent=document.getElementById('fDesc').value.length;
+}
+
+/* ── Vidéo (YouTube/Vimeo uniquement — pas d'hébergement de fichier) ── */
+function isValidVideoUrl(u){
+  return /^https?:\/\/(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|vimeo\.com\/)/i.test(u);
+}
+function validateVideoUrl(){
+  var inp=document.getElementById('fVideo'),hint=document.getElementById('fVideoHint');
+  if(!inp||!hint)return;
+  var v=inp.value.trim();
+  if(!v){hint.textContent='Une visite vidéo augmente la confiance des acheteurs — facultatif.';hint.classList.remove('field-hint-error');return;}
+  if(isValidVideoUrl(v)){hint.textContent='Lien vidéo valide.';hint.classList.remove('field-hint-error');}
+  else{hint.textContent='Lien YouTube ou Vimeo attendu (ex. https://www.youtube.com/watch?v=…).';hint.classList.add('field-hint-error');}
 }
 
 function updateChecklist(){
@@ -833,6 +851,8 @@ async function submitListing(){
   if(serialVal)sbListing.registration=serialVal;
   var docsVal=document.getElementById('fDocs').value;
   if(docsVal)sbListing.documents=docsVal;
+  var videoVal=document.getElementById('fVideo').value.trim();
+  if(videoVal&&isValidVideoUrl(videoVal))sbListing.video_url=videoVal;
   var ptVal=document.getElementById('fPriceType').value;
   if(ptVal)sbListing.price_type=ptVal;
   var countryVal=document.getElementById('fCountry').value;
@@ -880,20 +900,26 @@ async function submitListing(){
            l'insertion serait refusée. */
         'Authorization':'Bearer '+(tk||SB_KEY),
         'Content-Type':'application/json',
-        'Prefer':'return=representation'
+        /* return=minimal (pas representation) : le RGPD-hardening du
+           2026-09-22 a retiré seller_email/seller_phone du SELECT accordé
+           à authenticated (fuite corrigée — n'importe quel compte pouvait
+           lire les coordonnées de TOUS les vendeurs). Un
+           Prefer:return=representation exige un SELECT sur les colonnes
+           renvoyées (RETURNING *), donc échouerait désormais avec
+           403 permission denied. L'id est de toute façon déjà connu
+           côté client (généré ci-dessus, sbListing.id), pas besoin de
+           relire la ligne insérée. */
+        'Prefer':'return=minimal'
       },
       body:JSON.stringify(sbListing)
     });
-    var sbData=await sbRes.json();
-    if(sbRes.ok&&Array.isArray(sbData)&&sbData[0]){
-      sbId=sbData[0].id;
-      console.log('Annonce créée Supabase ID:', sbId);
-    }else if(sbRes.ok&&sbData&&sbData.id){
-      sbId=sbData.id;
+    if(sbRes.ok){
+      sbId=sbListing.id;
       console.log('Annonce créée Supabase ID:', sbId);
     }else{
-      console.error('Supabase insert échoué:', sbRes.status, JSON.stringify(sbData));
-      showFormError('Erreur lors de l\'enregistrement ('+sbRes.status+') : '+(sbData&&sbData.message||'réessayez dans un instant.'));
+      var sbErrText='';try{sbErrText=await sbRes.text();}catch(e2){}
+      console.error('Supabase insert échoué:', sbRes.status, sbErrText);
+      showFormError('Erreur lors de l\'enregistrement ('+sbRes.status+') : réessayez dans un instant.');
     }
   }catch(e){
     console.error('Supabase exception:', e.message);

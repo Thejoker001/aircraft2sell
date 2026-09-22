@@ -876,20 +876,22 @@ async function submitListing(){
            was a more severe bug than the FR page's token-expiry issue. */
         'Authorization':'Bearer '+tk,
         'Content-Type':'application/json',
-        'Prefer':'return=representation'
+        /* return=minimal (not representation): the 2026-09-22 RGPD
+           hardening removed seller_email/seller_phone from the SELECT
+           granted to authenticated. return=representation would now
+           fail with 403 (RETURNING requires SELECT on those columns).
+           The id is already known client-side (sbListing.id). */
+        'Prefer':'return=minimal'
       },
       body:JSON.stringify(sbListing)
     });
-    var sbData=await sbRes.json();
-    if(sbRes.ok&&Array.isArray(sbData)&&sbData[0]){
-      sbId=sbData[0].id;
-      console.log('Listing created, Supabase ID:', sbId);
-    }else if(sbRes.ok&&sbData&&sbData.id){
-      sbId=sbData.id;
+    if(sbRes.ok){
+      sbId=sbListing.id;
       console.log('Listing created, Supabase ID:', sbId);
     }else{
-      console.error('Supabase insert failed:', sbRes.status, JSON.stringify(sbData));
-      showFormError('Salvestamise viga ('+sbRes.status+'): '+(sbData&&sbData.message||'proovige palun hetke pärast uuesti.'));
+      var sbErrText='';try{sbErrText=await sbRes.text();}catch(e2){}
+      console.error('Supabase insert failed:', sbRes.status, sbErrText);
+      showFormError('Salvestamise viga ('+sbRes.status+'): proovige palun hetke pärast uuesti.');
     }
   }catch(e){
     console.error('Supabase exception:', e.message);

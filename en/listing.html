@@ -43,6 +43,8 @@
 .gallery-count{position:absolute;bottom:.75rem;right:.75rem;background:rgba(11,37,69,.85);color:#fff;font-size:.74rem;font-weight:700;padding:.3rem .65rem;border-radius:var(--a2s-radius-sm);display:inline-flex;align-items:center;gap:.35rem}
 .gallery-count .ic{width:14px;height:14px}
 .gallery-thumbs{display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem;margin-top:.5rem}
+.video-embed-wrap{position:relative;aspect-ratio:16/9;border-radius:var(--a2s-radius-card);overflow:hidden;background:var(--a2s-surface-2);border:1px solid var(--a2s-border);margin-top:1rem}
+.video-embed-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .gallery-thumb{aspect-ratio:4/3;min-height:44px;border-radius:var(--a2s-radius-sm);border:2px solid transparent;background:var(--a2s-surface-2) center/cover no-repeat;cursor:pointer;opacity:.7;transition:opacity .15s,border-color .15s;display:flex;align-items:center;justify-content:center;color:var(--a2s-text-muted);font-size:.78rem;font-weight:700;padding:0}
 .gallery-thumb:hover,.gallery-thumb.active{opacity:1;border-color:var(--a2s-navy)}
 .gallery-thumb .ic{width:22px;height:22px}
@@ -150,6 +152,7 @@
 
     <div id="mainCol">
       <div class="gallery" id="gallery"><div class="gallery-main skel"></div></div>
+      <div id="videoSection" style="display:none"></div>
 
       <div class="lsec">
         <h2>Specifications</h2>
@@ -437,7 +440,7 @@ async function load(){
   if(!id){showError('Listing not found.');return;}
   var rows=await sbGet('listings_public','id=eq.'+encodeURIComponent(id)+'&select=*');
   if(!rows||!rows.length){
-    rows=await sbGet('listings','id=eq.'+encodeURIComponent(id)+'&select=*');
+    rows=await sbGet('listings','id=eq.'+encodeURIComponent(id)+'&select=id,make,model,year,price,currency,category,airport,country,description,status,seller_name,views,enquiries,submitted_at,created_at,photos,seller_rating,seller_certified,hours,smoh,engine,seats,range,avionics,equipment,registration,documents,price_type,ifr,rvsm,adsb,logs,hours_prop,seller_pseudo,featured,weekly_pick,featured_until,expires_at,seller_is_pro,seller_company,video_url');
   }
   if(!rows||!rows.length){showError("This listing does not exist or is no longer available.");return;}
   LISTING=rows[0];
@@ -538,6 +541,7 @@ function render(l){
   document.getElementById('gallery').innerHTML=
     '<div class="gallery-main" id="galleryMain" onclick="openLightbox(_lbIdx)" title="Click to enlarge">'+mainHtml+'</div>'
     +(thumbsHtml?'<div class="gallery-thumbs">'+thumbsHtml+'</div>':'');
+  renderVideoSection(l.video_url);
 
   /* Caractéristiques */
   var specs=[
@@ -648,6 +652,21 @@ function goToSeller(){var head=document.getElementById('sellerHead');if(head&&he
 /* ── LIGHTBOX ── */
 var _lbPhotos=[],_lbIdx=0;
 function optimizeSupabaseImg(url,w){return optimizeImg(url,w);}
+function renderVideoSection(url){
+  var sec=document.getElementById('videoSection');
+  if(!sec)return;
+  if(!url||typeof url!=='string'){sec.style.display='none';sec.innerHTML='';return;}
+  var embedSrc=null;
+  var yt=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{6,15})/i);
+  if(yt){embedSrc='https://www.youtube.com/embed/'+encodeURIComponent(yt[1]);}
+  else{
+    var vim=url.match(/vimeo\.com\/(\d+)/i);
+    if(vim){embedSrc='https://player.vimeo.com/video/'+encodeURIComponent(vim[1]);}
+  }
+  if(!embedSrc){sec.style.display='none';sec.innerHTML='';return;}
+  sec.style.display='';
+  sec.innerHTML='<div class="video-embed-wrap"><iframe src="'+embedSrc+'" title="Aircraft video walkthrough" loading="lazy" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>';
+}
 function setMainPhoto(idx,url){_lbIdx=idx;var m=document.getElementById('galleryMain');if(!m)return;var img=m.querySelector('img');if(img)img.src=url;document.querySelectorAll('.gallery-thumb').forEach(function(t,i){t.classList.toggle('active',i===idx);});}
 function openLightbox(idx){
   var lb=document.getElementById('lightbox');if(!lb)return;
