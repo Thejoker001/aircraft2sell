@@ -394,6 +394,7 @@ body.dense .kv{font-size:1.4rem}
       <button type="button" class="sn" id="sn-users" onclick="showTab('users',this)"><span class="sn-ico"><i data-icon="users"></i></span><span class="sn-txt">Membres</span><span class="sn-badge nb-blue" id="badge-users" style="display:none"></span><span class="sn-key">5</span></button>
       <button type="button" class="sn" id="sn-verif" onclick="showTab('verif',this)"><span class="sn-ico"><i data-icon="badge-check"></i></span><span class="sn-txt">Vérifications</span><span class="sn-badge nb-red" id="verif-badge" style="display:none"></span><span class="sn-key">6</span></button>
       <button type="button" class="sn" id="sn-subs" onclick="showTab('subs',this)"><span class="sn-ico"><i data-icon="credit-card"></i></span><span class="sn-txt">Abonnements</span><span class="sn-key">7</span></button>
+      <button type="button" class="sn" id="sn-partners" onclick="showTab('partners',this)"><span class="sn-ico"><i data-icon="award"></i></span><span class="sn-txt">Partenaires</span><span class="sn-key">11</span></button>
 
       <div class="sg-label">Suivi</div>
       <button type="button" class="sn" id="sn-stats" onclick="showTab('stats',this)"><span class="sn-ico"><i data-icon="bar-chart"></i></span><span class="sn-txt">Statistiques</span><span class="sn-key">8</span></button>
@@ -684,6 +685,28 @@ body.dense .kv{font-size:1.4rem}
             <table>
               <thead><tr><th>Membre</th><th>Email</th><th>Plan</th><th>Inscrit le</th><th>Montant/mois</th></tr></thead>
               <tbody id="subs-body"><tr><td colspan="5" class="loading-row">Chargement...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PARTENAIRES -->
+      <div class="sec" id="tab-partners">
+        <div class="toolbar">
+          <div class="sec-title"><em>Partenaires</em> publicitaires</div>
+          <button class="tb-btn primary" onclick="openPartnerModal()"><i data-icon="plus"></i>Nouveau partenaire</button>
+          <button class="tb-btn" onclick="renderPartners()"><i data-icon="refresh"></i>Actualiser</button>
+        </div>
+        <div class="krow k3">
+          <div class="kc"><div class="kl">Partenaires actifs</div><div class="kv" id="ptn-active">0</div></div>
+          <div class="kc g"><div class="kl">Total (tous statuts)</div><div class="kv" id="ptn-total">0</div></div>
+          <div class="kc b"><div class="kl">MRR partenaires estimé</div><div class="kv" id="ptn-mrr">0 €</div></div>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Société</th><th>Catégorie</th><th>Palier</th><th>Statut</th><th>Validité</th><th></th></tr></thead>
+              <tbody id="partners-body"><tr><td colspan="6" class="loading-row">Chargement...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -1045,6 +1068,73 @@ body.dense .kv{font-size:1.4rem}
   </div>
 </div>
 
+<!-- MODAL PARTENAIRE -->
+<div class="modal-back" id="mPartner" onclick="if(event.target===this)closeM('mPartner')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-ti" id="mp-title">Nouveau <em>partenaire</em></div><button class="modal-x" onclick="closeM('mPartner')"><i data-icon="close"></i></button></div>
+    <div class="modal-bd">
+      <input type="hidden" id="mp-id">
+      <div class="mfg2">
+        <div class="mfg"><label>Société</label><input type="text" id="mp-company" placeholder="Nom de l'entreprise"></div>
+        <div class="mfg"><label>Site web</label><input type="url" id="mp-website" placeholder="https://…"></div>
+      </div>
+      <div class="mfg"><label>Logo (URL)</label><input type="url" id="mp-logo" placeholder="https://…/logo.png"></div>
+      <div class="mfg"><label>Accroche courte</label><input type="text" id="mp-tagline" maxlength="120" placeholder="Ex. Assurance aéronefs sur mesure en Europe"></div>
+      <div class="mfg2">
+        <div class="mfg"><label>Catégorie</label>
+          <select id="mp-category">
+            <option value="assurance">Assurance</option>
+            <option value="financement">Financement</option>
+            <option value="maintenance">Maintenance / MRO</option>
+            <option value="broker">Broker / courtage</option>
+            <option value="formation">Formation</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="mfg"><label>Palier</label>
+          <select id="mp-tier" onchange="mpToggleTargetPages()">
+            <option value="decouverte">Découverte — 49 €/mois</option>
+            <option value="visibilite">Visibilité — 99 €/mois</option>
+            <option value="premium">Premium — 190 €/mois</option>
+          </select>
+        </div>
+      </div>
+      <div class="mfg" id="mp-target-wrap">
+        <label>Pages ciblées (Visibilité/Premium)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.3rem">
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.8rem"><input type="checkbox" class="mp-target" value="avions-legers.html">Avions légers</label>
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.8rem"><input type="checkbox" class="mp-target" value="jets-affaires.html">Jets d'affaires</label>
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.8rem"><input type="checkbox" class="mp-target" value="turboprops.html">Turbopropulseurs</label>
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.8rem"><input type="checkbox" class="mp-target" value="helicopteres.html">Hélicoptères</label>
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.8rem"><input type="checkbox" class="mp-target" value="ulm.html">ULM</label>
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.8rem"><input type="checkbox" class="mp-target" value="avions-de-ligne.html">Avions de ligne</label>
+        </div>
+      </div>
+      <div class="mfg2">
+        <div class="mfg"><label>Statut</label>
+          <select id="mp-status">
+            <option value="pending">En attente</option>
+            <option value="active">Actif</option>
+            <option value="expired">Expiré</option>
+            <option value="rejected">Rejeté</option>
+          </select>
+        </div>
+        <div class="mfg"><label>Fin de validité</label><input type="date" id="mp-ends"></div>
+      </div>
+      <div class="mfg2">
+        <div class="mfg"><label>Email contact</label><input type="email" id="mp-contact-email" placeholder="contact@societe.com"></div>
+        <div class="mfg"><label>Nom contact</label><input type="text" id="mp-contact-name" placeholder="Prénom Nom"></div>
+      </div>
+      <div class="mfg"><label>Notes internes</label><textarea id="mp-notes" style="min-height:60px;resize:vertical" placeholder="Notes admin (jamais publiques)"></textarea></div>
+    </div>
+    <div class="modal-ft">
+      <button class="m-btn danger" id="mp-delete-btn" onclick="delPartnerM()">Supprimer</button>
+      <button class="m-btn" onclick="closeM('mPartner')">Annuler</button>
+      <button class="m-btn primary" onclick="savePartnerM()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="adminOverlay" class="admin-overlay" onclick="toggleAdminSidebar()"></div>
 
@@ -1345,13 +1435,13 @@ function statusPill(s){if(s==='live')return'<span class="pill p-live">Publiée</
 function planPill(p){if(p==='Pro')return'<span class="pill p-pro">Pro</span>';if(p==='Aviateur')return'<span class="pill p-avi">Aviateur</span>';return'<span class="pill p-ess">Essentiel</span>';}
 
 /* ── STATE ── */
-var TABS=['dash','mod','list','new','users','subs','stats','msgs','reports','set'];
+var TABS=['dash','mod','list','new','users','subs','partners','stats','msgs','reports','set'];
 var CURRENT_TAB='dash';
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
 var _allListings=[],_allUsers=[];
 
 /* ── NAV ── */
-var TITLES={dash:'Tableau de <em>bord</em>',mod:'File de <em>modération</em>',list:'Toutes les <em>annonces</em>',new:'Créer une <em>annonce</em>',users:'Gestion des <em>membres</em>',subs:'<em>Abonnements</em>',stats:'<em>Statistiques</em>',reports:'Gestion des <em>signalements</em>',set:'<em>Paramètres</em>'};
+var TITLES={dash:'Tableau de <em>bord</em>',mod:'File de <em>modération</em>',list:'Toutes les <em>annonces</em>',new:'Créer une <em>annonce</em>',users:'Gestion des <em>membres</em>',subs:'<em>Abonnements</em>',partners:'<em>Partenaires</em>',stats:'<em>Statistiques</em>',reports:'Gestion des <em>signalements</em>',set:'<em>Paramètres</em>'};
 function showTab(id,navEl){
   TABS.forEach(function(t){var s=sel('tab-'+t);if(s)s.style.display='none';});
   document.querySelectorAll('.sn').forEach(function(n){n.classList.remove('active');});
@@ -1364,7 +1454,7 @@ function showTab(id,navEl){
       if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();
     });return;
   }
-  if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();if(id==='set')loadAuditLogs();
+  if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='partners')renderPartners();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();if(id==='set')loadAuditLogs();
 }
 
 /* ── REFRESH ── */
@@ -2329,6 +2419,119 @@ async function unpublishFromReport(reportId,listingId){
     await refreshAll();
     updateSidebarBadges();
     renderReports();
+  }catch(e){showToast('Erreur : '+e.message);}
+}
+
+/* ── PARTENAIRES ──
+   CRUD sur public.partners (RLS : lecture publique restreinte aux lignes
+   actives+valides, écriture réservée à l'admin via policy partners_admin_all).
+   Tarifs de référence : decouverte 49€, visibilite 99€, premium 190€/mois. */
+var _allPartners=[];
+var PARTNER_TIER_PRICE={decouverte:49,visibilite:99,premium:190};
+var PARTNER_CAT_LABELS={assurance:'Assurance',financement:'Financement',maintenance:'Maintenance / MRO',broker:'Broker / courtage',formation:'Formation',autre:'Autre'};
+var PARTNER_TIER_LABELS={decouverte:'Découverte',visibilite:'Visibilité',premium:'Premium'};
+async function renderPartners(){
+  var tb=sel('partners-body');if(tb)tb.innerHTML='<tr><td colspan="6" class="loading-row">Chargement…</td></tr>';
+  try{
+    var rows=await sb('GET','partners','order=created_at.desc&select=*');
+    _allPartners=rows||[];
+    var active=_allPartners.filter(function(p){return p.status==='active';});
+    var mrr=active.reduce(function(s,p){return s+(PARTNER_TIER_PRICE[p.tier]||0);},0);
+    setText('ptn-active',active.length.toLocaleString('fr-FR'));
+    setText('ptn-total',_allPartners.length.toLocaleString('fr-FR'));
+    setText('ptn-mrr',mrr.toLocaleString('fr-FR')+' €');
+    if(!tb)return;
+    if(!_allPartners.length){tb.innerHTML='<tr><td colspan="6" class="loading-row">Aucun partenaire. Cliquez sur « Nouveau partenaire ».</td></tr>';return;}
+    tb.innerHTML=_allPartners.map(function(p){
+      var statusPill={active:'<span class="pill p-live">Actif</span>',pending:'<span class="pill p-pend">En attente</span>',expired:'<span class="pill p-rej">Expiré</span>',rejected:'<span class="pill p-rej">Rejeté</span>'}[p.status]||p.status;
+      var validity=p.ends_at?fmtDate(p.ends_at):'—';
+      return '<tr>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text);font-weight:600">'+esc(p.company||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.8rem">'+esc(PARTNER_CAT_LABELS[p.category]||p.category||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.8rem">'+esc(PARTNER_TIER_LABELS[p.tier]||p.tier||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem">'+statusPill+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-faint);font-size:.76rem">'+validity+'</td>'
+        +'<td style="padding:.65rem .9rem"><div class="acts">'
+        +'<button class="act" onclick="openPartnerModal('+p.id+')" title="Modifier">'+A2SIcon('edit')+'</button>'
+        +'</div></td></tr>';
+    }).join('');
+  }catch(e){
+    console.error('renderPartners:',e);
+    var tb2=sel('partners-body');if(tb2)tb2.innerHTML='<tr><td colspan="6" style="color:var(--a2s-danger);font-size:.8rem">Erreur : '+esc(e.message)+'</td></tr>';
+  }
+}
+function mpToggleTargetPages(){
+  var wrap=sel('mp-target-wrap');if(!wrap)return;
+  wrap.style.display=sel('mp-tier').value==='decouverte'?'none':'block';
+}
+function openPartnerModal(id){
+  var p=id?_allPartners.find(function(x){return x.id===id;}):null;
+  sel('mp-title').innerHTML=p?'Modifier <em>partenaire</em>':'Nouveau <em>partenaire</em>';
+  sel('mp-id').value=p?p.id:'';
+  sel('mp-company').value=p?(p.company||''):'';
+  sel('mp-website').value=p?(p.website_url||''):'';
+  sel('mp-logo').value=p?(p.logo_url||''):'';
+  sel('mp-tagline').value=p?(p.tagline||''):'';
+  sel('mp-category').value=p?(p.category||'autre'):'autre';
+  sel('mp-tier').value=p?(p.tier||'decouverte'):'decouverte';
+  sel('mp-status').value=p?(p.status||'pending'):'pending';
+  sel('mp-ends').value=p&&p.ends_at?String(p.ends_at).slice(0,10):'';
+  sel('mp-contact-email').value=p?(p.contact_email||''):'';
+  sel('mp-contact-name').value=p?(p.contact_name||''):'';
+  sel('mp-notes').value=p?(p.notes||''):'';
+  var targets=(p&&p.target_pages)||[];
+  document.querySelectorAll('.mp-target').forEach(function(cb){cb.checked=targets.indexOf(cb.value)>-1;});
+  mpToggleTargetPages();
+  sel('mp-delete-btn').style.display=p?'inline-flex':'none';
+  openM('mPartner');
+}
+async function savePartnerM(){
+  var id=sel('mp-id').value;
+  var company=sel('mp-company').value.trim();
+  var website=sel('mp-website').value.trim();
+  if(!company||!website){showToast('Société et site web requis');return;}
+  var targets=[];
+  document.querySelectorAll('.mp-target:checked').forEach(function(cb){targets.push(cb.value);});
+  var endsVal=sel('mp-ends').value;
+  var body={
+    company:company,
+    website_url:website,
+    logo_url:sel('mp-logo').value.trim()||null,
+    tagline:sel('mp-tagline').value.trim()||null,
+    category:sel('mp-category').value,
+    tier:sel('mp-tier').value,
+    status:sel('mp-status').value,
+    target_pages:targets,
+    ends_at:endsVal?new Date(endsVal+'T23:59:59Z').toISOString():null,
+    contact_email:sel('mp-contact-email').value.trim()||null,
+    contact_name:sel('mp-contact-name').value.trim()||null,
+    notes:sel('mp-notes').value.trim()||null,
+  };
+  try{
+    if(id){
+      await sb('PATCH','partners','id=eq.'+id,body,true);
+      logAdmin('partner.update','partner',id,{});
+      showToast('Partenaire mis à jour');
+    }else{
+      body.starts_at=new Date().toISOString();
+      await sb('POST','partners',null,body,true);
+      logAdmin('partner.create','partner',null,{company:company});
+      showToast('Partenaire créé');
+    }
+    closeM('mPartner');
+    renderPartners();
+  }catch(e){showToast('Erreur : '+e.message);}
+}
+async function delPartnerM(){
+  var id=sel('mp-id').value;
+  if(!id)return;
+  if(!confirm('Supprimer ce partenaire ?'))return;
+  try{
+    await sb('DELETE','partners','id=eq.'+id);
+    logAdmin('partner.delete','partner',id,{});
+    showToast('Partenaire supprimé');
+    closeM('mPartner');
+    renderPartners();
   }catch(e){showToast('Erreur : '+e.message);}
 }
 

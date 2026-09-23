@@ -117,7 +117,7 @@
           ]),
           col(t('colCompany'), [
             [href('contact.html'), t('contact')], [href('legal.html'), t('legal')], [href('legal.html') + '#privacy', t('privacy')], [href('sitemap.html'), t('sitemap')]
-          ]),
+          ].concat(lang === 'fr' ? [['/partenaires.html', 'Partenaires']] : [])),
         '</div>',
         '<div class="footer-bottom">',
           '<div class="f-copy">© ' + new Date().getFullYear() + ' Aircraft2Sell — ' + t('copy') + '</div>',

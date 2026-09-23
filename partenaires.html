@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script src="/confirm-handler.js"></script>
+<script src="/lang-redirect.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="index, follow">
+<title>Partenaires — Aircraft2Sell, marketplace aéronautique</title>
+<meta name="description" content="Découvrez les entreprises partenaires d'Aircraft2Sell : assurance, financement, maintenance et services pour propriétaires et acheteurs d'aéronefs.">
+<link rel="canonical" href="https://aircraft2sell.eu/partenaires.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/partenaires.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/partenaires.html">
+<meta property="og:title" content="Partenaires — Aircraft2Sell">
+<meta property="og:description" content="Les entreprises partenaires d'Aircraft2Sell : assurance, financement, maintenance et services aéronautiques.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://aircraft2sell.eu/partenaires.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png">
+<meta property="og:site_name" content="Aircraft2Sell">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://hlivysnlzlqdjcigqgvk.supabase.co">
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Partenaires", "item": "https://aircraft2sell.eu/partenaires.html"}]}
+</script>
+<link rel="stylesheet" href="styles.css?v=20260921a">
+<link rel="stylesheet" href="mobile.css?v=20260909a">
+<style>
+.partner-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.25rem}
+.partner-card{padding:1.5rem;display:flex;flex-direction:column;gap:.75rem;text-align:center;align-items:center}
+.partner-card img{width:64px;height:64px;object-fit:contain;border-radius:10px;background:#fff;border:1px solid var(--a2s-border)}
+.partner-card .icon-box{width:64px;height:64px}
+.partner-cat{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-faint)}
+.partner-name{font-weight:700;color:var(--a2s-text);font-size:1.05rem}
+.partner-tagline{font-size:.85rem;color:var(--a2s-text-muted);line-height:1.5}
+.cta-become{background:var(--a2s-navy);color:#fff;border-radius:var(--a2s-radius-lg);padding:2.5rem;text-align:center;margin-top:2.5rem}
+.cta-become h2{color:#fff;margin-bottom:.5rem}
+.cta-become p{color:rgba(255,255,255,.8);max-width:520px;margin:0 auto 1.5rem}
+</style>
+</head>
+<body>
+
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><span aria-current="page">Partenaires</span></nav>
+    <h1>Nos partenaires</h1>
+    <p>Des entreprises spécialisées pour accompagner votre projet d'achat ou de vente d'aéronef : assurance, financement, maintenance et courtage.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div id="partnerGrid" class="partner-grid">
+      <div class="loading-row">Chargement...</div>
+    </div>
+
+    <div class="cta-become">
+      <h2>Vous êtes un professionnel de l'aviation ?</h2>
+      <p>Faites connaître votre entreprise auprès d'acheteurs et de vendeurs d'aéronefs qualifiés dans toute l'Europe, avec une présence native et sans publicité intrusive.</p>
+      <a href="devenir-partenaire.html" class="btn-primary btn-lg"><i data-icon="award"></i>Devenir partenaire</a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+
+<script src="icons.js?v=20260909a"></script>
+<script>
+var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
+var CAT_LABELS={assurance:'Assurance',financement:'Financement',maintenance:'Maintenance / MRO',broker:'Broker / courtage',formation:'Formation',autre:'Services'};
+function esc(s){if(s===null||s===undefined)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+function renderPartner(p){
+  var logo=p.logo_url
+    ?'<img src="'+esc(p.logo_url)+'" alt="'+esc(p.company)+'">'
+    :'<span class="icon-box">'+A2SIcon('building')+'</span>';
+  return '<div class="card partner-card">'
+    +logo
+    +'<div class="partner-cat">'+esc(CAT_LABELS[p.category]||'Partenaire')+'</div>'
+    +'<div class="partner-name">'+esc(p.company)+'</div>'
+    +(p.tagline?'<div class="partner-tagline">'+esc(p.tagline)+'</div>':'')
+    +'<a href="'+esc(p.website_url)+'" target="_blank" rel="noopener sponsored" class="btn-secondary btn-block">Visiter le site</a>'
+    +'</div>';
+}
+window.addEventListener('DOMContentLoaded',async function(){
+  var grid=document.getElementById('partnerGrid');
+  try{
+    var r=await fetch(SB+'/rest/v1/partners?select=id,company,logo_url,website_url,tagline,category,tier,target_pages',{headers:{apikey:SK}});
+    var rows=r.ok?await r.json():[];
+    if(!rows.length){
+      grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><span class="icon-box">'+A2SIcon('handshake')+'</span>'
+        +'<div class="empty-title">Aucun partenaire pour le moment</div>'
+        +'<p class="empty-sub">Vous êtes un professionnel de l\'aviation ? <a href="devenir-partenaire.html">Devenez le premier partenaire</a>.</p></div>';
+      return;
+    }
+    grid.innerHTML=rows.map(renderPartner).join('');
+  }catch(e){
+    grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><span class="icon-box">'+A2SIcon('alert-triangle')+'</span><div class="empty-title">Impossible de charger les partenaires</div></div>';
+  }
+});
+</script>
+<script src="analytics.js?v=20260909a" defer></script>
+<script src="rgpd-consent.js?v=20260909a" defer></script>
+<script src="nav.js?v=20260909a"></script>
+<script src="footer.js?v=20260923a"></script>
+</body>
+</html>
