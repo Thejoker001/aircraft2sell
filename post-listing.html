@@ -934,24 +934,36 @@ async function submitListing(){
   }
 
   // ── Cache dashboard via sessionStorage uniquement (pas de localStorage ici) ──
-  var listing={
-    id:sbId||Date.now(),
-    make:sbListing.make,
-    model:sbListing.model,
-    year:document.getElementById('fYear').value,
-    price:document.getElementById('fPrice').value,
-    currency:sbListing.currency,
-    category:sbListing.category,
-    airport:sbListing.airport,
-    description:sbListing.description,
-    status:'pending',
-    submittedAt:now,
-    sellerName:sellerName,
-    sellerEmail:sellerEmail,
-    views:0,enquiries:0,
-    _fromSupabase:!!sbId
-  };
-  sessionStorage.setItem('a2s_last_listing',JSON.stringify(listing));
+  /* N'écrire ce cache QUE si l'INSERT Supabase a réussi (sbId non nul).
+     BUG RÉEL vécu le 2026-09-23 (client guena.leroy@free.fr) : ce bloc
+     écrivait sessionStorage.a2s_last_listing MÊME quand sbRes.ok était false
+     (échec réseau/serveur). dashboard.html lit ensuite cette entrée au
+     chargement et, comme _fromSupabase était false, l'injectait directement
+     dans localStorage['a2s_listings'] pour l'AFFICHER "en attente" côté
+     vendeur — alors qu'AUCUNE ligne n'existait dans la table listings.
+     Le vendeur voyait une annonce "pending" fantôme dans son dashboard,
+     invisible pour l'admin (file de modération vide) et pour tout visiteur.
+     Correctif : ne construire/écrire ce cache que dans le cas de succès. */
+  if(sbId){
+    var listing={
+      id:sbId,
+      make:sbListing.make,
+      model:sbListing.model,
+      year:document.getElementById('fYear').value,
+      price:document.getElementById('fPrice').value,
+      currency:sbListing.currency,
+      category:sbListing.category,
+      airport:sbListing.airport,
+      description:sbListing.description,
+      status:'pending',
+      submittedAt:now,
+      sellerName:sellerName,
+      sellerEmail:sellerEmail,
+      views:0,enquiries:0,
+      _fromSupabase:true
+    };
+    sessionStorage.setItem('a2s_last_listing',JSON.stringify(listing));
+  }
 
   // Email admin via Edge Function sécurisée
   if(sbId){
