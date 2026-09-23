@@ -966,10 +966,28 @@ function emptyListingsHtml(slotsLeft){
 async function renderListings(){
   var email=localStorage.getItem('a2s_user_email')||'';
   var listings=null;
-  if(email){listings=await loadListingsFromSupabase(email);}
+  var sbOk=false;
+  if(email){listings=await loadListingsFromSupabase(email);sbOk=(listings!==null);}
   if(!listings){listings=getListings();}
-  var lsListings=getListings().filter(function(l){return!l._supabase&&!listings.find(function(s){return String(s.id)===String(l.id);});});
-  listings=listings.concat(lsListings);
+  /* BUG RÉEL (2026-09-23, guena.leroy@free.fr) : ce bloc fusionnait TOUJOURS
+     les annonces locales (localStorage[a2s_listings], jamais confirmées par
+     le serveur) avec le résultat Supabase — MÊME quand Supabase avait
+     répondu avec succès (liste vide ou non). Un vendeur dont le dépôt avait
+     échoué côté serveur (ex. incident du 22/09) gardait indéfiniment une
+     annonce fantôme 'en attente' dans son dashboard, quel que soit l'état
+     réel de la base, tant qu'il ne vidait pas manuellement son cache
+     navigateur — invisible pour la modération admin, jamais publiée.
+     Correctif : Supabase fait autorité dès qu'il répond (sbOk=true) ; les
+     entrées locales ne servent de repli QUE si le serveur n'a pas pu
+     répondre (session expirée, réseau). En cas de succès serveur, on
+     réécrit aussi le cache local pour PURGER durablement tout résidu
+     fantôme déjà présent (sinon il resurgirait à la prochaine panne). */
+  if(sbOk){
+    try{localStorage.setItem(LS_LISTINGS,JSON.stringify(listings.map(function(l){return Object.assign({},l,{_supabase:undefined});})));}catch(e){}
+  }else{
+    var lsListings=getListings().filter(function(l){return!l._supabase&&!listings.find(function(s){return String(s.id)===String(l.id);});});
+    listings=listings.concat(lsListings);
+  }
   _userListings=listings;
   var slots=PLAN_SLOTS[_userPlan]||1;
   var active=listings.filter(function(l){return l.status!=='rejected'&&l.status!=='sold';}).length;
