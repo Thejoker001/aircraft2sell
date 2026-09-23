@@ -1,29 +1,24 @@
 /**
- * api/testimonials.js — Avis des acheteurs (témoignages) sur les vendeurs.
+ * api/forms.js — Formulaires publics simples (fusion report-listing +
+ * testimonials pour rester sous la limite Hobby de 12 fonctions serverless
+ * par déploiement — même stratégie que api/notify.js et api/cron-jobs.js).
  *
- * GET  /api/testimonials?seller_email=...  -> témoignages PUBLIÉS (status live)
- *                                             de ce vendeur, du plus récent
- *                                             au plus ancien.
- * POST /api/testimonials                   -> dépôt d'un avis (status pending,
- *                                             passe par la modération admin).
+ * Routage par ?kind= (GET) ou body.kind (POST) :
+ *   kind=report      -> POST  signalement d'annonce (ex api/report-listing.js)
+ *   kind=testimonial -> GET/POST témoignages vendeur (ex api/testimonials.js)
  *
- * Corps POST accepté : { listing_id?, seller_email, author_name,
- *                        author_email?, rating, comment }
- * Validations : seller_email (email), author_name (requis), rating (entier
- *               1-5), comment (requis, ≤ 1000 caractères), author_email
- *               (email si fourni).
+ * Comportement IDENTIQUE aux deux anciennes fonctions (mêmes validations,
+ * mêmes réponses, mêmes codes HTTP) — seul le point d'entrée change.
  *
- * Module CommonJS (convention api/ du dépôt). Secrets via process.env :
- *   SUPABASE_URL              ex. https://<ref>.supabase.co
- *   SUPABASE_SERVICE_ROLE_KEY clé service (contourne la RLS pour insérer
- *                             en pending et lire les avis).
- *
- * CORS étoile : le widget et les pages partenaires peuvent appeler cette
- * route depuis n'importe quel domaine.
+ * Variables d'environnement Vercel requises :
+ *   SUPABASE_URL               https://<ref>.supabase.co
+ *   SUPABASE_SERVICE_ROLE_KEY  clé service
  */
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -32,7 +27,7 @@ function cors(res) {
 }
 
 function isEmail(v) {
-  return typeof v === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+  return typeof v === 'string' && EMAIL_RE.test(v.trim());
 }
 
 /** Appel Supabase REST avec la clé de service. */
@@ -46,20 +41,58 @@ function supabase(chemin, options) {
   return fetch(SB_URL + '/rest/v1/' + chemin, Object.assign({}, options, { headers }));
 }
 
-module.exports = async function handler(req, res) {
-  cors(res);
-  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+/* ── kind=report : signalement d'annonce (POST uniquement) ── */
+async function handleReport(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Méthode non autorisée' });
+  }
+  try {
+    const corps = req.body || {};
+    const listing_id = corps.listing_id != null && corps.listing_id !== '' ? String(corps.listing_id) : null;
+    const reporter_email = String(corps.reporter_email || '').trim().toLowerCase();
+    const reason = String(corps.reason || '').trim();
+    const details = corps.details != null ? String(corps.details).trim() : '';
 
-  /* ── GET : témoignages publiés d'un vendeur ── */
+    if (!listing_id) {
+      return res.status(400).json({ error: 'listing_id manquant' });
+    }
+    if (reason.length < 3 || reason.length > 200) {
+      return res.status(400).json({ error: 'La raison doit contenir entre 3 et 200 caractères' });
+    }
+    if (!EMAIL_RE.test(reporter_email)) {
+      return res.status(400).json({ error: 'Email du déclarant invalide' });
+    }
+    if (!SB_URL || !SB_KEY) {
+      return res.status(500).json({ error: 'Configuration Supabase absente' });
+    }
+
+    const r = await supabase('reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({
+        listing_id,
+        reporter_email,
+        reason,
+        details: details || null,
+        status: 'pending',
+      }),
+    });
+    if (!r.ok) {
+      throw new Error(`Supabase ${r.status} : ${(await r.text()).slice(0, 200)}`);
+    }
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+/* ── kind=testimonial : GET (liste publiée) / POST (dépôt) ── */
+async function handleTestimonial(req, res) {
   if (req.method === 'GET') {
     let email = (req.query && req.query.seller_email
       ? String(req.query.seller_email) : '').trim().toLowerCase();
     const pseudo = (req.query && req.query.seller_pseudo
       ? String(req.query.seller_pseudo) : '').trim();
-    /* Résolution par pseudo (RGPD) : seller.html appelle désormais cette
-       route avec seller_pseudo plutôt que seller_email, pour que l'email
-       du vendeur n'apparaisse jamais dans une requête réseau émise par
-       un visiteur anonyme, même en dehors de l'URL de page (DevTools). */
     if (!email && pseudo) {
       try {
         const ru = await supabase('users?select=email&pseudo=eq.' + encodeURIComponent(pseudo) + '&limit=1');
@@ -90,7 +123,6 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  /* ── POST : dépôt d'un avis (pending, modération) ── */
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Méthode non autorisée' });
     return;
@@ -99,10 +131,6 @@ module.exports = async function handler(req, res) {
   const b = (req.body && typeof req.body === 'object') ? req.body : {};
   let sellerEmail = (b.seller_email || '').trim().toLowerCase();
   const sellerPseudo = (b.seller_pseudo || '').trim();
-  /* Résolution par pseudo (RGPD) : le formulaire d'avis de seller.html
-     n'a plus besoin de connaître l'email du vendeur affiché — il envoie
-     son pseudo (déjà visible sur la page), le serveur résout l'email
-     lui-même pour l'écriture en base. */
   if (!sellerEmail && sellerPseudo) {
     try {
       const ru = await supabase('users?select=email&pseudo=eq.' + encodeURIComponent(sellerPseudo) + '&limit=1');
@@ -166,4 +194,16 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+}
+
+module.exports = async function handler(req, res) {
+  cors(res);
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+
+  const kind = (req.query && req.query.kind) || (req.body && req.body.kind) || '';
+
+  if (kind === 'report') return handleReport(req, res);
+  if (kind === 'testimonial') return handleTestimonial(req, res);
+
+  return res.status(400).json({ error: 'kind manquant ou invalide (report | testimonial)' });
 };

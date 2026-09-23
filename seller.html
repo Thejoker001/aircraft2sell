@@ -554,7 +554,7 @@ function submitReview(){
   var tk=sessionStorage.getItem('a2s_auth_token');
   if(tk){try{authorEmail=JSON.parse(atob(tk.split('.')[1])).email||'';}catch(e){authorEmail='';}}
   setAlert(al,'success','Envoi de votre avis…');
-  fetch('/api/testimonials',{
+  fetch('/api/forms?kind=testimonial',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({listing_id:null,seller_pseudo:_sellerPseudo,seller_email:_sellerPseudo?undefined:_sellerEmail,author_name:name,author_email:authorEmail,rating:_reviewStar,comment:text})
@@ -574,8 +574,8 @@ function loadReviews(sellerPseudo,sellerEmail){
   var loggedIn=localStorage.getItem('a2s_logged_in')==='true';
   if(btn)btn.style.display=loggedIn?'':'none';
   list.innerHTML='<p class="pi-empty">Chargement des avis…</p>';
-  var qs=sellerPseudo?('seller_pseudo='+encodeURIComponent(sellerPseudo)):('seller_email='+encodeURIComponent(sellerEmail||''));
-  fetch('/api/testimonials?'+qs)
+  var qs=sellerPseudo?('kind=testimonial&seller_pseudo='+encodeURIComponent(sellerPseudo)):('kind=testimonial&seller_email='+encodeURIComponent(sellerEmail||''));
+  fetch('/api/forms?'+qs)
     .then(function(r){return r.ok?r.json():[];})
     .catch(function(){return[];})
     .then(function(reviews){
