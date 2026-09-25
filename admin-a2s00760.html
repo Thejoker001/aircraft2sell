@@ -1069,6 +1069,24 @@ body.dense .kv{font-size:1.4rem}
 </div>
 
 <!-- MODAL PARTENAIRE -->
+<div class="modal-back" id="mMsgUser" onclick="if(event.target===this)closeM('mMsgUser')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-ti">Envoyer un <em>message</em></div><button class="modal-x" onclick="closeM('mMsgUser')"><i data-icon="close"></i></button></div>
+    <div class="modal-bd">
+      <input type="hidden" id="mm-email">
+      <div class="mfg" style="background:var(--a2s-surface-2);padding:.6rem .85rem;margin-bottom:.85rem;font-size:.78rem;color:var(--a2s-text-muted)">
+        Destinataire : <strong id="mm-dest" style="color:var(--a2s-text)">—</strong>
+      </div>
+      <div class="mfg"><label>Message</label><textarea id="mm-text" style="min-height:130px;resize:vertical" maxlength="4000" placeholder="Votre message au membre…"></textarea></div>
+      <div style="font-size:.65rem;color:var(--a2s-text-faint);margin-top:.3rem">Envoyé depuis contact@aircraft2sell.eu, enregistré dans sa messagerie (messages.html) et notifié par email. Le membre peut répondre directement à l'email.</div>
+    </div>
+    <div class="modal-ft">
+      <button class="m-btn" onclick="closeM('mMsgUser')">Annuler</button>
+      <button class="m-btn primary" id="mm-send-btn" onclick="sendMsgUser()"><i data-icon="send"></i> Envoyer</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-back" id="mPartner" onclick="if(event.target===this)closeM('mPartner')">
   <div class="modal">
     <div class="modal-hd"><div class="modal-ti" id="mp-title">Nouveau <em>partenaire</em></div><button class="modal-x" onclick="closeM('mPartner')"><i data-icon="close"></i></button></div>
@@ -1281,6 +1299,7 @@ function fmtAuditAction(a){
     'listing.approve':'Approbation','listing.reject':'Rejet','listing.delete':'Suppression annonce',
     'listing.update':'Modification annonce','listing.feature':'Mise en vedette',
     'user.update':'Modification membre','user.delete':'Suppression membre','user.ban':'Bannissement',
+    'user.message':'Message envoyé au membre',
     'user.verify':'Certification vendeur','bulk.approve':'Approbation groupée','bulk.reject':'Rejet groupé',
     'bulk.delete':'Suppression groupée','message.read':'Message lu','report.done':'Signalement traité',
     'report.delete':'Suppression signalement','report.unpublish':'Dépubliation (signalement)'
@@ -1668,7 +1687,7 @@ function filterUsers(){
   var _iu=paginate('users',filtered);
   var _pu=sel('pager-users'); if(_pu) _pu.innerHTML=pagerHTML('users',_iu);
   tb.innerHTML=_iu.slice.map(function(u,i){
-    return'<tr><td style="color:var(--a2s-text-faint);font-size:.65rem">#'+((_iu.page-1)*PER_PAGE+i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--a2s-text)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+(u.is_free?'<span class="pill p-live" style="margin-left:.3rem">Offert</span>':'')+(u.is_pro?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);color:#93c5fd;padding:.1rem .35rem;margin-left:.3rem">PRO</span>':u.seller_type==='particulier'?'<span style="font-size:.6rem;color:var(--a2s-text-faint);margin-left:.3rem">Particulier</span>':'')+(u.status==='banned'?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#fca5a5;padding:.1rem .35rem;margin-left:.3rem">BANNI</span>':'')+(u.last_login_at?'<span style="font-size:.6rem;color:var(--a2s-text-faint);margin-left:.3rem" title="Dernière connexion">· '+fmtDate(u.last_login_at)+'</span>':'')+'</td><td style="color:var(--a2s-text-faint);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings(\''+esc(u.email||'')+'\');" title="Voir les annonces">'+A2SIcon('list')+'</button><button class="act" onclick="editUser('+u.id+')">'+A2SIcon('edit')+'Modifier</button><button class="act rj" onclick="delUser('+u.id+')" title="Supprimer">'+A2SIcon('trash')+'</button></div></td></tr>';
+    return'<tr><td style="color:var(--a2s-text-faint);font-size:.65rem">#'+((_iu.page-1)*PER_PAGE+i+1)+'</td><td><div style="display:flex;align-items:center;gap:.4rem"><div class="ml-av" style="width:22px;height:22px;font-size:.55rem;flex-shrink:0">'+ini(u.name,u.email)+'</div><span style="color:var(--a2s-text)">'+esc(u.name||'--')+'</span></div></td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+(u.is_free?'<span class="pill p-live" style="margin-left:.3rem">Offert</span>':'')+(u.is_pro?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);color:#93c5fd;padding:.1rem .35rem;margin-left:.3rem">PRO</span>':u.seller_type==='particulier'?'<span style="font-size:.6rem;color:var(--a2s-text-faint);margin-left:.3rem">Particulier</span>':'')+(u.status==='banned'?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#fca5a5;padding:.1rem .35rem;margin-left:.3rem">BANNI</span>':'')+(u.last_login_at?'<span style="font-size:.6rem;color:var(--a2s-text-faint);margin-left:.3rem" title="Dernière connexion">· '+fmtDate(u.last_login_at)+'</span>':'')+'</td><td style="color:var(--a2s-text-faint);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td><div class="acts"><button class="act" onclick="viewSellerListings(\''+esc(u.email||'')+'\');" title="Voir les annonces">'+A2SIcon('list')+'</button><button class="act" onclick="openMsgUser('+u.id+')" title="Envoyer un message">'+A2SIcon('mail')+'</button><button class="act" onclick="editUser('+u.id+')">'+A2SIcon('edit')+'Modifier</button><button class="act rj" onclick="delUser('+u.id+')" title="Supprimer">'+A2SIcon('trash')+'</button></div></td></tr>';
   }).join('');
 }
 
@@ -1926,6 +1945,44 @@ function clearSellerFilter(){
   var q=sel('ls-q');if(q)q.value='';
   var info=sel('ls-info');if(info)info.remove();
   renderList();
+}
+/* ── MESSAGE ADMIN -> MEMBRE ──
+   Réutilise /api/notify?type=message (même infra que listing.html/seller.html).
+   Écrit dans public.messages (visible dans messages.html du membre) et envoie
+   un email via Brevo avec replyTo=contact@aircraft2sell.eu. */
+function openMsgUser(id){
+  var u=_allUsers.find(function(u){return String(u.id)===String(id);});
+  if(!u||!u.email){showToast('Email introuvable pour ce membre');return;}
+  sel('mm-email').value=u.email;
+  sel('mm-dest').textContent=(u.name||u.pseudo||u.email)+' ('+u.email+')';
+  sel('mm-text').value='';
+  openM('mMsgUser');
+  setTimeout(function(){var f=sel('mm-text');if(f)f.focus();},80);
+}
+async function sendMsgUser(){
+  var email=sel('mm-email').value;
+  var msg=sel('mm-text').value.trim();
+  if(!email){showToast('Destinataire introuvable');return;}
+  if(!msg){showToast('Écrivez un message avant d\'envoyer');return;}
+  var btn=sel('mm-send-btn');
+  if(btn){btn.disabled=true;btn.classList.add('is-loading');}
+  try{
+    var adminEmail=sessionStorage.getItem('a2s_admin_email')||'contact@aircraft2sell.eu';
+    var r=await fetch('/api/notify?type=message',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({senderEmail:adminEmail,senderName:'Aircraft2Sell',receiverEmail:email,message:msg})
+    });
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok){showToast('Erreur : '+(d.error||r.status));return;}
+    logAdmin('user.message','user',email,{preview:msg.slice(0,140)});
+    showToast('Message envoyé à '+email);
+    closeM('mMsgUser');
+  }catch(e){
+    showToast('Erreur : '+e.message);
+  }finally{
+    if(btn){btn.disabled=false;btn.classList.remove('is-loading');}
+  }
 }
 function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-pseudo').value=u.pseudo||'';sel('mu-company').value=u.company||'';var mb=sel('mu-bio');if(mb)mb.value=u.bio||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;sel('mu-free').checked=u.is_free||false;var map=sel('mu-addon-photos');if(map)map.checked=u.addon_photos||false;
   var mst=sel('mu-seller-type');if(mst)mst.value=u.seller_type||'';
