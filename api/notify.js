@@ -57,7 +57,9 @@ async function message(req, res) {
     const telephone       = c.buyerPhone || c.phone || '';
     const contenu         = c.message || c.content || '';
     const listingId       = c.listingId || c.listing_id || null;
+    const sellerPseudo    = c.sellerPseudo || c.seller_pseudo || null;
     let   destinataire    = c.receiverEmail || c.receiver_email || null;
+    let   destinataireNom = null;
 
     if (!contenu.trim()) return res.status(400).json({ error: 'Message vide' });
     if (!expediteurEmail) return res.status(400).json({ error: 'Expéditeur manquant' });
@@ -67,6 +69,14 @@ async function message(req, res) {
       const rows = await sb(`listings?id=eq.${encodeURIComponent(listingId)}&select=*&limit=1`);
       l = rows && rows[0];
       if (!destinataire && l) destinataire = l.seller_email;
+    }
+    /* Fiche vendeur (seller.html) : ni annonce ni email connus côté navigateur
+       (RGPD — get_seller_public() ne renvoie jamais l'email), uniquement le
+       pseudo public. On résout l'email nous-mêmes côté serveur. */
+    if (!destinataire && sellerPseudo) {
+      const rows = await sb(`users?pseudo=eq.${encodeURIComponent(sellerPseudo)}&select=email,name&limit=1`);
+      const u = rows && rows[0];
+      if (u) { destinataire = u.email; destinataireNom = u.name; }
     }
     if (!destinataire) return res.status(400).json({ error: 'Destinataire introuvable' });
 
@@ -121,7 +131,7 @@ async function message(req, res) {
 
     const r = await envoyer({
       to: destinataire,
-      toName: l?.seller_name || destinataire,
+      toName: l?.seller_name || destinataireNom || destinataire,
       sujet: titre ? `Message reçu — ${titre}` : 'Nouveau message sur Aircraft2Sell',
       html,
       replyTo: { email: expediteurEmail, name: expediteurNom },

@@ -506,15 +506,35 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeContac
 
 async function sendContact(){
   var name=document.getElementById('msgName').value.trim();
-  var email=document.getElementById('msgEmail').value.trim();
+  var email=document.getElementById('msgEmail').value.trim().toLowerCase();
   var msg=document.getElementById('msgText').value.trim();
   var alertEl=document.getElementById('msgAlert');
   if(!name||!email||!msg){setAlert(alertEl,'error','Renseignez votre nom, votre email et votre message.');return;}
   if(!email.includes('@')){setAlert(alertEl,'error','Cette adresse email semble invalide.');return;}
-  setAlert(alertEl,'success','Message envoyé. Le vendeur vous répondra par email.');
-  document.getElementById('msgText').value='';
-  setTimeout(closeContact,2200);
-  showToast('Message envoyé');
+  if(_sellerEmail&&email===_sellerEmail.toLowerCase()){setAlert(alertEl,'error','Vous ne pouvez pas vous envoyer un message à vous-même.');return;}
+  var btn=document.querySelector('#msgOverlay .btn-primary');
+  if(btn){btn.disabled=true;btn.classList.add('is-loading');}
+  try{
+    var r=await fetch('/api/notify?type=message',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        senderEmail:email,senderName:name,message:msg,
+        receiverEmail:_sellerEmail||undefined,
+        sellerPseudo:_sellerEmail?undefined:_sellerPseudo
+      })
+    });
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok){setAlert(alertEl,'error',d.error||'Envoi impossible pour le moment.');return;}
+    setAlert(alertEl,'success','Message envoyé. Le vendeur vous répondra par email.');
+    document.getElementById('msgText').value='';
+    setTimeout(closeContact,2200);
+    showToast('Message envoyé');
+  }catch(e){
+    setAlert(alertEl,'error','Envoi impossible : vérifiez votre connexion.');
+  }finally{
+    if(btn){btn.disabled=false;btn.classList.remove('is-loading');}
+  }
 }
 
 /* ── TOAST ── */
