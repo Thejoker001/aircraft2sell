@@ -158,7 +158,88 @@ def miroir_code():
     r = run(["git", "push", "--mirror", CODE_MIRROR_URL], cwd=CODE_REPO_DIR, check=False)
     ok = r.returncode == 0
     print("Miroir code -> aircraft2sell-code-mirror :", "OK" if ok else f"ÉCHEC\n{r.stderr}")
+    if ok:
+        desactiver_deploy_miroir()
     return ok
+
+
+# Le miroir est un dépôt de sauvegarde passive (historique git), pas un site
+# à déployer : il n'a pas (et ne doit pas avoir) de secret VERCEL_TOKEN.
+# Comme "git push --mirror" recopie tel quel .github/workflows/deploy-vercel.yml
+# depuis le dépôt source, le job "deploy" y échoue à chaque sync (secret vide).
+# On corrige donc le fichier après coup, via l'API Contents (pas via git push,
+# qui serait écrasé par le prochain mirror) : job "checks" conservé, job
+# "deploy" retiré.
+MIRROR_WORKFLOW_PATH = ".github/workflows/deploy-vercel.yml"
+MIRROR_WORKFLOW_CHECKS_ONLY = """name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Dépôt miroir de sauvegarde uniquement : pas de déploiement Vercel ici
+  # (pas de secret VERCEL_TOKEN, volontairement). Seuls les contrôles de
+  # contenu tournent, pour détecter une régression même sur ce dépôt.
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validation des pages (JS, balises, emoji, thème)
+        run: python3 scripts/check-page.py *.html en/*.html
+
+      - name: Le sitemap est-il à jour ?
+        run: python3 scripts/gen-sitemap.py --check
+"""
+
+
+def desactiver_deploy_miroir():
+    import base64
+    gh_token = os.environ.get("GH_TOKEN", "")
+    if not gh_token:
+        print("GH_TOKEN absent : correction du workflow miroir ignorée.")
+        return False
+    repo = "Thejoker001/aircraft2sell-code-mirror"
+    api = f"https://api.github.com/repos/{repo}/contents/{MIRROR_WORKFLOW_PATH}"
+    headers = {
+        "Authorization": f"Bearer {gh_token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "aircraft2sell-sauvegarde",
+    }
+    try:
+        req = urllib.request.Request(api, headers=headers)
+        current = json.load(urllib.request.urlopen(req, timeout=30))
+    except Exception as e:
+        print(f"Lecture workflow miroir échouée : {e}")
+        return False
+
+    current_content = base64.b64decode(current["content"]).decode("utf-8")
+    if current_content == MIRROR_WORKFLOW_CHECKS_ONLY:
+        print("Workflow miroir déjà sans job deploy (rien à faire).")
+        return True
+
+    payload = json.dumps({
+        "message": "chore(ci): retire le job deploy sur le miroir (pas de VERCEL_TOKEN ici)",
+        "content": base64.b64encode(MIRROR_WORKFLOW_CHECKS_ONLY.encode("utf-8")).decode("ascii"),
+        "sha": current["sha"],
+        "branch": "main",
+    }).encode("utf-8")
+    try:
+        req = urllib.request.Request(api, data=payload, headers=headers, method="PUT")
+        urllib.request.urlopen(req, timeout=30)
+        print("Workflow miroir corrigé : job deploy retiré (checks conservés).")
+        return True
+    except urllib.error.HTTPError as e:
+        print(f"Correction workflow miroir échouée : HTTP {e.code} {e.read().decode()[:200]}")
+        return False
 
 
 def main():
