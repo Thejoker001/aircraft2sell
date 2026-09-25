@@ -202,23 +202,24 @@ jobs:
 
 
 def desactiver_deploy_miroir():
+    # Sur cette machine, `gh` s'authentifie via son propre fichier de config
+    # (~/.config/gh/hosts.yml), PAS via la variable d'environnement GH_TOKEN
+    # (qui est vide dans .env). On passe donc par `gh api`, déjà authentifié,
+    # plutôt que par un token lu dans l'environnement.
     import base64
-    gh_token = os.environ.get("GH_TOKEN", "")
-    if not gh_token:
-        print("GH_TOKEN absent : correction du workflow miroir ignorée.")
-        return False
+    import tempfile
+
     repo = "Thejoker001/aircraft2sell-code-mirror"
-    api = f"https://api.github.com/repos/{repo}/contents/{MIRROR_WORKFLOW_PATH}"
-    headers = {
-        "Authorization": f"Bearer {gh_token}",
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "aircraft2sell-sauvegarde",
-    }
+    api_path = f"repos/{repo}/contents/{MIRROR_WORKFLOW_PATH}"
+
+    r = run(["gh", "api", api_path], cwd=CODE_REPO_DIR, check=False)
+    if r.returncode != 0:
+        print(f"Lecture workflow miroir échouée :\n{r.stderr}")
+        return False
     try:
-        req = urllib.request.Request(api, headers=headers)
-        current = json.load(urllib.request.urlopen(req, timeout=30))
-    except Exception as e:
-        print(f"Lecture workflow miroir échouée : {e}")
+        current = json.loads(r.stdout)
+    except json.JSONDecodeError as e:
+        print(f"Lecture workflow miroir : réponse illisible ({e}).")
         return False
 
     current_content = base64.b64decode(current["content"]).decode("utf-8")
@@ -226,20 +227,23 @@ def desactiver_deploy_miroir():
         print("Workflow miroir déjà sans job deploy (rien à faire).")
         return True
 
-    payload = json.dumps({
-        "message": "chore(ci): retire le job deploy sur le miroir (pas de VERCEL_TOKEN ici)",
-        "content": base64.b64encode(MIRROR_WORKFLOW_CHECKS_ONLY.encode("utf-8")).decode("ascii"),
-        "sha": current["sha"],
-        "branch": "main",
-    }).encode("utf-8")
-    try:
-        req = urllib.request.Request(api, data=payload, headers=headers, method="PUT")
-        urllib.request.urlopen(req, timeout=30)
-        print("Workflow miroir corrigé : job deploy retiré (checks conservés).")
-        return True
-    except urllib.error.HTTPError as e:
-        print(f"Correction workflow miroir échouée : HTTP {e.code} {e.read().decode()[:200]}")
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+        json.dump({
+            "message": "chore(ci): retire le job deploy sur le miroir (pas de VERCEL_TOKEN ici)",
+            "content": base64.b64encode(MIRROR_WORKFLOW_CHECKS_ONLY.encode("utf-8")).decode("ascii"),
+            "sha": current["sha"],
+            "branch": "main",
+        }, f)
+        payload_path = f.name
+
+    r = run(["gh", "api", "-X", "PUT", api_path, "--input", payload_path],
+            cwd=CODE_REPO_DIR, check=False)
+    os.unlink(payload_path)
+    if r.returncode != 0:
+        print(f"Correction workflow miroir échouée :\n{r.stderr}")
         return False
+    print("Workflow miroir corrigé : job deploy retiré (checks conservés).")
+    return True
 
 
 def main():
