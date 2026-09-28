@@ -1192,6 +1192,7 @@ body.dense .kv{font-size:1.4rem}
 </div>
 
 <script src="icons.js?v=20260909a"></script>
+<script src="airports-data.js?v=20260928a"></script>
 <script>
 /* ── CONFIG ── */
 var SK         = 'a2s_admin_session';
@@ -1206,6 +1207,7 @@ var _loginAttempts=0,_loginBlocked=false,_loginBlockUntil=0;
 /* ── XSS ── */
 function lseller(l){return l.seller_pseudo||l.seller_name||l.seller_email||"—";}
 function esc(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');}
+function airportLabel(code){if(!code)return'';var c=String(code).toUpperCase().trim();var ap=(typeof A2S_AIRPORTS!=='undefined')?A2S_AIRPORTS[c]:null;return ap&&ap.name?c+' — '+ap.name:c;}
 
 /* ── SUPABASE ── */
 var _sbToken=null;
@@ -1574,7 +1576,7 @@ function renderMod(){
     var pr=l.price?cur(l.currency)+Number(l.price).toLocaleString():'--';
     var dup=dupFor(l);
     var dupBadge=dup?'<div class="mr-dup" onclick="viewListing('+dup.id+')" title="Doublon possible avec '+esc(ltitle(dup))+' (ID '+dup.id+')"><i data-icon="alert-triangle"></i> Doublon possible : '+esc(ltitle(dup))+'</div>':'';
-    return'<div class="mr">'+'<div class="mr-ico">'+A2SIcon(CAT_ICON[l.category]||'plane')+'</div>'+'<div class="mr-body"><div class="mr-title">'+ltitle(l)+'</div><div class="mr-meta"><span>'+esc(l.sellerName||'--')+'</span><span>'+esc(l.sellerEmail||'--')+'</span><span>'+fmtDate(l.submittedAt)+'</span>'+(l.airport?'<span>'+esc(l.airport)+'</span>':'')+(l.views?'<span>'+l.views+' vues</span>':'')+'</div>'+dupBadge+'</div>'+'<div class="mr-right"><div class="mr-price">'+pr+'</div><div class="acts"><button class="act ap" onclick="approve('+l.id+')">'+A2SIcon('check')+'Approuver</button><button class="act rj" onclick="openReject('+l.id+')">'+A2SIcon('close')+'Rejeter</button><button class="act" onclick="viewListing('+l.id+')">'+A2SIcon('eye')+'Voir</button><button class="act" onclick="editListing('+l.id+')" title="Édition rapide avant approbation">'+A2SIcon('edit')+'Modifier</button><button class="act" onclick="window.open(\'/listing.html?id='+l.id+'\',\'_blank\')" title="Voir le rendu public">'+A2SIcon('external')+'Public</button></div></div></div>';
+    return'<div class="mr">'+'<div class="mr-ico">'+A2SIcon(CAT_ICON[l.category]||'plane')+'</div>'+'<div class="mr-body"><div class="mr-title">'+ltitle(l)+'</div><div class="mr-meta"><span>'+esc(l.sellerName||'--')+'</span><span>'+esc(l.sellerEmail||'--')+'</span><span>'+fmtDate(l.submittedAt)+'</span>'+(l.airport?'<span>'+airportLabel(l.airport)+'</span>':'')+(l.views?'<span>'+l.views+' vues</span>':'')+'</div>'+dupBadge+'</div>'+'<div class="mr-right"><div class="mr-price">'+pr+'</div><div class="acts"><button class="act ap" onclick="approve('+l.id+')">'+A2SIcon('check')+'Approuver</button><button class="act rj" onclick="openReject('+l.id+')">'+A2SIcon('close')+'Rejeter</button><button class="act" onclick="viewListing('+l.id+')">'+A2SIcon('eye')+'Voir</button><button class="act" onclick="editListing('+l.id+')" title="Édition rapide avant approbation">'+A2SIcon('edit')+'Modifier</button><button class="act" onclick="window.open(\'/listing.html?id='+l.id+'\',\'_blank\')" title="Voir le rendu public">'+A2SIcon('external')+'Public</button></div></div></div>';
   }).join('');
 }
 async function toggleFeatured(id,current){
@@ -2060,7 +2062,7 @@ function viewListing(id){
     +'<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--a2s-text-faint);margin-bottom:.2rem">Aéronef</div><div style="font-size:.95rem;font-weight:600;color:var(--a2s-text)">'+ltitle(l)+'</div></div>'
     +'<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--a2s-text-faint);margin-bottom:.2rem">Prix</div><div style="font-family:var(--font-display);font-weight:800;font-size:1.3rem;color:var(--a2s-accent)">'+pr+'</div></div>'
     +'<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--a2s-text-faint);margin-bottom:.2rem">Catégorie</div><div>'+esc(l.category||'--')+'</div></div>'
-    +'<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--a2s-text-faint);margin-bottom:.2rem">Aéroport</div><div>'+esc(l.airport||'--')+'</div></div>'
+    +'<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--a2s-text-faint);margin-bottom:.2rem">Aéroport</div><div>'+(l.airport?airportLabel(l.airport):'--')+'</div></div>'
     +'<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--a2s-text-faint);margin-bottom:.2rem">Vendeur</div><div>'+esc(l.sellerName||'--')+'</div></div>'
     +'<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--a2s-text-faint);margin-bottom:.2rem">Email vendeur</div><div style="font-size:.75rem">'+esc(l.sellerEmail||'--')+'</div></div>'
     +'<div><div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--a2s-text-faint);margin-bottom:.2rem">Statut</div><div>'+statusPill(l.status)+'</div></div>'

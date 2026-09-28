@@ -368,6 +368,7 @@ def build_page(p):
 
 <div id="a2sFooter"></div>
 <script src="icons.js?v=20260909a"></script>
+<script src="airports-data.js?v=20260928a"></script>
 <script>
 var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
@@ -377,6 +378,7 @@ var SYM={{EUR:'€',USD:'$',GBP:'£',CHF:'CHF'}};
 var COUNTRY_NAMES={{FR:'France',DE:'Allemagne',ES:'Espagne',IT:'Italie',CH:'Suisse',GB:'Royaume-Uni',BE:'Belgique',NL:'Pays-Bas',PT:'Portugal',AT:'Autriche',LU:'Luxembourg',US:'États-Unis',CA:'Canada',AU:'Australie'}};
 function countryLabel(c){{return COUNTRY_NAMES[c]||c||'';}}
 function esc(s){{if(s===null||s===undefined)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}}
+function airportLabel(code){{if(!code)return'';var c=String(code).toUpperCase().trim();var ap=(typeof A2S_AIRPORTS!=='undefined')?A2S_AIRPORTS[c]:null;return ap&&ap.name?c+' — '+ap.name:c;}}
 function fmtPrice(p,cur){{var n=Number(p);if(!p||isNaN(n))return'Prix sur demande';return n.toLocaleString(LOCALE)+' '+(SYM[cur||'EUR']||'€');}}
 function emptyState(){{
   return '<div class="empty-state"><span class="icon-box">'+A2SIcon(CAT_ICON)+'</span>'
@@ -393,7 +395,7 @@ function renderCard(l){{
   var specs='';
   if(l.year)specs+='<span class="lc-spec">'+A2SIcon('calendar')+esc(l.year)+'</span>';
   if(l.hours)specs+='<span class="lc-spec">'+A2SIcon('clock')+Number(l.hours).toLocaleString(LOCALE)+' h</span>';
-  var loc=l.airport?esc(l.airport):esc(countryLabel(l.country));
+  var loc=l.airport?airportLabel(l.airport):esc(countryLabel(l.country));
   return '<a class="lc" href="listing.html?id='+encodeURIComponent(l.id)+'">'
     +'<div class="lc-img">'+photo+(l.featured?'<span class="lc-cat-badge">Vedette</span>':'')+'</div>'
     +'<div class="lc-body"><div class="lc-title">'+title+'</div>'

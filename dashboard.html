@@ -680,6 +680,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Très bon état, heures de vol faibl
 <div id="a2sFooter"></div>
 
 <script src="icons.js?v=20260909a"></script>
+<script src="airports-data.js?v=20260928a"></script>
 <script src="pseudo-gate.js?v=20260908"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
@@ -1027,7 +1028,7 @@ async function renderListings(){
     if(st==='rejected')note='<div class="li-note" style="color:var(--a2s-danger)">Annonce refusée. Modifiez-la puis soumettez-la à nouveau.</div>';
     var stats='<div class="li-stats"><span>'+A2SIcon('eye')+'Vues : '+(l.views||0)+'</span><span class="li-stats-sep">·</span><span>'+A2SIcon('message')+'Contacts : '+(l.enquiries||0)+'</span></div>';
     var meta=(l.year?'<span>'+A2SIcon('calendar')+esc(l.year)+'</span>':'')
-      +(l.airport?'<span>'+A2SIcon('map-pin')+esc(l.airport)+'</span>':'');
+      +(l.airport?'<span>'+A2SIcon('map-pin')+airportLabel(l.airport)+'</span>':'');
     var feat=l.featured?'<span class="badge feat-badge">'+A2SIcon('star')+'En vedette</span>':'';
     return'<div class="card listing-item" data-listing-id="'+esc(String(l.id))+'">'
       +'<span class="li-check"><input type="checkbox" class="listing-check" data-id="'+esc(String(l.id))+'" onchange="toggleListingCheck(this)" aria-label="Sélectionner cette annonce"></span>'
@@ -1502,6 +1503,7 @@ async function saveEditListing(){
 }
 
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function airportLabel(code){if(!code)return'';var c=String(code).toUpperCase().trim();var ap=(typeof A2S_AIRPORTS!=='undefined')?A2S_AIRPORTS[c]:null;return ap&&ap.name?c+' — '+ap.name:c;}
 
 /* ── GRAPHIQUE ── */
 async function renderChart(days){
@@ -1642,7 +1644,7 @@ function renderFavs(){
       +'<div class="lc-img">'+img+cat+'<button type="button" class="lc-fav liked" aria-label="Retirer des favoris" onclick="event.preventDefault();event.stopPropagation();removeFav(\''+encodeURIComponent(fid)+'\')">'+A2SIcon('heart')+'</button></div>'
       +'<div class="lc-body"><div class="lc-title">'+esc(title)+'</div>'
       +'<div class="lc-specs">'+(f.year?'<span class="lc-spec">'+A2SIcon('calendar')+esc(f.year)+'</span>':'')+(f.hours?'<span class="lc-spec">'+A2SIcon('clock')+esc(f.hours)+' h</span>':'')+'</div>'
-      +'<div class="lc-footer"><div class="lc-price">'+esc(fmtPrice(f))+'</div>'+(f.airport?'<div class="lc-loc">'+A2SIcon('map-pin')+esc(f.airport)+'</div>':'')+'</div>'
+      +'<div class="lc-footer"><div class="lc-price">'+esc(fmtPrice(f))+'</div>'+(f.airport?'<div class="lc-loc">'+A2SIcon('map-pin')+airportLabel(f.airport)+'</div>':'')+'</div>'
       +'</div></a>';
   }).join('')+'</div>';
 }

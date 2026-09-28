@@ -391,9 +391,11 @@
 <div id="a2sFooter"></div>
 
 <script src="icons.js?v=20260909a"></script>
+<script src="airports-data.js?v=20260928a"></script>
 <script>
 /* ── CONFIG ── */
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function airportLabel(code){if(!code)return'';var c=String(code).toUpperCase().trim();var ap=(typeof A2S_AIRPORTS!=='undefined')?A2S_AIRPORTS[c]:null;return ap&&ap.name?c+' — '+ap.name:c;}
 /* Identifiant anonymisé stable : jamais le nom réel du vendeur. Un même
    email/id produit toujours le même suffixe (pas de Math.random), pour que
    l'affichage reste cohérent entre visites d'un même vendeur non-pseudonymé. */
@@ -484,7 +486,7 @@ function render(l){
   var pr=pn?pn.toLocaleString('fr-FR')+' '+sym:(l.price||'Prix sur demande');
   var title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Annonce sans titre';
   var cat=CAT_NAMES[l.category]||l.category||'Aéronef';
-  var loc=l.airport?esc(l.airport)+(l.country?' — '+countryLabel(l.country):''):countryLabel(l.country)||'—';
+  var loc=l.airport?airportLabel(l.airport)+(l.country?' — '+countryLabel(l.country):''):countryLabel(l.country)||'—';
 
   document.title='Aircraft2Sell — '+title;
   /* Compteur de vues côté serveur (une fois par session).
@@ -668,7 +670,7 @@ async function loadSimilar(cat,excludeId){
     html+='<a class="lc" href="listing.html?id='+encodeURIComponent(r.id)+'"><div class="lc-img">'+photo+'<span class="lc-cat-badge">'+esc(CAT_NAMES[r.category]||r.category||'')+'</span></div>'
       +'<div class="lc-body"><div class="lc-title">'+t+'</div>'
       +'<div class="lc-specs">'+(r.year?'<span class="lc-spec">'+A2SIcon('calendar')+esc(r.year)+'</span>':'')+(r.hours?'<span class="lc-spec">'+A2SIcon('clock')+Number(r.hours).toLocaleString('fr-FR')+' h</span>':'')+'</div>'
-      +'<div class="lc-footer"><div class="lc-price">'+fmtPrice(r.price,r.currency)+'</div><div class="lc-loc">'+A2SIcon('map-pin')+esc(r.airport||countryLabel(r.country)||'—')+'</div></div></div></a>';
+      +'<div class="lc-footer"><div class="lc-price">'+fmtPrice(r.price,r.currency)+'</div><div class="lc-loc">'+A2SIcon('map-pin')+(r.airport?airportLabel(r.airport):(countryLabel(r.country)||'—'))+'</div></div></div></a>';
   });
   html+='</div></div>';
   document.getElementById('similarSection').innerHTML=html;

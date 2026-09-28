@@ -221,8 +221,10 @@
 <div id="a2sFooter"></div>
 
 <script src="icons.js?v=20260909a"></script>
+<script src="airports-data.js?v=20260928a"></script>
 <script>
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function airportLabel(code){if(!code)return'';var c=String(code).toUpperCase().trim();var ap=(typeof A2S_AIRPORTS!=='undefined')?A2S_AIRPORTS[c]:null;return ap&&ap.name?c+' — '+ap.name:c;}
 /* Identifiant anonymisé stable : jamais le nom réel du vendeur. */
 function anonSellerName(seed){
   var s=String(seed||''),h=0;
@@ -441,7 +443,7 @@ function renderProfile(user,fallbackName){
   /* Informations */
   var info='';
   var airport=(user&&user.airport)||(_allListings.length&&_allListings[0].airport)||'';
-  if(airport)info+='<div class="pi-row">'+A2SIcon('map-pin')+'<span class="pi-val">'+esc(airport)+'</span></div>';
+  if(airport)info+='<div class="pi-row">'+A2SIcon('map-pin')+'<span class="pi-val">'+airportLabel(airport)+'</span></div>';
   var countryCode=(user&&user.country)||(_allListings.length&&_allListings[0].country)||'';
   if(countryCode)info+='<div class="pi-row">'+A2SIcon('globe')+'<span class="pi-val">'+esc(countryLabel(countryCode))+'</span></div>';
   if(user&&user.company)info+='<div class="pi-row">'+A2SIcon('building')+'<span class="pi-val">'+esc(user.company)+'</span></div>';
@@ -468,7 +470,7 @@ function renderListings(listings){
     var photo=l.photos&&l.photos[0]
       ?'<img src="'+esc(optimizeImg(l.photos[0],600))+'" alt="'+title+'" loading="lazy">'
       :'<span class="lc-placeholder">'+A2SIcon(CAT_ICON[l.category]||'plane')+'</span>';
-    var loc=esc(l.airport||countryLabel(l.country)||'—');
+    var loc=l.airport?airportLabel(l.airport):(countryLabel(l.country)||'—');
     return '<a class="lc" href="listing.html?id='+encodeURIComponent(l.id)+'">'
       +'<div class="lc-img">'+photo+(cat?'<span class="lc-cat-badge">'+esc(cat)+'</span>':'')+'</div>'
       +'<div class="lc-body"><div class="lc-title">'+title+'</div>'
