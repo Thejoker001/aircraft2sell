@@ -374,7 +374,7 @@ var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
 var CAT_ICON='globe';
 var LOCALE='fr-FR';
-var SYM={{EUR:'€',USD:'$',GBP:'£',CHF:'CHF'}};
+var SYM={{EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',AED:'AED '}};
 var COUNTRY_NAMES={{FR:'France',DE:'Allemagne',ES:'Espagne',IT:'Italie',CH:'Suisse',GB:'Royaume-Uni',BE:'Belgique',NL:'Pays-Bas',PT:'Portugal',AT:'Autriche',LU:'Luxembourg',US:'États-Unis',CA:'Canada',AU:'Australie'}};
 function countryLabel(c){{return COUNTRY_NAMES[c]||c||'';}}
 function esc(s){{if(s===null||s===undefined)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}}
