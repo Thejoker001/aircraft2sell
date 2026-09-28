@@ -5,6 +5,10 @@
  *
  *   GET|POST /api/cron-jobs?job=alerts   → alertes email acheteurs
  *   GET|POST /api/cron-jobs?job=expire   → expiration annonces 90 jours
+ *                                           + chaque lundi (UTC), tirage
+ *                                           de la nouvelle « Annonce de la
+ *                                           semaine » (vendeur PRO uniquement)
+ *   GET|POST /api/cron-jobs?job=weekly-pick → déclenchement manuel du tirage
  *
  * Protection : header « x-cron-secret » = CRON_SECRET, ou invocation du
  * cron Vercel (header x-vercel-cron: 1).
@@ -383,6 +387,37 @@ async function jobPriceDrop() {
   return { drops_found: idsAnnonces.length, emails_sent: emailsSent };
 }
 
+/* ── JOB weekly-pick : nouvelle « Annonce de la semaine » chaque lundi ── */
+function estLundiUTC(date) {
+  return date.getUTCDay() === 1; // 0=dimanche, 1=lundi
+}
+
+async function jobWeeklyPick() {
+  /* Annonces actives, vendeur PRO uniquement (comme demandé), avec au
+     moins une photo pour un rendu correct en vitrine. */
+  const candidates = await sbGet(
+    `listings?select=id,photos,weekly_pick&status=eq.live&seller_is_pro=eq.true&limit=500`
+  );
+  const eligibles = candidates.filter((l) => Array.isArray(l.photos) && l.photos.length > 0);
+  if (!eligibles.length) {
+    return { picked: null, reason: 'aucune annonce professionnelle éligible (live, avec photo)' };
+  }
+
+  /* Éviter de retomber sur l'annonce déjà mise en avant la semaine
+     précédente quand il y a le choix. */
+  const actuelle = eligibles.find((l) => l.weekly_pick);
+  const pool = eligibles.length > 1 && actuelle
+    ? eligibles.filter((l) => l.id !== actuelle.id)
+    : eligibles;
+
+  const choisie = pool[Math.floor(Math.random() * pool.length)];
+
+  await sbPatch(`listings?weekly_pick=eq.true`, { weekly_pick: false });
+  await sbPatch(`listings?id=eq.${encodeURIComponent(choisie.id)}`, { weekly_pick: true, featured: true });
+
+  return { picked: choisie.id, pool_size: pool.length };
+}
+
 /* ── Handler principal ── */
 module.exports = async function handler(req, res) {
   const cronSecretOk = req.headers['x-cron-secret'] === process.env.CRON_SECRET;
@@ -397,10 +432,29 @@ module.exports = async function handler(req, res) {
   const job = (req.query && req.query.job) || '';
   try {
     if (job === 'expire') {
-      return res.status(200).json(await jobExpire());
+      const resultatsExpire = await jobExpire();
+      /* Limite Hobby Vercel : 2 crons distincts max dans vercel.json, donc
+         pas d'entrée cron dédiée pour l'annonce de la semaine. On la
+         branche sur le cron quotidien "expire" (3h UTC) et on ne l'exécute
+         que le lundi. */
+      let resultatsWeeklyPick = null;
+      if (estLundiUTC(new Date())) {
+        try {
+          resultatsWeeklyPick = await jobWeeklyPick();
+        } catch (e) {
+          console.error(`weekly-pick (appelé depuis expire, lundi) : ${e.message}`);
+          resultatsWeeklyPick = { error: e.message };
+        }
+      }
+      return res.status(200).json({ expire: resultatsExpire, weekly_pick: resultatsWeeklyPick });
     }
     if (job === 'price-drop') {
       return res.status(200).json(await jobPriceDrop());
+    }
+    if (job === 'weekly-pick') {
+      /* Déclenchement manuel (admin ou test) : ignore la vérification du
+         jour et retire toujours la marque weekly_pick précédente. */
+      return res.status(200).json(await jobWeeklyPick());
     }
     /* défaut : alerts. Le job quotidien 08h00 UTC (vercel.json) déclenche
        aussi price-drop dans la même invocation — on reste à 2 entrées
