@@ -30,6 +30,10 @@ const CATEGORIES = {
   maintenance: 'Maintenance / MRO',
   broker: 'Broker / courtage',
   formation: 'Formation / école de pilotage',
+  equipementier: 'Équipementier / accessoires',
+  aeroclub: 'Aéroclub',
+  fbo: 'FBO / aéroport',
+  helicoptere: 'Hélicoptères',
   autre: 'Autre',
 };
 const TIERS = {
