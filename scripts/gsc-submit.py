@@ -11,6 +11,9 @@ Commandes :
   python3 scripts/gsc-submit.py delete URL          retire un sitemap obsolète
   python3 scripts/gsc-submit.py inspect [URL...]    état d'indexation (défaut: sitemap)
   python3 scripts/gsc-submit.py audit               inspecte toutes les URLs du sitemap
+  python3 scripts/gsc-submit.py queries [JOURS]     vraies requêtes tapées (Search Analytics, défaut 28j)
+  python3 scripts/gsc-submit.py pages [JOURS]       perf par page (clics/impressions/position)
+  python3 scripts/gsc-submit.py opportunities [J]   requêtes à fort potentiel (page 2, CTR faible)
 
 Note : l'API « Demander une indexation » (Indexing API) est réservée aux offres
 d'emploi et livestreams. Pour les autres pages, Google n'expose pas ce bouton en
@@ -177,6 +180,76 @@ def cmd_audit(tok):
     return 0
 
 
+def search_analytics(tok, start, end, dimensions, row_limit=1000, filters=None):
+    url = f'https://www.googleapis.com/webmasters/v3/sites/{api_site()}/searchAnalytics/query'
+    payload = {
+        'startDate': start, 'endDate': end,
+        'dimensions': dimensions, 'rowLimit': row_limit,
+        'dataState': 'all',
+    }
+    if filters:
+        payload['dimensionFilterGroups'] = [{'filters': filters}]
+    status, data = call('POST', url, tok, payload)
+    if status != 200 or not isinstance(data, dict):
+        print(f'HTTP {status} {data}')
+        return []
+    return data.get('rows', [])
+
+
+def _date_range(days):
+    import datetime
+    end = datetime.date.today() - datetime.timedelta(days=2)  # GSC a 2-3j de retard
+    start = end - datetime.timedelta(days=days)
+    return start.isoformat(), end.isoformat()
+
+
+def cmd_queries(tok, days):
+    start, end = _date_range(days)
+    rows = search_analytics(tok, start, end, ['query'], row_limit=250)
+    rows.sort(key=lambda r: r.get('clicks', 0), reverse=True)
+    print(f'Requêtes réelles, {start} -> {end} ({len(rows)} requêtes distinctes)\n')
+    print(f"{'clics':>6} {'impr.':>7} {'CTR':>7} {'pos.':>6}  requête")
+    for r in rows:
+        k = r['keys'][0]
+        ctr = r.get('ctr', 0) * 100
+        print(f"{r.get('clicks',0):>6} {r.get('impressions',0):>7} {ctr:>6.1f}% {r.get('position',0):>6.1f}  {k}")
+    return 0
+
+
+def cmd_pages(tok, days):
+    start, end = _date_range(days)
+    rows = search_analytics(tok, start, end, ['page'], row_limit=250)
+    rows.sort(key=lambda r: r.get('clicks', 0), reverse=True)
+    print(f'Performance par page, {start} -> {end} ({len(rows)} pages)\n')
+    print(f"{'clics':>6} {'impr.':>7} {'CTR':>7} {'pos.':>6}  page")
+    for r in rows:
+        k = r['keys'][0]
+        ctr = r.get('ctr', 0) * 100
+        print(f"{r.get('clicks',0):>6} {r.get('impressions',0):>7} {ctr:>6.1f}% {r.get('position',0):>6.1f}  {k}")
+    return 0
+
+
+def cmd_opportunities(tok, days):
+    """Requêtes avec de l'impression mais une position faible (page 2-3) ou un CTR
+    anormalement bas pour leur position : vocabulaire à ajouter dans le contenu
+    existant plutôt qu'une hypothèse de mot-clé non vérifiée."""
+    start, end = _date_range(days)
+    rows = search_analytics(tok, start, end, ['query', 'page'], row_limit=1000)
+    page2 = [r for r in rows if 10 <= r.get('position', 0) <= 30 and r.get('impressions', 0) >= 3]
+    page2.sort(key=lambda r: r.get('impressions', 0), reverse=True)
+    print(f'Opportunités (impressions réelles, position 10-30), {start} -> {end}\n')
+    print('Déjà vus par Google pour ces requêtes mais mal classés : du contenu')
+    print('existe mais ne répond pas assez précisément, ou manque le terme exact.\n')
+    for r in page2[:60]:
+        q, p = r['keys']
+        print(f"  pos {r['position']:5.1f}  impr={r['impressions']:<4} clics={r.get('clicks',0):<3}  "
+              f"« {q} »  -> {p}")
+    if not page2:
+        print('  (aucune — pas assez de données ou tout est déjà bien classé/mal classé '
+              'en dehors de cette fenêtre de position)')
+    return 0
+
+
 def main():
     args = sys.argv[1:] or ['sitemaps']
     cmd, rest = args[0], args[1:]
@@ -193,6 +266,12 @@ def main():
         return cmd_inspect(tok, rest or [SITEMAP.replace('sitemap.xml', '')])
     if cmd == 'audit':
         return cmd_audit(tok)
+    if cmd == 'queries':
+        return cmd_queries(tok, int(rest[0]) if rest else 28)
+    if cmd == 'pages':
+        return cmd_pages(tok, int(rest[0]) if rest else 28)
+    if cmd == 'opportunities':
+        return cmd_opportunities(tok, int(rest[0]) if rest else 28)
     sys.exit(__doc__)
 
 
