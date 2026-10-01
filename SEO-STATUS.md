@@ -136,6 +136,48 @@ quelques heures à deux jours. Relancer `sitemaps` pour confirmer, puis `audit`
 une semaine plus tard pour mesurer la progression (référence de départ :
 5 pages indexées sur 35).
 
+## Mots-clés — données réelles (2026-10-01)
+
+Jusqu'ici les mots-clés étaient choisis à la main (noms de modèles + requêtes
+évidentes), sans vérification contre la demande réelle. `scripts/gsc-submit.py`
+a trois nouvelles commandes qui interrogent l'API Search Analytics (compte de
+service, scope écriture, indépendant du cron GSC bloqué par CAPTCHA) :
+
+```bash
+python3 scripts/gsc-submit.py queries [JOURS]        # requêtes tapées, triées par clics
+python3 scripts/gsc-submit.py pages [JOURS]          # perf par page
+python3 scripts/gsc-submit.py opportunities [JOURS]  # requêtes en position 10-30
+```
+
+Un snapshot hebdomadaire automatique (cron `4efe9f198f9e`, lundi 7h UTC,
+script no-agent `scripts/gsc-weekly-snapshot.sh`) archive ces trois rapports
+dans `~/workspace/seo-tracking/history_<date>.txt` pour construire un
+historique — une photo isolée ne permet pas de voir une tendance.
+
+**Premier diagnostic (28 derniers jours, 94 requêtes distinctes, 1 seul mois
+de recul)** :
+
+- Les pages commerciales (accueil, catégories, pages pays) sont déjà sur les
+  bons termes (« aircraft for sale europe », « avion à vendre », « achat avion
+  occasion »...) mais classées très loin (positions 30 à 90) → 0 clic sur la
+  quasi-totalité. Ce n'est pas un problème de choix de mot-clé, c'est un
+  problème d'autorité du domaine (site jeune, peu de backlinks, stock
+  d'annonces encore faible — cf. section suivante).
+- À l'inverse, les guides de contenu (assurance aéronef, licence PPL, coût
+  d'entretien, immatriculation) sont bien classés (position 4-9) mais sur des
+  requêtes à très faible volume (quelques impressions/mois) → peu de trafic en
+  valeur absolue malgré un bon classement.
+- Seules 2 requêtes ressortent en zone « opportunité » (position 10-30, donc
+  déjà vues par Google) : « airplane insurance belgium » et « ppl licence
+  cost » — volumes trop faibles (3 impressions chacune) pour justifier une
+  réécriture de contenu à ce stade.
+
+**Conclusion : le levier mots-clés n'est pas le facteur limitant actuel.** Le
+choix de mots-clés déjà fait est correct ; ce qui manque, c'est l'autorité du
+domaine et le volume de contenu/stock (déjà identifié ci-dessous). Refaire
+`queries`/`opportunities` dans 2-3 mois, une fois l'historique plus long et le
+site plus indexé, pour un diagnostic plus fiable.
+
 ## Contenu — leviers suivants
 
 Le SEO technique est en place ; ce qui limite maintenant le trafic, c'est le
