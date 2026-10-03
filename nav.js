@@ -229,6 +229,8 @@ window.A2SFavs = (function(){
               '<button class="nav-util-btn" id="toggleLangBtn" type="button" aria-label="' + t('chooseLang') + '" aria-expanded="false">' + ic('globe') + '<span class="util-label">' + lang.toUpperCase() + '</span>' + ic('chevron-down', 'ic cv-arrow') + '</button>',
               '<div class="nav-popover nav-lang-dropdown">' + langLinks + '</div>',
             '</div>',
+            /* Messages non lus (connecté) */
+            '<a href="' + href('messages.html') + '" class="nav-favs nav-messages" id="navMessages" title="' + t('myMessages') + '" style="display:none">' + ic('message') + '<span id="navMsgCount" class="nav-badge" style="display:none">0</span></a>',
             /* Favoris (connecté) */
             '<a href="' + href('dashboard.html') + '#favs" class="nav-favs" id="navFavs" title="' + t('myFavs') + '" style="display:none">' + ic('heart') + '<span id="navFavCount">0</span></a>',
             /* Connexion / compte */
@@ -385,15 +387,59 @@ window.A2SFavs = (function(){
     fetchRates();
   }
 
+  /* ── Badge messages non lus (nav globale) ──────────────────
+     Compte les messages non lus du membre connecté via Supabase (RLS,
+     nécessite le vrai JWT posé au login, pas la clé publique seule).
+     Rafraîchi par polling léger — pas besoin de temps réel pour un badge,
+     60s suffit et évite de surcharger l'API sur chaque page du site. */
+  var SB_URL = 'https://hlivysnlzlqdjcigqgvk.supabase.co';
+  var SB_PUB_KEY = 'sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
+  var unreadPollTimer = null;
+  function navAuthToken(){
+    try{
+      var tk = sessionStorage.getItem('a2s_auth_token');
+      if(!tk) return null;
+      var p = JSON.parse(atob(tk.split('.')[1]));
+      if(p.exp && (p.exp * 1000) < (Date.now() + 60000)) return null; /* expiré/bientôt */
+      return tk;
+    }catch(e){ return null; }
+  }
+  async function refreshUnreadCount(){
+    var el = document.getElementById('navMsgCount');
+    var link = document.getElementById('navMessages');
+    if(!el || !link) return;
+    var tk = navAuthToken();
+    var email = getUserEmail();
+    if(!tk || !email){ el.style.display = 'none'; return; }
+    try{
+      var url = SB_URL + '/rest/v1/messages?select=id&receiver_email=eq.' + encodeURIComponent(email) + '&read=eq.false';
+      var r = await fetch(url, { headers: { apikey: SB_PUB_KEY, Authorization: 'Bearer ' + tk, Prefer: 'count=exact' } });
+      if(!r.ok) return;
+      var range = r.headers.get('content-range') || '';
+      var m = range.match(/\/(\d+)$/);
+      var n = m ? parseInt(m[1], 10) : (await r.json()).length;
+      if(n > 0){ el.textContent = n > 99 ? '99+' : n; el.style.display = 'inline-block'; }
+      else el.style.display = 'none';
+    }catch(e){ /* échec silencieux, un badge raté n'est jamais bloquant */ }
+  }
+  function startUnreadPolling(){
+    refreshUnreadCount();
+    if(unreadPollTimer) clearInterval(unreadPollTimer);
+    unreadPollTimer = setInterval(refreshUnreadCount, 60000);
+  }
+  document.addEventListener('a2s:message-sent', refreshUnreadCount);
+  window.a2sRefreshUnread = refreshUnreadCount;
+
   function updateNav(){
     var logged = isLoggedIn();
     var btnLogin = document.getElementById('btnLogin'), navUser = document.getElementById('navUser'),
         navAvatar = document.getElementById('navAvatar'), navUName = document.getElementById('navUserName'),
         btnPost = document.getElementById('btnPost'), mmCta = document.getElementById('mmCta'),
         mmLogin = document.getElementById('mmLogin'), mmSignup = document.getElementById('mmSignup'),
-        navFavs = document.getElementById('navFavs');
+        navFavs = document.getElementById('navFavs'), navMessages = document.getElementById('navMessages');
     if(logged){
       if(btnLogin) btnLogin.style.display = 'none';
+      if(navMessages){ navMessages.style.display = 'inline-flex'; startUnreadPolling(); }
       if(navUser){
         navUser.style.display = 'inline-flex'; navUser.title = t('myDashboard');
         var go = function(){ window.location.href = href('dashboard.html'); };
@@ -414,6 +460,7 @@ window.A2SFavs = (function(){
       if(btnLogin) btnLogin.style.display = '';
       if(navUser) navUser.style.display = 'none';
       if(navFavs) navFavs.style.display = 'none';
+      if(navMessages){ navMessages.style.display = 'none'; if(unreadPollTimer){ clearInterval(unreadPollTimer); unreadPollTimer = null; } }
       if(btnPost){
         btnPost.href = href('login.html') + '?redirect=post-listing.html';
         btnPost.onclick = null;

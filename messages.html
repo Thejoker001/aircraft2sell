@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="dns-prefetch" href="https://hlivysnlzlqdjcigqgvk.supabase.co">
-<link rel="stylesheet" href="styles.css?v=20260928b">
+<link rel="stylesheet" href="styles.css?v=20261002a">
 <link rel="stylesheet" href="mobile.css?v=20260909a">
 <style>
 .msg-layout{display:grid;grid-template-columns:340px minmax(0,1fr);height:calc(100vh - var(--nav-h) - 8.5rem);min-height:560px;overflow:hidden}
@@ -281,6 +281,7 @@ function openConv(id){
   var c=CONVS.find(function(x){return x.id===id;});
   if(!c)return;
   c.unread=0;
+  markConvAsRead(c);
   renderConvList(document.getElementById('searchConv')?document.getElementById('searchConv').value:'');
   var layout=document.getElementById('msgLayout');if(layout)layout.classList.add('has-active');
 
@@ -329,6 +330,25 @@ function closeConv(){
   var layout=document.getElementById('msgLayout');if(layout)layout.classList.remove('has-active');
   document.getElementById('chatArea').innerHTML='<div class="chat-empty"><div class="empty-state"><span class="icon-box">'+A2SIcon('message')+'</span><div class="empty-title" id="emptyTitle">Sélectionnez une conversation</div><p class="empty-sub" id="emptySub">Choisissez une conversation dans la liste pour lire les messages et répondre.</p></div></div>';
   renderConvList(document.getElementById('searchConv')?document.getElementById('searchConv').value:'');
+}
+
+/* ── Marquage lu ──
+   Jusqu'ici 'unread=0' n'existait qu'en mémoire (jamais écrit en base) :
+   le badge de messages non lus dans la nav globale restait bloqué même
+   après lecture. On marque désormais réellement 'read=true' côté Supabase
+   pour tous les messages reçus non lus de cette conversation. */
+async function markConvAsRead(conv){
+  if(!conv||!conv.id)return;
+  try{
+    var tk=await authToken();
+    await fetch(SB+'/rest/v1/messages?thread_id=eq.'+encodeURIComponent(conv.id)+'&receiver_email=eq.'+encodeURIComponent(ME)+'&read=eq.false',{
+      method:'PATCH',
+      headers:{'apikey':SK,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({read:true})
+    });
+  }catch(e){ /* échec silencieux : le badge se corrigera au prochain polling */ }
+  document.dispatchEvent(new CustomEvent('a2s:message-sent'));
+  if(window.a2sRefreshUnread) window.a2sRefreshUnread();
 }
 
 /* ── ENVOI ── */
@@ -430,7 +450,7 @@ loadConversations();
 pollTimer=setInterval(pollMessages,15000);
 </script>
 <script src="rgpd-consent.js" defer></script>
-<script src="nav.js?v=20260909a"></script>
+<script src="nav.js?v=20261002a"></script>
 <script src="footer.js?v=20260923a"></script>
 </body>
 </html>
