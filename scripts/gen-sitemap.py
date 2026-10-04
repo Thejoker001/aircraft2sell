@@ -33,6 +33,10 @@ EXCLUDE = {
     'alerts.html',        # outil personnel, contenu mince
     'seller.html',        # profil vendeur, généré dynamiquement
     'diag.html', 'moderation.html',
+    'post-listing.html',  # réservé aux membres connectés : redirige en JS vers
+                           # login.html si non connecté — Googlebot ne voit jamais
+                           # de contenu réel, cause un échec de "Demander une
+                           # indexation" dans Search Console (2026-10-04).
 }
 
 # Priorité et fréquence par page (défaut : 0.70 / monthly).
