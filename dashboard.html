@@ -451,6 +451,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Très bon état, heures de vol faibl
         <button type="button" class="tab" id="stab-subscription" role="tab" onclick="switchSub('subscription')"><i data-icon="star"></i>Abonnement</button>
         <button type="button" class="tab" id="stab-invoices" role="tab" onclick="switchSub('invoices')"><i data-icon="file-text"></i>Factures</button>
         <button type="button" class="tab" id="stab-security" role="tab" onclick="switchSub('security')"><i data-icon="shield"></i>Sécurité</button>
+        <button type="button" class="tab" id="stab-api" role="tab" onclick="switchSub('api')"><i data-icon="lock"></i>Clé API</button>
       </div>
 
       <!-- Profil -->
@@ -634,6 +635,42 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Très bon état, heures de vol faibl
               <button type="button" class="btn-secondary" onclick="if(confirm('Déconnecter tous les appareils ?'))showToast('Déconnexion globale effectuée')">Déconnecter tous les appareils</button>
               <button type="button" class="btn-danger" onclick="showToast('Contactez le support pour supprimer votre compte')"><i data-icon="trash"></i>Supprimer mon compte</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clé API -->
+      <div class="subpanel" id="sub-api">
+        <div class="card">
+          <div class="dc-head"><h3>Accès API</h3></div>
+          <div class="card-body">
+            <p class="muted" style="font-size:.9rem;margin-bottom:1rem;line-height:1.6">Générez une clé API pour gérer vos annonces (lecture, création, modification, suppression) depuis votre propre site ou logiciel métier. La clé n'est affichée <strong>qu'une seule fois</strong> à la création : notez-la en lieu sûr.</p>
+            <div id="apiKeyAlert"></div>
+            <div id="apiKeyNewBox" style="display:none;margin-bottom:1rem">
+              <div class="field"><label>Votre clé API (copiez-la maintenant, elle ne sera plus jamais affichée)</label>
+                <div style="display:flex;gap:.5rem">
+                  <input type="text" class="inp" id="apiKeyNewValue" readonly style="font-family:monospace">
+                  <button type="button" class="btn-secondary btn-sm" onclick="copyApiKey()">Copier</button>
+                </div>
+              </div>
+            </div>
+            <div class="field" style="max-width:280px">
+              <label for="apiKeyLabel">Nom de la clé (optionnel)</label>
+              <input type="text" class="inp" id="apiKeyLabel" placeholder="ex. Mon CRM" maxlength="60">
+            </div>
+            <button type="button" class="btn-primary" id="btnGenApiKey" onclick="generateApiKey()"><i data-icon="lock"></i>Générer une nouvelle clé</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="dc-head"><h3>Clés actives</h3></div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Nom</th><th>Créée le</th><th>Dernière utilisation</th><th>Action</th></tr></thead>
+              <tbody id="apiKeysList"><tr><td colspan="4" class="text-center muted" style="padding:2rem 1rem">Chargement…</td></tr></tbody>
+            </table>
+          </div>
+          <div class="card-body" style="border-top:1px solid var(--a2s-border, #E4EAF2)">
+            <p class="muted" style="font-size:.85rem;margin:0">Documentation d'intégration : <a href="/API.md" target="_blank" rel="noopener">aircraft2sell.eu/API.md</a></p>
           </div>
         </div>
       </div>
@@ -847,7 +884,7 @@ function doLogout(){
 }
 
 /* ── ONGLETS ── */
-var SUB_ALIASES={subscription:'subscription',invoices:'invoices',security:'security',profile:'profile'};
+var SUB_ALIASES={subscription:'subscription',invoices:'invoices',security:'security',profile:'profile',api:'api'};
 function switchTab(tab){
   var sub=null;
   if(tab==='offers')tab='messages';
@@ -871,6 +908,102 @@ function switchSub(s){
   document.querySelectorAll('.set-tabs .tab').forEach(function(t){t.classList.remove('active');t.setAttribute('aria-selected','false');});
   var p=document.getElementById('sub-'+s);if(p)p.classList.add('active');
   var t=document.getElementById('stab-'+s);if(t){t.classList.add('active');t.setAttribute('aria-selected','true');}
+  if(s==='api')renderApiKeys();
+}
+
+/* ── CLÉ API (gestion depuis le dashboard, écriture directe Supabase + RLS) ── */
+function b64urlFromBytes(bytes){
+  var bin='';for(var i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function sha256Hex(texte){
+  var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(texte));
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+function fmtDateApi(iso){
+  if(!iso)return'—';
+  try{return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+  catch(e){return'—';}
+}
+async function renderApiKeys(){
+  var tbody=document.getElementById('apiKeysList');
+  if(!tbody)return;
+  var tk=await authToken();
+  if(!tk){tbody.innerHTML='<tr><td colspan="4" class="text-center muted" style="padding:2rem 1rem">Reconnectez-vous pour voir vos clés.</td></tr>';return;}
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/api_keys?select=id,label,created_at,last_used_at,revoked_at&order=created_at.desc',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
+    });
+    if(!r.ok)throw new Error('http_'+r.status);
+    var rows=await r.json();
+    var actives=rows.filter(function(x){return!x.revoked_at;});
+    if(!actives.length){
+      tbody.innerHTML='<tr><td colspan="4" class="text-center muted" style="padding:2rem 1rem">Aucune clé API active.</td></tr>';
+      return;
+    }
+    tbody.innerHTML=actives.map(function(k){
+      return '<tr><td>'+esc(k.label||'Sans nom')+'</td><td>'+fmtDateApi(k.created_at)+'</td><td>'+fmtDateApi(k.last_used_at)+'</td>'
+        +'<td><button type="button" class="btn-ghost btn-sm" onclick="revokeApiKey('+k.id+')"><i data-icon="trash"></i>Révoquer</button></td></tr>';
+    }).join('');
+    if(window.A2SIcon&&window.A2SIcon.hydrate)window.A2SIcon.hydrate(tbody);
+  }catch(e){
+    tbody.innerHTML='<tr><td colspan="4" class="text-center muted" style="padding:2rem 1rem">Erreur de chargement.</td></tr>';
+  }
+}
+async function generateApiKey(){
+  var alertEl=document.getElementById('apiKeyAlert');
+  var btn=document.getElementById('btnGenApiKey');
+  var tk=await authToken();
+  if(!tk){showToast('Session expirée : reconnectez-vous.');return;}
+  if(alertEl)alertEl.innerHTML='';
+  if(btn)btn.disabled=true;
+  try{
+    var randBytes=crypto.getRandomValues(new Uint8Array(32));
+    var secret=b64urlFromBytes(randBytes);
+    var apiKey='a2s_live_'+secret;
+    var keyHash=await sha256Hex(apiKey);
+    var label=(document.getElementById('apiKeyLabel')||{}).value||'';
+    var r=await fetch(SB_URL+'/rest/v1/api_keys',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({seller_email:(localStorage.getItem('a2s_user_email')||'').toLowerCase(),key_hash:keyHash,label:label.trim()||null})
+    });
+    if(!r.ok)throw new Error('http_'+r.status);
+    var box=document.getElementById('apiKeyNewBox');
+    var val=document.getElementById('apiKeyNewValue');
+    if(val)val.value=apiKey;
+    if(box)box.style.display='';
+    var lbl=document.getElementById('apiKeyLabel');if(lbl)lbl.value='';
+    await renderApiKeys();
+    showToast('Clé API générée. Copiez-la maintenant, elle ne sera plus affichée.');
+  }catch(e){
+    if(alertEl)alertEl.innerHTML='<div class="alert alert-error">'+A2SIcon('alert-triangle')+'<span>Génération impossible, réessayez.</span></div>';
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+function copyApiKey(){
+  var val=document.getElementById('apiKeyNewValue');
+  if(!val||!val.value)return;
+  navigator.clipboard.writeText(val.value).then(function(){showToast('Clé copiée dans le presse-papiers.');})
+    .catch(function(){val.select();showToast('Sélectionnez et copiez la clé manuellement.');});
+}
+async function revokeApiKey(id){
+  if(!confirm('Révoquer cette clé ? Toute intégration qui l\'utilise cessera de fonctionner immédiatement.'))return;
+  var tk=await authToken();
+  if(!tk){showToast('Session expirée : reconnectez-vous.');return;}
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/api_keys?id=eq.'+encodeURIComponent(id),{
+      method:'PATCH',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({revoked_at:new Date().toISOString()})
+    });
+    if(!r.ok)throw new Error('http_'+r.status);
+    await renderApiKeys();
+    showToast('Clé révoquée.');
+  }catch(e){
+    showToast('La révocation a échoué, réessayez.');
+  }
 }
 
 /* ── MOBILE (menu géré par nav.js) ── */
@@ -1340,7 +1473,7 @@ async function importCsv(){
   if(!email){showToast('Reconnectez-vous pour importer des annonces.');return;}
   if(btn)btn.disabled=true;
   try{
-    var r=await fetch('/api/import-csv.js',{
+    var r=await fetch('/api/listings?mode=csv-import',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
