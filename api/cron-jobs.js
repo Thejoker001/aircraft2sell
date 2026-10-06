@@ -481,13 +481,19 @@ async function traduireEnAnglais(texte) {
   }
 }
 
-async function jobTranslate() {
-  /* Limite de lot par passage (cron quotidien) : évite de dépasser le quota
-     Groq gratuit (14 400 req/jour partagées avec l'assistant) et le
-     maxDuration=60s de cette fonction sur un rattrapage massif ponctuel —
-     le reste sera traité aux passages suivants (idempotent : la requête ne
-     prend que description_en.is.null, jamais retraité une fois réussi). */
-  const BATCH_LIMIT = 40;
+async function jobTranslate(batchLimit) {
+  /* Limite de lot par passage : le tier gratuit Groq plafonne à 1000
+     tokens de SORTIE par minute (OTPM) pour ce modèle — confirmé en
+     pratique (429 "Rate limit reached... OTPM: Limit 1000, Used 860" dès
+     la 5e/6e requête d'un lot sans pause). Une description peut traduire
+     en 600-1200 tokens de sortie à elle seule : on ne peut donc espérer
+     qu'1 traduction réussie toutes ~60-90s de façon fiable, jamais un lot
+     de plusieurs dizaines en une seule invocation. Le cron quotidien
+     (BATCH_LIMIT par défaut) avance donc très lentement par nature — le
+     rattrapage initial ponctuel doit être piloté depuis l'extérieur avec
+     ?limit=1 et un délai de 90s+ entre chaque appel HTTP à cet endpoint
+     (voir note de déploiement), pas en augmentant ce nombre. */
+  const BATCH_LIMIT = Number(batchLimit) > 0 ? Math.min(Number(batchLimit), 40) : 40;
   const annonces = await sbGet(
     `listings?select=id,description&status=eq.live&description_en=is.null&description=not.is.null&order=submitted_at.asc&limit=${BATCH_LIMIT}`
   );
@@ -505,11 +511,14 @@ async function jobTranslate() {
       }
       await sbPatch(`listings?id=eq.${encodeURIComponent(l.id)}`, { description_en: traduit });
       translated += 1;
-      /* Pause courte entre deux appels Groq : le tier gratuit limite le
-         débit (requêtes/minute), pas seulement le quota journalier. Un lot
-         de 40 appels sans délai en a fait échouer 34/40 en pratique — à
-         vérifier après ce correctif avant d'augmenter BATCH_LIMIT. */
-      await new Promise((r) => setTimeout(r, 400));
+      /* Pause entre deux appels Groq : le tier gratuit plafonne à 1000
+         tokens de SORTIE par minute pour ce modèle (confirmé : 429 dès la
+         5e/6e requête sans pause). 15s reste optimiste mais permet de
+         profiter d'une fenêtre glissante de tokens déjà partiellement
+         libérée plutôt que d'attendre une minute pleine à chaque fois —
+         accepte un certain taux d'échec résiduel plutôt que de monopoliser
+         le maxDuration=60s de cette fonction sur une seule traduction. */
+      await new Promise((r) => setTimeout(r, 15000));
     } catch (e) {
       console.error(`Traduction ${l.id} : ${e.message}`);
       failed += 1;
@@ -559,9 +568,12 @@ module.exports = async function handler(req, res) {
     }
     if (job === 'translate') {
       /* Déclenchement manuel (admin ou test) : un seul lot immédiat, sans
-         attendre le cron quotidien 08h00 UTC. Utile pour le rattrapage
-         initial des annonces déjà live. */
-      return res.status(200).json(await jobTranslate());
+         attendre le cron quotidien 08h00 UTC. ?limit=N (1-40, défaut 40)
+         pour piloter un rattrapage initial sans se heurter au plafond
+         Groq OTPM — appeler avec limit=1 en boucle externe, espacé de
+         90s+, plutôt qu'un gros lot d'un coup (voir jobTranslate). */
+      const limiteManuelle = req.query && req.query.limit;
+      return res.status(200).json(await jobTranslate(limiteManuelle));
     }
     /* défaut : alerts. Le job quotidien 08h00 UTC (vercel.json) déclenche
        aussi price-drop ET translate dans la même invocation — on reste à 2
