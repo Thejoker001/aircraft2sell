@@ -49,13 +49,34 @@
     removeBanner();
   }
 
+  /* Langue de la page : même détection que nav.js/footer.js (préfixe /en/ ou
+     /et/ dans le chemin). Un script partagé chargé sur TOUTES les pages doit
+     afficher son propre texte dans la bonne langue, sinon la bannière reste
+     en français même sur les pages /en/. */
+  function currentLang() {
+    var m = location.pathname.match(/^\/(en|et)\//);
+    return m ? m[1] : 'fr';
+  }
+
+  var BANNER_I18N = {
+    fr: { aria: 'Consentement aux cookies',
+      text: 'Nous utilisons des cookies analytiques anonymes pour améliorer Aircraft2Sell. ',
+      more: 'En savoir plus', decline: 'Refuser', accept: 'Accepter', privacyHref: '/legal.html#privacy' },
+    en: { aria: 'Cookie consent',
+      text: 'We use anonymous analytics cookies to improve Aircraft2Sell. ',
+      more: 'Learn more', decline: 'Decline', accept: 'Accept', privacyHref: '/en/legal.html#privacy' }
+  };
+
   function showBanner() {
     if (document.getElementById('a2s-consent-banner')) return;
+
+    var lang = currentLang();
+    var t = BANNER_I18N[lang] || BANNER_I18N.fr;
 
     var banner = document.createElement('div');
     banner.id = 'a2s-consent-banner';
     banner.setAttribute('role', 'dialog');
-    banner.setAttribute('aria-label', 'Consentement aux cookies');
+    banner.setAttribute('aria-label', t.aria);
     banner.innerHTML = [
       '<div style="position:fixed;bottom:0;left:0;right:0;z-index:9999;',
         'background:var(--a2s-surface,#fff);border-top:1px solid var(--a2s-border,#E4E8EF);',
@@ -63,12 +84,12 @@
         'display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;',
         'font-family:var(--font-body,Manrope,sans-serif);font-size:.86rem;color:var(--a2s-text,#14213D);">',
         '<div style="flex:1;min-width:260px;line-height:1.6">',
-          'Nous utilisons des cookies analytiques anonymes pour améliorer Aircraft2Sell. ',
-          '<a href="/legal.html#privacy" style="color:var(--a2s-blue,#1E5FCC);font-weight:600">En savoir plus</a>',
+          t.text,
+          '<a href="' + t.privacyHref + '" style="color:var(--a2s-blue,#1E5FCC);font-weight:600">' + t.more + '</a>',
         '</div>',
         '<div style="display:flex;gap:.5rem;flex-shrink:0">',
-          '<button id="a2s-decline" type="button" class="btn-secondary btn-sm">Refuser</button>',
-          '<button id="a2s-accept" type="button" class="btn-primary btn-sm">Accepter</button>',
+          '<button id="a2s-decline" type="button" class="btn-secondary btn-sm">' + t.decline + '</button>',
+          '<button id="a2s-accept" type="button" class="btn-primary btn-sm">' + t.accept + '</button>',
         '</div>',
       '</div>'
     ].join('');
