@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/confirm-handler.js"></script>
+<script src="/lang-redirect.js"></script>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Create a free alert and receive an email as soon as an aircraft matching your criteria is listed for sale on Aircraft2Sell.">
+<link rel="canonical" href="https://aircraft2sell.eu/en/alerts.html">
+<title>My listing alerts | Aircraft2Sell</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://hlivysnlzlqdjcigqgvk.supabase.co">
+<link rel="stylesheet" href="/styles.css?v=20261002a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a">
+<style>
+/* ── Layout: form + list ── */
+.alerts-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:1.5rem;align-items:start}
+.alerts-layout .card-head h2{font-size:1.1rem}
+.card-head .icon-box{width:38px;height:38px}
+.card-head .icon-box .ic{width:19px;height:19px}
+.card-head-left{display:flex;align-items:center;gap:.75rem}
+#formError{display:none;margin-bottom:1rem}
+#formError.show{display:flex}
+
+/* ── Alerts list ── */
+.alerts-list{display:flex;flex-direction:column;gap:.75rem}
+.alert-item{display:flex;align-items:flex-start;gap:.9rem;padding:1rem 1.1rem}
+.alert-item .icon-box{width:40px;height:40px}
+.alert-item .icon-box .ic{width:20px;height:20px}
+.alert-body{flex:1;min-width:0}
+.alert-name{font-family:var(--font-display);font-weight:700;font-size:.95rem;color:var(--a2s-navy);line-height:1.3;margin-bottom:.3rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alert-tags{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.4rem}
+.alert-mail{display:inline-flex;align-items:center;gap:.35rem;font-size:.76rem;color:var(--a2s-text-muted)}
+.alert-mail .ic{width:13px;height:13px}
+.alert-actions{display:flex;flex-direction:column;align-items:flex-end;gap:.5rem;flex-shrink:0}
+
+/* ── "How it works" block ── */
+.how-list{display:flex;flex-direction:column;gap:.85rem}
+.how-list li{display:flex;gap:.75rem;align-items:flex-start;font-size:.88rem;color:var(--a2s-text-muted);line-height:1.5}
+.how-list .step-num{width:26px;height:26px;border-radius:50%;background:var(--a2s-blue-soft);color:var(--a2s-blue);font-size:.76rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.05rem}
+
+@media(max-width:900px){.alerts-layout{grid-template-columns:1fr}}
+@media(max-width:480px){.alert-item{flex-wrap:wrap}.alert-actions{flex-direction:row;width:100%;justify-content:space-between;align-items:center}}
+</style>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="search.html">Listings</a><i data-icon="chevron-right"></i><span aria-current="page">My alerts</span></nav>
+    <h1>My alerts</h1>
+    <p>Receive an email as soon as a listing matches your criteria. Free, no commitment.</p>
+  </div>
+</div>
+
+<section class="section-sm">
+  <div class="container">
+    <div class="alerts-layout">
+
+      <!-- Creation form -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-left"><span class="icon-box accent"><i data-icon="bell"></i></span><h2>Create an alert</h2></div>
+        </div>
+        <form class="card-body" id="alertForm" novalidate onsubmit="event.preventDefault();createAlert();">
+          <div class="alert alert-error" id="formError" role="alert"><i data-icon="alert-triangle"></i><span id="formErrorText"></span></div>
+
+          <div class="field">
+            <label for="aName">Alert name</label>
+            <input type="text" class="inp" id="aName" placeholder="E.g.: Cessna 172 in France" maxlength="80" autocomplete="off">
+            <div class="field-hint">A short name to find this alert easily.</div>
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="aCat">Category</label>
+              <select class="sel" id="aCat">
+                <option value="">All categories</option>
+                <option value="light">Light aircraft</option>
+                <option value="jet">Business jet</option>
+                <option value="turbo">Turboprop</option>
+                <option value="heli">Helicopter</option>
+                <option value="ulm">Microlight</option>
+                <option value="airliner">Airliner</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="aMake">Make or model</label>
+              <input type="text" class="inp" id="aMake" placeholder="E.g.: Cessna, Piper, TBM…" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="aMaxPrice">Maximum price</label>
+              <div class="input-group"><input type="number" class="inp" id="aMaxPrice" placeholder="E.g.: 80000" min="0" inputmode="numeric"><span class="addon">EUR</span></div>
+            </div>
+            <div class="field">
+              <label for="aCountry">Country</label>
+              <input type="text" class="inp" id="aCountry" placeholder="E.g.: France, Spain…" autocomplete="country-name">
+            </div>
+          </div>
+
+          <div class="field" id="emailField">
+            <label for="aEmail">Your email <span class="req" aria-hidden="true">*</span></label>
+            <div class="input-group has-icon"><i data-icon="mail"></i><input type="email" class="inp" id="aEmail" placeholder="you@example.com" autocomplete="email" required></div>
+            <div class="field-error" id="emailError">Enter a valid email address.</div>
+            <div class="field-hint">We only send listings that match your criteria. Unsubscribe with one click.</div>
+          </div>
+
+          <button type="submit" class="btn-primary btn-block" id="btnCreate"><i data-icon="bell"></i>Create alert</button>
+        </form>
+      </div>
+
+      <!-- List + help -->
+      <div class="stack">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-head-left"><span class="icon-box"><i data-icon="list"></i></span><h2>Active alerts</h2></div>
+            <span class="badge" id="alertsCount">0</span>
+          </div>
+          <div class="card-body" id="alertsList"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h3 style="margin-bottom:.9rem">How it works</h3>
+            <ol class="how-list">
+              <li><span class="step-num">1</span><span>Set your criteria: category, model, budget, country.</span></li>
+              <li><span class="step-num">2</span><span>Every new listing published is compared against your alerts.</span></li>
+              <li><span class="step-num">3</span><span>You receive an email with a direct link to the listing.</span></li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status"></div>
+<div id="a2sFooter"></div>
+
+<script src="/icons.js?v=20260909a"></script>
+<script>
+var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
+
+var CAT_LABEL={light:'Light aircraft',jet:"Business jet",turbo:'Turboprop',heli:'Helicopter',ulm:'Microlight',airliner:'Airliner'};
+var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
+
+var _tt;
+function showToast(m){var e=document.getElementById('toast');if(!e)return;e.textContent=m;e.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){e.classList.remove('show');},3000);}
+function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+function readAlerts(){try{return JSON.parse(localStorage.getItem('a2s_alerts')||'[]');}catch(e){return[];}}
+
+function showError(msg){
+  var box=document.getElementById('formError'),txt=document.getElementById('formErrorText');
+  if(txt)txt.textContent=msg;
+  if(box)box.classList.add('show');
+}
+function clearError(){
+  var box=document.getElementById('formError');if(box)box.classList.remove('show');
+  var f=document.getElementById('emailField');if(f)f.classList.remove('has-error');
+}
+
+function loadAlerts(){
+  var alerts=readAlerts();
+  var el=document.getElementById('alertsList');
+  var cnt=document.getElementById('alertsCount');
+  if(cnt)cnt.textContent=alerts.length;
+  if(!el)return;
+  if(!alerts.length){
+    el.innerHTML='<div class="empty-state" style="padding:2rem 1rem">'
+      +'<span class="icon-box">'+A2SIcon('bell')+'</span>'
+      +'<div class="empty-title">No alerts yet</div>'
+      +'<p class="empty-sub">Create your first alert with the form alongside, or <a href="search.html">browse the listings</a> in the meantime.</p>'
+      +'</div>';
+    return;
+  }
+  el.innerHTML='<div class="alerts-list">'+alerts.map(function(a,i){
+    var tags='';
+    if(a.cat)tags+='<span class="badge badge-navy">'+esc(CAT_LABEL[a.cat]||a.cat)+'</span>';
+    if(a.make)tags+='<span class="badge">'+esc(a.make)+'</span>';
+    if(a.maxPrice)tags+='<span class="badge">'+A2SIcon('euro')+'up to '+Number(a.maxPrice).toLocaleString('en-GB')+' €</span>';
+    if(a.country)tags+='<span class="badge">'+A2SIcon('map-pin')+esc(a.country)+'</span>';
+    if(!tags)tags='<span class="badge">All listings</span>';
+    return'<div class="card alert-item">'
+      +'<span class="icon-box">'+A2SIcon(CAT_ICON[a.cat]||'bell')+'</span>'
+      +'<div class="alert-body">'
+      +'<div class="alert-name">'+esc(a.name||'Alert '+(i+1))+'</div>'
+      +'<div class="alert-tags">'+tags+'</div>'
+      +'<div class="alert-mail">'+A2SIcon('mail')+esc(a.email)+'</div>'
+      +'</div>'
+      +'<div class="alert-actions">'
+      +'<span class="badge badge-success badge-dot">Active</span>'
+      +'<button type="button" class="btn-danger btn-sm" onclick="delAlert('+i+')" aria-label="Delete alert \''+esc(a.name||(i+1))+'\'">'+A2SIcon('trash')+'Delete</button>'
+      +'</div>'
+      +'</div>';
+  }).join('')+'</div>';
+}
+
+function createAlert(){
+  clearError();
+  var name=document.getElementById('aName').value.trim();
+  var emailEl=document.getElementById('aEmail');
+  var email=emailEl.value.trim();
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    var f=document.getElementById('emailField');if(f)f.classList.add('has-error');
+    showError('Enter a valid email address to receive your alerts.');
+    emailEl.focus();
+    return;
+  }
+  var alert={
+    name:name||'My alert',
+    cat:document.getElementById('aCat').value,
+    make:document.getElementById('aMake').value.trim(),
+    maxPrice:document.getElementById('aMaxPrice').value,
+    country:document.getElementById('aCountry').value.trim(),
+    email:email,
+    created:new Date().toISOString()
+  };
+  var alerts=readAlerts();
+  alerts.push(alert);
+  localStorage.setItem('a2s_alerts',JSON.stringify(alerts));
+  try{localStorage.setItem('a2s_alert_email',email);}catch(e){}
+
+  // Save to Supabase
+  var btn=document.getElementById('btnCreate');if(btn)btn.classList.add('is-loading');
+  fetch(SB+'/rest/v1/search_alerts',{
+    method:'POST',
+    headers:{'apikey':SK,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify(alert)
+  }).catch(function(){}).then(function(){if(btn)btn.classList.remove('is-loading');});
+
+  showToast('Alert created: you will receive an email as soon as a listing matches.');
+  document.getElementById('aName').value='';
+  document.getElementById('aMake').value='';
+  document.getElementById('aMaxPrice').value='';
+  document.getElementById('aCountry').value='';
+  loadAlerts();
+}
+
+function delAlert(i){
+  var alerts=readAlerts();
+  alerts.splice(i,1);
+  localStorage.setItem('a2s_alerts',JSON.stringify(alerts));
+  showToast('Alert deleted');
+  loadAlerts();
+}
+
+// Pre-fill from URL and local storage
+var params=new URLSearchParams(location.search);
+if(params.get('cat'))document.getElementById('aCat').value=params.get('cat');
+if(params.get('q'))document.getElementById('aMake').value=params.get('q');
+(function(){
+  var e=params.get('email')||'';
+  if(!e){try{e=localStorage.getItem('a2s_alert_email')||localStorage.getItem('a2s_user_email')||'';}catch(err){}}
+  if(e)document.getElementById('aEmail').value=e;
+})();
+
+window.addEventListener('DOMContentLoaded',loadAlerts);
+</script>
+<script src="/rgpd-consent.js" defer></script>
+<script src="/nav.js?v=20261002a"></script>
+<script src="/footer.js?v=20260923a"></script>
+</body>
+</html>

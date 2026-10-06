@@ -13,7 +13,20 @@
     'copropriete-avion-guide.html','cout-entretien-avion-leger.html','delai-vente-avion.html',
     'documents-obligatoires-vente-avion.html','immatriculation-aeronef-europe.html','importer-avion-usa-europe.html',
     'inspection-pre-achat-avion.html','licence-pilote-prive-cout.html','louer-ou-acheter-avion.html',
-    'pieges-achat-avion-occasion.html','turbopropulseur-ou-jet-affaires.html','vendre-avion-particulier-europe.html'];
+    'pieges-achat-avion-occasion.html','turbopropulseur-ou-jet-affaires.html','vendre-avion-particulier-europe.html',
+    '404.html','acheter-avion-occasion-allemagne.html','acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html','acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html','alerts.html','avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html','avions-a-vendre-france.html','avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html','avions-a-vendre-suisse.html','cancel.html','checkout.html',
+    'comparateur.html','contact.html','dashboard.html','devenir-partenaire.html','estimation.html',
+    'estimer-valeur-revente-avion-occasion.html','faq.html','financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html','inspecteurs.html','legal.html',
+    'listing-submitted.html','login.html','map.html','messages.html','onboarding.html',
+    'partenaires.html','pricing.html','prix-moyen-jet-prive-2026.html','pro-dealers.html',
+    'reset-password.html','seller.html','set-pseudo.html','sitemap.html','success.html',
+    'tendances-marche.html','ulm-ou-avion-leger-debuter.html','vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html','widget.html'];
   function isTranslatedPage(page){ return TRANSLATED_PAGES.indexOf(page.split(/[?#]/)[0]) > -1; }
   function href(page){ var lang = currentLang(); if(lang === 'fr') return '/' + page; return isTranslatedPage(page) ? '/' + lang + '/' + page : '/' + page; }
   function currentPageBase(){ var m = location.pathname.match(/^\/(?:en|et)\/(.*)$/); var rel = m ? m[1] : location.pathname.replace(/^\//, ''); return rel || 'index.html'; }

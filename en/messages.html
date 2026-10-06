@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/confirm-handler.js"></script>
+<script src="/lang-redirect.js"></script>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="My messages — Aircraft2Sell">
+<meta property="og:description" content="View and reply to your messages from your Aircraft2Sell account.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://aircraft2sell.eu/en/messages.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="My messages — Aircraft2Sell">
+<meta name="twitter:description" content="View and reply to your messages from your Aircraft2Sell account.">
+<meta name="twitter:image" content="https://aircraft2sell.eu/og-image.png?v=2">
+<link rel="canonical" href="https://aircraft2sell.eu/en/messages.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/messages.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/messages.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/messages.html">
+<meta name="description" content="Your Aircraft2Sell messages — communicate safely with aircraft buyers and sellers.">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aircraft2Sell — Messages</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://hlivysnlzlqdjcigqgvk.supabase.co">
+<link rel="stylesheet" href="/styles.css?v=20261002a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a">
+<style>
+.msg-layout{display:grid;grid-template-columns:340px minmax(0,1fr);height:calc(100vh - var(--nav-h) - 8.5rem);min-height:560px;overflow:hidden}
+/* Conversation list */
+.msg-sidebar{display:flex;flex-direction:column;border-right:1px solid var(--a2s-border);overflow:hidden;min-width:0}
+.sidebar-header{padding:1rem 1.1rem;border-bottom:1px solid var(--a2s-border);flex-shrink:0}
+.conv-list{flex:1;overflow-y:auto}
+.conv-item{display:flex;align-items:flex-start;gap:.8rem;padding:.9rem 1.1rem;cursor:pointer;border-bottom:1px solid var(--a2s-border);border-left:3px solid transparent;transition:background .15s;position:relative;width:100%;text-align:left}
+.conv-item:hover{background:var(--a2s-bg)}
+.conv-item.active{background:var(--a2s-blue-soft);border-left-color:var(--a2s-navy)}
+.conv-item.unread .conv-name,.conv-item.unread .conv-preview{color:var(--a2s-navy);font-weight:700}
+.conv-avatar{width:40px;height:40px;border-radius:50%;background:var(--a2s-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;flex-shrink:0}
+.conv-info{flex:1;min-width:0}
+.conv-top{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem}
+.conv-name{font-size:.88rem;font-weight:600;color:var(--a2s-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-time{font-size:.72rem;color:var(--a2s-text-faint);flex-shrink:0}
+.conv-aircraft{font-size:.76rem;color:var(--a2s-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:.3rem}
+.conv-aircraft .ic{width:13px;height:13px}
+.conv-preview{font-size:.8rem;color:var(--a2s-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.15rem}
+.unread-badge{background:var(--a2s-accent);color:#fff;font-size:.68rem;font-weight:800;min-width:20px;height:20px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0;align-self:center}
+/* Chat thread */
+.chat-area{display:flex;flex-direction:column;overflow:hidden;min-width:0;background:var(--a2s-bg)}
+.chat-header{display:flex;align-items:center;gap:.9rem;padding:.85rem 1.25rem;border-bottom:1px solid var(--a2s-border);background:var(--a2s-surface);flex-shrink:0}
+.chat-header-avatar{width:40px;height:40px;border-radius:50%;background:var(--a2s-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;flex-shrink:0}
+.chat-header-info{flex:1;min-width:0}
+.chat-header-name{font-size:.92rem;font-weight:700;color:var(--a2s-navy);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.chat-header-sub{font-size:.78rem;color:var(--a2s-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-header-actions{display:flex;gap:.4rem;flex-shrink:0}
+.messages-wrap{flex:1;overflow-y:auto;padding:1.25rem;display:flex;flex-direction:column;gap:.6rem}
+.msg-group{display:flex;flex-direction:column;gap:.25rem;max-width:72%}
+.msg-group.mine{align-self:flex-end;align-items:flex-end}
+.msg-group.theirs{align-self:flex-start;align-items:flex-start}
+.msg-bubble{padding:.7rem .95rem;font-size:.9rem;line-height:1.55;word-break:break-word;white-space:pre-line;border-radius:14px}
+.msg-group.mine .msg-bubble{background:var(--a2s-navy);color:#fff;border-bottom-right-radius:4px}
+.msg-group.theirs .msg-bubble{background:var(--a2s-surface-2);color:var(--a2s-text);border-bottom-left-radius:4px}
+.msg-meta{font-size:.7rem;color:var(--a2s-text-faint);display:flex;align-items:center;gap:.3rem;padding:0 .25rem}
+.msg-read{display:inline-flex;color:var(--a2s-text-faint)}
+.msg-read.seen{color:var(--a2s-success)}
+.msg-read .ic{width:13px;height:13px}
+.date-sep{text-align:center;font-size:.72rem;font-weight:600;color:var(--a2s-text-faint);display:flex;align-items:center;gap:.8rem;margin:.25rem 0}
+.date-sep::before,.date-sep::after{content:'';flex:1;height:1px;background:var(--a2s-border)}
+.listing-card-chat{display:flex;gap:.85rem;align-items:center;padding:.8rem 1rem;max-width:360px;align-self:center;margin-bottom:.25rem}
+.listing-thumb-chat{width:44px;height:44px;border-radius:var(--a2s-radius-btn);background:var(--a2s-blue-soft);color:var(--a2s-blue);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.listing-thumb-chat .ic{width:22px;height:22px}
+.listing-chat-title{font-weight:700;font-size:.9rem;color:var(--a2s-navy);line-height:1.25}
+.listing-chat-price{font-size:.8rem;color:var(--a2s-text-muted);margin:.1rem 0 .2rem}
+/* Input area */
+.chat-input-wrap{padding:.85rem 1.25rem;border-top:1px solid var(--a2s-border);background:var(--a2s-surface);flex-shrink:0}
+.quick-replies{display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap}
+.input-row{display:flex;gap:.6rem;align-items:flex-end}
+.input-row .input-group{flex:1}
+.msg-textarea{resize:none;min-height:46px;height:46px;max-height:140px;line-height:1.5}
+/* Empty state */
+.chat-empty{flex:1;display:flex;align-items:center;justify-content:center}
+.side-empty{padding:2rem 1.25rem}
+@media(max-width:768px){
+  .msg-layout{grid-template-columns:1fr;height:auto;min-height:0;overflow:visible}
+  .msg-sidebar{max-height:280px;border-right:none;border-bottom:1px solid var(--a2s-border)}
+  .msg-layout.has-active .msg-sidebar{display:none}
+  .chat-area{min-height:70vh}
+  .chat-header-actions .btn-sm span{display:none}
+  .msg-group{max-width:88%}
+  .quick-replies{display:none}
+  .back-btn{display:inline-flex}
+}
+.back-btn{display:none}
+</style>
+</head>
+<body>
+
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="dashboard.html">My account</a><i data-icon="chevron-right"></i><span aria-current="page">Messages</span></nav>
+    <h1>Messages</h1>
+    <p>Chat with buyers and sellers about the listings you're interested in.</p>
+  </div>
+</div>
+
+<section class="section-sm">
+  <div class="container">
+    <div class="card msg-layout" id="msgLayout">
+
+      <div class="msg-sidebar">
+        <div class="sidebar-header">
+          <div class="input-group has-icon"><i data-icon="search"></i><input type="search" class="inp" id="searchConv" placeholder="Search a conversation" aria-label="Search a conversation" oninput="filterConvs(this.value)"></div>
+        </div>
+        <div class="conv-list" id="convList"></div>
+      </div>
+
+      <div class="chat-area" id="chatArea">
+        <div class="chat-empty">
+          <div class="empty-state">
+            <span class="icon-box"><i data-icon="message"></i></span>
+            <div class="empty-title" id="emptyTitle">Select a conversation</div>
+            <p class="empty-sub" id="emptySub">Choose a conversation from the list to read messages and reply.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+<div id="a2sFooter"></div>
+
+<script src="/icons.js?v=20260909a"></script>
+<script src="/pseudo-gate.js?v=20260908"></script>
+<script>
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function initials(s){if(!s)return'?';var base=String(s).split('@')[0].replace(/[._-]+/g,' ').trim();var parts=base.split(/\s+/).filter(Boolean);var ini=parts.slice(0,2).map(function(w){return w[0];}).join('');return (ini||base[0]||'?').toUpperCase();}
+function displayName(email){if(!email)return'Member';var base=String(email).split('@')[0].replace(/[._-]+/g,' ').trim();return base?base.charAt(0).toUpperCase()+base.slice(1):email;}
+
+/* ── DATA ── */
+var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
+var ME=localStorage.getItem('a2s_user_email')||'';
+var ME_NAME=localStorage.getItem('a2s_user_name')||'Me';
+/* Token re-read on every request, with renewal: previously read once at
+   load, it expired after an hour and the inbox emptied out with no error
+   message (RLS returns nothing to the public key). */
+function tokenActuel(){ try{ return sessionStorage.getItem('a2s_auth_token'); }catch(e){ return null; } }
+function tokenExpire(tk){
+  try{ var p=JSON.parse(atob(tk.split('.')[1])); return !p.exp||(p.exp*1000)<(Date.now()+60000); }
+  catch(e){ return true; }
+}
+async function authToken(){
+  var tk=tokenActuel();
+  if(tk&&!tokenExpire(tk))return tk;
+  var rt=null; try{ rt=localStorage.getItem('a2s_refresh_token'); }catch(e){}
+  if(rt){
+    try{
+      var r=await fetch(SB+'/auth/v1/token?grant_type=refresh_token',{
+        method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},
+        body:JSON.stringify({refresh_token:rt})});
+      if(r.ok){
+        var d=await r.json();
+        if(d.access_token){
+          try{ sessionStorage.setItem('a2s_auth_token',d.access_token);
+               if(d.refresh_token)localStorage.setItem('a2s_refresh_token',d.refresh_token); }catch(e){}
+          return d.access_token;
+        }
+      }
+    }catch(e){}
+  }
+  return tk||SK;
+}
+var CONVS=[];
+var activeConv=null;
+var pollTimer=null;
+
+async function sbGet(path,params){
+  try{var tk=await authToken();var url=SB+'/rest/v1/'+path+(params?'?'+params:'');var r=await fetch(url,{headers:{'apikey':SK,'Authorization':'Bearer '+tk}});return r.ok?await r.json():[];}catch(e){return[];}
+}
+async function sbPost(path,body){
+  try{var tk=await authToken();var r=await fetch(SB+'/rest/v1/'+path,{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)});return r.ok?true:null;}catch(e){return null;}
+}
+
+function formatTime(iso){
+  if(!iso)return'';var d=new Date(iso);var now=new Date();
+  if(d.toDateString()===now.toDateString())return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit'});
+}
+
+async function loadConversations(){
+  if(!ME){renderConvList();return;}
+  var threads=await sbGet('messages','select=thread_id,listing_id,sender_email,receiver_email,content,created_at,read&or=(sender_email.eq.'+encodeURIComponent(ME)+',receiver_email.eq.'+encodeURIComponent(ME)+')&order=created_at.desc&limit=200');
+  var threadMap={};
+  threads.forEach(function(m){
+    var tid=m.thread_id||(m.listing_id+'-'+[m.sender_email,m.receiver_email].sort().join('-'));
+    if(!threadMap[tid]){var other=m.sender_email===ME?m.receiver_email:m.sender_email;threadMap[tid]={id:tid,listingId:m.listing_id,name:other,aircraft:m.listing_id?('Listing #'+m.listing_id):'Direct message',price:'',time:'',messages:[],unread:0};}
+    threadMap[tid].messages.push({from:m.sender_email===ME?'me':'them',text:m.content,time:formatTime(m.created_at),read:m.read,_raw_time:m.created_at});
+    if(m.sender_email!==ME&&!m.read)threadMap[tid].unread++;
+    threadMap[tid].time=m.created_at;
+  });
+  Object.values(threadMap).forEach(function(t){t.messages.reverse();});
+  var listingIds=[...new Set(Object.values(threadMap).map(function(t){return t.listingId;}))].filter(Boolean);
+  if(listingIds.length){
+    var listings=await sbGet('listings','id=in.('+listingIds.join(',')+')'+'&select=id,make,model,year,price,currency');
+    listings.forEach(function(l){Object.values(threadMap).forEach(function(t){if(String(t.listingId)===String(l.id)){t.aircraft=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Aircraft';var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',AED:'AED '}[l.currency||'EUR']||'€';t.price=l.price?Number(l.price).toLocaleString('en-GB')+' '+sym:'';}});});
+  }
+  CONVS=Object.values(threadMap).sort(function(a,b){return b.time>a.time?1:-1;});
+  try{
+    var raw=sessionStorage.getItem('a2s_open_conv');
+    if(raw){var c=JSON.parse(raw);sessionStorage.removeItem('a2s_open_conv');var existing=CONVS.find(function(x){return x.listingId===c.listingId&&x.name===c.sellerEmail;});if(!existing){var nt={id:c.listingId+'-'+[ME,c.sellerEmail||''].sort().join('-'),listingId:c.listingId,name:c.sellerEmail||'Seller',aircraft:c.aircraft||'Aircraft',price:c.price||'',time:'',messages:[],unread:0};CONVS.unshift(nt);renderConvList();openConv(nt.id);return;}renderConvList();openConv(existing.id);return;}
+  }catch(e){}
+  renderConvList();
+  if(CONVS.length&&window.innerWidth>768)openConv(CONVS[0].id);
+}
+
+async function pollMessages(){
+  if(!activeConv)return;
+  var conv=CONVS.find(function(c){return c.id===activeConv;});
+  if(!conv)return;
+  var msgs=conv.messages.filter(function(m){return m._raw_time;});
+  var lastTime=msgs.length?msgs[msgs.length-1]._raw_time:'1970-01-01T00:00:00Z';
+  var newMsgs=await sbGet('messages','thread_id=eq.'+encodeURIComponent(conv.id)+'&created_at=gt.'+encodeURIComponent(lastTime)+'&order=created_at.asc');
+  if(newMsgs.length){
+    var wrap=document.getElementById('msgsWrap');
+    newMsgs.forEach(function(m){
+      if(m.sender_email===ME)return;
+      var div=document.createElement('div');div.className='msg-group theirs';
+      div.innerHTML='<div class="msg-bubble">'+esc(m.content)+'</div><div class="msg-meta"><span>'+formatTime(m.created_at)+'</span></div>';
+      if(wrap)wrap.appendChild(div);
+      conv.messages.push({from:'them',text:m.content,time:formatTime(m.created_at),_raw_time:m.created_at});
+    });
+    scrollToBottom();
+  }
+}
+
+/* ── CONVERSATION LIST ── */
+function renderConvList(filter){
+  var list=document.getElementById('convList');
+  var items=filter?CONVS.filter(function(c){
+    return c.name.toLowerCase().includes(filter.toLowerCase())||c.aircraft.toLowerCase().includes(filter.toLowerCase());
+  }):CONVS;
+
+  if(!items.length){
+    if(!ME){
+      list.innerHTML='<div class="empty-state side-empty"><span class="icon-box">'+A2SIcon('lock')+'</span><div class="empty-title" style="font-size:1.05rem">Log in</div><p class="empty-sub">Your conversations are linked to your account.</p><a class="btn-primary btn-sm" href="login.html?redirect=messages.html" style="margin-top:.4rem">Log in</a></div>';
+    }else if(filter){
+      list.innerHTML='<div class="empty-state side-empty"><span class="icon-box">'+A2SIcon('search')+'</span><div class="empty-title" style="font-size:1.05rem">No results</div><p class="empty-sub">No conversation matches "'+esc(filter)+'".</p></div>';
+    }else{
+      list.innerHTML='<div class="empty-state side-empty"><span class="icon-box">'+A2SIcon('message')+'</span><div class="empty-title" style="font-size:1.05rem">No messages</div><p class="empty-sub">Contact a seller from a listing to start a conversation.</p><a class="btn-secondary btn-sm" href="search.html" style="margin-top:.4rem">View listings</a></div>';
+      var et=document.getElementById('emptyTitle'),es=document.getElementById('emptySub');
+      if(et)et.textContent='No conversations';
+      if(es)es.textContent='Contact a seller from a listing to start a conversation.';
+    }
+    return;
+  }
+
+  list.innerHTML=items.map(function(c){
+    var last=c.messages[c.messages.length-1];
+    return '<button type="button" class="conv-item'+(activeConv===c.id?' active':'')+(c.unread>0?' unread':'')+'" onclick="openConv(\''+esc(c.id)+'\')">'
+      +'<div class="conv-avatar">'+esc(initials(c.name))+'</div>'
+      +'<div class="conv-info">'
+      +'<div class="conv-top"><span class="conv-name">'+esc(displayName(c.name))+'</span><span class="conv-time">'+esc(formatTime(c.time))+'</span></div>'
+      +'<div class="conv-aircraft">'+A2SIcon('plane')+esc(c.aircraft)+'</div>'
+      +'<div class="conv-preview">'+(last?esc(last.text):'New conversation')+'</div>'
+      +'</div>'
+      +(c.unread>0?'<span class="unread-badge" aria-label="'+c.unread+' unread">'+c.unread+'</span>':'')
+      +'</button>';
+  }).join('');
+}
+
+function filterConvs(v){renderConvList(v);}
+
+/* ── OPEN A CONVERSATION ── */
+function openConv(id){
+  activeConv=id;
+  var c=CONVS.find(function(x){return x.id===id;});
+  if(!c)return;
+  c.unread=0;
+  markConvAsRead(c);
+  renderConvList(document.getElementById('searchConv')?document.getElementById('searchConv').value:'');
+  var layout=document.getElementById('msgLayout');if(layout)layout.classList.add('has-active');
+
+  var area=document.getElementById('chatArea');
+  area.innerHTML=
+    '<div class="chat-header">'
+    +'<button type="button" class="btn-ghost btn-icon btn-sm back-btn" onclick="closeConv()" aria-label="Back to conversations">'+A2SIcon('arrow-left')+'</button>'
+    +'<div class="chat-header-avatar">'+esc(initials(c.name))+'</div>'
+    +'<div class="chat-header-info">'
+    +'<div class="chat-header-name">'+esc(displayName(c.name))+'<span class="badge-verified">Verified</span></div>'
+    +'<div class="chat-header-sub">'+esc(c.aircraft)+(c.price?' · '+esc(c.price):'')+'</div>'
+    +'</div>'
+    +'<div class="chat-header-actions">'
+    +'<a href="listing.html?id='+encodeURIComponent(c.listingId)+'" class="btn-secondary btn-sm">'+A2SIcon('external')+'<span>View listing</span></a>'
+    +'<button type="button" class="btn-ghost btn-sm" onclick="showToast(\'Report sent to our team\')">'+A2SIcon('alert-triangle')+'<span>Report</span></button>'
+    +'</div>'
+    +'</div>'
+    +'<div class="messages-wrap" id="msgsWrap">'
+    +'<div class="card listing-card-chat"><div class="listing-thumb-chat">'+A2SIcon('plane')+'</div><div><div class="listing-chat-title">'+esc(c.aircraft)+'</div>'+(c.price?'<div class="listing-chat-price">'+esc(c.price)+'</div>':'')+'<a href="listing.html?id='+encodeURIComponent(c.listingId)+'" class="btn-link">View listing '+A2SIcon('arrow-right')+'</a></div></div>'
+    +(c.messages.length?'':'<div class="date-sep"><span>Start of conversation</span></div>')
+    +c.messages.map(function(m){
+      return '<div class="msg-group '+(m.from==='me'?'mine':'theirs')+'">'
+        +'<div class="msg-bubble">'+esc(m.text)+'</div>'
+        +'<div class="msg-meta"><span>'+esc(m.time)+'</span>'+(m.from==='me'?'<span class="msg-read'+(m.read?' seen':'')+'" title="'+(m.read?'Read':'Sent')+'">'+A2SIcon(m.read?'check-circle':'check')+'</span>':'')+'</div>'
+        +'</div>';
+    }).join('')
+    +'</div>'
+    +'<div class="chat-input-wrap">'
+    +'<div class="quick-replies">'
+    +'<button type="button" class="pill" onclick="setQuick(this)">Hi, is it still available?</button>'
+    +'<button type="button" class="pill" onclick="setQuick(this)">What is your best price?</button>'
+    +'<button type="button" class="pill" onclick="setQuick(this)">Could I arrange a viewing?</button>'
+    +'</div>'
+    +'<div class="input-row">'
+    +'<div class="input-group"><textarea class="txta msg-textarea" id="msgInput" placeholder="Write your message…" aria-label="Your message" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea></div>'
+    +'<button type="button" class="btn-primary btn-icon" onclick="sendMsg()" aria-label="Send">'+A2SIcon('send')+'</button>'
+    +'</div>'
+    +'<div class="field-hint" style="margin-top:.4rem">Press Enter to send, Shift + Enter for a new line.</div>'
+    +'</div>';
+
+  scrollToBottom();
+  var inp=document.getElementById('msgInput');if(inp&&window.innerWidth>768)inp.focus();
+}
+function closeConv(){
+  activeConv=null;
+  var layout=document.getElementById('msgLayout');if(layout)layout.classList.remove('has-active');
+  document.getElementById('chatArea').innerHTML='<div class="chat-empty"><div class="empty-state"><span class="icon-box">'+A2SIcon('message')+'</span><div class="empty-title" id="emptyTitle">Select a conversation</div><p class="empty-sub" id="emptySub">Choose a conversation from the list to read messages and reply.</p></div></div>';
+  renderConvList(document.getElementById('searchConv')?document.getElementById('searchConv').value:'');
+}
+
+/* ── Marking as read ──
+   Until now 'unread=0' only existed in memory (never written to the
+   database): the unread-message badge in the global nav stayed stuck even
+   after reading. We now genuinely set 'read=true' in Supabase for every
+   unread received message in this conversation. */
+async function markConvAsRead(conv){
+  if(!conv||!conv.id)return;
+  try{
+    var tk=await authToken();
+    await fetch(SB+'/rest/v1/messages?thread_id=eq.'+encodeURIComponent(conv.id)+'&receiver_email=eq.'+encodeURIComponent(ME)+'&read=eq.false',{
+      method:'PATCH',
+      headers:{'apikey':SK,'Authorization':'Bearer '+tk,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({read:true})
+    });
+  }catch(e){ /* silent failure: the badge will fix itself on the next poll */ }
+  document.dispatchEvent(new CustomEvent('a2s:message-sent'));
+  if(window.a2sRefreshUnread) window.a2sRefreshUnread();
+}
+
+/* ── SENDING ── */
+async function sendMsg(){
+  var inp=document.getElementById('msgInput');
+  if(!inp)return;
+  var text=inp.value.trim();
+  if(!text)return;
+  var conv=CONVS.find(function(c){return c.id===activeConv;});
+  if(!conv)return;
+
+  /* Immediate display */
+  var wrap=document.getElementById('msgsWrap');
+  var now=new Date();
+  var time=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  var div=document.createElement('div');
+  div.className='msg-group mine';
+  div.innerHTML='<div class="msg-bubble">'+esc(text)+'</div><div class="msg-meta"><span>'+time+'</span><span class="msg-read" title="Sending">'+A2SIcon('clock')+'</span></div>';
+  if(wrap)wrap.appendChild(div);
+  inp.value='';inp.style.height='46px';
+  scrollToBottom();
+
+  /* Supabase send */
+  var msgRow={
+    thread_id:conv.id,
+    listing_id:conv.listingId||null,
+    sender_email:ME||'anonymous',
+    receiver_email:conv.name,
+    content:text,
+    read:false
+  };
+  /* Sent with return=minimal: the `messages` RLS policy allows the insert
+     but NOT re-reading the inserted row. With Prefer: return=representation
+     (sbPost's default), PostgREST cancels the whole transaction and
+     returns 401 — the message was lost with no indication to the user
+     other than "offline". */
+  var result = null;
+  try {
+    var resp = await fetch(SB + '/rest/v1/messages', {
+      method: 'POST',
+      headers: {
+        'apikey': SK, 'Authorization': 'Bearer ' + (await authToken()),
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(msgRow)
+    });
+    if (resp.ok) result = true;
+    else console.error('[messages] send refused:', resp.status, await resp.text());
+  } catch (e) {
+    console.error('[messages] send failed:', e.message);
+  }
+  /* Notify the recipient by email: without this, they only find out about
+     the message by opening the inbox, which they won't do if they don't
+     know one is waiting. Silent failure: the message is already saved. */
+  if (result) {
+    fetch('/api/notify?type=message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderEmail: msgRow.sender_email,
+        senderName: ME_NAME || msgRow.sender_email,
+        receiverEmail: msgRow.receiver_email,
+        content: msgRow.content,
+        listingId: msgRow.listing_id
+      })
+    }).catch(function () {});
+  }
+  var meta=div.querySelector('.msg-read');
+  if(result){
+    var rawTime=now.toISOString();
+    conv.messages.push({from:'me',text:text,time:time,read:false,_raw_time:rawTime});
+    if(meta){meta.innerHTML=A2SIcon('check');meta.title='Sent';}
+    showToast('Message sent');
+  }else{
+    conv.messages.push({from:'me',text:text,time:time,read:false});
+    if(meta){meta.innerHTML=A2SIcon('alert-triangle');meta.title='Not synced';}
+    showToast('Message saved offline');
+  }
+  renderConvList(document.getElementById('searchConv')?document.getElementById('searchConv').value:'');
+}
+
+function setQuick(btn){var i=document.getElementById('msgInput');if(i){i.value=btn.textContent;i.focus();autoResize(i);}}
+function autoResize(el){el.style.height='46px';el.style.height=Math.min(el.scrollHeight,140)+'px';}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}
+function scrollToBottom(){var w=document.getElementById('msgsWrap');if(w)setTimeout(function(){w.scrollTop=w.scrollHeight;},50);}
+
+/* ── TOAST ── */
+var _toastT;
+function showToast(msg){
+  var el=document.getElementById('toast');
+  if(!el)return;
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT=setTimeout(function(){el.classList.remove('show');},3000);
+}
+
+/* ── STARTUP ── */
+loadConversations();
+pollTimer=setInterval(pollMessages,15000);
+</script>
+<script src="/rgpd-consent.js" defer></script>
+<script src="/nav.js?v=20261002a"></script>
+<script src="/footer.js?v=20260923a"></script>
+</body>
+</html>

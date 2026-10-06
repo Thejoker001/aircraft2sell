@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/confirm-handler.js"></script>
+<script src="/lang-redirect.js"></script>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Interactive map of aircraft for sale in Europe. Find aircraft, jets, helicopters and ULMs near you, by airfield.">
+<meta property="og:title" content="Map of aircraft for sale in Europe | Aircraft2Sell">
+<meta property="og:description" content="View aircraft for sale across Europe on an interactive map by airfield.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://aircraft2sell.eu/en/map.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=2">
+<link rel="canonical" href="https://aircraft2sell.eu/en/map.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/map.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/map.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/map.html">
+<title>Map of aircraft for sale in Europe | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://aircraft2sell.eu/en/index.html"},{"@type":"ListItem","position":2,"name":"Listings map","item":"https://aircraft2sell.eu/en/map.html"}],"@context":"https://schema.org"}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://hlivysnlzlqdjcigqgvk.supabase.co">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="/styles.css?v=20261002a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a">
+<style>
+/* ── Compact header: category pills + counter ── */
+.map-toolbar{background:var(--a2s-surface);border-bottom:1px solid var(--a2s-border);padding:.85rem 0}
+.map-toolbar .container{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.map-filters{display:flex;gap:.45rem;flex-wrap:wrap}
+.map-count{margin-left:auto;display:inline-flex;align-items:center;gap:.4rem;font-size:.84rem;font-weight:600;color:var(--a2s-text-muted);white-space:nowrap}
+.map-count .ic{width:16px;height:16px}
+
+/* ── Full-width map ── */
+.map-wrap{position:relative;background:var(--a2s-surface-2)}
+#map{height:calc(100vh - var(--nav-h) - 210px);min-height:420px;background:var(--a2s-surface-2)}
+.map-legend{position:absolute;left:1rem;bottom:1rem;z-index:400;display:flex;flex-direction:column;gap:.35rem;padding:.7rem .9rem;background:var(--a2s-surface);border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-btn);box-shadow:var(--a2s-shadow);font-size:.76rem;color:var(--a2s-text-muted)}
+.map-legend span{display:inline-flex;align-items:center;gap:.5rem}
+.map-legend .dot{width:14px;height:14px;border-radius:50%;background:var(--a2s-navy);border:2px solid #fff;box-shadow:0 0 0 1px var(--a2s-border-2)}
+.map-legend .dot.multi{background:var(--a2s-accent)}
+.map-empty{position:absolute;inset:0;z-index:401;display:none;align-items:center;justify-content:center;background:rgba(245,247,250,.92);padding:1.5rem}
+.map-empty.show{display:flex}
+.map-empty .empty-state{background:var(--a2s-surface);border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);box-shadow:var(--a2s-shadow);max-width:460px}
+
+/* ── Leaflet markers and popups ── */
+.leaflet-container{font-family:var(--font-body);background:var(--a2s-surface-2)}
+.a2s-marker{width:100%;height:100%;border-radius:50%;background:var(--a2s-navy);color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(11,37,69,.35);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;cursor:pointer;transition:transform .15s}
+.a2s-marker.multi{background:var(--a2s-accent)}
+.a2s-marker .ic{width:14px;height:14px;stroke-width:2}
+.a2s-marker:hover{transform:scale(1.12)}
+.leaflet-popup-content-wrapper{border-radius:var(--a2s-radius-card);box-shadow:var(--a2s-shadow-lg);padding:0}
+.leaflet-popup-content{margin:0;width:auto !important;min-width:220px}
+.leaflet-popup-tip{box-shadow:none}
+.a2s-popup{padding:.9rem 1rem}
+.a2s-popup + .a2s-popup{border-top:1px solid var(--a2s-border)}
+.a2s-popup .title{font-family:var(--font-display);font-weight:700;font-size:.9rem;color:var(--a2s-navy);line-height:1.3;margin-bottom:.25rem}
+.a2s-popup .price{font-family:var(--font-display);font-weight:800;font-size:1.05rem;color:var(--a2s-navy);margin-bottom:.2rem}
+.a2s-popup .meta{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;color:var(--a2s-text-muted);margin-bottom:.6rem}
+.a2s-popup .meta .ic{width:13px;height:13px}
+.a2s-popup .btn-navy{width:100%;min-height:38px;font-size:.82rem}
+.a2s-popup-more{padding:.6rem 1rem;border-top:1px solid var(--a2s-border);background:var(--a2s-bg);text-align:center;font-size:.78rem}
+.a2s-popup-more a{color:var(--a2s-blue);font-weight:700;display:inline-flex;align-items:center;gap:.3rem}
+.a2s-popup-more .ic{width:14px;height:14px}
+
+/* ── Help below the map ── */
+.map-help{display:flex;align-items:flex-start;gap:.75rem;font-size:.84rem;color:var(--a2s-text-muted)}
+.map-help .ic{width:18px;height:18px;flex-shrink:0;margin-top:.15rem;color:var(--a2s-blue)}
+.map-help a{color:var(--a2s-blue);font-weight:700}
+
+@media(max-width:768px){
+  #map{height:calc(100vh - var(--nav-h) - 240px);min-height:360px}
+  .map-count{margin-left:0;width:100%}
+  .map-legend{display:none}
+}
+</style>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><span aria-current="page">Listings map</span></nav>
+    <h1>Listings map</h1>
+    <p>Find aircraft for sale near you, grouped by airfield.</p>
+  </div>
+</div>
+
+<div class="map-toolbar">
+  <div class="container">
+    <div class="pills map-filters" id="mapFilters" role="group" aria-label="Filter by category">
+      <button type="button" class="pill active" data-cat="" aria-pressed="true" onclick="filterMap(this,'')"><i data-icon="search"></i>All</button>
+      <button type="button" class="pill" data-cat="light" aria-pressed="false" onclick="filterMap(this,'light')"><i data-icon="plane-light"></i>Light aircraft</button>
+      <button type="button" class="pill" data-cat="jet" aria-pressed="false" onclick="filterMap(this,'jet')"><i data-icon="jet"></i>Jets</button>
+      <button type="button" class="pill" data-cat="turbo" aria-pressed="false" onclick="filterMap(this,'turbo')"><i data-icon="turboprop"></i>Turboprops</button>
+      <button type="button" class="pill" data-cat="heli" aria-pressed="false" onclick="filterMap(this,'heli')"><i data-icon="helicopter"></i>Helicopters</button>
+      <button type="button" class="pill" data-cat="ulm" aria-pressed="false" onclick="filterMap(this,'ulm')"><i data-icon="ulm"></i>ULM</button>
+      <button type="button" class="pill" data-cat="airliner" aria-pressed="false" onclick="filterMap(this,'airliner')"><i data-icon="airliner"></i>Airliners</button>
+    </div>
+    <div class="map-count" id="mapCount" aria-live="polite"><i data-icon="map-pin"></i>Loading…</div>
+  </div>
+</div>
+
+<div class="map-wrap">
+  <div id="map" role="region" aria-label="Interactive map of listings"></div>
+  <div class="map-legend" aria-hidden="true">
+    <span><i class="dot"></i>One aircraft</span>
+    <span><i class="dot multi"></i>Several aircraft (number shown)</span>
+  </div>
+  <div class="map-empty" id="mapEmpty">
+    <div class="empty-state">
+      <span class="icon-box"><i data-icon="map"></i></span>
+      <div class="empty-title">No listings located</div>
+      <p class="empty-sub" id="mapEmptySub">No listing in this category is currently linked to a known airfield.</p>
+      <div class="btn-group" style="justify-content:center">
+        <a href="search.html" class="btn-primary"><i data-icon="search"></i>View all listings</a>
+        <a href="alerts.html" class="btn-secondary"><i data-icon="bell"></i>Create an alert</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="section-sm">
+  <div class="container">
+    <div class="map-help">
+      <i data-icon="info"></i>
+      <p>Only listings linked to a known ICAO code appear on the map. For search by price, year or equipment, use the <a href="search.html">advanced search</a>.</p>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/airports-data.js?v=20260928a"></script>
+<script src="/icons.js?v=20260909a"></script>
+<script>
+var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
+
+// Airfield coordinates: see airports-data.js (A2S_AIRPORTS, shared with
+// search.html to avoid two diverging tables).
+var AIRPORTS=A2S_AIRPORTS;
+
+var map=L.map('map',{center:[47,6],zoom:5,zoomControl:true,scrollWheelZoom:false});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap',maxZoom:18}).addTo(map);
+map.on('focus',function(){map.scrollWheelZoom.enable();});
+map.on('blur',function(){map.scrollWheelZoom.disable();});
+
+var _allListings=[],_markers=[],_markerLayer=L.layerGroup().addTo(map);
+var sym={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',AED:'AED '};
+var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
+var CAT_LABEL={light:'light aircraft',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ULM',airliner:'airliner'};
+
+function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+
+async function loadMarkers(){
+  try{
+    var r=await fetch(SB+'/rest/v1/listings?status=eq.live&order=submitted_at.desc&limit=200&select=id,make,model,year,price,currency,category,airport',{headers:{'apikey':SK}});
+    _allListings=r.ok?await r.json():[];
+  }catch(e){_allListings=[];}
+  renderMarkers('');
+}
+
+function renderMarkers(cat){
+  _markerLayer.clearLayers();
+  var filtered=cat?_allListings.filter(function(l){return l.category===cat;}):_allListings;
+  var placed=0;
+  // Group by airport
+  var byAirport={};
+  filtered.forEach(function(l){
+    if(!l.airport)return;
+    var code=l.airport.toUpperCase().trim();
+    if(!byAirport[code])byAirport[code]=[];
+    byAirport[code].push(l);
+  });
+  Object.keys(byAirport).forEach(function(code){
+    var ap=AIRPORTS[code];
+    if(!ap)return; // unknown ICAO code: not placed
+    var listings=byAirport[code];
+    var count=listings.length;
+    var inner=count>1?String(count):A2SIcon(CAT_ICON[listings[0].category]||'plane');
+    var icon=L.divIcon({
+      html:'<div class="a2s-marker'+(count>1?' multi':'')+'" title="'+esc(ap.name)+'">'+inner+'</div>',
+      className:'',iconSize:[count>1?32:26,count>1?32:26],iconAnchor:[count>1?16:13,count>1?16:13]
+    });
+    var popupHtml=listings.slice(0,3).map(function(l){
+      var title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Aircraft';
+      var price=l.price?Number(l.price).toLocaleString('en-GB')+' '+(sym[l.currency||'EUR']||'€'):'Price on request';
+      return'<div class="a2s-popup"><div class="title">'+esc(title)+'</div><div class="price">'+price+'</div><div class="meta">'+A2SIcon('map-pin')+esc(ap.name)+' · '+esc(code)+'</div><a class="btn-navy" href="listing.html?id='+encodeURIComponent(l.id)+'">View listing'+A2SIcon('arrow-right')+'</a></div>';
+    }).join('');
+    if(listings.length>3)popupHtml+='<div class="a2s-popup-more"><a href="search.html?q='+encodeURIComponent(code)+'">'+(listings.length-3)+' more at '+esc(ap.name)+A2SIcon('chevron-right')+'</a></div>';
+    L.marker([ap.lat,ap.lng],{icon:icon,title:ap.name}).bindPopup(popupHtml,{maxWidth:260,minWidth:220}).addTo(_markerLayer);
+    placed++;
+  });
+  var countEl=document.getElementById('mapCount');
+  if(countEl)countEl.innerHTML=A2SIcon('map-pin')+filtered.length+' listing'+(filtered.length>1?'s':'')+' · '+placed+' airfield'+(placed>1?'s':'');
+  var empty=document.getElementById('mapEmpty');
+  if(empty){
+    var sub=document.getElementById('mapEmptySub');
+    if(sub)sub.textContent=_allListings.length===0
+      ?'The first listings are arriving. Create an alert to be notified as soon as they are published.'
+      :(cat?'No '+(CAT_LABEL[cat]||cat)+' listing is currently linked to a known airfield.':'No listing is currently linked to a known airfield.');
+    empty.classList.toggle('show',placed===0);
+  }
+}
+
+function filterMap(btn,cat){
+  document.querySelectorAll('#mapFilters .pill').forEach(function(b){b.classList.remove('active');b.setAttribute('aria-pressed','false');});
+  btn.classList.add('active');btn.setAttribute('aria-pressed','true');
+  renderMarkers(cat);
+}
+
+loadMarkers();
+</script>
+<script src="/rgpd-consent.js" defer></script>
+<script src="/analytics.js" defer></script>
+<script src="/nav.js?v=20261002a"></script>
+<script src="/footer.js?v=20260923a"></script>
+</body>
+</html>
