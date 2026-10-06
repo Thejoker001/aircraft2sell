@@ -4,17 +4,23 @@
  * serverless par déploiement).
  *
  *   GET|POST /api/cron-jobs?job=alerts   → alertes email acheteurs
+ *                                           + baisses de prix (favoris)
+ *                                           + traduction description_en
+ *                                           (rattrapage, lot de 40/jour)
  *   GET|POST /api/cron-jobs?job=expire   → expiration annonces 90 jours
  *                                           + chaque lundi (UTC), tirage
  *                                           de la nouvelle « Annonce de la
  *                                           semaine » (vendeur PRO uniquement)
  *   GET|POST /api/cron-jobs?job=weekly-pick → déclenchement manuel du tirage
+ *   GET|POST /api/cron-jobs?job=translate   → déclenchement manuel de la
+ *                                              traduction (un seul lot)
  *
  * Protection : header « x-cron-secret » = CRON_SECRET, ou invocation du
  * cron Vercel (header x-vercel-cron: 1).
  *
  * Variables Vercel requises : CRON_SECRET, SUPABASE_URL,
- * SUPABASE_SERVICE_ROLE_KEY, BREVO_API_KEY (optionnel BREVO_FROM).
+ * SUPABASE_SERVICE_ROLE_KEY, BREVO_API_KEY (optionnel BREVO_FROM),
+ * GROQ_API_KEY (traduction description_en — échec silencieux si absente).
  */
 'use strict';
 
@@ -418,6 +424,79 @@ async function jobWeeklyPick() {
   return { picked: choisie.id, pool_size: pool.length };
 }
 
+/* ── JOB translate : description_en manquante (rattrapage + nouvelles
+   modifications) ── Traduit via Groq (même fournisseur que l'assistant
+   conversationnel, api/chat.js — aucune nouvelle clé/coût). Greffé sur le
+   cron quotidien "alerts" (08h00 UTC), même stratégie que weekly-pick sur
+   "expire" : limite Hobby Vercel = 2 entrées cron max dans vercel.json.
+   Ne traite PAS les annonces approuvées (celles-ci sont déjà traduites à
+   l'approbation, cf. api/notify.js moderated()) — ce job est un filet de
+   sécurité pour : le rattrapage ponctuel des annonces déjà live avant la
+   mise en place de cette fonctionnalité, et les annonces dont la
+   description a été modifiée après publication (dashboard.html vide
+   description_en à l'édition pour forcer une retraduction ici). */
+async function traduireEnAnglais(texte) {
+  const t = String(texte || '').trim();
+  if (!t) return null;
+  const cle = process.env.GROQ_API_KEY;
+  if (!cle) return null;
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'qwen/qwen3.8-27b',
+        messages: [
+          {
+            role: 'system',
+            content: 'You translate French aircraft-listing descriptions into English for a ' +
+              'European aviation marketplace. Keep technical terms, model names, units, numbers ' +
+              'and line breaks exactly as in the source. Output ONLY the translated text, no ' +
+              'preamble, no quotes, no explanation. If the text is already in English, return it ' +
+              'unchanged.',
+          },
+          { role: 'user', content: t.slice(0, 4000) },
+        ],
+        max_tokens: 1200,
+        temperature: 0.2,
+      }),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const traduit = data?.choices?.[0]?.message?.content?.trim();
+    return traduit || null;
+  } catch {
+    return null;
+  }
+}
+
+async function jobTranslate() {
+  /* Limite de lot par passage (cron quotidien) : évite de dépasser le quota
+     Groq gratuit (14 400 req/jour partagées avec l'assistant) et le
+     maxDuration=60s de cette fonction sur un rattrapage massif ponctuel —
+     le reste sera traité aux passages suivants (idempotent : la requête ne
+     prend que description_en.is.null, jamais retraité une fois réussi). */
+  const BATCH_LIMIT = 40;
+  const annonces = await sbGet(
+    `listings?select=id,description&status=eq.live&description_en=is.null&description=not.is.null&order=submitted_at.asc&limit=${BATCH_LIMIT}`
+  );
+
+  let translated = 0;
+  let failed = 0;
+  for (const l of annonces) {
+    try {
+      const traduit = await traduireEnAnglais(l.description);
+      if (!traduit) { failed += 1; continue; }
+      await sbPatch(`listings?id=eq.${encodeURIComponent(l.id)}`, { description_en: traduit });
+      translated += 1;
+    } catch (e) {
+      console.error(`Traduction ${l.id} : ${e.message}`);
+      failed += 1;
+    }
+  }
+  return { checked: annonces.length, translated, failed };
+}
+
 /* ── Handler principal ── */
 module.exports = async function handler(req, res) {
   const cronSecretOk = req.headers['x-cron-secret'] === process.env.CRON_SECRET;
@@ -456,9 +535,15 @@ module.exports = async function handler(req, res) {
          jour et retire toujours la marque weekly_pick précédente. */
       return res.status(200).json(await jobWeeklyPick());
     }
+    if (job === 'translate') {
+      /* Déclenchement manuel (admin ou test) : un seul lot immédiat, sans
+         attendre le cron quotidien 08h00 UTC. Utile pour le rattrapage
+         initial des annonces déjà live. */
+      return res.status(200).json(await jobTranslate());
+    }
     /* défaut : alerts. Le job quotidien 08h00 UTC (vercel.json) déclenche
-       aussi price-drop dans la même invocation — on reste à 2 entrées
-       cron dans vercel.json (limite Hobby : 2 crons distincts max). */
+       aussi price-drop ET translate dans la même invocation — on reste à 2
+       entrées cron dans vercel.json (limite Hobby : 2 crons distincts max). */
     const resultatsAlerts = await jobAlerts();
     let resultatsPriceDrop = { drops_found: 0, emails_sent: 0 };
     try {
@@ -466,7 +551,13 @@ module.exports = async function handler(req, res) {
     } catch (e) {
       console.error(`price-drop (appelé depuis alerts) : ${e.message}`);
     }
-    return res.status(200).json({ alerts: resultatsAlerts, price_drop: resultatsPriceDrop });
+    let resultatsTranslate = { checked: 0, translated: 0, failed: 0 };
+    try {
+      resultatsTranslate = await jobTranslate();
+    } catch (e) {
+      console.error(`translate (appelé depuis alerts) : ${e.message}`);
+    }
+    return res.status(200).json({ alerts: resultatsAlerts, price_drop: resultatsPriceDrop, translate: resultatsTranslate });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

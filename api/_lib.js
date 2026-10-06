@@ -75,6 +75,66 @@ export async function sbEcrire(chemin, corps) {
   if (!r.ok) throw new Error(`Supabase ${r.status} : ${(await r.text()).slice(0, 200)}`);
 }
 
+/** Mise à jour Supabase avec la clé de service (contourne la RLS). */
+export async function sbPatch(chemin, corps) {
+  const url = process.env.SUPABASE_URL;
+  const cle = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !cle) throw new Error('Configuration Supabase absente');
+  const r = await fetch(`${url}/rest/v1/${chemin}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: cle,
+      Authorization: `Bearer ${cle}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(corps),
+  });
+  if (!r.ok) throw new Error(`Supabase ${r.status} : ${(await r.text()).slice(0, 200)}`);
+}
+
+/**
+ * Traduit un texte libre français vers l'anglais via Groq (même fournisseur
+ * que l'assistant conversationnel, api/chat.js — aucune nouvelle clé/coût).
+ * Renvoie null en cas d'échec (quota Groq dépassé, texte vide, etc.) plutôt
+ * que de lever une exception : la traduction de description est un
+ * agrément, jamais bloquant pour la publication de l'annonce elle-même.
+ */
+export async function traduireEnAnglais(texte) {
+  const t = String(texte || '').trim();
+  if (!t) return null;
+  const cle = process.env.GROQ_API_KEY;
+  if (!cle) return null;
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'qwen/qwen3.8-27b',
+        messages: [
+          {
+            role: 'system',
+            content: 'You translate French aircraft-listing descriptions into English for a ' +
+              'European aviation marketplace. Keep technical terms, model names, units, numbers ' +
+              'and line breaks exactly as in the source. Output ONLY the translated text, no ' +
+              'preamble, no quotes, no explanation. If the text is already in English, return it ' +
+              'unchanged.',
+          },
+          { role: 'user', content: t.slice(0, 4000) },
+        ],
+        max_tokens: 1200,
+        temperature: 0.2,
+      }),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const traduit = data?.choices?.[0]?.message?.content?.trim();
+    return traduit || null;
+  } catch {
+    return null;
+  }
+}
+
 
 /** Gabarit commun : en-tête, contenu, pied de page. */
 export function gabarit({ titre, intro, blocs = [], cta, ctaLabel, pied }) {

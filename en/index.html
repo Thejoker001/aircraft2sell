@@ -530,7 +530,7 @@ async function loadListings(){
   var grid=document.getElementById('listingsGrid');
   grid.innerHTML='';for(var i=0;i<4;i++)grid.appendChild(skeletonCard());
   var rows=await sbGet('listings_public','order=featured.desc.nullslast,submitted_at.desc&limit=50');
-  _all=(rows||[]).map(function(r){return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'',currency:r.currency||'EUR',category:r.category||'',airport:r.airport||'',country:r.country||'',hours:r.hours||'',photos:r.photos||[],title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' '),desc:r.description||'',seller_certified:r.seller_certified||false};});
+  _all=(rows||[]).map(function(r){return{id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',price:r.price||'',currency:r.currency||'EUR',category:r.category||'',airport:r.airport||'',country:r.country||'',hours:r.hours||'',photos:r.photos||[],title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' '),desc:r.description_en||r.description||'',seller_certified:r.seller_certified||false};});
   grid.innerHTML='';
   if(!_all.length){
     grid.innerHTML='<div class="empty-state"><span class="icon-box">'+A2SIcon('plane')+'</span><div class="empty-title">The first listings are on their way</div><p class="empty-sub">Selling an aircraft? <a href="post-listing.html">Post the first listing</a> — it is free and commission-free.</p></div>';
@@ -572,14 +572,14 @@ async function loadCertifiedCount(fallback){
 /* ── Listing of the week ── */
 async function loadWeekly(){
   try{
-    var rows=await sbGet('listings','status=eq.live&weekly_pick=eq.true&limit=1&select=id,make,model,year,price,currency,category,airport,country,description,status,seller_name,views,enquiries,submitted_at,created_at,photos,seller_rating,seller_certified,hours,smoh,engine,seats,range,avionics,equipment,registration,documents,price_type,ifr,rvsm,adsb,logs,hours_prop,seller_pseudo,featured,weekly_pick,featured_until,expires_at,seller_is_pro,seller_company,video_url');
+    var rows=await sbGet('listings','status=eq.live&weekly_pick=eq.true&limit=1&select=id,make,model,year,price,currency,category,airport,country,description,description_en,status,seller_name,views,enquiries,submitted_at,created_at,photos,seller_rating,seller_certified,hours,smoh,engine,seats,range,avionics,equipment,registration,documents,price_type,ifr,rvsm,adsb,logs,hours_prop,seller_pseudo,featured,weekly_pick,featured_until,expires_at,seller_is_pro,seller_company,video_url');
     if(!rows||!rows.length)return;
     var l=rows[0],section=document.getElementById('weeklySection'),card=document.getElementById('weeklyCard');
     var title=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Aircraft';
     var photo=l.photos&&l.photos.length?'<img src="'+esc(l.photos[0])+'" alt="'+esc(title)+'" loading="lazy">':'';
     card.innerHTML='<div class="weekly-img">'+photo+'</div><div>'
       +'<span class="badge-navy">'+(CAT_LABEL[l.category]||'')+'</span><h3>'+esc(title)+'</h3>'
-      +(l.description?'<p class="muted" style="font-size:.92rem;line-height:1.7">'+esc(l.description.slice(0,220))+'…</p>':'')
+      +(l.description||l.description_en?'<p class="muted" style="font-size:.92rem;line-height:1.7">'+esc((l.description_en||l.description).slice(0,220))+'…</p>':'')
       +'<div class="price">'+fmtPrice(l.price,l.currency)+'</div>'
       +'<div class="row" style="margin-bottom:1.25rem"><span class="lc-loc">'+A2SIcon('map-pin')+(l.airport?airportLabel(l.airport):(l.country||'—'))+'</span>'+(l.hours?'<span class="lc-spec">'+A2SIcon('clock')+Number(l.hours).toLocaleString('en-GB')+' h</span>':'')+'</div>'
       +'<a href="listing.html?id='+encodeURIComponent(l.id)+'" class="btn-primary">View listing '+A2SIcon('arrow-right')+'</a></div>';

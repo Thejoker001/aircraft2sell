@@ -1469,6 +1469,12 @@ async function saveEditListing(){
     airport:document.getElementById('el-airport').value.trim().toUpperCase(),
     description:document.getElementById('el-desc').value.trim()
   };
+  /* Si la description change, la traduction anglaise sauvegardée (description_en)
+     devient obsolète : on la vide pour que la page EN retombe temporairement sur
+     la description FR plutôt que d'afficher une traduction qui ne correspond plus
+     au texte réel — le cron de rattrapage (api/cron-jobs.js?job=translate) la
+     régénère au prochain passage, sans action du vendeur. */
+  if(payload.description!==(l.description||'')) payload.description_en=null;
   /* Upload des nouvelles photos (celles avec .file), on garde telles
      quelles les photos déjà en ligne (.existing, déjà une URL Supabase). */
   var newOnes=_editPhotos.filter(function(p){return p.file;});

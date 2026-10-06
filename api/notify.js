@@ -6,6 +6,7 @@
  *   POST /api/notify?type=message      → message reçu (formulaire annonce / messagerie)
  *   POST /api/notify?type=new-listing  → annonce déposée, à modérer (admin)
  *   POST /api/notify?type=moderated    → annonce approuvée / rejetée (vendeur)
+ *                                         + traduction description_en (voir moderated())
  *   GET  /api/notify?type=stats        → compteur public "aéronefs vendus"
  *                                         (aucune donnée personnelle, agrégat
  *                                         only — status=sold est invisible à
@@ -13,7 +14,7 @@
  *
  * Les corps acceptés sont identiques à ceux des anciennes fonctions.
  */
-import { preambule, sb, sbEcrire, envoyer, gabarit, esc, prix, titreAeronef, ADMIN_EMAIL, SITE } from './_lib.js';
+import { preambule, sb, sbEcrire, sbPatch, traduireEnAnglais, envoyer, gabarit, esc, prix, titreAeronef, ADMIN_EMAIL, SITE } from './_lib.js';
 
 export default async function handler(req, res) {
   const type = (req.query && req.query.type) || '';
@@ -215,6 +216,25 @@ async function moderated(req, res) {
                     : l.status === 'rejected' ? 'rejected' : null);
     if (!decision) {
       return res.status(400).json({ error: `Statut non concluant : ${l.status}` });
+    }
+
+    /* Traduction anglaise de la description (une fois par annonce approuvée) :
+       déclenchée ici plutôt qu'à la soumission pour ne traduire que les
+       annonces qui passent effectivement la modération, et ne jamais
+       bloquer ce flux d'email si Groq est indisponible (échec silencieux,
+       cf. traduireEnAnglais qui ne lève jamais). On ne retraduit pas une
+       annonce déjà pourvue de description_en (évite un appel Groq inutile
+       si la même annonce est réapprouvée après une modification mineure
+       qui n'a pas changé la description). */
+    if (decision === 'approved' && l.description && !l.description_en) {
+      try {
+        const traduit = await traduireEnAnglais(l.description);
+        if (traduit) {
+          await sbPatch(`listings?id=eq.${encodeURIComponent(l.id)}`, { description_en: traduit });
+        }
+      } catch (e) {
+        console.error(`Traduction description ${l.id} : ${e.message}`);
+      }
     }
 
     const titre = titreAeronef(l);
