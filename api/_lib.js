@@ -116,9 +116,11 @@ export async function traduireEnAnglais(texte) {
             role: 'system',
             content: 'You translate French aircraft-listing descriptions into English for a ' +
               'European aviation marketplace. Keep technical terms, model names, units, numbers ' +
-              'and line breaks exactly as in the source. Output ONLY the translated text, no ' +
-              'preamble, no quotes, no explanation. If the text is already in English, return it ' +
-              'unchanged.',
+              'and line breaks EXACTLY as in the source. Reply with NOTHING but the raw ' +
+              'translated text itself : no preamble, no quotes, no markdown, no explanation, no ' +
+              'comment about the source language. If the input is already fully in English, ' +
+              'your reply MUST be that exact same input text, copied verbatim — never a sentence ' +
+              'describing that fact.',
           },
           { role: 'user', content: t.slice(0, 4000) },
         ],
@@ -128,8 +130,21 @@ export async function traduireEnAnglais(texte) {
     });
     if (!r.ok) return null;
     const data = await r.json();
-    const traduit = data?.choices?.[0]?.message?.content?.trim();
-    return traduit || null;
+    let traduit = data?.choices?.[0]?.message?.content?.trim();
+    if (!traduit) return null;
+    /* Garde-fou : le modèle répond parfois par un commentaire sur la langue
+       source au lieu du texte traduit ("The text is already in English.",
+       "This is already in English.") quand l'entrée est déjà en anglais —
+       constaté en pratique sur un rattrapage de 40 descriptions. Un texte
+       de sortie anormalement court (< 30% de la longueur source) ET qui
+       mentionne "already"/"english" est presque certainement ce
+       méta-commentaire, jamais une vraie traduction : on retombe alors sur
+       le texte original plutôt que de publier cette phrase à la place de
+       la description. */
+    const estMetaCommentaire = traduit.length < t.length * 0.3 &&
+      /already\s+(in\s+)?english|texte?\s+est\s+d[ée]j[aà]/i.test(traduit);
+    if (estMetaCommentaire) return t;
+    return traduit;
   } catch {
     return null;
   }

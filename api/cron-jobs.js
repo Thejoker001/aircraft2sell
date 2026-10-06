@@ -437,9 +437,9 @@ async function jobWeeklyPick() {
    description_en à l'édition pour forcer une retraduction ici). */
 async function traduireEnAnglais(texte) {
   const t = String(texte || '').trim();
-  if (!t) return null;
+  if (!t) return { texte: null, erreur: 'texte source vide' };
   const cle = process.env.GROQ_API_KEY;
-  if (!cle) return null;
+  if (!cle) return { texte: null, erreur: 'GROQ_API_KEY absente' };
   try {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -451,9 +451,11 @@ async function traduireEnAnglais(texte) {
             role: 'system',
             content: 'You translate French aircraft-listing descriptions into English for a ' +
               'European aviation marketplace. Keep technical terms, model names, units, numbers ' +
-              'and line breaks exactly as in the source. Output ONLY the translated text, no ' +
-              'preamble, no quotes, no explanation. If the text is already in English, return it ' +
-              'unchanged.',
+              'and line breaks EXACTLY as in the source. Reply with NOTHING but the raw ' +
+              'translated text itself : no preamble, no quotes, no markdown, no explanation, no ' +
+              'comment about the source language. If the input is already fully in English, ' +
+              'your reply MUST be that exact same input text, copied verbatim — never a sentence ' +
+              'describing that fact.',
           },
           { role: 'user', content: t.slice(0, 4000) },
         ],
@@ -461,12 +463,21 @@ async function traduireEnAnglais(texte) {
         temperature: 0.2,
       }),
     });
-    if (!r.ok) return null;
+    if (!r.ok) {
+      const corpsErreur = await r.text();
+      return { texte: null, erreur: `Groq HTTP ${r.status} : ${corpsErreur.slice(0, 200)}` };
+    }
     const data = await r.json();
-    const traduit = data?.choices?.[0]?.message?.content?.trim();
-    return traduit || null;
-  } catch {
-    return null;
+    let traduit = data?.choices?.[0]?.message?.content?.trim();
+    if (!traduit) return { texte: null, erreur: 'réponse Groq sans contenu' };
+    /* Garde-fou : voir api/_lib.js traduireEnAnglais() (fonction dupliquée
+       ici car ce fichier est en CommonJS, api/_lib.js en ESM — pas d'import
+       croisé simple entre les deux formats sur Vercel). */
+    const estMetaCommentaire = traduit.length < t.length * 0.3 &&
+      /already\s+(in\s+)?english|texte?\s+est\s+d[ée]j[aà]/i.test(traduit);
+    return { texte: estMetaCommentaire ? t : traduit, erreur: null };
+  } catch (e) {
+    return { texte: null, erreur: `exception : ${e.message}` };
   }
 }
 
@@ -483,18 +494,29 @@ async function jobTranslate() {
 
   let translated = 0;
   let failed = 0;
+  const erreurs = [];
   for (const l of annonces) {
     try {
-      const traduit = await traduireEnAnglais(l.description);
-      if (!traduit) { failed += 1; continue; }
+      const { texte: traduit, erreur } = await traduireEnAnglais(l.description);
+      if (!traduit) {
+        failed += 1;
+        erreurs.push({ id: l.id, raison: erreur || 'inconnue' });
+        continue;
+      }
       await sbPatch(`listings?id=eq.${encodeURIComponent(l.id)}`, { description_en: traduit });
       translated += 1;
+      /* Pause courte entre deux appels Groq : le tier gratuit limite le
+         débit (requêtes/minute), pas seulement le quota journalier. Un lot
+         de 40 appels sans délai en a fait échouer 34/40 en pratique — à
+         vérifier après ce correctif avant d'augmenter BATCH_LIMIT. */
+      await new Promise((r) => setTimeout(r, 400));
     } catch (e) {
       console.error(`Traduction ${l.id} : ${e.message}`);
       failed += 1;
+      erreurs.push({ id: l.id, raison: e.message });
     }
   }
-  return { checked: annonces.length, translated, failed };
+  return { checked: annonces.length, translated, failed, erreurs: erreurs.slice(0, 5) };
 }
 
 /* ── Handler principal ── */
