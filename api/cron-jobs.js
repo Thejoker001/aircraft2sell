@@ -495,7 +495,7 @@ async function jobTranslate(batchLimit) {
      (voir note de déploiement), pas en augmentant ce nombre. */
   const BATCH_LIMIT = Number(batchLimit) > 0 ? Math.min(Number(batchLimit), 40) : 40;
   const annonces = await sbGet(
-    `listings?select=id,description&status=eq.live&description_en=is.null&description=not.is.null&order=submitted_at.asc&limit=${BATCH_LIMIT}`
+    `listings?select=id,description&status=eq.live&description_en=is.null&description=not.is.null&description=neq.&order=submitted_at.asc&limit=${BATCH_LIMIT}`
   );
 
   let translated = 0;
