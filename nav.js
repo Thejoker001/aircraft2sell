@@ -144,7 +144,7 @@ window.A2SFavs = (function(){
   function ensureIcons(cb){
     if(window.A2SIcon){ cb(); return; }
     var s = document.createElement('script');
-    s.src = '/icons.js?v=20260909a';
+    s.src = '/icons.js?v=20261007a';
     s.onload = cb; s.onerror = cb;
     document.head.appendChild(s);
   }

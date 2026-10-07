@@ -100,14 +100,16 @@
     linkedin:    '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 10v7M8 7h.01M12 17v-4a2 2 0 0 1 4 0v4M12 10v7"/>',
     instagram:   '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>',
 
-    /* Aéronefs (catégories) — pictos trait maison */
-    plane:       '<path d="M10.5 13.5 4 16v2l6.5-1.5L12 21h2l-1-6.5 6.5-2.5V10L13 12.5 12 4h-2l-.5 8L4 10v2l6.5 1.5Z"/>',
-    'plane-light': '<path d="M3 12h18M12 5v14M7 8l5-3 5 3M6 19h12"/>',
-    jet:         '<path d="M3 13 20 6l1 2-6 3.5V17l2 2-3 1-2-3-2 1v3l-2-1-1-3-4-1 1-3H3v-1Z"/>',
-    turboprop:   '<path d="M2 12h20M12 4v16M8 8l8 8M16 8l-8 8"/><circle cx="12" cy="12" r="2"/>',
-    helicopter:  '<path d="M4 6h16M12 6v3M6 12a4 4 0 0 1 4-3h5a4 4 0 0 1 4 3v2a2 2 0 0 1-2 2h-7a4 4 0 0 1-4-4Z"/><path d="M7 16.5v2M15 16.5v2M5 18.5h12"/>',
-    ulm:         '<path d="M3 9c4-4 14-4 18 0M12 7v9M8 16h8M12 16v3"/>',
-    airliner:    '<path d="M2 12h14a4 4 0 0 1 4 4v1H9l-3-3H2v-2Z"/><path d="M6 12 4 6h2l4 6M14 12l-2-4h2l3 4M9 17l1 3"/>',
+    /* Aéronefs (catégories) — famille cohérente Tabler Icons (stroke-width 2,
+       viewBox natif 24x24), validée avec l'utilisateur (silhouettes réelles
+       reconnaissables plutôt que pictos abstraits maison). */
+    plane:       '<path d="M16 10h4a2 2 0 0 1 0 4h-4l-4 7H9l2-7H7l-2 2H2l2-4-2-4h3l2 2h4L9 3h3z"/>',
+    'plane-light': '<path d="M16 10h4a2 2 0 0 1 0 4h-4l-4 7H9l2-7H7l-2 2H2l2-4-2-4h3l2 2h4L9 3h3z"/>',
+    jet:         '<path d="m14.5 6.5 3-2.9a2.05 2.05 0 0 1 2.9 2.9l-2.9 3L20 17l-2.5 2.55L14 13l-3 3v3l-2 2-1.5-4.5L3 15l2-2h3l3-3-6.5-3.5L7 4z"/>',
+    turboprop:   '<path d="M16 10h4a2 2 0 0 1 0 4h-4l-4 7H9l2-7H7l-2 2H2l2-4-2-4h3l2 2h4L9 3h3z"/>',
+    helicopter:  '<path d="m3 10 1 2h6m2-3a2 2 0 0 0-2 2v3c0 1.1.9 2 2 2h7a2 2 0 0 0 2-2c0-3.31-3.13-5-7-5zm1 0V6M5 6h15"/><path d="M15 9.1V13h5.5M15 19v-3m4 3h-8"/>',
+    ulm:         '<path d="M16 10h4a2 2 0 0 1 0 4h-4l-4 7H9l2-7H7l-2 2H2l2-4-2-4h3l2 2h4L9 3h3z" transform="translate(12 12) scale(0.72) translate(-12 -12)"/>',
+    airliner:    '<path d="m14.639 10.258 4.83-1.294a2 2 0 1 1 1.035 3.863L6.015 16.71l-4.45-5.02 2.897-.776 2.45 1.414 2.897-.776-3.743-6.244 2.898-.777zM3 21h18"/>',
     rocket:      '<path d="M12 3c3 2 5 6 5 9l-2 2h-6l-2-2c0-3 2-7 5-9Z"/><circle cx="12" cy="9" r="1.5"/><path d="M9 14 6 17l1 2 2-1M15 14l3 3-1 2-2-1M12 16v5"/>'
   };
 
