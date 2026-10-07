@@ -160,44 +160,75 @@ export function gabarit({ titre, intro, blocs = [], cta, ctaLabel, pied }) {
      </tr>`).join('');
 
   return `<!DOCTYPE html>
-<html lang="fr"><head><meta charset="utf-8">
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(titre)}</title></head>
-<body style="margin:0;padding:0;background:#F4F7FB;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F7FB;padding:24px 12px">
- <tr><td align="center">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(11,37,69,.08)">
+<meta name="color-scheme" content="light">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>${esc(titre)}</title>
+<style>
+  body, table, td { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+  table, td { mso-table-lspace:0pt; mso-table-rspace:0pt; }
+  img { -ms-interpolation-mode:bicubic; border:0; outline:none; text-decoration:none; }
+  body { margin:0; padding:0; width:100% !important; background:#EEF2F8; }
+  .email-container { width:100% !important; max-width:600px !important; }
+  @media only screen and (max-width:600px) {
+    .fluid-pad { padding-left:24px !important; padding-right:24px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#EEF2F8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
 
-   <tr><td style="background:#0B2545;padding:20px 28px">
-     <div style="color:#FFFFFF;font-size:19px;font-weight:800;letter-spacing:-.3px">
-       Aircraft2<span style="color:#EA6A16">Sell</span></div>
-   </td></tr>
+<center style="width:100%;background:#EEF2F8;">
 
-   <tr><td style="padding:28px">
-     <h1 style="margin:0 0 12px;color:#0B2545;font-size:20px;font-weight:800;line-height:1.3">${esc(titre)}</h1>
+  <!--[if mso]>
+  <table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td>
+  <![endif]-->
+
+  <div style="max-width:600px;margin:0 auto;text-align:left" class="email-container">
+
+   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+          style="width:100%;background:#FFFFFF;border-radius:16px;border-collapse:separate;overflow:hidden">
+
+    <tr><td align="left" class="fluid-pad" style="background:#FFFFFF;padding:24px 40px;border-bottom:1px solid #E4EAF2">
+      <img src="${SITE}/logo.png?v=20260908" alt="Aircraft2Sell" width="160" height="26"
+           style="display:block;width:160px;height:auto;border:0;outline:none;text-decoration:none">
+    </td></tr>
+
+    <tr><td align="left" class="fluid-pad" style="padding:40px 44px 8px">
+     <h1 style="margin:0 0 20px;color:#0B2545;font-size:24px;font-weight:800;line-height:1.3">${esc(titre)}</h1>
      <p style="margin:0 0 20px;color:#3D4F63;font-size:15px;line-height:1.6">${intro}</p>
      ${lignes ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"
         style="border-top:1px solid #E4EAF2;border-bottom:1px solid #E4EAF2;margin:0 0 22px">${lignes}</table>` : ''}
      ${cta ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr>
         <td style="background:#EA6A16;border-radius:8px">
-          <a href="${cta}" style="display:inline-block;padding:12px 24px;color:#FFFFFF;
-             font-size:15px;font-weight:700;text-decoration:none">${esc(ctaLabel || 'Voir')}</a>
+          <a href="${cta}" style="display:inline-block;padding:13px 26px;color:#FFFFFF;
+             font-size:15px;font-weight:700;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">${esc(ctaLabel || 'Voir')}</a>
         </td></tr></table>` : ''}
-     ${pied ? `<p style="margin:22px 0 0;color:#5B6B7F;font-size:13px;line-height:1.6">${pied}</p>` : ''}
-   </td></tr>
+     ${pied ? `<p style="margin:18px 0 0;color:#8494A8;font-size:12px;line-height:1.6">${pied}</p>` : ''}
+    </td></tr>
 
-   <tr><td style="background:#F9FBFD;padding:18px 28px;border-top:1px solid #E4EAF2">
-     <p style="margin:0;color:#8494A8;font-size:12px;line-height:1.6">
-       Aircraft2Sell — marketplace aéronautique européenne, zéro commission.<br>
-       <a href="${SITE}" style="color:#1E5FCC;text-decoration:none">aircraft2sell.eu</a>
-       &nbsp;·&nbsp;
-       <a href="${SITE}/contact.html" style="color:#1E5FCC;text-decoration:none">Nous contacter</a>
-     </p>
-   </td></tr>
+    <tr><td class="fluid-pad" style="padding:28px 44px 0">
+      <hr style="border:none;border-top:1px solid #E4EAF2;margin:0">
+    </td></tr>
 
-  </table>
- </td></tr>
-</table>
+    <tr><td align="left" class="fluid-pad" style="padding:24px 44px 32px">
+      <p style="margin:0;color:#8494A8;font-size:12px;line-height:1.7">
+        Aircraft2Sell — marketplace aéronautique européenne, zéro commission.<br>
+        <a href="${SITE}" style="color:#1E5FCC;text-decoration:none">aircraft2sell.eu</a>
+        &nbsp;·&nbsp;
+        <a href="${SITE}/contact.html" style="color:#1E5FCC;text-decoration:none">Nous contacter</a>
+      </p>
+    </td></tr>
+
+   </table>
+  </div>
+
+  <!--[if mso]>
+  </td></tr></table>
+  <![endif]-->
+
+</center>
+
 </body></html>`;
 }
 
