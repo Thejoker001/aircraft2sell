@@ -1139,6 +1139,9 @@ body.dense .kv{font-size:1.4rem}
         </div>
         <div class="mfg"><label>Fin de validité</label><input type="date" id="mp-ends"></div>
       </div>
+      <div class="mfg"><label style="display:flex;align-items:center;gap:.5rem;font-weight:600"><input type="checkbox" id="mp-complimentary" style="width:auto"> Partenariat offert (réciproque/gratuit — exclu du MRR)</label>
+        <div class="field-hint" style="margin-top:.25rem">À cocher pour les accords sans contrepartie financière (ex. visibilité croisée). Le palier reste affiché mais n'entre pas dans le calcul du MRR partenaires.</div>
+      </div>
       <div class="mfg2">
         <div class="mfg"><label>Email contact</label><input type="email" id="mp-contact-email" placeholder="contact@societe.com"></div>
         <div class="mfg"><label>Nom contact</label><input type="text" id="mp-contact-name" placeholder="Prénom Nom"></div>
@@ -2495,7 +2498,7 @@ async function renderPartners(){
     var rows=await sb('GET','partners','order=created_at.desc&select=*');
     _allPartners=rows||[];
     var active=_allPartners.filter(function(p){return p.status==='active';});
-    var mrr=active.reduce(function(s,p){return s+(PARTNER_TIER_PRICE[p.tier]||0);},0);
+    var mrr=active.reduce(function(s,p){return s+(p.is_complimentary?0:(PARTNER_TIER_PRICE[p.tier]||0));},0);
     setText('ptn-active',active.length.toLocaleString('fr-FR'));
     setText('ptn-total',_allPartners.length.toLocaleString('fr-FR'));
     setText('ptn-mrr',mrr.toLocaleString('fr-FR')+' €');
@@ -2504,8 +2507,9 @@ async function renderPartners(){
     tb.innerHTML=_allPartners.map(function(p){
       var statusPill={active:'<span class="pill p-live">Actif</span>',pending:'<span class="pill p-pend">En attente</span>',expired:'<span class="pill p-rej">Expiré</span>',rejected:'<span class="pill p-rej">Rejeté</span>'}[p.status]||p.status;
       var validity=p.ends_at?fmtDate(p.ends_at):'—';
+      var compBadge=p.is_complimentary?' <span class="pill" style="background:var(--a2s-bg-alt);color:var(--a2s-text-muted);font-size:.68rem">Offert</span>':'';
       return '<tr>'
-        +'<td style="padding:.65rem .9rem;color:var(--a2s-text);font-weight:600">'+esc(p.company||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text);font-weight:600">'+esc(p.company||'—')+compBadge+'</td>'
         +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.8rem">'+esc(PARTNER_CAT_LABELS[p.category]||p.category||'—')+'</td>'
         +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.8rem">'+esc(PARTNER_TIER_LABELS[p.tier]||p.tier||'—')+'</td>'
         +'<td style="padding:.65rem .9rem">'+statusPill+'</td>'
@@ -2535,6 +2539,7 @@ function openPartnerModal(id){
   sel('mp-tier').value=p?(p.tier||'decouverte'):'decouverte';
   sel('mp-status').value=p?(p.status||'pending'):'pending';
   sel('mp-ends').value=p&&p.ends_at?String(p.ends_at).slice(0,10):'';
+  sel('mp-complimentary').checked=!!(p&&p.is_complimentary);
   sel('mp-contact-email').value=p?(p.contact_email||''):'';
   sel('mp-contact-name').value=p?(p.contact_name||''):'';
   sel('mp-notes').value=p?(p.notes||''):'';
@@ -2560,6 +2565,7 @@ async function savePartnerM(){
     category:sel('mp-category').value,
     tier:sel('mp-tier').value,
     status:sel('mp-status').value,
+    is_complimentary:sel('mp-complimentary').checked,
     target_pages:targets,
     ends_at:endsVal?new Date(endsVal+'T23:59:59Z').toISOString():null,
     contact_email:sel('mp-contact-email').value.trim()||null,
