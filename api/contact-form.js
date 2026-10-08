@@ -18,7 +18,9 @@ const SUJETS = {
   other: 'Autre',
 };
 
-const BREVO_NEWSLETTER_LIST_ID = 6;
+const BREVO_NEWSLETTER_LIST_ID = 6; // liste historique "Newsletter site" (conservée, ne plus utiliser pour l'envoi)
+const BREVO_NEWSLETTER_LIST_FR = 9; // Newsletter mensuelle FR
+const BREVO_NEWSLETTER_LIST_EN = 10; // Newsletter mensuelle EN
 
 function estEmailValide(e) {
   return typeof e === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -37,6 +39,8 @@ async function inscrireNewsletter(req, res) {
   const cle = process.env.BREVO_API_KEY;
   if (!cle) return res.status(500).json({ error: 'Configuration email absente' });
 
+  const listeNewsletter = lang === 'en' ? BREVO_NEWSLETTER_LIST_EN : BREVO_NEWSLETTER_LIST_FR;
+
   try {
     const r = await fetch('https://api.brevo.com/v3/contacts', {
       method: 'POST',
@@ -44,7 +48,7 @@ async function inscrireNewsletter(req, res) {
       body: JSON.stringify({
         email,
         attributes: { OPT_IN: true, _DETECTED_LANGUAGE: lang.toUpperCase() },
-        listIds: [BREVO_NEWSLETTER_LIST_ID],
+        listIds: [BREVO_NEWSLETTER_LIST_ID, listeNewsletter],
         updateEnabled: true,
       }),
     });
@@ -53,7 +57,7 @@ async function inscrireNewsletter(req, res) {
       const txt = await r.text();
       return res.status(502).json({ error: `Brevo ${r.status} : ${txt.slice(0, 200)}` });
     }
-    // 400 "Contact already exist" : on force quand même l'ajout à la liste.
+    // 400 "Contact already exist" : on force quand même l'ajout aux listes.
     if (r.status === 400) {
       const r2 = await fetch('https://api.brevo.com/v3/contacts/lists/' + BREVO_NEWSLETTER_LIST_ID + '/contacts/add', {
         method: 'POST',
@@ -63,6 +67,15 @@ async function inscrireNewsletter(req, res) {
       if (!r2.ok) {
         const txt2 = await r2.text();
         return res.status(502).json({ error: `Brevo ${r2.status} : ${txt2.slice(0, 200)}` });
+      }
+      const r3 = await fetch('https://api.brevo.com/v3/contacts/lists/' + listeNewsletter + '/contacts/add', {
+        method: 'POST',
+        headers: { 'api-key': cle, 'Content-Type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ emails: [email] }),
+      });
+      if (!r3.ok) {
+        const txt3 = await r3.text();
+        return res.status(502).json({ error: `Brevo ${r3.status} : ${txt3.slice(0, 200)}` });
       }
     }
     return res.status(200).json({ ok: true });
