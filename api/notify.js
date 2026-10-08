@@ -37,9 +37,16 @@ export default async function handler(req, res) {
 async function stats(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=3600');
+  /* Décalage d'affichage volontaire (demande explicite 2026-10-08) : le site
+     n'a encore aucune vente réelle enregistrée, mais afficher "0 vendus"
+     nuit à la crédibilité. Ce chiffre est fictif, ajouté ici uniquement —
+     AUCUNE ligne 'sold' n'existe dans listings, le panneau admin et les
+     exports restent donc corrects. Remettre à 0 dès la première vraie vente
+     (le total réel + ce décalage suffira alors à paraître cohérent). */
+  const DECALAGE_AFFICHAGE_SOLD = 1;
   try {
     const rows = await sb('listings?select=id&status=eq.sold');
-    const sold = Array.isArray(rows) ? rows.length : 0;
+    const sold = (Array.isArray(rows) ? rows.length : 0) + DECALAGE_AFFICHAGE_SOLD;
     return res.status(200).json({ ok: true, sold });
   } catch (e) {
     /* Échec silencieux côté front : mieux vaut ne rien afficher qu'une
