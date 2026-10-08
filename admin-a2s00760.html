@@ -1147,6 +1147,12 @@ body.dense .kv{font-size:1.4rem}
         <div class="mfg"><label>Nom contact</label><input type="text" id="mp-contact-name" placeholder="Prénom Nom"></div>
       </div>
       <div class="mfg"><label>Notes internes</label><textarea id="mp-notes" style="min-height:60px;resize:vertical" placeholder="Notes admin (jamais publiques)"></textarea></div>
+      <div class="mfg" id="mp-resend-wrap" style="border-top:1px solid var(--a2s-border-2);padding-top:.8rem;margin-top:.4rem">
+        <label>Paiement Stripe</label>
+        <div class="field-hint" style="margin-bottom:.4rem">Renvoie par email le lien de paiement Stripe du palier sélectionné ci-dessus, à l'adresse « Email contact » renseignée.</div>
+        <button type="button" class="m-btn" id="mp-resend-btn" onclick="resendPartnerPaymentLink()"><i data-icon="send"></i> Renvoyer le lien de paiement</button>
+        <div id="mp-resend-status" style="font-size:.76rem;margin-top:.4rem;display:none"></div>
+      </div>
     </div>
     <div class="modal-ft">
       <button class="m-btn danger" id="mp-delete-btn" onclick="delPartnerM()">Supprimer</button>
@@ -2547,7 +2553,39 @@ function openPartnerModal(id){
   document.querySelectorAll('.mp-target').forEach(function(cb){cb.checked=targets.indexOf(cb.value)>-1;});
   mpToggleTargetPages();
   sel('mp-delete-btn').style.display=p?'inline-flex':'none';
+  var rw=sel('mp-resend-wrap');if(rw)rw.style.display=p?'block':'none';
+  var rs=sel('mp-resend-status');if(rs){rs.style.display='none';rs.textContent='';}
   openM('mPartner');
+}
+/* Renvoie par email le lien de paiement Stripe (Payment Link) du palier
+   sélectionné dans le formulaire, à l'adresse « Email contact ». Passe
+   par POST /api/stripe-admin (action=resend-partner-link) avec le JWT
+   admin — aucune clé Stripe/Brevo n'est exposée au navigateur. */
+async function resendPartnerPaymentLink(){
+  var email=sel('mp-contact-email').value.trim();
+  var statusEl=sel('mp-resend-status');
+  if(!email){showToast('Renseignez d\'abord un email de contact');return;}
+  var tier=sel('mp-tier').value;
+  var company=sel('mp-company').value.trim();
+  var btn=sel('mp-resend-btn');
+  btn.disabled=true;btn.textContent='Envoi…';
+  if(statusEl){statusEl.style.display='block';statusEl.style.color='var(--a2s-text-muted)';statusEl.textContent='Envoi du lien de paiement…';}
+  try{
+    var token=await _sbRefresh();
+    if(!token){showToast('Session expirée — reconnectez-vous.');return;}
+    var r=await fetch('/api/stripe-admin',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({action:'resend-partner-link',tier:tier,email:email,company:company})});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok)throw new Error(d.error||('HTTP '+r.status));
+    var id=sel('mp-id').value;
+    logAdmin('partner.resend-payment-link','partner',id||null,{tier:tier,email:email});
+    showToast('Lien de paiement renvoyé à '+email);
+    if(statusEl){statusEl.style.color='var(--a2s-success)';statusEl.textContent='Envoyé à '+email+' ('+PARTNER_TIER_LABELS[tier]+').';}
+  }catch(e){
+    showToast('Erreur : '+e.message);
+    if(statusEl){statusEl.style.color='var(--a2s-danger)';statusEl.textContent='Erreur : '+e.message;}
+  }finally{
+    btn.disabled=false;btn.innerHTML=A2SIcon('send')+' Renvoyer le lien de paiement';
+  }
 }
 async function savePartnerM(){
   var id=sel('mp-id').value;
