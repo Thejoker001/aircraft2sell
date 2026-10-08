@@ -1110,27 +1110,24 @@ async function markSold(listingId){
 }
 
 async function delListing(listingId){
-  if(!confirm('Delete this listing? This action is irreversible.'))return;
+  /* Soft delete (2026-10-08, Romain's request): a listing deleted by the
+     seller is counted as SOLD (status='sold'), not erased. It feeds the
+     public "aircraft sold" counter on the homepage
+     (/api/notify?type=stats reads listings where status=sold) and stays
+     in the seller's history ("Sold" badge), but disappears from public
+     search results (RLS: anon only reads status=live). An admin deletion
+     (moderation/spam) remains a real DELETE — see admin-a2s00760.html,
+     not this path. */
   var l=_userListings.find(function(x){return String(x.id)===String(listingId);});
-  if(l&&l._supabase&&l.id){
-    var tk=await authToken();
-    if(!tk){ showToast('Session expired: please log in again.'); return; }
-    try{
-      var r=await fetch(SB_URL+'/rest/v1/listings?id=eq.'+encodeURIComponent(l.id),{
-        method:'DELETE',
-        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
-      });
-      if(!r.ok){ showToast('Deletion failed (HTTP '+r.status+'). Please try again.'); return; }
-    }catch(e){
-      showToast('Network error, deletion failed.');
-      return;
-    }
+  if(!confirm('Delete this listing? It will be counted as sold and will no longer be visible to buyers.'))return;
+  var res=await patchListing(l,{status:'sold'});
+  if(!res.ok){
+    showToast(res.erreur==='session_expiree'?'Session expired: please log in again.':'Deletion failed. Please try again.');
+    return;
   }
-  var arr=getListings().filter(function(x){return String(x.id)!==String(listingId);});
-  localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));
   await renderListings();
   renderChart(currentPeriod);
-  showToast('Listing deleted.');
+  showToast('Listing deleted and counted as sold.');
 }
 
 /* ── LISTING DUPLICATION ──
@@ -1226,7 +1223,7 @@ async function bulkRepublish(){
 }
 async function bulkDeleteListings(){
   var items=selectedListingObjs();if(!items.length)return;
-  if(!confirm('Permanently delete '+items.length+' listing(s)? This action is irreversible.'))return;
+  if(!confirm('Delete '+items.length+' listing(s)? They will be counted as sold and will no longer be visible to buyers.'))return;
   var ok=0,ko=0;
   for(var i=0;i<items.length;i++){
     await delListingSilent(items[i]) ? ok++ : ko++;
@@ -1234,24 +1231,15 @@ async function bulkDeleteListings(){
   clearListingSelection();
   await renderListings();
   renderChart(currentPeriod);
-  showToast(ok+' listing(s) deleted'+(ko?' — '+ko+' failed':''));
+  showToast(ok+' listing(s) deleted and counted as sold'+(ko?' — '+ko+' failed':''));
 }
 /* Silent variant of delListing (no individual confirm() nor toast,
-   the bulk confirmation already happened in bulkDeleteListings). */
+   the bulk confirmation already happened in bulkDeleteListings).
+   Soft delete (2026-10-08): status='sold' instead of a real DELETE,
+   see the detailed comment in delListing() above. */
 async function delListingSilent(l){
-  if(l&&l._supabase&&l.id){
-    var tk=await authToken();
-    if(!tk)return false;
-    try{
-      var r=await fetch(SB_URL+'/rest/v1/listings?id=eq.'+encodeURIComponent(l.id),{
-        method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
-      });
-      if(!r.ok)return false;
-    }catch(e){return false;}
-  }
-  var arr=getListings().filter(function(x){return String(x.id)!==String(l.id);});
-  localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));
-  return true;
+  var res=await patchListing(l,{status:'sold'});
+  return !!res.ok;
 }
 function csvCell(v){return'"'+String(v==null?'':v).split('"').join('""')+'"';}
 function bulkExportCsv(){

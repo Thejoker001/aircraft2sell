@@ -1242,27 +1242,24 @@ async function markSold(listingId){
 }
 
 async function delListing(listingId){
-  if(!confirm('Supprimer cette annonce ? Cette action est irréversible.'))return;
+  /* Suppression douce (2026-10-08, demande Romain) : une annonce supprimée
+     par le vendeur lui-même est considérée comme VENDUE (status='sold'),
+     pas effacée. Elle alimente le compteur public "aéronefs vendus" de
+     l'accueil (/api/notify?type=stats lit listings où status=sold) et
+     reste visible dans l'historique du vendeur (badge "Vendue"), mais
+     disparaît des résultats de recherche publics (RLS : anon ne lit que
+     status=live). Une suppression admin (modération/spam) reste une vraie
+     DELETE — voir admin-a2s00760.html, pas ce chemin-ci. */
   var l=_userListings.find(function(x){return String(x.id)===String(listingId);});
-  if(l&&l._supabase&&l.id){
-    var tk=await authToken();
-    if(!tk){ showToast('Session expirée : reconnectez-vous.'); return; }
-    try{
-      var r=await fetch(SB_URL+'/rest/v1/listings?id=eq.'+encodeURIComponent(l.id),{
-        method:'DELETE',
-        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
-      });
-      if(!r.ok){ showToast('La suppression a échoué (HTTP '+r.status+'). Réessayez.'); return; }
-    }catch(e){
-      showToast('Erreur réseau, la suppression a échoué.');
-      return;
-    }
+  if(!confirm('Supprimer cette annonce ? Elle sera comptabilisée comme vendue et ne sera plus visible par les acheteurs.'))return;
+  var res=await patchListing(l,{status:'sold'});
+  if(!res.ok){
+    showToast(res.erreur==='session_expiree'?'Session expirée : reconnectez-vous.':'La suppression a échoué. Réessayez.');
+    return;
   }
-  var arr=getListings().filter(function(x){return String(x.id)!==String(listingId);});
-  localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));
   await renderListings();
   renderChart(currentPeriod);
-  showToast('Annonce supprimée.');
+  showToast('Annonce supprimée et comptabilisée comme vendue.');
 }
 
 /* ── DUPLICATION D'ANNONCE ──
@@ -1359,7 +1356,7 @@ async function bulkRepublish(){
 }
 async function bulkDeleteListings(){
   var items=selectedListingObjs();if(!items.length)return;
-  if(!confirm('Supprimer définitivement '+items.length+' annonce(s) ? Cette action est irréversible.'))return;
+  if(!confirm('Supprimer '+items.length+' annonce(s) ? Elles seront comptabilisées comme vendues et ne seront plus visibles par les acheteurs.'))return;
   var ok=0,ko=0;
   for(var i=0;i<items.length;i++){
     await delListingSilent(items[i]) ? ok++ : ko++;
@@ -1367,24 +1364,15 @@ async function bulkDeleteListings(){
   clearListingSelection();
   await renderListings();
   renderChart(currentPeriod);
-  showToast(ok+' annonce(s) supprimée(s)'+(ko?' — '+ko+' en échec':''));
+  showToast(ok+' annonce(s) supprimée(s) et comptabilisée(s) comme vendue(s)'+(ko?' — '+ko+' en échec':''));
 }
 /* Variante silencieuse de delListing (sans confirm() individuelle ni toast,
-   la confirmation groupée a déjà eu lieu dans bulkDeleteListings). */
+   la confirmation groupée a déjà eu lieu dans bulkDeleteListings).
+   Suppression douce (2026-10-08) : status='sold' au lieu d'un vrai DELETE,
+   voir le commentaire détaillé dans delListing() ci-dessus. */
 async function delListingSilent(l){
-  if(l&&l._supabase&&l.id){
-    var tk=await authToken();
-    if(!tk)return false;
-    try{
-      var r=await fetch(SB_URL+'/rest/v1/listings?id=eq.'+encodeURIComponent(l.id),{
-        method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk}
-      });
-      if(!r.ok)return false;
-    }catch(e){return false;}
-  }
-  var arr=getListings().filter(function(x){return String(x.id)!==String(l.id);});
-  localStorage.setItem(LS_LISTINGS,JSON.stringify(arr));
-  return true;
+  var res=await patchListing(l,{status:'sold'});
+  return !!res.ok;
 }
 function csvCell(v){return'"'+String(v==null?'':v).split('"').join('""')+'"';}
 function bulkExportCsv(){

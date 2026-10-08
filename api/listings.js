@@ -339,13 +339,21 @@ export default async function handler(req, res) {
 
     if (req.method === 'DELETE') {
       if (!id) { res.status(400).json({ error: 'Paramètre ?id= requis' }); return; }
+      /* Suppression douce (2026-10-08, demande Romain) : alignée sur le
+         comportement du dashboard web (dashboard.html/delListing). Une
+         annonce supprimée par le vendeur (ici via sa clé API) est comptée
+         comme VENDUE (status='sold'), jamais effacée de la base — elle
+         alimente le compteur public "aéronefs vendus" de l'accueil
+         (api/notify.js?type=stats). Elle reste lisible par le vendeur
+         (GET /api/listings) mais disparaît de la recherche publique (RLS :
+         anon ne lit que status=live). */
       const chemin = `listings?id=eq.${encodeURIComponent(id)}&seller_email=eq.${emailEnc}`;
-      const deleted = await sbWrite(url, cle, chemin, 'DELETE', undefined, 'return=representation');
-      if (!deleted.length) {
+      const updated = await sbWrite(url, cle, chemin, 'PATCH', { status: 'sold' }, 'return=representation');
+      if (!updated.length) {
         res.status(404).json({ error: "Annonce introuvable ou n'appartenant pas à ce compte" });
         return;
       }
-      res.status(200).json({ ok: true, id });
+      res.status(200).json({ ok: true, id, status: 'sold' });
       return;
     }
 

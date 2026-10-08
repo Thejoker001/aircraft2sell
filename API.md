@@ -115,7 +115,13 @@ Réponse `200` : `{ "listing": { ... } }` — ou `404` si l'annonce n'appartient
 DELETE /api/listings?id=123
 ```
 
-Réponse `200` : `{ "ok": true, "id": "123" }`.
+Réponse `200` : `{ "ok": true, "id": "123", "status": "sold" }`.
+
+**Suppression douce (depuis le 2026-10-08)** : l'annonce n'est pas effacée de
+la base, elle passe en `status: "sold"` — comptée comme vendue (alimente le
+compteur public « aéronefs vendus » de la page d'accueil) et retirée des
+résultats de recherche publics. Elle reste consultable via
+`GET /api/listings?id=123`.
 
 ## Codes d'erreur
 

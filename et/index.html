@@ -231,6 +231,7 @@
           <div><div class="stat-num" id="sn1">—</div><div class="stat-lbl">Aktiivsed kuulutused</div></div>
           <div><div class="stat-num" id="sn2">—</div><div class="stat-lbl">Kontrollitud müüjad</div></div>
           <div><div class="stat-num" id="sn3">32</div><div class="stat-lbl">Riiki kaetud</div></div>
+          <div id="soldStatBlock" style="display:none"><div class="stat-num" id="sn4">—</div><div class="stat-lbl">Müüdud õhusõidukid</div></div>
         </div>
       </div>
 
@@ -557,6 +558,25 @@ async function loadCertifiedCount(fallback){
   }catch(e){}
   animCount('sn2',fallback||0);
 }
+
+/* ── "Müüdud õhusõidukid" loendur ──
+   status='sold' ei ole anon-võtmega loetav (RLS), seega arvutatakse see
+   serveripoolselt (teenusevõti) /api/notify?type=stats kaudu — vt
+   api/notify.js. Tahtlikult peidetud, kuni koguarv on 0: "0 müüdud"
+   kuvamine kahjustaks usaldusväärsust rohkem kui aitaks. Võrguviga =
+   samuti peidetud, kunagi nähtav viga dekoratiivse numbri jaoks. */
+async function loadSoldCount(){
+  try{
+    var r=await fetch('/api/notify?type=stats');
+    var d=await r.json();
+    if(d&&d.ok&&d.sold>0){
+      var block=document.getElementById('soldStatBlock');
+      if(block)block.style.display='';
+      animCount('sn4',d.sold);
+    }
+  }catch(e){}
+}
+loadSoldCount();
 
 /* ── Listing of the week ── */
 async function loadWeekly(){
