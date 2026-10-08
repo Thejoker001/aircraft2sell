@@ -293,6 +293,7 @@
                 </select>
               </div>
               <div class="field-hint">Excluding taxes, whole number. <a href="/estimation.html" style="color:var(--a2s-blue);font-weight:600">Estimate my aircraft</a></div>
+              <label class="check" style="margin-top:.5rem"><input type="checkbox" id="chkPriceOnRequest" onchange="togglePriceOnRequest()"><span>Price on request (price will not be shown publicly)</span></label>
             </div>
             <div class="field">
               <label for="fPriceType">Price type</label>
@@ -771,6 +772,15 @@ function dropFiles(e){e.preventDefault();dragLeave();handleFiles(e.dataTransfer.
 var CAT_LABELS={light:'Light aircraft',jet:'Business jet',turbo:'Turboprop',heli:'Helicopter',ulm:'Ultralight',airliner:'Airliner'};
 var COUNTRY_NAMES={AF:'Afghanistan',AL:'Albania',DZ:'Algeria',AS:'American Samoa',AD:'Andorra',AO:'Angola',AI:'Anguilla',AQ:'Antarctica',AG:'Antigua & Barbuda',AR:'Argentina',AM:'Armenia',AW:'Aruba',AU:'Australia',AT:'Austria',AZ:'Azerbaijan',BS:'Bahamas',BH:'Bahrain',BD:'Bangladesh',BB:'Barbados',BY:'Belarus',BE:'Belgium',BZ:'Belize',BJ:'Benin',BM:'Bermuda',BT:'Bhutan',BO:'Bolivia',BA:'Bosnia & Herzegovina',BW:'Botswana',BV:'Bouvet Island',BR:'Brazil',IO:'British Indian Ocean Territory',VG:'British Virgin Islands',BN:'Brunei',BG:'Bulgaria',BF:'Burkina Faso',BI:'Burundi',KH:'Cambodia',CM:'Cameroon',CA:'Canada',CV:'Cape Verde',BQ:'Caribbean Netherlands',KY:'Cayman Islands',CF:'Central African Republic',TD:'Chad',CL:'Chile',CN:'China',CX:'Christmas Island',CC:'Cocos (Keeling) Islands',CO:'Colombia',KM:'Comoros',CG:'Congo - Brazzaville',CD:'Congo - Kinshasa',CK:'Cook Islands',CR:'Costa Rica',HR:'Croatia',CU:'Cuba',CW:'Curaçao',CY:'Cyprus',CZ:'Czechia',CI:'Côte d’Ivoire',DK:'Denmark',DJ:'Djibouti',DM:'Dominica',DO:'Dominican Republic',EC:'Ecuador',EG:'Egypt',SV:'El Salvador',GQ:'Equatorial Guinea',ER:'Eritrea',EE:'Estonia',SZ:'Eswatini',ET:'Ethiopia',FK:'Falkland Islands',FO:'Faroe Islands',FJ:'Fiji',FI:'Finland',FR:'France',GF:'French Guiana',PF:'French Polynesia',TF:'French Southern Territories',GA:'Gabon',GM:'Gambia',GE:'Georgia',DE:'Germany',GH:'Ghana',GI:'Gibraltar',GR:'Greece',GL:'Greenland',GD:'Grenada',GP:'Guadeloupe',GU:'Guam',GT:'Guatemala',GG:'Guernsey',GN:'Guinea',GW:'Guinea-Bissau',GY:'Guyana',HT:'Haiti',HM:'Heard & McDonald Islands',HN:'Honduras',HK:'Hong Kong SAR China',HU:'Hungary',IS:'Iceland',IN:'India',ID:'Indonesia',IR:'Iran',IQ:'Iraq',IE:'Ireland',IM:'Isle of Man',IL:'Israel',IT:'Italy',JM:'Jamaica',JP:'Japan',JE:'Jersey',JO:'Jordan',KZ:'Kazakhstan',KE:'Kenya',KI:'Kiribati',KW:'Kuwait',KG:'Kyrgyzstan',LA:'Laos',LV:'Latvia',LB:'Lebanon',LS:'Lesotho',LR:'Liberia',LY:'Libya',LI:'Liechtenstein',LT:'Lithuania',LU:'Luxembourg',MO:'Macao SAR China',MG:'Madagascar',MW:'Malawi',MY:'Malaysia',MV:'Maldives',ML:'Mali',MT:'Malta',MH:'Marshall Islands',MQ:'Martinique',MR:'Mauritania',MU:'Mauritius',YT:'Mayotte',MX:'Mexico',FM:'Micronesia',MD:'Moldova',MC:'Monaco',MN:'Mongolia',ME:'Montenegro',MS:'Montserrat',MA:'Morocco',MZ:'Mozambique',MM:'Myanmar (Burma)',NA:'Namibia',NR:'Nauru',NP:'Nepal',NL:'Netherlands',NC:'New Caledonia',NZ:'New Zealand',NI:'Nicaragua',NE:'Niger',NG:'Nigeria',NU:'Niue',NF:'Norfolk Island',KP:'North Korea',MK:'North Macedonia',MP:'Northern Mariana Islands',NO:'Norway',OM:'Oman',PK:'Pakistan',PW:'Palau',PS:'Palestinian Territories',PA:'Panama',PG:'Papua New Guinea',PY:'Paraguay',PE:'Peru',PH:'Philippines',PN:'Pitcairn Islands',PL:'Poland',PT:'Portugal',PR:'Puerto Rico',QA:'Qatar',RO:'Romania',RU:'Russia',RW:'Rwanda',RE:'Réunion',WS:'Samoa',SM:'San Marino',SA:'Saudi Arabia',SN:'Senegal',RS:'Serbia',SC:'Seychelles',SL:'Sierra Leone',SG:'Singapore',SX:'Sint Maarten',SK:'Slovakia',SI:'Slovenia',SB:'Solomon Islands',SO:'Somalia',ZA:'South Africa',GS:'South Georgia & South Sandwich Islands',KR:'South Korea',SS:'South Sudan',ES:'Spain',LK:'Sri Lanka',BL:'St. Barthélemy',SH:'St. Helena',KN:'St. Kitts & Nevis',LC:'St. Lucia',MF:'St. Martin',PM:'St. Pierre & Miquelon',VC:'St. Vincent & Grenadines',SD:'Sudan',SR:'Suriname',SJ:'Svalbard & Jan Mayen',SE:'Sweden',CH:'Switzerland',SY:'Syria',ST:'São Tomé & Príncipe',TW:'Taiwan',TJ:'Tajikistan',TZ:'Tanzania',TH:'Thailand',TL:'Timor-Leste',TG:'Togo',TK:'Tokelau',TO:'Tonga',TT:'Trinidad & Tobago',TN:'Tunisia',TR:'Turkey',TM:'Turkmenistan',TC:'Turks & Caicos Islands',TV:'Tuvalu',UM:'U.S. Outlying Islands',VI:'U.S. Virgin Islands',UG:'Uganda',UA:'Ukraine',AE:'United Arab Emirates',GB:'United Kingdom',US:'United States',UY:'Uruguay',UZ:'Uzbekistan',VU:'Vanuatu',VA:'Vatican City',VE:'Venezuela',VN:'Vietnam',WF:'Wallis & Futuna',EH:'Western Sahara',YE:'Yemen',ZM:'Zambia',ZW:'Zimbabwe',AX:'Åland Islands',OTHER:'Other / International'};
 
+function togglePriceOnRequest(){
+  var onReq=document.getElementById('chkPriceOnRequest').checked;
+  var priceInp=document.getElementById('fPrice');
+  var currSel=document.getElementById('fPriceCurr');
+  if(priceInp){priceInp.disabled=onReq;if(onReq)priceInp.value='';}
+  if(currSel)currSel.disabled=onReq;
+  updatePreview();updateProgress();updateCompleteness();
+}
+
 function updatePreview(){
   var make=document.getElementById('fMake').value.trim();
   var model=document.getElementById('fModel').value.trim();
@@ -778,6 +788,7 @@ function updatePreview(){
   var tt=document.getElementById('fTT').value;
   var airport=document.getElementById('fAirport').value.trim();
   var price=document.getElementById('fPrice').value;
+  var onRequest=document.getElementById('chkPriceOnRequest')&&document.getElementById('chkPriceOnRequest').checked;
   var catVal=document.getElementById('fCategory').value;
   var curr=document.getElementById('fPriceCurr').value;
   var country=document.getElementById('fCountry').value;
@@ -790,7 +801,7 @@ function updatePreview(){
   document.getElementById('prevYear').innerHTML=year?A2SIcon('calendar')+esc(year):'';
   document.getElementById('prevTT').innerHTML=tt?A2SIcon('clock')+esc(Number(tt).toLocaleString('en-GB'))+' h':'';
   document.getElementById('prevAirport').innerHTML=airport?A2SIcon('map-pin')+esc(airport):'';
-  document.getElementById('prevPrice').textContent=price?Number(price).toLocaleString('en-GB')+' '+sym:'Price to be set';
+  document.getElementById('prevPrice').textContent=onRequest?'Price on request':(price?Number(price).toLocaleString('en-GB')+' '+sym:'Price to be set');
   document.getElementById('prevLoc').innerHTML=A2SIcon('globe')+(COUNTRY_NAMES[country]||esc(country));
   updateChecklist();
 }
@@ -817,7 +828,8 @@ function updateChecklist(){
   var makeModel=!!(document.getElementById('fMake').value&&document.getElementById('fModel').value);
   var year=!!document.getElementById('fYear').value;
   var tt=!!document.getElementById('fTT').value;
-  var priceAirport=!!(document.getElementById('fPrice').value&&document.getElementById('fAirport').value);
+  var onRequest=document.getElementById('chkPriceOnRequest')&&document.getElementById('chkPriceOnRequest').checked;
+  var priceAirport=!!((onRequest||document.getElementById('fPrice').value)&&document.getElementById('fAirport').value);
   var desc=document.getElementById('fDesc').value.length>50;
   var photo=photos.length>0;
   var checks=[cat,makeModel,year,tt,priceAirport,desc,photo];
@@ -858,8 +870,10 @@ var COMPLETE_FIELDS=[
 var PHOTO_WEIGHT=19;
 function updateCompleteness(){
   var total=0;var missing=[];
+  var onRequest=document.getElementById('chkPriceOnRequest')&&document.getElementById('chkPriceOnRequest').checked;
   COMPLETE_FIELDS.forEach(function(f){
     var el=document.getElementById(f.id);
+    if(f.id==='fPrice'&&onRequest){total+=f.weight;return;}
     if(el&&el.value&&el.value.trim()){total+=f.weight;}
     else{missing.push(f.tip);}
   });
@@ -893,7 +907,7 @@ function esc(s){if(s==null)return'';var d=document.createElement('div');d.textCo
 /* ── DRAFT ── */
 var DRAFT_KEY='a2s_listing_draft';
 var DRAFT_IDS=['fCategory','fMakeSel','fModelSel','fMake','fModel','fMakeCustom','fModelCustom','fYear','fSerial','fTT','fSMOH','fProp','fEngines','fSeats','fRange','fAvionics','fEquip','fCountry','fAirport','fPrice','fPriceCurr','fPriceType','fDesc','fDocs'];
-var DRAFT_CHK=['chkIFR','chkRVSM','chkADSB','chkLogs'];
+var DRAFT_CHK=['chkIFR','chkRVSM','chkADSB','chkLogs','chkPriceOnRequest'];
 function saveDraft(){
   var d={};
   DRAFT_IDS.forEach(function(id){var el=document.getElementById(id);if(el)d[id]=el.value;});
@@ -915,6 +929,7 @@ function restoreDraft(){
     var el=document.getElementById(id);if(el&&d[id]!==undefined&&d[id]!==null&&d[id]!=='')el.value=d[id];
   });
   DRAFT_CHK.forEach(function(id){var el=document.getElementById(id);if(el)el.checked=!!d[id];});
+  if(document.getElementById('chkPriceOnRequest')&&document.getElementById('chkPriceOnRequest').checked)togglePriceOnRequest();
   var wrap=document.getElementById('mmCustomWrap');
   if(wrap&&(d.fMakeCustom||d.fModelCustom))wrap.classList.add('show');
   updateCharCount();updatePreview();updateProgress();updateCompleteness();
@@ -971,7 +986,9 @@ async function authToken(){
 
 async function submitListing(){
   clearFormError();
-  var required=[{id:'fCategory',label:'the category'},{id:'fYear',label:'the year'},{id:'fAirport',label:'the home airport'},{id:'fPrice',label:'the price'},{id:'fDesc',label:'the description'}];
+  var onRequestSubmit=document.getElementById('chkPriceOnRequest')&&document.getElementById('chkPriceOnRequest').checked;
+  var required=[{id:'fCategory',label:'the category'},{id:'fYear',label:'the year'},{id:'fAirport',label:'the home airport'},{id:'fDesc',label:'the description'}];
+  if(!onRequestSubmit)required.splice(3,0,{id:'fPrice',label:'the price'});
   for(var i=0;i<required.length;i++){
     var el=document.getElementById(required[i].id);
     if(!el||!el.value.trim()){showFormError('Please fill in '+required[i].label+' before publishing.');el&&el.focus();el&&el.scrollIntoView({behavior:'smooth',block:'center'});return;}
@@ -1088,7 +1105,8 @@ async function submitListing(){
   var videoVal=document.getElementById('fVideo').value.trim();
   if(videoVal&&isValidVideoUrl(videoVal))sbListing.video_url=videoVal;
   var ptVal=document.getElementById('fPriceType').value;
-  if(ptVal)sbListing.price_type=ptVal;
+  if(onRequestSubmit){sbListing.price=null;sbListing.price_type='on_request';}
+  else if(ptVal)sbListing.price_type=ptVal;
   var countryVal=document.getElementById('fCountry').value;
   if(countryVal)sbListing.country=countryVal;
   sbListing.ifr=document.getElementById('chkIFR').checked||false;
