@@ -199,6 +199,53 @@ export default async function handler(req, res) {
     }
   }
 
+  /* Copie de chaque facture émise (client + admin). Déclenché à chaque
+     facture payée — abonnement vendeur, Pro, ou Payment Link partenaire,
+     peu importe la source. L'événement est déjà activé côté Stripe
+     (voir webhook_endpoints) ; il manquait juste le traitement ici. */
+  if (event.type === 'invoice.payment_succeeded') {
+    try {
+      const invoice = event.data.object || {};
+      const email = (invoice.customer_email || '').trim();
+      const nom = invoice.customer_name || email || 'Client';
+      const numero = invoice.number || invoice.id;
+      const montant = ((invoice.amount_paid || 0) / 100).toLocaleString('fr-FR');
+      const devise = (invoice.currency || 'eur').toUpperCase();
+      const lienFacture = invoice.hosted_invoice_url || invoice.invoice_pdf || '';
+      const lienPdf = invoice.invoice_pdf || '';
+
+      if (email && lienFacture) {
+        envoyer({
+          to: email,
+          toName: nom,
+          sujet: `Votre facture Aircraft2Sell n°${numero}`,
+          html: gabarit({
+            titre: 'Facture',
+            intro: `Merci pour votre paiement de <strong>${montant} ${devise}</strong>. ` +
+                   `Voici votre facture n°${esc(numero)}.`,
+            cta: lienFacture,
+            ctaLabel: 'Voir / télécharger la facture',
+          }),
+        }).catch((e) => console.error('email facture client:', e.message));
+      }
+
+      envoyer({
+        to: ADMIN_EMAIL,
+        toName: 'Administration Aircraft2Sell',
+        sujet: `Copie facture n°${numero} — ${email || 'client inconnu'}`,
+        html: gabarit({
+          titre: 'Copie de facture émise',
+          intro: `Facture n°${esc(numero)} — <strong>${montant} ${devise}</strong> — ` +
+                 `client : ${esc(email || 'inconnu')} (${esc(nom)}).`,
+          cta: lienFacture || lienPdf,
+          ctaLabel: 'Voir la facture',
+        }),
+      }).catch((e) => console.error('email facture admin:', e.message));
+    } catch (e) {
+      console.error('webhook invoice.payment_succeeded:', e.message);
+    }
+  }
+
   if (event.type === 'customer.subscription.deleted') {
     try {
       const sub = event.data.object || {};
