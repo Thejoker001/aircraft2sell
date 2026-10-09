@@ -89,6 +89,26 @@ export default async function handler(req, res) {
     try {
       const session = event.data.object || {};
       const email = session.client_reference_id || session.customer_details?.email || '';
+
+      /* Mention TVA sur toute facture future : la société n'est pas
+         assujettie à la TVA (sous le seuil d'immatriculation estonien).
+         Appliqué sur l'abonnement créé (vendeurs ET partenaires, quelle
+         que soit la source — Payment Link ou /api/create-checkout) pour
+         que Stripe l'affiche automatiquement sur chaque facture récurrente
+         sans action manuelle. Best-effort : une erreur ici ne doit jamais
+         bloquer le reste du traitement du paiement. */
+      if (session.subscription && process.env.STRIPE_SECRET_KEY) {
+        fetch(`${STRIPE}/subscriptions/${session.subscription}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: 'invoice_settings[footer]=' + encodeURIComponent(
+            "Aircraft2Sell OÜ is not registered for VAT / n'est pas assujettie à la TVA."
+          ),
+        }).catch((e) => console.error('footer TVA subscription:', e.message));
+      }
       const plan = (session.metadata && session.metadata.plan) || 'aviateur';
       const addon = (session.metadata && session.metadata.addon) === '1';
       const featureId = (session.metadata && session.metadata.feature) || '';
