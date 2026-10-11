@@ -274,7 +274,12 @@ async function handleRegister(e){
       localStorage.setItem('a2s_user_email',email);
       localStorage.setItem('a2s_user_name',fullName);
       localStorage.setItem('a2s_user_pseudo',pseudo);
-      await fetch(SB+'/rest/v1/users',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({id:Date.now(),name:fullName,pseudo:pseudo,email:email,plan:'Essentiel',status:'active',registered_at:new Date().toISOString()})});
+      /* PATCH, pas POST : le trigger serveur handle_new_user() a déjà créé la
+         ligne public.users dès le signup (sans pseudo, inconnu du trigger).
+         Un POST ici échouait systématiquement en 409 duplicate key (avalé
+         par le flux normal, aucun catch), donc le pseudo saisi n'était
+         JAMAIS enregistré. Corrigé le 2026-10-11 (audit inscription→publication). */
+      await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({name:fullName,pseudo:pseudo})});
       /* Campagne de prospection : si l'utilisateur arrive avec le marqueur
          de campagne, on tente l'attribution "Pro offert à vie" (5 places max,
          atomique côté base). L'échec ne doit jamais bloquer l'inscription. */

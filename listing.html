@@ -975,7 +975,12 @@ async function quickRegister(){
          n'existait que côté Auth, sans pseudo/plan/aucune donnée métier —
          il fuitait le nom réel faute de pseudo enregistré nulle part. */
       try{
-        await fetch(SB+'/rest/v1/users',{method:'POST',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({id:Date.now(),name:name,pseudo:pseudo,email:email,plan:'Essentiel',status:'active',registered_at:new Date().toISOString()})});
+        /* PATCH, pas POST : le trigger serveur handle_new_user() a déjà créé
+           la ligne public.users dès le signup (sans pseudo, inconnu du
+           trigger). Un POST ici échouait en 409 duplicate key (avalé par ce
+           catch), donc le pseudo n'était JAMAIS enregistré malgré le
+           commentaire ci-dessus. Corrigé le 2026-10-11 (audit). */
+        await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({name:name,pseudo:pseudo})});
       }catch(e2){}
       var n=document.getElementById('msgName');if(n)n.value=name;
       var e=document.getElementById('msgEmail');if(e)e.value=email;
