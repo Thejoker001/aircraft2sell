@@ -158,92 +158,23 @@ def miroir_code():
     r = run(["git", "push", "--mirror", CODE_MIRROR_URL], cwd=CODE_REPO_DIR, check=False)
     ok = r.returncode == 0
     print("Miroir code -> aircraft2sell-code-mirror :", "OK" if ok else f"ÉCHEC\n{r.stderr}")
-    if ok:
-        desactiver_deploy_miroir()
     return ok
 
 
-# Le miroir est un dépôt de sauvegarde passive (historique git), pas un site
-# à déployer : il n'a pas (et ne doit pas avoir) de secret VERCEL_TOKEN.
-# Comme "git push --mirror" recopie tel quel .github/workflows/deploy-vercel.yml
-# depuis le dépôt source, le job "deploy" y échoue à chaque sync (secret vide).
-# On corrige donc le fichier après coup, via l'API Contents (pas via git push,
-# qui serait écrasé par le prochain mirror) : job "checks" conservé, job
-# "deploy" retiré.
-MIRROR_WORKFLOW_PATH = ".github/workflows/deploy-vercel.yml"
-MIRROR_WORKFLOW_CHECKS_ONLY = """name: Deploy to Vercel
-
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-jobs:
-  # Dépôt miroir de sauvegarde uniquement : pas de déploiement Vercel ici
-  # (pas de secret VERCEL_TOKEN, volontairement). Seuls les contrôles de
-  # contenu tournent, pour détecter une régression même sur ce dépôt.
-  checks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Validation des pages (JS, balises, emoji, thème)
-        run: python3 scripts/check-page.py *.html en/*.html
-
-      - name: Le sitemap est-il à jour ?
-        run: python3 scripts/gen-sitemap.py --check
-"""
-
-
-def desactiver_deploy_miroir():
-    # Sur cette machine, `gh` s'authentifie via son propre fichier de config
-    # (~/.config/gh/hosts.yml), PAS via la variable d'environnement GH_TOKEN
-    # (qui est vide dans .env). On passe donc par `gh api`, déjà authentifié,
-    # plutôt que par un token lu dans l'environnement.
-    import base64
-    import tempfile
-
-    repo = "Thejoker001/aircraft2sell-code-mirror"
-    api_path = f"repos/{repo}/contents/{MIRROR_WORKFLOW_PATH}"
-
-    r = run(["gh", "api", api_path], cwd=CODE_REPO_DIR, check=False)
-    if r.returncode != 0:
-        print(f"Lecture workflow miroir échouée :\n{r.stderr}")
-        return False
-    try:
-        current = json.loads(r.stdout)
-    except json.JSONDecodeError as e:
-        print(f"Lecture workflow miroir : réponse illisible ({e}).")
-        return False
-
-    current_content = base64.b64decode(current["content"]).decode("utf-8")
-    if current_content == MIRROR_WORKFLOW_CHECKS_ONLY:
-        print("Workflow miroir déjà sans job deploy (rien à faire).")
-        return True
-
-    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
-        json.dump({
-            "message": "chore(ci): retire le job deploy sur le miroir (pas de VERCEL_TOKEN ici)",
-            "content": base64.b64encode(MIRROR_WORKFLOW_CHECKS_ONLY.encode("utf-8")).decode("ascii"),
-            "sha": current["sha"],
-            "branch": "main",
-        }, f)
-        payload_path = f.name
-
-    r = run(["gh", "api", "-X", "PUT", api_path, "--input", payload_path],
-            cwd=CODE_REPO_DIR, check=False)
-    os.unlink(payload_path)
-    if r.returncode != 0:
-        print(f"Correction workflow miroir échouée :\n{r.stderr}")
-        return False
-    print("Workflow miroir corrigé : job deploy retiré (checks conservés).")
-    return True
+# Le miroir est un dépôt de sauvegarde passive (historique git), pas un site à
+# déployer : "git push --mirror" recopie tel quel .github/workflows/*.yml
+# depuis le dépôt source, et chaque sync déclenchait un run GitHub Actions
+# (job "deploy" en échec, secret VERCEL_TOKEN absent — par design, ce n'est
+# pas un dépôt de déploiement) qui arrivait par mail AVANT qu'un correctif
+# après-coup du fichier workflow n'ait eu le temps de s'appliquer (le push
+# mirror lui-même déclenche le run, trop tard pour intervenir sur son
+# contenu). Corrigé à la racine le 2026-10-12 : GitHub Actions est désactivé
+# au niveau du dépôt (repos/.../actions/permissions, enabled=false) sur
+# aircraft2sell-code-mirror ET aircraft2sell-backups — aucun run ne peut plus
+# se déclencher sur ces deux dépôts, quel que soit le contenu des workflows
+# qu'ils reçoivent en miroir. Rien à faire ici tant que ce réglage tient ;
+# vérifier avec `gh api repos/Thejoker001/<repo>/actions/permissions` s'il
+# fallait un jour le reproduire après une recréation du dépôt.
 
 
 def main():
