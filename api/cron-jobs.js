@@ -8,8 +8,8 @@
  *                                           + traduction description_en
  *                                           (rattrapage, lot de 40/jour)
  *   GET|POST /api/cron-jobs?job=expire   → expiration annonces 90 jours
- *                                           + chaque lundi (UTC), tirage
- *                                           de la nouvelle « Annonce de la
+ *                                           + chaque lundi 6h UTC, tirage de
+ *                                           la nouvelle « Annonce de la
  *                                           semaine » (vendeur PRO uniquement)
  *   GET|POST /api/cron-jobs?job=weekly-pick → déclenchement manuel du tirage
  *   GET|POST /api/cron-jobs?job=translate   → déclenchement manuel de la
@@ -545,7 +545,7 @@ module.exports = async function handler(req, res) {
       const resultatsExpire = await jobExpire();
       /* Limite Hobby Vercel : 2 crons distincts max dans vercel.json, donc
          pas d'entrée cron dédiée pour l'annonce de la semaine. On la
-         branche sur le cron quotidien "expire" (3h UTC) et on ne l'exécute
+         branche sur le cron quotidien "expire" (6h UTC) et on ne l'exécute
          que le lundi. */
       let resultatsWeeklyPick = null;
       if (estLundiUTC(new Date())) {
