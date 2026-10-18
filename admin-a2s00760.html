@@ -1924,9 +1924,13 @@ async function saveListingM() {
     showToast('Annonce enregistrée');
   } catch(e) { showToast('Erreur : '+e.message); }
 }
-async function delListing(id){if(!confirm('Supprimer cette annonce ?'))return;try{await sb('DELETE','listings','id=eq.'+id,null,true);logAdmin('listing.delete','listing',String(id),{});await refreshAll();showToast('Annonce supprimée');}catch(e){showToast('Erreur : '+e.message);}}
-async function delListingM(){var id=sel('ml-id').value;if(!id||!confirm('Supprimer ?'))return;try{await sb('DELETE','listings','id=eq.'+id,null,true);logAdmin('listing.delete','listing',String(id),{});closeM('mListing');await refreshAll();showToast('Annonce supprimée');}catch(e){showToast('Erreur : '+e.message);}}
-async function deleteAllListings(){try{await sb('DELETE','listings','id=gt.0',null,true);await refreshAll();showToast('Toutes les annonces supprimées');}catch(e){showToast('Erreur : '+e.message);}}
+/* Suppression douce (2026-10-18) : status='sold' au lieu d'un vrai DELETE,
+   alignée sur le comportement vendeur (dashboard.html), pour que ces annonces
+   alimentent le compteur public "Aéronefs vendus" (/api/notify?type=stats)
+   au lieu de disparaître sans laisser de trace. */
+async function delListing(id){if(!confirm('Supprimer cette annonce ? Elle sera comptabilisée comme vendue et ne sera plus visible par les acheteurs.'))return;try{await sb('PATCH','listings','id=eq.'+id,{status:'sold'},true);logAdmin('listing.delete','listing',String(id),{});await refreshAll();showToast('Annonce supprimée et comptabilisée comme vendue');}catch(e){showToast('Erreur : '+e.message);}}
+async function delListingM(){var id=sel('ml-id').value;if(!id||!confirm('Supprimer ? Elle sera comptabilisée comme vendue et ne sera plus visible par les acheteurs.'))return;try{await sb('PATCH','listings','id=eq.'+id,{status:'sold'},true);logAdmin('listing.delete','listing',String(id),{});closeM('mListing');await refreshAll();showToast('Annonce supprimée et comptabilisée comme vendue');}catch(e){showToast('Erreur : '+e.message);}}
+async function deleteAllListings(){try{await sb('PATCH','listings','id=gt.0',{status:'sold'},true);await refreshAll();showToast('Toutes les annonces supprimées et comptabilisées comme vendues');}catch(e){showToast('Erreur : '+e.message);}}
 
 /* ── USER EDIT ── */
 function viewSellerListings(email){
@@ -3002,17 +3006,18 @@ async function bulkReject(){
 async function bulkDelete(){
   var ids = selectedIds('list');
   if(!ids.length) return;
-  /* Suppression définitive : on garde une confirmation explicite, une
-     suppression en masse n'est pas rattrapable côté base. */
-  if(!confirm('Supprimer définitivement '+ids.length+' annonce(s) ? Cette action est irréversible.')) return;
+  /* Suppression douce (2026-10-18) : status='sold' au lieu d'un vrai DELETE,
+     alignée sur le comportement vendeur, pour alimenter le compteur public
+     "Aéronefs vendus" au lieu de faire disparaître les annonces sans trace. */
+  if(!confirm('Supprimer '+ids.length+' annonce(s) ? Elles seront comptabilisées comme vendues et ne seront plus visibles par les acheteurs.')) return;
   var ok=0, ko=0;
   for(var i=0;i<ids.length;i++){
-    try { await sb('DELETE','listings','id=eq.'+ids[i],null,true); ok++; logAdmin('bulk.delete','listing',ids[i],{}); }
+    try { await sb('PATCH','listings','id=eq.'+ids[i],{status:'sold'},true); ok++; logAdmin('bulk.delete','listing',ids[i],{}); }
     catch(e){ ko++; }
   }
   clearSelection('list');
   await refreshAll(); renderList();
-  showToast(ok+' annonce(s) supprimée(s)' + (ko?' — '+ko+' en échec':''));
+  showToast(ok+' annonce(s) supprimée(s) et comptabilisée(s) comme vendue(s)' + (ko?' — '+ko+' en échec':''));
 }
 
 /* ── Tri des colonnes ── */
