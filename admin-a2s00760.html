@@ -1597,6 +1597,25 @@ async function toggleFeatured(id,current){
     await refreshAll();
   }catch(e){showToast('Erreur : '+e.message);}
 }
+/* "Annonce de la semaine" (2026-10-18) : une seule annonce à la fois marquée
+   weekly_pick=true (colonne lue par les pages d'accueil FR/EN/ET, bloc
+   "Listing of the week"). Le cron api/cron-jobs.js?job=weekly-pick tire au
+   sort chaque lundi parmi les annonces PRO live avec photo — ce bouton admin
+   permet d'imposer un choix manuel à tout moment, qui tiendra jusqu'au
+   prochain tirage du cron (ou jusqu'à une nouvelle sélection manuelle). */
+async function toggleWeeklyPick(id,current){
+  try{
+    if(!current){
+      /* Un seul pick actif à la fois : on retire d'abord l'ancien avant de
+         poser le nouveau, sinon deux annonces pourraient rester marquées. */
+      await sb('PATCH','listings','weekly_pick=eq.true',{weekly_pick:false},true);
+    }
+    await sb('PATCH','listings','id=eq.'+id,{weekly_pick:!current,featured:!current?true:undefined},true);
+    logAdmin('listing.weekly_pick','listing',String(id),{weekly_pick:!current});
+    showToast(current?'Annonce retirée de la mise en avant de la semaine':'Annonce définie comme annonce de la semaine');
+    await refreshAll();
+  }catch(e){showToast('Erreur : '+e.message);}
+}
 async function approve(id){
   try{
     await sb('PATCH','listings','id=eq.'+id,{status:'live'},true);
@@ -1677,7 +1696,7 @@ function renderList(){
   var _pg=sel('pager-list'); if(_pg) _pg.innerHTML=pagerHTML('list',_info);
   tb.innerHTML=_info.slice.map(function(l){
     return'<tr><td class="row-check"><input type="checkbox" data-id="'+l.id+'" onchange="toggleRow(\'list\','+l.id+',this)" aria-label="Sélectionner"></td>'
-      +'<td style="color:var(--a2s-text);font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ltitle(l)+'</td><td>'+'<span style="cursor:pointer;color:var(--a2s-text)" onclick="viewSellerListings(\''+esc(l.sellerEmail||'')+'\')">'+esc(l.sellerName||'--')+'</span></td><td style="color:var(--a2s-accent);font-family:var(--font-display);font-weight:800">'+(l.price?cur(l.currency)+Number(l.price).toLocaleString():'--')+'</td><td>'+statusPill(l.status)+'</td><td style="color:var(--a2s-text-faint);font-size:.68rem;text-align:center">'+(l.views||0)+'</td><td style="color:var(--a2s-text-faint);font-size:.65rem">'+fmtDate(l.submittedAt)+'</td><td><div class="acts">'+(l.status==='pending'?'<button class="act ap" onclick="approve('+l.id+')" title="Approuver">'+A2SIcon('check')+'</button>':'')+(l.status==='live'?'<button class="act rj" onclick="doReject('+l.id+')" title="Rejeter">'+A2SIcon('close')+'</button>':'')+'<button class="act" onclick="viewListing('+l.id+')" title="Voir">'+A2SIcon('eye')+'</button><button class="act" onclick="editListing('+l.id+')" title="Modifier">'+A2SIcon('edit')+'</button><button class="act rj" onclick="delListing('+l.id+')" title="Supprimer">'+A2SIcon('trash')+'</button></div></td></tr>';
+      +'<td style="color:var(--a2s-text);font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ltitle(l)+'</td><td>'+'<span style="cursor:pointer;color:var(--a2s-text)" onclick="viewSellerListings(\''+esc(l.sellerEmail||'')+'\')">'+esc(l.sellerName||'--')+'</span></td><td style="color:var(--a2s-accent);font-family:var(--font-display);font-weight:800">'+(l.price?cur(l.currency)+Number(l.price).toLocaleString():'--')+'</td><td>'+statusPill(l.status)+'</td><td style="color:var(--a2s-text-faint);font-size:.68rem;text-align:center">'+(l.views||0)+'</td><td style="color:var(--a2s-text-faint);font-size:.65rem">'+fmtDate(l.submittedAt)+'</td><td><div class="acts">'+(l.status==='pending'?'<button class="act ap" onclick="approve('+l.id+')" title="Approuver">'+A2SIcon('check')+'</button>':'')+(l.status==='live'?'<button class="act rj" onclick="doReject('+l.id+')" title="Rejeter">'+A2SIcon('close')+'</button>':'')+(l.status==='live'?'<button class="act'+(l.weekly_pick?' ap':'')+'" onclick="toggleWeeklyPick('+l.id+','+(!!l.weekly_pick)+')" title="'+(l.weekly_pick?"Retirer de l'annonce de la semaine":"Mettre en annonce de la semaine")+'" style="'+(l.weekly_pick?'color:var(--a2s-accent)':'')+'">'+A2SIcon('star')+'</button>':'')+'<button class="act" onclick="viewListing('+l.id+')" title="Voir">'+A2SIcon('eye')+'</button><button class="act" onclick="editListing('+l.id+')" title="Modifier">'+A2SIcon('edit')+'</button><button class="act rj" onclick="delListing('+l.id+')" title="Supprimer">'+A2SIcon('trash')+'</button></div></td></tr>';
   }).join('');
   /* Restaure les cases cochées après un re-rendu (tri, pagination, filtre). */
   selectedIds('list').forEach(function(id){
