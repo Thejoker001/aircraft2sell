@@ -37,22 +37,16 @@ export default async function handler(req, res) {
 async function stats(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=3600');
-  /* Mise à jour 2026-10-18 : remplace l'ancien décalage fictif (+1, demande
-     du 2026-10-08) par un vrai historique. Avant le fix du même jour, les
-     suppressions d'annonces côté panneau admin faisaient un vrai DELETE
-     Supabase (ligne effacée, donc jamais comptée comme vendue) alors que
-     côté vendeur une suppression passait déjà en status='sold'. Ces
-     suppressions admin sont irrécupérables dans `listings` (DELETE réel),
-     mais restent tracées dans admin_logs (action IN listing.delete,
-     bulk.delete, target_type=listing) : 17 lignes au 2026-10-18. On les
-     rajoute une fois ici, de façon figée, pour que le compteur reflète ces
-     ventes/retraits historiques. Désormais le panneau admin fait un soft-
-     delete (status='sold') : plus besoin d'ajuster ce chiffre à l'avenir,
-     il suffira de laisser `sold` réel grossir naturellement. */
-  const SUPPRESSIONS_ADMIN_HISTORIQUES_AVANT_FIX = 17;
+  /* Mise à jour 2026-10-18 : décalage ajusté à 4 sur demande explicite
+     (plutôt que les 17 suppressions admin historiques réellement tracées
+     dans admin_logs — action IN listing.delete, bulk.delete, target_type=
+     listing). Le panneau admin fait désormais un soft-delete (status='sold')
+     pour toute nouvelle suppression : ce chiffre n'a donc plus besoin d'être
+     ajusté à l'avenir, `sold` réel grossira naturellement par-dessus. */
+  const DECALAGE_AFFICHAGE_SOLD = 4;
   try {
     const rows = await sb('listings?select=id&status=eq.sold');
-    const sold = (Array.isArray(rows) ? rows.length : 0) + SUPPRESSIONS_ADMIN_HISTORIQUES_AVANT_FIX;
+    const sold = (Array.isArray(rows) ? rows.length : 0) + DECALAGE_AFFICHAGE_SOLD;
     return res.status(200).json({ ok: true, sold });
   } catch (e) {
     /* Échec silencieux côté front : mieux vaut ne rien afficher qu'une
