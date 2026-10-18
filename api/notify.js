@@ -7,6 +7,9 @@
  *   POST /api/notify?type=new-listing  → annonce déposée, à modérer (admin)
  *   POST /api/notify?type=moderated    → annonce approuvée / rejetée (vendeur)
  *                                         + traduction description_en (voir moderated())
+ *   POST /api/notify?type=weekly-pick  → annonce choisie "annonce de la semaine" (vendeur)
+ *                                         appelé depuis admin-a2s00760.html (toggleWeeklyPick)
+ *                                         et depuis le cron api/cron-jobs.js?job=weekly-pick
  *   GET  /api/notify?type=stats        → compteur public "aéronefs vendus"
  *                                         (aucune donnée personnelle, agrégat
  *                                         only — status=sold est invisible à
@@ -25,6 +28,7 @@ export default async function handler(req, res) {
 
   if (type === 'new-listing') return newListing(req, res);
   if (type === 'moderated') return moderated(req, res);
+  if (type === 'weekly-pick') return weeklyPick(req, res);
   return message(req, res); /* défaut : message (compatibilité /api/notify sans type) */
 }
 
@@ -291,3 +295,49 @@ async function moderated(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
+
+/* ── TYPE weekly-pick : vendeur prévenu que son annonce est "annonce de la
+   semaine" ── Déclenché par admin-a2s00760.html (toggleWeeklyPick, choix
+   manuel) et par api/cron-jobs.js (jobWeeklyPick, tirage auto du lundi).
+   Corps attendu : { listing_id }. */
+async function weeklyPick(req, res) {
+  try {
+    const corps = req.body || {};
+    const id = corps.listing_id || corps.listingId || corps.id;
+    if (!id) return res.status(400).json({ error: 'listing_id manquant' });
+
+    const rows = await sb(`listings?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
+    const l = rows && rows[0];
+    if (!l) return res.status(404).json({ error: 'Annonce introuvable' });
+    if (!l.seller_email) return res.status(400).json({ error: 'Vendeur sans email' });
+
+    const titre = titreAeronef(l);
+    const lien = `${SITE}/listing.html?id=${encodeURIComponent(l.id)}`;
+    const sujet = `Votre annonce est l'annonce de la semaine — ${titre}`;
+    const html = gabarit({
+      titre: 'Votre annonce est mise en avant cette semaine !',
+      intro: `Bonjour${l.seller_name ? ' ' + esc(l.seller_name) : ''}, excellente nouvelle : votre annonce a été sélectionnée comme <strong>« annonce de la semaine »</strong> sur Aircraft2Sell. Elle est désormais affichée en vedette sur notre page d'accueil, vue par tous les visiteurs du site.`,
+      blocs: [
+        ['Aéronef', esc(titre)],
+        ['Prix affiché', esc(prix(l.price, l.currency))],
+        ['Localisation', esc(l.airport || l.country || '—')],
+      ],
+      cta: lien,
+      ctaLabel: 'Voir mon annonce',
+      pied: `Cette mise en avant augmente significativement la visibilité de votre annonce pendant une semaine. Aucune action n'est requise de votre part.<br><br>Une question ? Écrivez-nous à <a href="mailto:contact@aircraft2sell.eu" style="color:#1E5FCC;text-decoration:none">contact@aircraft2sell.eu</a>.`,
+    });
+
+    const r = await envoyer({
+      to: l.seller_email,
+      toName: l.seller_name || l.seller_email,
+      sujet,
+      html,
+    });
+
+    if (!r.ok) return res.status(502).json({ error: r.erreur });
+    return res.status(200).json({ ok: true, messageId: r.id });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
+

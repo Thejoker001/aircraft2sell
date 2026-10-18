@@ -1611,8 +1611,17 @@ async function toggleWeeklyPick(id,current){
       await sb('PATCH','listings','weekly_pick=eq.true',{weekly_pick:false},true);
     }
     await sb('PATCH','listings','id=eq.'+id,{weekly_pick:!current,featured:!current?true:undefined},true);
+    if(!current){
+      /* Notifier le vendeur par email, uniquement quand on POSE le pick
+         (pas quand on le retire) — même pattern fire-and-forget que approve(). */
+      fetch('/api/notify?type=weekly-pick',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({listing_id:String(id)})
+      }).catch(function(){});
+    }
     logAdmin('listing.weekly_pick','listing',String(id),{weekly_pick:!current});
-    showToast(current?'Annonce retirée de la mise en avant de la semaine':'Annonce définie comme annonce de la semaine');
+    showToast(current?'Annonce retirée de la mise en avant de la semaine':'Annonce définie comme annonce de la semaine, vendeur notifié');
     await refreshAll();
   }catch(e){showToast('Erreur : '+e.message);}
 }

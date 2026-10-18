@@ -257,6 +257,60 @@ function gabaritExpiration({ titre }) {
 </body></html>`;
 }
 
+/* Gabarit "annonce de la semaine" (2026-10-18) : notifie le vendeur dont
+   l'annonce vient d'être tirée au sort (cron, lundi) ou choisie manuellement
+   (admin, toggleWeeklyPick → api/notify.js?type=weekly-pick, même contenu
+   dupliqué ici car ce fichier a son propre envoyer()/gabarit* autonome). */
+function gabaritWeeklyPick({ titre, prixAffiche, lien }) {
+  return `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Annonce de la semaine — Aircraft2Sell</title></head>
+<body style="margin:0;padding:0;background:#F4F7FB;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F7FB;padding:24px 12px">
+ <tr><td align="center">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(11,37,69,.08)">
+   <tr><td style="background:#0B2545;padding:20px 28px">
+     <div style="color:#FFFFFF;font-size:19px;font-weight:800;letter-spacing:-.3px">
+       Aircraft2<span style="color:#EA6A16">Sell</span></div>
+   </td></tr>
+   <tr><td style="padding:28px">
+     <h1 style="margin:0 0 12px;color:#0B2545;font-size:20px;font-weight:800;line-height:1.3">Votre annonce est mise en avant cette semaine !</h1>
+     <p style="margin:0 0 22px;color:#3D4F63;font-size:15px;line-height:1.6">
+       Excellente nouvelle : <strong>${esc(titre)}</strong> a été sélectionnée comme « annonce de la semaine » sur Aircraft2Sell.
+       Elle est désormais affichée en vedette sur notre page d'accueil, vue par tous les visiteurs du site.</p>
+     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #E4EAF2;border-bottom:1px solid #E4EAF2;margin:0 0 22px">
+       <tr>
+         <td style="padding:8px 0;color:#5B6B7F;font-size:14px;width:150px">Aéronef</td>
+         <td style="padding:8px 0;color:#0B2545;font-size:14px;font-weight:600">${esc(titre)}</td>
+       </tr>
+       <tr>
+         <td style="padding:8px 0;color:#5B6B7F;font-size:14px;width:150px">Prix affiché</td>
+         <td style="padding:8px 0;color:#0B2545;font-size:14px;font-weight:600">${esc(prixAffiche)}</td>
+       </tr>
+     </table>
+     <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+       <td style="background:#EA6A16;border-radius:8px">
+         <a href="${lien}" style="display:inline-block;padding:12px 24px;color:#FFFFFF;
+            font-size:15px;font-weight:700;text-decoration:none">Voir mon annonce</a>
+       </td></tr></table>
+     <p style="margin:22px 0 0;color:#5B6B7F;font-size:13px;line-height:1.6">
+       Cette mise en avant augmente significativement la visibilité de votre annonce pendant une semaine. Aucune action n'est requise de votre part.<br><br>
+       Une question ? Écrivez-nous à
+       <a href="mailto:contact@aircraft2sell.eu" style="color:#1E5FCC;text-decoration:none">contact@aircraft2sell.eu</a>.</p>
+   </td></tr>
+   <tr><td style="background:#F9FBFD;padding:18px 28px;border-top:1px solid #E4EAF2">
+     <p style="margin:0;color:#8494A8;font-size:12px;line-height:1.6">
+       Aircraft2Sell — marketplace aéronautique européenne, zéro commission.<br>
+       <a href="${SITE}" style="color:#1E5FCC;text-decoration:none">aircraft2sell.eu</a>
+     </p>
+   </td></tr>
+  </table>
+ </td></tr>
+</table>
+</body></html>`;
+}
+
 async function jobExpire() {
   const maintenant = new Date();
   const iso90 = new Date(maintenant.getTime() - 90 * 24 * 3600 * 1000).toISOString();
@@ -400,9 +454,11 @@ function estLundiUTC(date) {
 
 async function jobWeeklyPick() {
   /* Annonces actives, vendeur PRO uniquement (comme demandé), avec au
-     moins une photo pour un rendu correct en vitrine. */
+     moins une photo pour un rendu correct en vitrine. Champs supplémentaires
+     (make/model/year/price/currency/seller_email/seller_name) nécessaires
+     pour l'email "annonce de la semaine" envoyé plus bas. */
   const candidates = await sbGet(
-    `listings?select=id,photos,weekly_pick&status=eq.live&seller_is_pro=eq.true&limit=500`
+    `listings?select=id,photos,weekly_pick,make,model,year,price,currency,seller_email,seller_name&status=eq.live&seller_is_pro=eq.true&limit=500`
   );
   const eligibles = candidates.filter((l) => Array.isArray(l.photos) && l.photos.length > 0);
   if (!eligibles.length) {
@@ -421,8 +477,28 @@ async function jobWeeklyPick() {
   await sbPatch(`listings?weekly_pick=eq.true`, { weekly_pick: false });
   await sbPatch(`listings?id=eq.${encodeURIComponent(choisie.id)}`, { weekly_pick: true, featured: true });
 
-  return { picked: choisie.id, pool_size: pool.length };
+  /* Notifie le vendeur sélectionné — échec silencieux (ne doit jamais faire
+     échouer le tirage lui-même si Brevo est indisponible ou quota atteint). */
+  let emailSent = false;
+  if (choisie.seller_email) {
+    try {
+      const titre = [choisie.make, choisie.model, choisie.year ? `(${choisie.year})` : ''].filter(Boolean).join(' ') || 'Aéronef';
+      const lien = `${SITE}/listing.html?id=${encodeURIComponent(choisie.id)}`;
+      const r = await envoyer({
+        to: choisie.seller_email,
+        toName: choisie.seller_name,
+        sujet: `Votre annonce est l'annonce de la semaine — ${titre}`,
+        html: gabaritWeeklyPick({ titre, prixAffiche: prix(choisie.price, choisie.currency), lien }),
+      });
+      emailSent = !!r.ok;
+    } catch (e) {
+      console.error(`weekly-pick notify ${choisie.id} : ${e.message}`);
+    }
+  }
+
+  return { picked: choisie.id, pool_size: pool.length, email_sent: emailSent };
 }
+
 
 /* ── JOB translate : description_en manquante (rattrapage + nouvelles
    modifications) ── Traduit via Groq (même fournisseur que l'assistant
