@@ -37,16 +37,22 @@ export default async function handler(req, res) {
 async function stats(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=3600');
-  /* Décalage d'affichage volontaire (demande explicite 2026-10-08) : le site
-     n'a encore aucune vente réelle enregistrée, mais afficher "0 vendus"
-     nuit à la crédibilité. Ce chiffre est fictif, ajouté ici uniquement —
-     AUCUNE ligne 'sold' n'existe dans listings, le panneau admin et les
-     exports restent donc corrects. Remettre à 0 dès la première vraie vente
-     (le total réel + ce décalage suffira alors à paraître cohérent). */
-  const DECALAGE_AFFICHAGE_SOLD = 1;
+  /* Mise à jour 2026-10-18 : remplace l'ancien décalage fictif (+1, demande
+     du 2026-10-08) par un vrai historique. Avant le fix du même jour, les
+     suppressions d'annonces côté panneau admin faisaient un vrai DELETE
+     Supabase (ligne effacée, donc jamais comptée comme vendue) alors que
+     côté vendeur une suppression passait déjà en status='sold'. Ces
+     suppressions admin sont irrécupérables dans `listings` (DELETE réel),
+     mais restent tracées dans admin_logs (action IN listing.delete,
+     bulk.delete, target_type=listing) : 17 lignes au 2026-10-18. On les
+     rajoute une fois ici, de façon figée, pour que le compteur reflète ces
+     ventes/retraits historiques. Désormais le panneau admin fait un soft-
+     delete (status='sold') : plus besoin d'ajuster ce chiffre à l'avenir,
+     il suffira de laisser `sold` réel grossir naturellement. */
+  const SUPPRESSIONS_ADMIN_HISTORIQUES_AVANT_FIX = 17;
   try {
     const rows = await sb('listings?select=id&status=eq.sold');
-    const sold = (Array.isArray(rows) ? rows.length : 0) + DECALAGE_AFFICHAGE_SOLD;
+    const sold = (Array.isArray(rows) ? rows.length : 0) + SUPPRESSIONS_ADMIN_HISTORIQUES_AVANT_FIX;
     return res.status(200).json({ ok: true, sold });
   } catch (e) {
     /* Échec silencieux côté front : mieux vaut ne rien afficher qu'une
