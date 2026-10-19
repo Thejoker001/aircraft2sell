@@ -236,7 +236,7 @@
         <div class="stats-strip" aria-label="Key figures">
           <div><div class="stat-num" id="sn1">—</div><div class="stat-lbl">Active listings</div></div>
           <div><div class="stat-num" id="sn2">—</div><div class="stat-lbl">Verified sellers</div></div>
-          <div><div class="stat-num" id="sn3">32</div><div class="stat-lbl">Countries covered</div></div>
+          <div><div class="stat-num" id="sn3">—</div><div class="stat-lbl">Countries covered</div></div>
           <div id="soldStatBlock" style="display:none"><div class="stat-num" id="sn4">—</div><div class="stat-lbl">Aircraft sold</div></div>
         </div>
       </div>
@@ -541,8 +541,7 @@ async function loadListings(){
   if(!_all.length){
     grid.innerHTML='<div class="empty-state"><span class="icon-box">'+A2SIcon('plane')+'</span><div class="empty-title">The first listings are on their way</div><p class="empty-sub">Selling an aircraft? <a href="post-listing.html">Post the first listing</a> — it is free and commission-free.</p></div>';
     animCount('sn1',0);
-    /* Certified accounts exist even with no live listing: query
-       homepage_stats instead of showing 0. */
+    animCount('sn3',0);
     loadCertifiedCount();
     document.querySelectorAll('.cat-count').forEach(function(el){el.textContent='Coming soon';});
     return;
@@ -550,8 +549,11 @@ async function loadListings(){
   _all.slice(0,8).forEach(function(l){grid.appendChild(renderCard(l));});
   var cats={};_all.forEach(function(l){cats[l.category]=true;});
   document.querySelectorAll('#catPills .pill[data-cat]').forEach(function(b){if(b.dataset.cat&&!cats[b.dataset.cat])b.style.display='none';});
-  var all=await sbGet('listings_public','select=id,category,seller_pseudo');
+  var all=await sbGet('listings_public','select=id,category,seller_pseudo,country');
   animCount('sn1',all.length);
+  /* « Countries covered »: real distinct-country count from live listings
+     (was a hardcoded "32" unrelated to actual coverage). */
+  animCount('sn3',new Set(all.map(function(x){return x.country;}).filter(function(c){return c&&c!=='OTHER';})).size);
   /* "Verified sellers" must count actually certified accounts. The previous
      version counted distinct emails with a live listing: a certified seller
      without a published listing was never counted. Uses seller_pseudo (public

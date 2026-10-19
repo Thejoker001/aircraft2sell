@@ -235,7 +235,7 @@
         <div class="stats-strip" aria-label="Võtmenäitajad">
           <div><div class="stat-num" id="sn1">—</div><div class="stat-lbl">Aktiivsed kuulutused</div></div>
           <div><div class="stat-num" id="sn2">—</div><div class="stat-lbl">Kontrollitud müüjad</div></div>
-          <div><div class="stat-num" id="sn3">32</div><div class="stat-lbl">Riiki kaetud</div></div>
+          <div><div class="stat-num" id="sn3">—</div><div class="stat-lbl">Riiki kaetud</div></div>
           <div id="soldStatBlock" style="display:none"><div class="stat-num" id="sn4">—</div><div class="stat-lbl">Müüdud õhusõidukid</div></div>
         </div>
       </div>
@@ -540,6 +540,7 @@ async function loadListings(){
   if(!_all.length){
     grid.innerHTML='<div class="empty-state"><span class="icon-box">'+A2SIcon('plane')+'</span><div class="empty-title">Esimesed kuulutused on teel</div><p class="empty-sub">Müüd õhusõidukit? <a href="post-listing.html">Avalda esimene kuulutus</a> — see on tasuta ja vahendustasuta.</p></div>';
     animCount('sn1',0);
+    animCount('sn3',0);
     loadCertifiedCount();
     document.querySelectorAll('.cat-count').forEach(function(el){el.textContent='Tulekul';});
     return;
@@ -547,8 +548,11 @@ async function loadListings(){
   _all.slice(0,8).forEach(function(l){grid.appendChild(renderCard(l));});
   var cats={};_all.forEach(function(l){cats[l.category]=true;});
   document.querySelectorAll('#catPills .pill[data-cat]').forEach(function(b){if(b.dataset.cat&&!cats[b.dataset.cat])b.style.display='none';});
-  var all=await sbGet('listings_public','select=id,category,seller_pseudo');
+  var all=await sbGet('listings_public','select=id,category,seller_pseudo,country');
   animCount('sn1',all.length);
+  /* « Riiki kaetud »: tegelik riikide arv live-kuulutuste põhjal
+     (varem fikseeritud "32", mis ei vastanud tegelikkusele). */
+  animCount('sn3',new Set(all.map(function(x){return x.country;}).filter(function(c){return c&&c!=='OTHER';})).size);
   loadCertifiedCount(new Set(all.map(function(x){return x.seller_pseudo;}).filter(Boolean)).size);
   ['light','jet','turbo','heli','ulm','airliner'].forEach(function(c){var el=document.getElementById('cc-'+c);if(el){var n=all.filter(function(x){return x.category===c;}).length;el.textContent=n+' kuulutus'+(n!==1?'t':'');}});
 }
