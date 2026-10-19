@@ -89,8 +89,24 @@
     return map[code] || code;
   }
 
+  /* ── Détection bots / outils automatisés (agent, crawlers, QA headless) ──
+     Même logique que lang-redirect.js::isLikelyBot : navigator.webdriver
+     est vrai pour tout Chrome piloté par CDP/Playwright/Puppeteer (y compris
+     les vérifications navigateur de l'agent de gestion du site), + repli sur
+     une liste d'UA de bots connus. Objectif : les stats admin (visites,
+     pages vues, pays) ne doivent refléter QUE du vrai trafic humain, jamais
+     les vérifications/tests de déploiement effectués depuis ce même site. */
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|headless|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed|puppeteer|playwright/.test(ua);
+    } catch (e) { return false; }
+  }
+
   /* ── Envoyer le hit ── */
   function track() {
+    if (isLikelyBot()) return;
     // Ne pas tracker les pages admin/diag
     var page = getPage();
     if (/admin|diag|moderate|migration/.test(page)) return;
