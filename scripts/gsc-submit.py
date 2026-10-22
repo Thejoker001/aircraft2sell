@@ -43,7 +43,15 @@ SITEMAP = 'https://aircraft2sell.eu/sitemap.xml'
 # ensemble partout ci-dessous (submit/audit) pour ne pas reproduire le même
 # angle mort.
 SITEMAP_LISTINGS = 'https://aircraft2sell.eu/sitemap-listings.xml'
-ALL_SITEMAPS = [SITEMAP, SITEMAP_LISTINGS]
+# sitemap-pages.xml (ajouté 22/10/2026) : copie BYTE-POUR-BYTE de sitemap.xml
+# sous un nom neuf — voir le commentaire dans gen-sitemap.py pour le pourquoi
+# (sitemap.xml jamais téléchargé par Google en 12+ jours malgré Cloudflare
+# entièrement ouvert ; sitemap-listings.xml, nom neuf, téléchargé en
+# quelques secondes). Volontairement PAS ajouté à sitemap_urls() : même
+# contenu que sitemap.xml, l'auditer doublerait inutilement les ~130 URLs
+# sur le quota journalier limité de l'API URL Inspection (~600/jour).
+SITEMAP_PAGES = 'https://aircraft2sell.eu/sitemap-pages.xml'
+ALL_SITEMAPS = [SITEMAP, SITEMAP_PAGES, SITEMAP_LISTINGS]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 

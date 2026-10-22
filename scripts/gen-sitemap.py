@@ -208,8 +208,27 @@ def main():
         return 0
 
     open(dest, 'w', encoding='utf-8').write(xml)
+
+    # Copie identique sous un NOUVEAU nom (ajoutée 22/10/2026) : sitemap.xml
+    # n'a jamais été téléchargé par Google en 12+ jours de suivi quotidien
+    # (lastDownloaded resté absent dans l'API Sitemaps, malgré plusieurs
+    # resoumissions) alors que Cloudflare ne bloque RIEN (Bot Fight Mode /
+    # ai_bots_protection déjà désactivés depuis fin septembre, curl/bingbot
+    # réel reçoivent 200, XML valide) — logs GraphQL Cloudflare confirment
+    # ZÉRO vrai passage Googlebot sur /sitemap.xml en 7 jours. Tout pointe
+    # vers un blocage/backoff côté Google propre à CETTE URL précise, pas au
+    # domaine : sitemap-listings.xml (fichier tout neuf, jamais soumis avant
+    # ce jour) a été téléchargé par Google en quelques secondes sur ce MÊME
+    # domaine. `sitemap-pages.xml` est donc un nom neuf pour le même contenu,
+    # soumis en parallèle, pour sortir de ce blocage par URL plutôt que par
+    # domaine. Ne JAMAIS retirer sitemap.xml tant que sitemap-pages.xml n'a
+    # pas prouvé un lastDownloaded réel — garder les deux déclarés dans
+    # robots.txt en attendant.
+    dest2 = os.path.join(ROOT, 'sitemap-pages.xml')
+    open(dest2, 'w', encoding='utf-8').write(xml)
+
     n_alt = sum(1 for e in entries if e['alts'])
-    print(f'sitemap.xml généré : {len(entries)} URLs, {n_alt} avec hreflang.')
+    print(f'sitemap.xml + sitemap-pages.xml générés : {len(entries)} URLs, {n_alt} avec hreflang.')
     return 0
 
 
