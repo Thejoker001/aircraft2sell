@@ -17,7 +17,7 @@
  *
  * Les corps acceptés sont identiques à ceux des anciennes fonctions.
  */
-import { preambule, sb, sbEcrire, sbPatch, traduireEnAnglais, envoyer, gabarit, esc, prix, titreAeronef, ADMIN_EMAIL, SITE } from './_lib.js';
+import { preambule, sb, sbEcrire, sbPatch, traduireEnAnglais, envoyer, gabarit, esc, prix, titreAeronef, ADMIN_EMAIL, SITE, ipClient, debitAutorise } from './_lib.js';
 
 export default async function handler(req, res) {
   const type = (req.query && req.query.type) || '';
@@ -61,6 +61,16 @@ async function stats(req, res) {
 
 /* ── TYPE message : destinataire notifié d'un message reçu ── */
 async function message(req, res) {
+  /* Anti-spam (audit du 22/10) : endpoint public, pas d'authentification
+     requise pour contacter un vendeur (par design, voir listing.html). 10
+     messages max / 10 min / IP — plus permissif que contact-form car un
+     visiteur légitime peut contacter plusieurs vendeurs dans une session.
+     Fail-open si la table n'existe pas encore ou si Supabase est
+     indisponible. */
+  const ip = ipClient(req);
+  if (!(await debitAutorise(`notify-message:${ip}`, 10, 600))) {
+    return res.status(429).json({ error: 'Trop de messages envoyés. Réessayez dans quelques minutes.' });
+  }
   try {
     const c = req.body || {};
 

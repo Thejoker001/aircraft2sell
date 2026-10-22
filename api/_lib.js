@@ -93,6 +93,43 @@ export async function sbPatch(chemin, corps) {
   if (!r.ok) throw new Error(`Supabase ${r.status} : ${(await r.text()).slice(0, 200)}`);
 }
 
+/** Récupère l'IP client réelle derrière le proxy Vercel. */
+export function ipClient(req) {
+  const xff = req.headers['x-forwarded-for'];
+  if (xff) return String(xff).split(',')[0].trim();
+  return req.headers['x-real-ip'] || req.socket?.remoteAddress || 'inconnue';
+}
+
+/**
+ * Limitation de débit anti-spam (audit du 22/10) : au plus `limite` appels
+ * par fenêtre de `fenetreSecondes` pour une même clé (typiquement
+ * "<endpoint>:<ip>"). Appuyée sur la fonction Postgres check_rate_limit
+ * (atomique, voir supabase/add-rate-limiting.sql).
+ *
+ * FAIL-OPEN DÉLIBÉRÉ : toute erreur (table pas encore créée, Supabase
+ * indisponible, RPC en échec...) renvoie `true` (autorisé). Un rate-limiter
+ * qui casse ne doit JAMAIS bloquer du trafic légitime à la place d'un vrai
+ * abus — mieux vaut laisser passer un spammeur occasionnel que de couper le
+ * formulaire de contact pour tout le monde à cause d'un bug ailleurs.
+ */
+export async function debitAutorise(cle, limite, fenetreSecondes) {
+  try {
+    const url = process.env.SUPABASE_URL;
+    const cleApi = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !cleApi) return true;
+    const r = await fetch(`${url}/rest/v1/rpc/check_rate_limit`, {
+      method: 'POST',
+      headers: { apikey: cleApi, Authorization: `Bearer ${cleApi}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_key: cle, p_limit: limite, p_window_seconds: fenetreSecondes }),
+    });
+    if (!r.ok) return true; // table/fonction absente, ou autre souci : on n'bloque jamais pour ça
+    const autorise = await r.json();
+    return autorise !== false;
+  } catch {
+    return true;
+  }
+}
+
 /**
  * Traduit un texte libre français vers l'anglais via Groq (même fournisseur
  * que l'assistant conversationnel, api/chat.js — aucune nouvelle clé/coût).

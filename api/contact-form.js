@@ -7,7 +7,7 @@
  *
  * Corps accepté : { first, last, email, subject, message }
  */
-import { preambule, envoyer, gabarit, esc, ADMIN_EMAIL } from './_lib.js';
+import { preambule, envoyer, gabarit, esc, ADMIN_EMAIL, ipClient, debitAutorise } from './_lib.js';
 
 const SUJETS = {
   support: 'Support / Problème technique',
@@ -90,6 +90,15 @@ export default async function handler(req, res) {
   const corps = req.body || {};
   if (corps.action === 'newsletter') {
     return inscrireNewsletter(req, res);
+  }
+
+  /* Anti-spam (audit du 22/10) : 5 messages de contact max / 10 min / IP.
+     Généreux pour un vrai visiteur (un formulaire par page, rarement plus
+     d'une fois), bloquant pour une rafale automatisée. Fail-open si la
+     table n'existe pas encore ou si Supabase est indisponible. */
+  const ip = ipClient(req);
+  if (!(await debitAutorise(`contact-form:${ip}`, 5, 600))) {
+    return res.status(429).json({ error: 'Trop de messages envoyés. Réessayez dans quelques minutes.' });
   }
 
   try {
