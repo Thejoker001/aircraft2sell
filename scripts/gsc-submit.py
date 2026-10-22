@@ -36,6 +36,14 @@ except ImportError:
 SITE = os.environ.get('GSC_SITE_URL', 'sc-domain:aircraft2sell.eu')
 SCOPE = 'https://www.googleapis.com/auth/webmasters'  # complet, pas .readonly
 SITEMAP = 'https://aircraft2sell.eu/sitemap.xml'
+# sitemap-listings.xml (ajouté 22/10/2026) : une URL par annonce live
+# (listing.html?id=X). Avant ce fichier, aucune annonce individuelle n'était
+# connue de Google ("URL is unknown to Google" confirmé sur échantillon) —
+# voir scripts/gen-sitemap-listings.py. Les deux sitemaps sont traités
+# ensemble partout ci-dessous (submit/audit) pour ne pas reproduire le même
+# angle mort.
+SITEMAP_LISTINGS = 'https://aircraft2sell.eu/sitemap-listings.xml'
+ALL_SITEMAPS = [SITEMAP, SITEMAP_LISTINGS]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -80,10 +88,14 @@ def api_site():
 
 
 def sitemap_urls():
-    """URLs listées dans le sitemap local."""
+    """URLs listées dans les sitemaps locaux (pages statiques + annonces live)."""
     import re
-    path = os.path.join(ROOT, 'sitemap.xml')
-    return re.findall(r'<loc>([^<]+)</loc>', open(path, encoding='utf-8').read())
+    urls = []
+    for fname in ('sitemap.xml', 'sitemap-listings.xml'):
+        path = os.path.join(ROOT, fname)
+        if os.path.exists(path):
+            urls += re.findall(r'<loc>([^<]+)</loc>', open(path, encoding='utf-8').read())
+    return urls
 
 
 def cmd_sitemaps(tok):
@@ -257,7 +269,13 @@ def main():
     if cmd == 'sitemaps':
         return cmd_sitemaps(tok)
     if cmd == 'submit':
-        return cmd_submit(tok, rest[0] if rest else SITEMAP)
+        if rest:
+            return cmd_submit(tok, rest[0])
+        # Par défaut : les deux sitemaps (statique + annonces live), pas
+        # seulement sitemap.xml — sinon sitemap-listings.xml ne serait
+        # jamais resoumis par le cron hebdomadaire.
+        codes = [cmd_submit(tok, s) for s in ALL_SITEMAPS]
+        return 0 if all(c == 0 for c in codes) else 1
     if cmd == 'delete':
         if not rest:
             sys.exit('URL du sitemap à supprimer requise.')
