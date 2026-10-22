@@ -765,7 +765,13 @@ async function authToken(){
 function greetingWord(){var h=new Date().getHours();return h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';}
 
 function applyUserDisplay(name, email){
-  var first=name.split(' ')[0]||email.split('@')[0]||'Pilote';
+  /* Le pseudo public (choisi à l'inscription) est l'identité affichée dans le
+     dashboard — pas le champ "name" côté base, qui vaut souvent la partie
+     locale de l'email pour les comptes créés via inscription rapide (sans
+     prénom/nom saisis). Trouvé lors de l'audit du 22/10 : le salon "Bonjour,
+     email@..." s'affichait au lieu du pseudo. */
+  var pseudo=localStorage.getItem('a2s_user_pseudo')||'';
+  var first=pseudo||name.split(' ')[0]||email.split('@')[0]||'Pilote';
   var initials=(first[0]||'U').toUpperCase();
   var navAv=document.getElementById('navAvatar');if(navAv)navAv.textContent=initials;
   var navNm=document.getElementById('navUserName');if(navNm)navNm.textContent=first;
@@ -806,14 +812,17 @@ async function initAuth(){
       });
       var data=await res.json();
       if(data&&data[0]){
-        if(data[0].pseudo){
-          localStorage.setItem('a2s_user_pseudo',data[0].pseudo);
-        }
         if(data[0].name){
           name=data[0].name;
           localStorage.setItem('a2s_user_name',name);
-          applyUserDisplay(name,email);
         }
+        if(data[0].pseudo){
+          localStorage.setItem('a2s_user_pseudo',data[0].pseudo);
+        }
+        /* Toujours ré-appliquer après la récupération fraîche (pseudo et/ou
+           nom), pas seulement si "name" était renseigné — sinon le salon
+           peut rester affiché sur l'ancienne valeur du cache local. */
+        applyUserDisplay(name,email);
         var fc=document.getElementById('setCompany');if(fc)fc.value=data[0].company||'';
         var fb=document.getElementById('setBio');if(fb)fb.value=data[0].bio||'';
         if(data[0].registered_at||data[0].created_at){

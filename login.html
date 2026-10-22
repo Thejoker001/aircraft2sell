@@ -191,6 +191,25 @@ function checkStrength(v){
 function showAlert(id,msg,type){var e=document.getElementById(id+'-alert');e.innerHTML='<div class="alert alert-'+(type==='ok'?'success':'error')+'" style="margin-bottom:1rem">'+A2SIcon(type==='ok'?'check-circle':'alert-triangle')+'<span>'+msg+'</span></div>';}
 function clearAlert(id){document.getElementById(id+'-alert').innerHTML='';}
 function safeDest(d){if(!d||/^(https?:)?\/\/|^javascript:/i.test(d))return'dashboard.html';return d;}
+/* Supabase Auth renvoie ses messages d'erreur en anglais (error_description/
+   msg) : on les traduit ici avant affichage. Trouvé lors de l'audit du
+   22/10 (identifiants invalides affichés en anglais). Liste non exhaustive,
+   fallback = message original si inconnu. */
+function translateAuthError(msg){
+  if(!msg)return msg;
+  var m=[
+    [/invalid login credentials/i,'Email ou mot de passe incorrect.'],
+    [/email not confirmed/i,'Votre email n\'est pas encore confirmé. Vérifiez votre boîte de réception.'],
+    [/user already registered/i,'Un compte existe déjà avec cet email.'],
+    [/password should be at least/i,'Le mot de passe est trop court.'],
+    [/invalid email/i,'Adresse email invalide.'],
+    [/rate limit/i,'Trop de tentatives. Réessayez dans quelques minutes.'],
+    [/signup(s)? (is |are )?disabled/i,'Les inscriptions sont momentanément désactivées.'],
+    [/user not found/i,'Aucun compte ne correspond à cet email.']
+  ];
+  for(var i=0;i<m.length;i++){if(m[i][0].test(msg))return m[i][1];}
+  return msg;
+}
 
 async function handleLogin(e){
   if(e)e.preventDefault();
@@ -210,7 +229,7 @@ async function handleLogin(e){
     try{d=JSON.parse(text);}catch(e){d=null;}
     if(!r.ok||!d||!d.access_token){
       var msg=(d&&(d.error_description||d.msg))||((r.status===503||r.status===502)&&text.indexOf('upstream')!==-1?'Le service de connexion (Supabase Auth) est momentanément indisponible. Réessayez dans quelques minutes.':'Réponse inattendue du serveur (HTTP '+r.status+'). Réessayez.');
-      throw new Error(msg);
+      throw new Error(translateAuthError(msg));
     }
     sessionStorage.setItem('a2s_auth_token',d.access_token);
     /* Le jeton d'accès expire en 1 h. Sans le refresh_token, l'utilisateur
@@ -264,7 +283,7 @@ async function handleRegister(e){
   try{
     var r=await fetch(SB+'/auth/v1/signup',{method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw,options:{data:{full_name:fullName}}})});
     var d=await r.json();
-    if(!r.ok)throw new Error(d.error_description||d.msg||'Impossible de créer le compte.');
+    if(!r.ok)throw new Error(translateAuthError(d.error_description||d.msg)||'Impossible de créer le compte.');
     if(d.access_token){
       sessionStorage.setItem('a2s_auth_token',d.access_token);
     /* Le jeton d'accès expire en 1 h. Sans le refresh_token, l'utilisateur
