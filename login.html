@@ -252,6 +252,19 @@ async function handleLogin(e){
         }
       }
     }catch(banErr){ if(banErr.message&&banErr.message.indexOf('banni')!==-1) throw banErr; }
+    /* Applique le pseudo/nom choisis à l'inscription si la confirmation
+       email a empêché leur sauvegarde immédiate (cf. handleRegister).
+       Best-effort : pseudo-gate.js reste le filet de sécurité en cas
+       d'échec (pseudo déjà pris, autre appareil, etc.). */
+    try{
+      var pending=JSON.parse(localStorage.getItem('a2s_pending_profile')||'null');
+      if(pending&&pending.email===email){
+        await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({name:pending.name,pseudo:pending.pseudo})});
+        localStorage.setItem('a2s_user_name',pending.name);
+        localStorage.setItem('a2s_user_pseudo',pending.pseudo);
+        localStorage.removeItem('a2s_pending_profile');
+      }
+    }catch(ePend){}
     /* S10 — mémoriser la dernière connexion pour l'admin (fire-and-forget). */
     try{await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({last_login_at:new Date().toISOString()})});}catch(eL){}
     window.location.href=safeDest(PARAMS.get('redirect'));
@@ -316,6 +329,14 @@ async function handleRegister(e){
       if(promoGranted)redirectUrl=(redirectUrl.indexOf('?')>-1?'&':'?')+'promo=won';
       window.location.href=redirectUrl;
     }else{
+      /* Confirmation email requise (cas normal en prod) : pas de token ici,
+         donc le PATCH ci-dessus n'a pas pu s'exécuter et le pseudo/nom
+         choisis seraient perdus. On les mémorise localement pour les
+         appliquer automatiquement à la première connexion réussie (voir
+         handleLogin) — pseudo-gate.js reste le filet de sécurité si
+         l'utilisateur confirme depuis un autre appareil/navigateur.
+         Trouvé lors de l'audit du 22/10. */
+      try{localStorage.setItem('a2s_pending_profile',JSON.stringify({email:email,name:fullName,pseudo:pseudo}));}catch(ePend){}
       showAlert('register','Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.','ok');
     }
   }catch(err){showAlert('register',err.message,'err');}
