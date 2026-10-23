@@ -479,6 +479,7 @@ body.dense .kv{font-size:1.4rem}
           <div class="kc"><div class="kl">Publiées</div><div class="kv" id="m-live">0</div></div>
           <div class="kc g"><div class="kl">Total</div><div class="kv" id="m-total">0</div></div>
           <div class="kc b"><div class="kl">Rejetées</div><div class="kv" id="m-rejt">0</div></div>
+          <div class="kc"><div class="kl">Vendues</div><div class="kv" id="m-sold">0</div></div>
         </div>
         <div class="card">
           <div class="card-head"><div class="card-title">Annonces en attente</div><span style="font-size:.65rem;color:var(--a2s-accent)" id="mod-count"></span></div>
@@ -515,6 +516,7 @@ body.dense .kv{font-size:1.4rem}
           <div class="kc g"><div class="kl">Publiées</div><div class="kv" id="ls-live">0</div></div>
           <div class="kc r"><div class="kl">En attente</div><div class="kv" id="ls-pend">0</div></div>
           <div class="kc b"><div class="kl">Rejetées</div><div class="kv" id="ls-rejt">0</div></div>
+          <div class="kc"><div class="kl">Vendues</div><div class="kv" id="ls-sold">0</div></div>
         </div>
         <!-- Ancre du bandeau « filtré par vendeur » inséré par viewSellerListings().
              Absente de la v2 : le bandeau ne s'affichait donc jamais. -->
@@ -1580,7 +1582,8 @@ function renderMod(){
   var pending=_allListings.filter(function(l){return l.status==='pending';});
   var live=_allListings.filter(function(l){return l.status==='live';});
   var rejt=_allListings.filter(function(l){return l.status==='rejected';});
-  setText('m-pend',pending.length);setText('m-live',live.length);setText('m-total',_allListings.length);setText('m-rejt',rejt.length);
+  var sold=_allListings.filter(function(l){return l.status==='sold';});
+  setText('m-pend',pending.length);setText('m-live',live.length);setText('m-total',_allListings.length);setText('m-rejt',rejt.length);setText('m-sold',sold.length);
   setText('mod-count',pending.length+' annonce'+(pending.length>1?'s':''));
   var el=sel('mod-list');if(!el)return;
   if(!pending.length){el.innerHTML='<div class="empty-s"><div class="es-ic">'+A2SIcon('check-circle')+'</div><div class="es-t">File vide, tout est validé</div></div>';return;}
@@ -1703,7 +1706,7 @@ function renderList(){
      signalé par Romain sur les annonces Castle Air / 777AircraftSales). Masquées par défaut
      ("Tous statuts"), toujours consultables via le filtre explicite "Vendues". */
   var filtered=_allListings.filter(function(l){if(st){if(l.status!==st)return false;}else if(l.status==='sold'){return false;}if(cat&&l.category!==cat)return false;if(q){var t=ltitle(l)+' '+(l.sellerName||'')+' '+(l.sellerEmail||'');if(!t.toLowerCase().includes(q.toLowerCase()))return false;}return true;});
-  setText('ls-total',_allListings.length);setText('ls-live',_allListings.filter(function(l){return l.status==='live';}).length);setText('ls-pend',_allListings.filter(function(l){return l.status==='pending';}).length);setText('ls-rejt',_allListings.filter(function(l){return l.status==='rejected';}).length);
+  setText('ls-total',_allListings.length);setText('ls-live',_allListings.filter(function(l){return l.status==='live';}).length);setText('ls-pend',_allListings.filter(function(l){return l.status==='pending';}).length);setText('ls-rejt',_allListings.filter(function(l){return l.status==='rejected';}).length);setText('ls-sold',_allListings.filter(function(l){return l.status==='sold';}).length);
   var tb=sel('list-body');if(!tb)return;
   if(!filtered.length){tb.innerHTML='<tr><td colspan="7" class="loading-row">'+(_allListings.length?'Aucun résultat pour ces filtres':'Aucune annonce dans Supabase')+'</td></tr>';
     var pg0=sel('pager-list'); if(pg0) pg0.innerHTML=''; renderBulkBar('list'); return;}
