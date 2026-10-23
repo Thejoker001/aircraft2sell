@@ -1695,7 +1695,12 @@ async function approveAll(){var pending=_allListings.filter(function(l){return l
 /* ── LISTE ANNONCES ── */
 function renderList(){
   var q=(sel('ls-q')||{}).value||'';var st=(sel('ls-st')||{}).value||'';var cat=(sel('ls-cat')||{}).value||'';
-  var filtered=_allListings.filter(function(l){if(st&&l.status!==st)return false;if(cat&&l.category!==cat)return false;if(q){var t=ltitle(l)+' '+(l.sellerName||'')+' '+(l.sellerEmail||'');if(!t.toLowerCase().includes(q.toLowerCase()))return false;}return true;});
+  /* Les annonces "supprimées" par un vendeur/admin passent en status='sold' (suppression
+     douce, comptabilisées comme vendues) mais ne doivent plus encombrer la vue par défaut
+     de l'espace de modération — sinon une suppression semble ne "rien faire" (2026-10-23,
+     signalé par Romain sur les annonces Castle Air / 777AircraftSales). Masquées par défaut
+     ("Tous statuts"), toujours consultables via le filtre explicite "Vendues". */
+  var filtered=_allListings.filter(function(l){if(st){if(l.status!==st)return false;}else if(l.status==='sold'){return false;}if(cat&&l.category!==cat)return false;if(q){var t=ltitle(l)+' '+(l.sellerName||'')+' '+(l.sellerEmail||'');if(!t.toLowerCase().includes(q.toLowerCase()))return false;}return true;});
   setText('ls-total',_allListings.length);setText('ls-live',_allListings.filter(function(l){return l.status==='live';}).length);setText('ls-pend',_allListings.filter(function(l){return l.status==='pending';}).length);setText('ls-rejt',_allListings.filter(function(l){return l.status==='rejected';}).length);
   var tb=sel('list-body');if(!tb)return;
   if(!filtered.length){tb.innerHTML='<tr><td colspan="7" class="loading-row">'+(_allListings.length?'Aucun résultat pour ces filtres':'Aucune annonce dans Supabase')+'</td></tr>';
