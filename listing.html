@@ -163,7 +163,7 @@
         <div class="specs-grid" id="specsGrid"><div class="spec-item skel" style="height:70px"></div><div class="spec-item skel" style="height:70px"></div><div class="spec-item skel" style="height:70px"></div></div>
       </div>
 
-      <div class="lsec">
+      <div class="lsec" id="descSection">
         <h2>Description</h2>
         <div class="card"><div class="card-body"><div class="desc-text" id="lDesc">Chargement…</div></div></div>
       </div>
@@ -1118,6 +1118,30 @@ function checkPriceHistory(listing){
   }
   localStorage.setItem(key,listing.price);
 }
+
+/* ── Réordonnancement mobile : le bloc "Prix net vendeur" (CTA, infos,
+   simulateur, conseils) passe juste après la Description sur mobile, au
+   lieu de rester tout en bas de page après Vendeur/Annonces similaires.
+   Au-dessus du breakpoint où .listing-wrap redevient 2 colonnes, on remet
+   l'aside à sa place d'origine pour ne pas casser la mise en page desktop. */
+function layoutMobileSidebar(){
+  var aside=document.querySelector('.listing-sidebar');
+  var desc=document.getElementById('descSection');
+  var wrap=document.querySelector('.listing-wrap');
+  if(!aside||!desc||!wrap)return;
+  var isMobile=window.matchMedia('(max-width:960px)').matches;
+  if(isMobile){
+    if(aside.previousElementSibling!==desc){
+      desc.insertAdjacentElement('afterend',aside);
+    }
+  }else{
+    if(aside.parentElement!==wrap||wrap.lastElementChild!==aside){
+      wrap.appendChild(aside);
+    }
+  }
+}
+layoutMobileSidebar();
+window.addEventListener('resize',layoutMobileSidebar);
 
 load();
 </script>
