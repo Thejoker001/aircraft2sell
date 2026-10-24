@@ -1,5 +1,5 @@
 /* Aircraft2Sell — Service Worker v3.0 (design system v2) */
-var CACHE = 'a2s-v26';
+var CACHE = 'a2s-v27';
 var OFFLINE_URL = '/404.html';
 
 /* Ressources pré-cachées au premier chargement */
@@ -59,10 +59,17 @@ self.addEventListener('fetch', function(e) {
   if (req.url.includes('wa.me')) return;
   if (req.url.includes('placehold.co')) return;
 
-  /* Pages HTML — Network-first pour avoir contenu frais */
+  /* Pages HTML — Network-first pour avoir contenu frais.
+     cache:'reload' est indispensable ici : .html a Cache-Control: max-age=3600
+     (voir vercel.json/_headers), donc un fetch() sans option respecterait ce
+     cache HTTP local et pourrait renvoyer une réponse vieille de jusqu'à 1h
+     SANS repasser par le réseau — rendant "network-first" silencieusement
+     inopérant pendant toute la fenêtre de cache après une visite précédente
+     de la même URL (ex: une fiche annonce déjà consultée). 'reload' force
+     un vrai aller-retour réseau à chaque navigation, quoi qu'il arrive. */
   if (req.destination === 'document') {
     e.respondWith(
-      fetch(req).then(function(res) {
+      fetch(req, { cache: 'reload' }).then(function(res) {
         if (res.ok) {
           var clone = res.clone();
           caches.open(CACHE).then(function(cache) { cache.put(req, clone); });
