@@ -368,23 +368,35 @@
     avoidConsentBanner(btn);
   }
 
-  /* Le bandeau de consentement (z-index 9999) recouvre le coin bas droit :
-     tant qu'il est affiché, on remonte le bouton pour qu'il reste cliquable. */
+  /* Le bandeau de consentement (z-index 9999) ET la barre CTA fixe des fiches
+     annonce sur mobile (.listing-actions, "Contacter le vendeur") recouvrent
+     le coin bas droit : tant qu'ils sont affichés, on remonte le bouton pour
+     qu'il reste cliquable et ne masque pas le CTA principal. */
   function avoidConsentBanner(btn) {
+    function barHeight(el) {
+      if (!el) return 0;
+      var cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return 0;
+      return el.getBoundingClientRect().height;
+    }
     function sync() {
       var banner = document.getElementById('a2s-consent-banner');
       var box = banner && banner.firstElementChild;
-      var h = box ? box.getBoundingClientRect().height : 0;
-      btn.style.bottom = h ? (h + 28) + 'px' : '';
+      var consentH = barHeight(box);
+      /* .listing-actions n'est en position fixed qu'en dessous de 768px
+         (cf. mobile.css) : au-delà elle est en flux normal, pas de recouvrement. */
+      var actionsH = window.innerWidth <= 768 ? barHeight(document.querySelector('.listing-actions')) : 0;
+      var btnOffset = Math.max(consentH ? consentH + 28 : 0, actionsH ? actionsH + 16 : 0);
+      btn.style.bottom = btnOffset ? btnOffset + 'px' : '';
       if (window.innerWidth > 600) {
-        panel.style.bottom = h ? (h + 28) + 'px' : '';
+        panel.style.bottom = consentH ? (consentH + 28) + 'px' : '';
         panel.style.paddingBottom = '';
       } else {
         /* Plein écran mobile : la fenêtre occupe tout l'écran, on ne peut pas
            la décaler — on réserve la place du bandeau sous le champ de saisie,
            sinon il est inaccessible tant que le consentement n'est pas donné. */
         panel.style.bottom = '';
-        panel.style.paddingBottom = h ? h + 'px' : '';
+        panel.style.paddingBottom = consentH ? consentH + 'px' : '';
       }
     }
     sync();
