@@ -618,7 +618,28 @@ module.exports = async function handler(req, res) {
   const job = (req.query && req.query.job) || '';
   try {
     if (job === 'expire') {
-      const resultatsExpire = await jobExpire();
+      /* Chacun des deux sous-jobs est isolé dans son propre try/catch
+         (corrigé le 26/10/2026) : avant ce correctif, un échec transitoire
+         de jobExpire() (ex. timeout Supabase, collision de déploiement
+         Vercel au moment précis où le cron Hermes "Rio" — même horaire
+         06h00 UTC — pousse un commit qui déclenche une bascule de
+         déploiement production) faisait tomber TOUTE la requête dans le
+         catch global (500, voir fin de fichier) et empêchait SILENCIEUSEMENT
+         le tirage hebdomadaire de l'« Annonce de la semaine » de s'exécuter
+         le lundi — sans aucune alerte, sans retry, découvert le 26/10/2026
+         car l'annonce vedette de la page d'accueil n'avait pas tourné depuis
+         le 30/09/2026 (plusieurs lundis manqués). Désormais, un échec de
+         jobExpire() n'empêche plus jobWeeklyPick() de tenter sa chance le
+         lundi, et la réponse HTTP reste 200 avec le détail de l'erreur dans
+         le champ concerné plutôt qu'un 500 opaque qui masque lequel des deux
+         sous-jobs a réellement échoué. */
+      let resultatsExpire = { expired: 0, emails_sent: 0 };
+      try {
+        resultatsExpire = await jobExpire();
+      } catch (e) {
+        console.error(`expire : ${e.message}`);
+        resultatsExpire = { error: e.message };
+      }
       /* Limite Hobby Vercel : 2 crons distincts max dans vercel.json, donc
          pas d'entrée cron dédiée pour l'annonce de la semaine. On la
          branche sur le cron quotidien "expire" (6h UTC) et on ne l'exécute
