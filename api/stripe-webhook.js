@@ -90,6 +90,78 @@ export default async function handler(req, res) {
       const session = event.data.object || {};
       const email = session.client_reference_id || session.customer_details?.email || '';
 
+      /* Abonnement PARTENAIRE (Payment Links statiques, metadata kind=partner
+         posée sur le Payment Link lui-même — voir stripe-admin.js). L'email
+         de paiement est souvent celui de l'admin (qui règle pour le compte
+         du partenaire), jamais fiable pour retrouver la ligne `partners` :
+         on relie donc par nom de société (customer_details.business_name/name)
+         vers une ligne encore non liée (stripe_customer_id IS NULL) du même
+         palier. Ambigu ou introuvable -> alerte admin pour liaison manuelle,
+         JAMAIS de liaison au hasard. Traitement totalement séparé du flux
+         vendeur/Pro ci-dessous (return immédiat). */
+      const kindMeta = (session.metadata && session.metadata.kind) || '';
+      if (kindMeta === 'partner') {
+        try {
+          const tier = (session.metadata && session.metadata.tier) || 'decouverte';
+          const customerId = session.customer || '';
+          const dejaLie = customerId
+            ? await sb(`partners?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=id&limit=1`)
+            : [];
+          if (!dejaLie || !dejaLie.length) {
+            const nomPaiement = (session.customer_details &&
+              (session.customer_details.business_name || session.customer_details.name)) || '';
+            const normaliser = (s) => String(s || '')
+              .toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+              .replace(/[^A-Z0-9]/g, '');
+            const nomNorm = normaliser(nomPaiement);
+            const candidats = await sb(
+              `partners?tier=eq.${encodeURIComponent(tier)}&status=in.(pending,active)` +
+              `&stripe_customer_id=is.null&select=id,company,status`
+            );
+            const correspondances = (candidats || []).filter((p) => {
+              const compNorm = normaliser(p.company);
+              return compNorm && nomNorm && (compNorm.includes(nomNorm) || nomNorm.includes(compNorm));
+            });
+            const clefService = process.env.SUPABASE_SERVICE_ROLE_KEY;
+            const authSbHdr = 'Bearer' + ' ' + clefService;
+            if (correspondances.length === 1 && customerId) {
+              const partnerMatch = correspondances[0];
+              await fetch(`${process.env.SUPABASE_URL}/rest/v1/partners?id=eq.${partnerMatch.id}`, {
+                method: 'PATCH',
+                headers: { apikey: clefService, Authorization: authSbHdr, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                body: JSON.stringify({ stripe_customer_id: customerId, status: 'active' }),
+              });
+              envoyer({
+                to: ADMIN_EMAIL,
+                toName: 'Administration Aircraft2Sell',
+                sujet: `Partenaire relié à Stripe — ${partnerMatch.company}`,
+                html: gabarit({
+                  titre: 'Partenaire activé',
+                  intro: `${esc(partnerMatch.company)} (palier ${esc(tier)}) relié automatiquement ` +
+                         `au client Stripe ${esc(customerId)}.`,
+                }),
+              }).catch((e) => console.error('email partner lié admin:', e.message));
+            } else {
+              envoyer({
+                to: ADMIN_EMAIL,
+                toName: 'Administration Aircraft2Sell',
+                sujet: `Paiement partenaire à lier manuellement (${tier})`,
+                html: gabarit({
+                  titre: 'Liaison partenaire requise',
+                  intro: `Paiement reçu — nom : ${esc(nomPaiement || 'inconnu')}, palier ${esc(tier)}, ` +
+                         `client Stripe ${esc(customerId || 'inconnu')}. ${correspondances.length} correspondance(s) ` +
+                         `trouvée(s) dans la table partners (0 ou plusieurs = ambigu). Lier manuellement ` +
+                         `stripe_customer_id sur la ligne partners concernée.`,
+                }),
+              }).catch((e) => console.error('email partner à lier admin:', e.message));
+            }
+          }
+        } catch (e) {
+          console.error('webhook partner checkout:', e.message);
+        }
+        return res.status(200).json({ received: true, partner: true });
+      }
+
       /* Mention TVA sur toute facture future : la société n'est pas
          assujettie à la TVA (sous le seuil d'immatriculation estonien).
          Appliqué sur l'abonnement créé (vendeurs ET partenaires, quelle
@@ -303,7 +375,64 @@ export default async function handler(req, res) {
     try {
       const sub = event.data.object || {};
       const statutsCoupure = ['past_due', 'unpaid'];
-      if (statutsCoupure.includes(sub.status)) {
+      const cusIdPartenaire = sub.customer;
+
+      /* Abonnement PARTENAIRE : identifié directement par stripe_customer_id
+         (posé au premier paiement, cf. checkout.session.completed ci-dessus)
+         — pas besoin de refaire un fetch customer ni de passer par un email.
+         Suspension sur past_due/unpaid, réactivation automatique si le
+         paiement est régularisé (retour à active). Flux totalement séparé
+         de la table users ci-dessous (estPartenaire court-circuite le reste). */
+      let estPartenaire = false;
+      if (cusIdPartenaire) {
+        try {
+          const partnerRows = await sb(
+            `partners?stripe_customer_id=eq.${encodeURIComponent(cusIdPartenaire)}&select=id,company,status&limit=1`
+          );
+          const partner = partnerRows && partnerRows[0];
+          if (partner) {
+            estPartenaire = true;
+            const clefService = process.env.SUPABASE_SERVICE_ROLE_KEY;
+            const authSbHdr = 'Bearer' + ' ' + clefService;
+            if (statutsCoupure.includes(sub.status) && partner.status !== 'suspended') {
+              await fetch(`${process.env.SUPABASE_URL}/rest/v1/partners?id=eq.${partner.id}`, {
+                method: 'PATCH',
+                headers: { apikey: clefService, Authorization: authSbHdr, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                body: JSON.stringify({ status: 'suspended' }),
+              });
+              envoyer({
+                to: ADMIN_EMAIL,
+                toName: 'Administration Aircraft2Sell',
+                sujet: `Partenaire suspendu (impayé) — ${partner.company}`,
+                html: gabarit({
+                  titre: 'Partenaire suspendu',
+                  intro: `${esc(partner.company)} repassé en statut « suspendu » (Stripe : ${esc(sub.status)}). ` +
+                         `Son logo n'apparaît plus sur le site tant que le paiement n'est pas régularisé.`,
+                }),
+              }).catch((e) => console.error('email partner suspended:', e.message));
+            } else if (sub.status === 'active' && partner.status === 'suspended') {
+              await fetch(`${process.env.SUPABASE_URL}/rest/v1/partners?id=eq.${partner.id}`, {
+                method: 'PATCH',
+                headers: { apikey: clefService, Authorization: authSbHdr, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                body: JSON.stringify({ status: 'active' }),
+              });
+              envoyer({
+                to: ADMIN_EMAIL,
+                toName: 'Administration Aircraft2Sell',
+                sujet: `Partenaire réactivé — ${partner.company}`,
+                html: gabarit({
+                  titre: 'Partenaire réactivé',
+                  intro: `${esc(partner.company)} repassé en statut actif (paiement régularisé).`,
+                }),
+              }).catch((e) => console.error('email partner reactivated:', e.message));
+            }
+          }
+        } catch (e) {
+          console.error('webhook partner lookup updated:', e.message);
+        }
+      }
+
+      if (!estPartenaire && statutsCoupure.includes(sub.status)) {
         const cusId = sub.customer;
         if (cusId && process.env.STRIPE_SECRET_KEY) {
           const authStripeHdr = 'Bearer' + ' ' + process.env.STRIPE_SECRET_KEY;
@@ -389,7 +518,42 @@ export default async function handler(req, res) {
     try {
       const sub = event.data.object || {};
       const cusId = sub.customer;
-      if (cusId && process.env.STRIPE_SECRET_KEY) {
+
+      /* Abonnement PARTENAIRE résilié définitivement : status='expired',
+         le logo disparaît du site (policy publique filtre sur status='active'). */
+      let estPartenaire = false;
+      if (cusId) {
+        try {
+          const partnerRows = await sb(
+            `partners?stripe_customer_id=eq.${encodeURIComponent(cusId)}&select=id,company&limit=1`
+          );
+          const partner = partnerRows && partnerRows[0];
+          if (partner) {
+            estPartenaire = true;
+            const clefService = process.env.SUPABASE_SERVICE_ROLE_KEY;
+            const authSbHdr = 'Bearer' + ' ' + clefService;
+            await fetch(`${process.env.SUPABASE_URL}/rest/v1/partners?id=eq.${partner.id}`, {
+              method: 'PATCH',
+              headers: { apikey: clefService, Authorization: authSbHdr, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+              body: JSON.stringify({ status: 'expired' }),
+            });
+            envoyer({
+              to: ADMIN_EMAIL,
+              toName: 'Administration Aircraft2Sell',
+              sujet: `Partenariat résilié — ${partner.company}`,
+              html: gabarit({
+                titre: 'Partenariat résilié',
+                intro: `${esc(partner.company)} — abonnement Stripe résilié définitivement. ` +
+                       `Son logo est retiré du site.`,
+              }),
+            }).catch((e) => console.error('email partner deleted:', e.message));
+          }
+        } catch (e) {
+          console.error('webhook partner lookup deleted:', e.message);
+        }
+      }
+
+      if (!estPartenaire && cusId && process.env.STRIPE_SECRET_KEY) {
         const r = await fetch(`${STRIPE}/customers/${cusId}`, {
           headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
         });
