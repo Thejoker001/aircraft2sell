@@ -246,6 +246,145 @@ export default async function handler(req, res) {
     }
   }
 
+  /* Premier échec de paiement (carte refusée, fonds insuffisants...).
+     Stripe va automatiquement réessayer selon ses règles « Smart Retries » ;
+     on se contente d'avertir le client (lien pour mettre à jour sa carte)
+     et l'admin, SANS toucher à l'accès — le downgrade réel n'intervient
+     que sur customer.subscription.updated (statut past_due/unpaid)
+     ci-dessous, qui reflète la décision finale de Stripe sur l'abonnement. */
+  if (event.type === 'invoice.payment_failed') {
+    try {
+      const invoice = event.data.object || {};
+      const email = (invoice.customer_email || '').trim();
+      const nom = invoice.customer_name || email || 'Client';
+      const montant = ((invoice.amount_due || 0) / 100).toLocaleString('fr-FR');
+      const devise = (invoice.currency || 'eur').toUpperCase();
+      const tentative = invoice.attempt_count || 1;
+      const lienPaiement = invoice.hosted_invoice_url || `${SITE}/dashboard.html`;
+
+      if (email) {
+        envoyer({
+          to: email,
+          toName: nom,
+          sujet: 'Problème avec votre paiement — Aircraft2Sell',
+          html: gabarit({
+            titre: 'Paiement refusé',
+            intro: `Le prélèvement de <strong>${montant} ${devise}</strong> pour votre abonnement ` +
+                   `Aircraft2Sell a échoué (tentative n°${tentative}). Merci de mettre à jour votre ` +
+                   `moyen de paiement pour éviter la suspension de votre abonnement.`,
+            cta: lienPaiement,
+            ctaLabel: 'Mettre à jour mon paiement',
+          }),
+        }).catch((e) => console.error('email payment_failed client:', e.message));
+      }
+
+      envoyer({
+        to: ADMIN_EMAIL,
+        toName: 'Administration Aircraft2Sell',
+        sujet: `Paiement échoué (tentative ${tentative}) — ${email || 'client inconnu'}`,
+        html: gabarit({
+          titre: 'Échec de paiement',
+          intro: `${esc(email || 'Client inconnu')} — ${montant} ${devise} — tentative n°${tentative}. ` +
+                 `Stripe va réessayer automatiquement.`,
+          cta: lienPaiement,
+          ctaLabel: 'Voir la facture',
+        }),
+      }).catch((e) => console.error('email payment_failed admin:', e.message));
+    } catch (e) {
+      console.error('webhook invoice.payment_failed:', e.message);
+    }
+  }
+
+  /* Changement de statut d'abonnement. On downgrade DÈS que Stripe déclare
+     l'abonnement past_due/unpaid — plutôt que d'attendre la suppression
+     finale (customer.subscription.deleted), qui peut survenir plusieurs
+     semaines plus tard selon les règles de relance du compte. */
+  if (event.type === 'customer.subscription.updated') {
+    try {
+      const sub = event.data.object || {};
+      const statutsCoupure = ['past_due', 'unpaid'];
+      if (statutsCoupure.includes(sub.status)) {
+        const cusId = sub.customer;
+        if (cusId && process.env.STRIPE_SECRET_KEY) {
+          const authStripeHdr = 'Bearer' + ' ' + process.env.STRIPE_SECRET_KEY;
+          const r = await fetch(`${STRIPE}/customers/${cusId}`, {
+            headers: { Authorization: authStripeHdr },
+          });
+          if (r.ok) {
+            const cust = await r.json();
+            const email = String(cust.email || '').trim().toLowerCase();
+            const nom = cust.name || email;
+            if (email) {
+              const rows = await sb(`users?email=eq.${encodeURIComponent(email)}&select=id,plan&limit=1`);
+              const user = rows && rows[0];
+              /* Idempotence : n'envoie l'email/ne notifie que si le plan
+                 était encore Pro/Aviateur (évite de spammer à chaque
+                 nouvel événement updated tant que le statut reste bloqué). */
+              const etaitPayant = user && user.plan && user.plan !== 'Essentiel';
+              if (user) {
+                const clefService = process.env.SUPABASE_SERVICE_ROLE_KEY;
+                const authSbHdr = 'Bearer' + ' ' + clefService;
+                await fetch(`${process.env.SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`, {
+                  method: 'PATCH',
+                  headers: {
+                    apikey: clefService,
+                    Authorization: authSbHdr,
+                    'Content-Type': 'application/json',
+                    Prefer: 'return=minimal',
+                  },
+                  body: JSON.stringify({ plan: 'Essentiel', is_pro: false }),
+                });
+              }
+              if (etaitPayant) {
+                /* Lien pour régulariser : facture la plus récente si
+                   disponible, sinon le tableau de bord. */
+                let lienRegul = `${SITE}/dashboard.html`;
+                try {
+                  if (sub.latest_invoice) {
+                    const authStripeHdr2 = 'Bearer' + ' ' + process.env.STRIPE_SECRET_KEY;
+                    const ri = await fetch(`${STRIPE}/invoices/${sub.latest_invoice}`, {
+                      headers: { Authorization: authStripeHdr2 },
+                    });
+                    if (ri.ok) {
+                      const inv = await ri.json();
+                      lienRegul = inv.hosted_invoice_url || lienRegul;
+                    }
+                  }
+                } catch { /* best-effort */ }
+
+                envoyer({
+                  to: email,
+                  toName: nom,
+                  sujet: 'Votre abonnement a été suspendu — Aircraft2Sell',
+                  html: gabarit({
+                    titre: 'Abonnement suspendu',
+                    intro: `Faute de paiement, votre abonnement a été suspendu et votre compte ` +
+                           `est repassé en formule Essentiel. Réglez votre facture pour retrouver ` +
+                           `votre accès complet.`,
+                    cta: lienRegul,
+                    ctaLabel: 'Régulariser mon paiement',
+                  }),
+                }).catch((e) => console.error('email subscription.updated client:', e.message));
+
+                envoyer({
+                  to: ADMIN_EMAIL,
+                  toName: 'Administration Aircraft2Sell',
+                  sujet: `Abonnement suspendu (${sub.status}) — ${email}`,
+                  html: gabarit({
+                    titre: 'Downgrade automatique',
+                    intro: `${esc(email)} repassé en Essentiel (statut Stripe : ${esc(sub.status)}).`,
+                  }),
+                }).catch((e) => console.error('email subscription.updated admin:', e.message));
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('webhook subscription.updated:', e.message);
+    }
+  }
+
   if (event.type === 'customer.subscription.deleted') {
     try {
       const sub = event.data.object || {};
