@@ -263,7 +263,7 @@ async function handleRegister(e){
   var btn=document.getElementById('registerBtn');btn.disabled=true;btn.classList.add('is-loading');
   var fullName=first+' '+last;
   try{
-    var r=await fetch(SB+'/auth/v1/signup',{method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw,options:{data:{full_name:fullName}}})});
+    var r=await fetch(SB+'/auth/v1/signup',{method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw,options:{data:{full_name:fullName,lang:'en'}}})});
     var d=await r.json();
     if(!r.ok)throw new Error(d.error_description||d.msg||'Unable to create the account.');
     if(d.access_token){
@@ -281,7 +281,7 @@ async function handleRegister(e){
          trigger). A POST here always failed with 409 duplicate key (silently
          swallowed, no catch), so the pseudo entered was NEVER saved.
          Fixed 2026-10-11 (signup→publish audit). */
-      await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({name:fullName,pseudo:pseudo})});
+      await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({name:fullName,pseudo:pseudo,lang:'en'})});
       /* Campagne de prospection : si l'utilisateur arrive avec le marqueur
          de campagne, on tente l'attribution "Pro offert à vie" (5 places max,
          atomique côté base). L'échec ne doit jamais bloquer l'inscription. */

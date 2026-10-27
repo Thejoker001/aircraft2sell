@@ -925,7 +925,7 @@ async function quickRegister(){
   if(pw.length<8){setAlert(al,'error','Your password must contain at least 8 characters.');return;}
   var btn=document.getElementById('qrBtn');btn.disabled=true;btn.classList.add('is-loading');
   try{
-    var r=await fetch(SB+'/auth/v1/signup',{method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw,options:{data:{full_name:name}}})});
+    var r=await fetch(SB+'/auth/v1/signup',{method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw,options:{data:{full_name:name,lang:'en'}}})});
     var d=await r.json();
     if(!r.ok)throw new Error(d.error_description||d.msg||'Unable to create the account.');
     localStorage.setItem('a2s_user_email',email);
@@ -944,7 +944,7 @@ async function quickRegister(){
            the trigger). A POST here failed with 409 duplicate key (swallowed
            by this catch), so the pseudo was NEVER saved despite the comment
            above. Fixed 2026-10-11 (audit). */
-        await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({name:name,pseudo:pseudo})});
+        await fetch(SB+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{method:'PATCH',headers:{'apikey':SK,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({name:name,pseudo:pseudo,lang:'en'})});
       }catch(e2){}
       var n=document.getElementById('msgName');if(n)n.value=name;
       var e=document.getElementById('msgEmail');if(e)e.value=email;
