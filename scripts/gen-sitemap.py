@@ -219,11 +219,15 @@ def main():
     # vers un blocage/backoff côté Google propre à CETTE URL précise, pas au
     # domaine : sitemap-listings.xml (fichier tout neuf, jamais soumis avant
     # ce jour) a été téléchargé par Google en quelques secondes sur ce MÊME
-    # domaine. `sitemap-pages.xml` est donc un nom neuf pour le même contenu,
-    # soumis en parallèle, pour sortir de ce blocage par URL plutôt que par
-    # domaine. Ne JAMAIS retirer sitemap.xml tant que sitemap-pages.xml n'a
-    # pas prouvé un lastDownloaded réel — garder les deux déclarés dans
-    # robots.txt en attendant.
+    # domaine.
+    #
+    # RÉSOLU le 27/10/2026 : sitemap-pages.xml a prouvé un lastDownloaded réel
+    # (confirmé via l'API Sitemaps GSC) -> retiré de robots.txt et désinscrit
+    # de Search Console (voir scripts/gsc-submit.py delete). Le fichier
+    # physique sitemap.xml continue d'être généré ci-dessous par compatibilité
+    # (anciens liens/outils tiers qui pointeraient encore vers lui reçoivent du
+    # contenu valide), mais il n'est PLUS la source déclarée à Google —
+    # sitemap-pages.xml fait foi désormais pour les pages statiques.
     dest2 = os.path.join(ROOT, 'sitemap-pages.xml')
     open(dest2, 'w', encoding='utf-8').write(xml)
 

@@ -36,6 +36,11 @@ except ImportError:
 SITE = os.environ.get('GSC_SITE_URL', 'sc-domain:aircraft2sell.eu')
 SCOPE = 'https://www.googleapis.com/auth/webmasters'  # complet, pas .readonly
 SITEMAP = 'https://aircraft2sell.eu/sitemap.xml'
+# RETIRÉ de la soumission active le 27/10/2026 (voir ALL_SITEMAPS plus bas) :
+# jamais téléchargé par Google malgré un contenu valide identique à
+# sitemap-pages.xml (qui lui a un lastDownloaded confirmé). Conservé ici
+# seulement pour que `inspect` sans argument continue de fonctionner par
+# défaut sur la racine du domaine (voir SITEMAP.replace(...) dans main()).
 # sitemap-listings.xml (ajouté 22/10/2026) : une URL par annonce live
 # (listing.html?id=X). Avant ce fichier, aucune annonce individuelle n'était
 # connue de Google ("URL is unknown to Google" confirmé sur échantillon) —
@@ -51,7 +56,11 @@ SITEMAP_LISTINGS = 'https://aircraft2sell.eu/sitemap-listings.xml'
 # contenu que sitemap.xml, l'auditer doublerait inutilement les ~130 URLs
 # sur le quota journalier limité de l'API URL Inspection (~600/jour).
 SITEMAP_PAGES = 'https://aircraft2sell.eu/sitemap-pages.xml'
-ALL_SITEMAPS = [SITEMAP, SITEMAP_PAGES, SITEMAP_LISTINGS]
+# ALL_SITEMAPS ne contient plus SITEMAP (sitemap.xml) depuis le 27/10/2026 —
+# seule sitemap-pages.xml (contenu identique, lastDownloaded prouvé) et
+# sitemap-listings.xml restent soumises/vérifiées activement. La déclaration
+# dans robots.txt a été retirée en même temps.
+ALL_SITEMAPS = [SITEMAP_PAGES, SITEMAP_LISTINGS]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
