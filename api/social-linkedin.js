@@ -52,6 +52,72 @@ const SCOPES = ['w_organization_social', 'r_organization_social', 'rw_organizati
  * c'est cette constante à remonter, pas un problème de scope ou de token. */
 const LINKEDIN_API_VERSION = '202610';
 
+/* Le champ "commentary" des Posts API LinkedIn utilise le format "little
+ * text" : les caractères réservés ci-dessous DOIVENT être échappés par un
+ * backslash, sinon LinkedIn tronque silencieusement tout le texte à partir
+ * du premier caractère réservé rencontré (bug vécu le 29/10/26 : une simple
+ * parenthèse dans "(1986)" coupait le post avant le prix et le lien, sans
+ * aucune erreur HTTP). Référence : LinkedIn "little Text Format" docs. */
+const LITTLE_TEXT_RESERVED = new Set(['|', '{', '}', '@', '[', ']', '(', ')', '<', '>', '#', '\\', '*', '_', '~']);
+function escapeLittleText(text) {
+  let out = '';
+  for (const ch of text) out += LITTLE_TEXT_RESERVED.has(ch) ? '\\' + ch : ch;
+  return out;
+}
+
+/* Upload d'une image sur LinkedIn (Images API) à partir d'une URL publique
+ * (ex. une photo d'annonce stockée dans Supabase Storage), puis retourne
+ * l'URN de l'image prête à être référencée dans content.media.id d'un post.
+ * Flux : initializeUpload -> PUT des octets sur l'uploadUrl pré-signée
+ * (avec Content-Type: image/jpeg — SANS ce header LinkedIn répond 400 sans
+ * message exploitable, piège vécu le 29/10/26) -> l'URN est utilisable
+ * immédiatement, pas besoin d'attendre AVAILABLE pour le POST /rest/posts. */
+async function uploadImageFromUrl(accessToken, orgUrn, imageUrl) {
+  const initRes = await fetch('https://api.linkedin.com/rest/images?action=initializeUpload', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + accessToken,
+      'LinkedIn-Version': LINKEDIN_API_VERSION,
+      'X-Restli-Protocol-Version': '2.0.0',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ initializeUploadRequest: { owner: orgUrn } }),
+  });
+  if (!initRes.ok) return null;
+  const initData = await initRes.json();
+  const uploadUrl = initData && initData.value && initData.value.uploadUrl;
+  const imageUrn = initData && initData.value && initData.value.image;
+  if (!uploadUrl || !imageUrn) return null;
+
+  const imgRes = await fetch(imageUrl);
+  if (!imgRes.ok) return null;
+  const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+  const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+
+  const putRes = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': contentType },
+    body: imgBuffer,
+  });
+  if (!putRes.ok) return null;
+  return imageUrn;
+}
+
+/* Détecte un lien d'annonce (listing.html?id=<nombre>) dans le texte d'un
+ * post et renvoie l'URL publique de sa première photo via Supabase, ou null
+ * si aucun lien d'annonce ou aucune photo. Permet aux posts "à la une"
+ * générés automatiquement (cron de publication du backlog) d'avoir une
+ * photo de l'aéronef sans que l'appelant ait à la fournir explicitement. */
+async function findListingPhotoFromText(text) {
+  const m = text.match(/listing\.html\?id=(\d+)/);
+  if (!m) return null;
+  const r = await sb(`listings?id=eq.${m[1]}&select=photos`);
+  if (!r.ok) return null;
+  const rows = await r.json();
+  const photos = rows && rows[0] && rows[0].photos;
+  return Array.isArray(photos) && photos.length ? photos[0] : null;
+}
+
 function sb(path, options) {
   options = options || {};
   const headers = Object.assign({
@@ -225,7 +291,7 @@ async function handleStatus(req, res) {
   });
 }
 
-/* ── action=post : publie un post texte simple sur la Company Page ── */
+/* ── action=post : publie un post texte (+ photo auto si lien d'annonce) ── */
 async function handlePost(req, res) {
   const cronOk = req.headers['x-vercel-cron'] === '1';
   const keyOk = req.query.key && CRON_SECRET && req.query.key === CRON_SECRET;
@@ -235,12 +301,33 @@ async function handlePost(req, res) {
   const text = (req.body && req.body.text ? String(req.body.text) : '').trim();
   if (!text) return res.status(400).json({ error: 'text manquant' });
   if (text.length > 3000) return res.status(400).json({ error: 'text trop long (3000 caractères max)' });
+  const explicitImageUrl = req.body && req.body.image_url ? String(req.body.image_url) : null;
 
   const t = await ensureFreshToken();
   if (!t || !t.access_token) return res.status(409).json({ error: 'LinkedIn non connecté ou token expiré — relancer action=start' });
   if (!t.org_urn) return res.status(409).json({ error: 'org_urn inconnu — reconnecter LinkedIn (droits admin Company Page requis)' });
 
   try {
+    /* Photo : explicite via image_url, sinon déduite automatiquement du
+       lien d'annonce présent dans le texte (posts "à la une"). */
+    const imageUrl = explicitImageUrl || (await findListingPhotoFromText(text));
+    let mediaUrn = null;
+    if (imageUrl) {
+      try {
+        mediaUrn = await uploadImageFromUrl(t.access_token, t.org_urn, imageUrl);
+      } catch (e) { /* upload échoué -> on publie quand même en texte seul */ }
+    }
+
+    const body = {
+      author: t.org_urn,
+      commentary: escapeLittleText(text),
+      visibility: 'PUBLIC',
+      distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
+      lifecycleState: 'PUBLISHED',
+      isReshareDisabledByAuthor: false,
+    };
+    if (mediaUrn) body.content = { media: { id: mediaUrn } };
+
     const r = await fetch('https://api.linkedin.com/rest/posts', {
       method: 'POST',
       headers: {
@@ -249,21 +336,14 @@ async function handlePost(req, res) {
         'LinkedIn-Version': LINKEDIN_API_VERSION,
         'X-Restli-Protocol-Version': '2.0.0',
       },
-      body: JSON.stringify({
-        author: t.org_urn,
-        commentary: text,
-        visibility: 'PUBLIC',
-        distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
-        lifecycleState: 'PUBLISHED',
-        isReshareDisabledByAuthor: false,
-      }),
+      body: JSON.stringify(body),
     });
     if (!r.ok) {
       const errTxt = await r.text();
       return res.status(502).json({ error: `LinkedIn ${r.status} : ${errTxt.slice(0, 300)}` });
     }
     const postId = r.headers.get('x-restli-id') || r.headers.get('x-linkedin-id') || null;
-    return res.status(200).json({ ok: true, post_id: postId });
+    return res.status(200).json({ ok: true, post_id: postId, has_image: !!mediaUrn });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
