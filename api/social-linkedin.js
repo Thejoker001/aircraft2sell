@@ -46,6 +46,12 @@ const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const SCOPES = ['w_organization_social', 'r_organization_social', 'rw_organization_admin'];
 
+/* Version de l'API REST LinkedIn (format YYYYMM). LinkedIn retire les
+ * versions ~1 an après publication (ex. 202401 a été sunset courant 2025) —
+ * si organizationAcls/posts se mettent à répondre 426 NONEXISTENT_VERSION,
+ * c'est cette constante à remonter, pas un problème de scope ou de token. */
+const LINKEDIN_API_VERSION = '202610';
+
 function sb(path, options) {
   options = options || {};
   const headers = Object.assign({
@@ -164,7 +170,7 @@ async function handleCallback(req, res) {
     try {
       const ar = await fetch(
         'https://api.linkedin.com/rest/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED',
-        { headers: { Authorization: 'Bearer ' + td.access_token, 'LinkedIn-Version': '202401', 'X-Restli-Protocol-Version': '2.0.0' } }
+        { headers: { Authorization: 'Bearer ' + td.access_token, 'LinkedIn-Version': LINKEDIN_API_VERSION, 'X-Restli-Protocol-Version': '2.0.0' } }
       );
       if (ar.ok) {
         const ad = await ar.json();
@@ -173,7 +179,7 @@ async function handleCallback(req, res) {
           orgUrn = el.organization;
           const oid = orgUrn.split(':').pop();
           const orr = await fetch(`https://api.linkedin.com/rest/organizations/${oid}`, {
-            headers: { Authorization: 'Bearer ' + td.access_token, 'LinkedIn-Version': '202401', 'X-Restli-Protocol-Version': '2.0.0' },
+            headers: { Authorization: 'Bearer ' + td.access_token, 'LinkedIn-Version': LINKEDIN_API_VERSION, 'X-Restli-Protocol-Version': '2.0.0' },
           });
           if (orr.ok) {
             const ord = await orr.json();
@@ -240,7 +246,7 @@ async function handlePost(req, res) {
       headers: {
         Authorization: 'Bearer ' + t.access_token,
         'Content-Type': 'application/json',
-        'LinkedIn-Version': '202401',
+        'LinkedIn-Version': LINKEDIN_API_VERSION,
         'X-Restli-Protocol-Version': '2.0.0',
       },
       body: JSON.stringify({
