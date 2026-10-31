@@ -132,7 +132,8 @@ def collect():
     entries = []
     for dirpath, dirnames, filenames in os.walk(ROOT):
         dirnames[:] = [d for d in dirnames
-                       if d not in ('.git', 'node_modules', 'supabase', 'scripts', 'images')]
+                       if d not in ('.git', 'node_modules', 'supabase', 'scripts', 'images')
+                       and not d.startswith('.')]
         for name in sorted(filenames):
             if not name.endswith('.html'):
                 continue
