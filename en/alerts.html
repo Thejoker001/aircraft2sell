@@ -227,13 +227,23 @@ function createAlert(){
   localStorage.setItem('a2s_alerts',JSON.stringify(alerts));
   try{localStorage.setItem('a2s_alert_email',email);}catch(e){}
 
-  // Save to Supabase
+  // Save to Supabase (real search_alerts columns:
+  // email, category, max_price, min_year, make, country, keywords, created_at)
+  var sbPayload={
+    email:email,
+    category:alert.cat||null,
+    make:alert.make||null,
+    max_price:alert.maxPrice?Number(alert.maxPrice):null,
+    country:alert.country||null
+  };
   var btn=document.getElementById('btnCreate');if(btn)btn.classList.add('is-loading');
   fetch(SB+'/rest/v1/search_alerts',{
     method:'POST',
     headers:{'apikey':SK,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body:JSON.stringify(alert)
-  }).catch(function(){}).then(function(){if(btn)btn.classList.remove('is-loading');});
+    body:JSON.stringify(sbPayload)
+  }).then(function(r){if(!r.ok)return r.text().then(function(t){console.error('search_alerts insert failed',r.status,t);});})
+    .catch(function(e){console.error('search_alerts insert error',e);})
+    .then(function(){if(btn)btn.classList.remove('is-loading');});
 
   showToast('Alert created: you will receive an email as soon as a listing matches.');
   document.getElementById('aName').value='';
