@@ -22,8 +22,12 @@
  *                                            { email, seller_name?, listings: [...] },
  *                                            jusqu'à 100 lignes — AUCUNE clé API requise
  *                                            ici, c'est le flux dashboard existant)
+ *   GET    /api/listings?mode=seo&id=123&lang=fr -> rendu SSR (audit 05/11/2026,
+ *                                            voir modeSeo ci-dessous), AUCUNE clé API
+ *                                            requise (lecture publique, mêmes données
+ *                                            que la fiche annonce visible par tous)
  *
- * Auth clé API : header  X-API-Key: a2s_live_...
+ * Auth clé API : header  X-API-Key: ***
  * Toutes les réponses sont { error } en cas d'échec, sinon la forme documentée
  * par route ci-dessous.
  *
@@ -35,6 +39,128 @@
  * lancement de cette fonctionnalité).
  */
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { esc } from './_lib.js';
+
+/**
+ * mode=seo (audit 05/11/2026) — injecte le vrai title/description/og:xxx/canonical
+ * + un schema.org Product dans le HTML BRUT d'une fiche annonce AVANT que le JS
+ * ne s'exécute. Avant ce fix, le HTML initial affichait un title/description
+ * IDENTIQUES sur les 65 annonces (seul le rendu client après fetch Supabase les
+ * différenciait) — contenu quasi-dupliqué pour un crawler, cause probable du
+ * faible taux d'indexation observé (14/65 indexées, cf. baseline GSC 05/11).
+ *
+ * Routé depuis /listing.html (et en/, et/) UNIQUEMENT quand ?id= est présent,
+ * via les rewrites de vercel.json — sinon le fichier statique est servi tel quel.
+ * Reste une fonction GET non authentifiée : lecture publique, exactement les
+ * mêmes données que celles déjà visibles par n'importe quel visiteur sur la
+ * page une fois le JS exécuté. AUCUNE donnée privée exposée (pas seller_email).
+ *
+ * Fail-open systématique (template introuvable, Supabase en panne, annonce
+ * absente/non "live") : on renvoie le gabarit HTML statique INCHANGÉ plutôt que
+ * de casser la page — le rendu client (render() dans le <script> de la page)
+ * prend ensuite le relais exactement comme avant ce fix.
+ */
+const TEMPLATES_SEO = {
+  fr: 'listing.html',
+  en: 'en/listing.html',
+  et: 'et/listing.html',
+};
+const COPIE_SEO = {
+  fr: { pourVente: (t, pr) => `À vendre : ${t}${pr ? ' — ' + pr : ''}. Marketplace aéronautique européenne sans commission.`,
+        base: 'https://aircraft2sell.eu/listing.html' },
+  en: { pourVente: (t, pr) => `For sale: ${t}${pr ? ' — ' + pr : ''}. European aviation marketplace with zero commission.`,
+        base: 'https://aircraft2sell.eu/en/listing.html' },
+  et: { pourVente: (t, pr) => `Müügil: ${t}${pr ? ' — ' + pr : ''}. Euroopa lennukiturg, vahendustasuta.`,
+        base: 'https://aircraft2sell.eu/et/listing.html' },
+};
+const SYMBOLE_DEVISE = { EUR: '€', USD: '$', GBP: '£', CHF: 'Fr', CAD: 'CA$', AUD: 'AU$', AED: 'AED ' };
+const NOMS_CATEGORIE = { light: 'Avions légers', jet: "Jets d'affaires", turbo: 'Turboprops', heli: 'Hélicoptères', ulm: 'ULM', airliner: 'Avions de ligne' };
+
+async function modeSeo(req, res, url, cle) {
+  const lang = ['fr', 'en', 'et'].includes(req.query.lang) ? req.query.lang : 'fr';
+  const id = req.query.id ? String(req.query.id).trim() : '';
+  const templatePath = path.join(process.cwd(), TEMPLATES_SEO[lang]);
+
+  let html;
+  try {
+    html = fs.readFileSync(templatePath, 'utf8');
+  } catch (e) {
+    // Gabarit introuvable (déploiement incomplet) : on ne peut rien servir de
+    // sensé ici, mais ça ne doit jamais arriver si includeFiles est correct.
+    res.status(500).send('Modèle de page introuvable');
+    return;
+  }
+
+  if (!id) { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.status(200).send(html); return; }
+
+  let listing = null;
+  try {
+    const rows = await sbGet(url, cle, `listings?select=*&id=eq.${encodeURIComponent(id)}&limit=1`);
+    listing = rows && rows[0];
+  } catch (e) {
+    // Supabase indisponible : on sert le gabarit statique inchangé plutôt que
+    // de renvoyer une erreur — le rendu client gérera comme d'habitude.
+  }
+
+  if (!listing || listing.status !== 'live') {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.status(200).send(html);
+    return;
+  }
+
+  const copie = COPIE_SEO[lang];
+  const sym = SYMBOLE_DEVISE[listing.currency || 'EUR'] || '€';
+  const pn = listing.price && !isNaN(Number(listing.price)) ? Number(listing.price) : null;
+  const pr = pn ? pn.toLocaleString('fr-FR') + ' ' + sym : (listing.price || null);
+  const title = [listing.make, listing.model, listing.year ? `(${listing.year})` : ''].filter(Boolean).join(' ') || 'Aéronef';
+  const fullTitle = 'Aircraft2Sell — ' + title;
+  const description = copie.pourVente(title, pr);
+  const ogTitle = title + ' — Aircraft2Sell';
+  const canonicalUrl = copie.base + '?id=' + encodeURIComponent(id);
+
+  html = html.replace(/<title>.*?<\/title>/, `<title>${esc(fullTitle)}</title>`);
+  html = html.replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(description)}">`);
+  html = html.replace(/<link rel="canonical" href="[^"]*">/, `<link rel="canonical" href="${esc(canonicalUrl)}">`);
+
+  const photos = Array.isArray(listing.photos) ? listing.photos : [];
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: title,
+    description: listing.description || 'Aéronef à vendre sur Aircraft2Sell',
+    url: canonicalUrl,
+    image: photos.length ? photos[0] : 'https://aircraft2sell.eu/og-image.png',
+    sku: String(listing.id || ''),
+    brand: { '@type': 'Brand', name: listing.make || '' },
+    model: listing.model || '',
+    productionDate: listing.year ? String(listing.year) : '',
+    category: NOMS_CATEGORIE[listing.category] || listing.category || '',
+    offers: {
+      '@type': 'Offer',
+      price: listing.price || '0',
+      priceCurrency: listing.currency || 'EUR',
+      priceValidUntil: (() => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().slice(0, 10); })(),
+      validFrom: listing.submitted_at ? String(listing.submitted_at).slice(0, 10) : (listing.created_at ? String(listing.created_at).slice(0, 10) : new Date().toISOString().slice(0, 10)),
+      availability: 'https://schema.org/InStock',
+      itemCondition: 'https://schema.org/UsedCondition',
+      url: canonicalUrl,
+    },
+  };
+  const injection = `<meta property="og:title" content="${esc(ogTitle)}">\n`
+    + `<meta property="og:description" content="${esc(description)}">\n`
+    + `<meta property="og:url" content="${esc(canonicalUrl)}">\n`
+    + `<script type="application/ld+json" id="listing-schema">${JSON.stringify(schema)}</script>\n</head>`;
+  html = html.replace('</head>', injection);
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  // Cache court côté edge : contenu quasi-statique (annonce rarement modifiée),
+  // mais on ne veut pas non plus geler un changement de prix/statut longtemps.
+  res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+  res.status(200).send(html);
+}
 
 function emailValideCsv(e) {
   return typeof e === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -212,6 +338,14 @@ export default async function handler(req, res) {
   // vendeur est déjà authentifié côté navigateur avant d'arriver ici).
   if (req.query && req.query.mode === 'csv-import') {
     await modeCsvImport(req, res, url, cle);
+    return;
+  }
+
+  // Mode SSR (audit 05/11/2026) : rendu public non authentifié d'une fiche
+  // annonce avec meta tags réels, routé depuis vercel.json uniquement quand
+  // /listing.html (ou en/, et/) porte un ?id=. Voir modeSeo ci-dessus.
+  if (req.method === 'GET' && req.query && req.query.mode === 'seo') {
+    await modeSeo(req, res, url, cle);
     return;
   }
 
