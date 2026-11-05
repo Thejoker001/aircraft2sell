@@ -201,7 +201,10 @@
       '.a2sb-send:hover{background:var(--a2s-accent-hover,#D25C0F)}',
       '.a2sb-send svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}',
       '@media(max-width:600px){#a2sBot{bottom:0;right:0;top:0;width:100vw;max-height:100vh;height:100dvh;border-radius:0;z-index:601}',
-      '#a2sBotBtn{bottom:1rem;right:1rem;padding:0 .9rem;min-height:44px;font-size:.82rem}}',
+      /* Sur mobile, le bouton flottant recouvrait du contenu (bouton "Sauvegarder"
+         sur search.html, champ "Modèle" sur listing.html) : on le réduit et le
+         remonte légèrement pour qu'il gêne moins sans disparaître. */
+      '#a2sBotBtn{bottom:4.5rem;right:.75rem;padding:0 .75rem;min-height:40px;font-size:.78rem;box-shadow:0 4px 16px rgba(11,37,69,.28)}}',
       '@media print{#a2sBotBtn,#a2sBot{display:none}}'
     ].join('');
     document.head.appendChild(s);

@@ -143,7 +143,7 @@
             '<a href="' + href('legal.html') + '#privacy">' + t('privacy') + '</a>',
             '<a href="' + href('legal.html') + '#cookies">' + t('cookies') + '</a>',
           '</div>',
-          '<div class="f-langs">' + ['fr','en','de','it','es'].map(function(l){ return '<a href="' + langSwitchHref(l) + '" hreflang="' + l + '" class="f-lang-btn ' + (lang === l ? 'active' : '') + '">' + l.toUpperCase() + '</a>'; }).join('') + '</div>',
+          '<div class="f-langs">' + ['fr','en','et'].map(function(l){ return '<a href="' + langSwitchHref(l) + '" hreflang="' + l + '" class="f-lang-btn ' + (lang === l ? 'active' : '') + '">' + l.toUpperCase() + '</a>'; }).join('') + '</div>',
         '</div>',
       '</footer>'
     ].join('');
