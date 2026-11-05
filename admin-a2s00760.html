@@ -1291,6 +1291,33 @@ async function sb(method,table,params,body,minimalReturn){
   return text?JSON.parse(text):[];
 }
 
+/* Pagination (S14, 2026-11-05) : le serveur PostgREST plafonne TOUTE réponse à
+   max_rows=1000 (réglage projet) quelle que soit la valeur de ?limit= envoyée —
+   un simple ?limit=5000 ne protège pas contre la troncature, il retombe toujours
+   sur 1000 lignes max, et toujours les mêmes (triées desc) peu importe combien de
+   lignes existent réellement dans la période. Résultat vécu : "30 derniers jours"
+   avec 5196 lignes réelles n'affichait que les 1000 plus récentes (~19% du vrai
+   total), donc Visites uniques/Pages vues/Vues annonces/répartition pays-devices
+   tous massivement sous-évalués et biaisés vers les derniers jours seulement.
+   Fix : boucler avec offset+limit=1000 jusqu'à une page incomplète (garde-fou
+   50 pages = 50000 lignes max, largement au-dessus du volume actuel ~8500/90j). */
+async function sbAll(table,baseParams){
+  var PAGE=1000,offset=0,all=[],guard=0;
+  while(guard++<50){
+    var token=await _sbRefresh();if(!token&&_sbToken)token=_sbToken;if(!token)token=SB_KEY;
+    var url=SB_URL+'/rest/v1/'+table+'?'+baseParams+'&limit='+PAGE+'&offset='+offset;
+    var res=await fetch(url,{method:'GET',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+token}});
+    if(res.status===401){var tk2=await _sbRefresh();if(tk2){res=await fetch(url,{method:'GET',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tk2}});}}
+    if(!res.ok)break;
+    var text=await res.text();
+    var rows=text?JSON.parse(text):[];
+    all=all.concat(rows);
+    if(rows.length<PAGE)break;
+    offset+=PAGE;
+  }
+  return all;
+}
+
 /* ── MAPPING ── */
 function sbToL(r){return{id:r.id,make:r.make,model:r.model,year:r.year,price:r.price,currency:r.currency||'EUR',category:r.category,airport:r.airport,desc:r.description,status:r.status||'pending',sellerName:r.seller_name,sellerEmail:r.seller_email,views:r.views||0,enquiries:r.enquiries||0,submittedAt:r.submitted_at,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')};}
 
@@ -2163,8 +2190,8 @@ async function renderStats(){
     var el=sel(id);if(el)el.innerHTML='<div class="loading-row">Chargement...</div>';
   });
   try{
-    var analytics=await sb('GET','analytics','created_at=gte.'+since+'&order=created_at.desc&limit=5000');
-    var listViews=await sb('GET','listing_views','created_at=gte.'+since+'&order=created_at.desc&limit=5000');
+    var analytics=await sbAll('analytics','created_at=gte.'+since+'&order=created_at.desc');
+    var listViews=await sbAll('listing_views','created_at=gte.'+since+'&order=created_at.desc');
     console.log('[Stats] analytics:', analytics ? analytics.length : 'null/error', 'rows');
     console.log('[Stats] sample:', analytics && analytics[0] ? JSON.stringify(analytics[0]) : 'vide');
     console.log('[Stats] listViews:', listViews ? listViews.length : 'null/error', 'rows');
