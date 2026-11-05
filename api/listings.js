@@ -63,9 +63,9 @@ import { esc } from './_lib.js';
  * prend ensuite le relais exactement comme avant ce fix.
  */
 const TEMPLATES_SEO = {
-  fr: 'listing.html',
-  en: 'en/listing.html',
-  et: 'et/listing.html',
+  fr: 'listing-page.html',
+  en: 'en/listing-page.html',
+  et: 'et/listing-page.html',
 };
 const COPIE_SEO = {
   fr: { pourVente: (t, pr) => `À vendre : ${t}${pr ? ' — ' + pr : ''}. Marketplace aéronautique européenne sans commission.`,
