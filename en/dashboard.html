@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="/track-beacon.js"></script>
 <script src="/confirm-handler.js"></script>
 <script src="/lang-redirect.js"></script>
 <meta charset="UTF-8">
@@ -230,7 +231,7 @@
     <div class="sb-section">
       <div class="sb-label">Account</div>
       <button type="button" class="nav-tab" id="tab-settings" onclick="switchTab('settings')"><i data-icon="user"></i>My account</button>
-      <button type="button" class="nav-tab is-logout" onclick="doLogout()"><i data-icon="logout"></i>Log out</button>
+      <button type="button" class="nav-tab is-logout" data-action="doLogout"><i data-icon="logout"></i>Log out</button>
     </div>
     <div class="sb-plan-box">
       <div class="sbp-label">Current plan</div>
@@ -334,11 +335,11 @@
       <div class="dash-bulkbar" id="dashBulkbar">
         <span class="bb-count" id="bbCount">0 selected</span>
         <div class="bb-spacer"></div>
-        <button type="button" onclick="bulkMarkSold()"><i data-icon="check"></i>Mark as sold</button>
-        <button type="button" onclick="bulkRepublish()"><i data-icon="refresh"></i>Republish</button>
-        <button type="button" onclick="bulkExportCsv()"><i data-icon="download"></i>Export CSV</button>
-        <button type="button" class="danger" onclick="bulkDeleteListings()"><i data-icon="trash"></i>Delete</button>
-        <button type="button" onclick="clearListingSelection()">Cancel</button>
+        <button type="button" data-action="bulkMarkSold"><i data-icon="check"></i>Mark as sold</button>
+        <button type="button" data-action="bulkRepublish"><i data-icon="refresh"></i>Republish</button>
+        <button type="button" data-action="bulkExportCsv"><i data-icon="download"></i>Export CSV</button>
+        <button type="button" class="danger" data-action="bulkDeleteListings"><i data-icon="trash"></i>Delete</button>
+        <button type="button" data-action="clearListingSelection">Cancel</button>
       </div>
       <div id="listingsList">
         <div class="card"><div class="empty-state"><span class="icon-box"><i data-icon="plane"></i></span><div class="empty-title">No listing</div><p class="empty-sub">Publish your first aircraft. Zero commission on the sale.</p><a href="post-listing.html" class="btn-secondary"><i data-icon="plus"></i>List an aircraft</a></div></div>
@@ -353,7 +354,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
           <textarea class="txta" id="csvInput" rows="6" placeholder="make;model;year;price;currency;category;airport;country;description&#10;Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition&#10;Robin;DR400;1975;32000;EUR;light;LFQQ;France;Well maintained"></textarea>
           <div class="csv-actions">
             <label class="btn-secondary btn-sm csv-file-btn"><i data-icon="upload"></i>Upload a file<input type="file" id="csvFile" accept=".csv,.txt,text/csv" style="display:none" onchange="readCsvFile(this)"></label>
-            <button type="button" class="btn-primary btn-sm" id="btnCsvImport" onclick="importCsv()"><i data-icon="upload"></i>Import</button>
+            <button type="button" class="btn-primary btn-sm" id="btnCsvImport" data-action="importCsv"><i data-icon="upload"></i>Import</button>
           </div>
           <div id="csvResult"></div>
         </div>
@@ -378,7 +379,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
       <div class="card perf-table-wrap" id="perfTableCard" style="display:none">
         <div class="dc-head">
           <h3>Compared performance</h3>
-          <button type="button" class="btn-secondary btn-sm" onclick="exportAllListingsCsv()"><i data-icon="download"></i>Export all</button>
+          <button type="button" class="btn-secondary btn-sm" data-action="exportAllListingsCsv"><i data-icon="download"></i>Export all</button>
         </div>
         <div class="dc-body table-wrap">
           <table class="table perf-table">
@@ -421,7 +422,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
         <div class="msg-compose">
           <label class="sr-only" for="msgInput">Your message</label>
           <input type="text" class="inp" id="msgInput" placeholder="Write a message">
-          <button type="button" class="btn-navy" onclick="sendMsg()"><i data-icon="send"></i>Send</button>
+          <button type="button" class="btn-navy" data-action="sendMsg"><i data-icon="send"></i>Send</button>
         </div>
       </div>
       <div class="card">
@@ -477,7 +478,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
                 <textarea class="txta" id="setBio" rows="4" maxlength="600" placeholder="Tell us about yourself, your aviation experience, your aircraft… This description will be displayed on your seller page."></textarea>
                 <div class="field-hint">600 characters max. Displayed publicly on your profile.</div>
               </div>
-              <button type="button" class="btn-primary" onclick="saveProfile()">Save</button>
+              <button type="button" class="btn-primary" data-action="saveProfile">Save</button>
             </div>
           </div>
           <div class="card">
@@ -494,7 +495,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
                 </select>
               </div>
               <div class="field"><label for="setAirport">Home airport (ICAO code)</label><input type="text" class="inp" id="setAirport" placeholder="e.g. LFPG, EDDF"><div class="field-hint">Four letters, shown on your listings.</div></div>
-              <button type="button" class="btn-secondary" onclick="saveProfile()">Save</button>
+              <button type="button" class="btn-secondary" data-action="saveProfile">Save</button>
             </div>
           </div>
         </div>
@@ -522,7 +523,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
               </div>
               <div class="alert alert-info" style="margin-bottom:1rem"><i data-icon="lock"></i><span>Your information is encrypted and used only for manual verification. It is never shared with third parties.</span></div>
               <div id="verifAlert"></div>
-              <button type="button" class="btn-secondary" onclick="submitVerif()"><i data-icon="shield-check"></i>Submit my verification request</button>
+              <button type="button" class="btn-secondary" data-action="submitVerif"><i data-icon="shield-check"></i>Submit my verification request</button>
             </div>
             <div class="alert alert-info" id="verifPending" style="display:none"><i data-icon="clock"></i><span>Your request is under review. Usual turnaround: 24 to 48 business hours.</span></div>
           </div>
@@ -535,7 +536,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
             <p class="muted" style="font-size:.9rem;margin-bottom:1rem;line-height:1.6">Invite a seller: they get <strong>1 free month of Aviator</strong>, and so do you once their first listing is published.</p>
             <div class="ref-box">
               <span id="referralLink">Loading</span>
-              <button type="button" class="btn-secondary btn-sm" onclick="copyReferral()"><i data-icon="copy"></i>Copy</button>
+              <button type="button" class="btn-secondary btn-sm" data-action="copyReferral"><i data-icon="copy"></i>Copy</button>
             </div>
             <div class="small muted">Shares: <strong id="referralCount">0</strong> invitation(s) sent</div>
           </div>
@@ -625,7 +626,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
               <div class="field"><label for="pwNew">New password</label><input type="password" class="inp" id="pwNew" autocomplete="new-password"><div class="field-hint">8 characters minimum.</div></div>
               <div class="field"><label for="pwConfirm">Confirm</label><input type="password" class="inp" id="pwConfirm" autocomplete="new-password"></div>
             </div>
-            <button type="button" class="btn-primary" onclick="changePassword()">Change password</button>
+            <button type="button" class="btn-primary" data-action="changePassword">Change password</button>
           </div>
         </div>
         <div class="card danger-zone">
@@ -650,7 +651,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
   <div class="modal">
     <div class="modal-head">
       <div class="modal-title" id="mEditTitle">Edit listing</div>
-      <button type="button" class="modal-close" onclick="closeEditListing()" aria-label="Close"><i data-icon="close"></i></button>
+      <button type="button" class="modal-close" data-action="closeEditListing" aria-label="Close"><i data-icon="close"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="el-id">
@@ -675,8 +676,8 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
       <div id="el-alert"></div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn-ghost" onclick="closeEditListing()">Cancel</button>
-      <button type="button" class="btn-primary" onclick="saveEditListing()">Save</button>
+      <button type="button" class="btn-ghost" data-action="closeEditListing">Cancel</button>
+      <button type="button" class="btn-primary" data-action="saveEditListing">Save</button>
     </div>
   </div>
 </div>
@@ -757,7 +758,7 @@ async function initAuth(){
       }
     }catch(e){tk=null;}
   }
-  if(!tk&&!loggedLs){window.location.href='login.html?redirect=dashboard.html';return;}
+  if(!tk&&!loggedLs){window.a2sBeacon();window.location.href='login.html?redirect=dashboard.html';return;}
   email=email||localStorage.getItem('a2s_user_email')||'';
   name=name||localStorage.getItem('a2s_user_name')||'';
   applyUserDisplay(name,email);
