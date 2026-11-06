@@ -512,11 +512,11 @@ body.dense .kv{font-size:1.4rem}
           <button class="tb-btn" onclick="exportCSV('list')"><i data-icon="download"></i>CSV</button>
         </div>
         <div class="krow">
-          <div class="kc"><div class="kl">Total</div><div class="kv" id="ls-total">0</div></div>
-          <div class="kc g"><div class="kl">Publiées</div><div class="kv" id="ls-live">0</div></div>
-          <div class="kc r"><div class="kl">En attente</div><div class="kv" id="ls-pend">0</div></div>
-          <div class="kc b"><div class="kl">Rejetées</div><div class="kv" id="ls-rejt">0</div></div>
-          <div class="kc"><div class="kl">Vendues</div><div class="kv" id="ls-sold">0</div></div>
+          <div class="kc kc-click" title="Voir toutes les annonces" onclick="filterListBy('')"><div class="kl">Total</div><div class="kv" id="ls-total">0</div></div>
+          <div class="kc g kc-click" title="Voir les annonces publiées" onclick="filterListBy('live')"><div class="kl">Publiées</div><div class="kv" id="ls-live">0</div></div>
+          <div class="kc r kc-click" title="Voir les annonces en attente" onclick="filterListBy('pending')"><div class="kl">En attente</div><div class="kv" id="ls-pend">0</div></div>
+          <div class="kc b kc-click" title="Voir les annonces rejetées" onclick="filterListBy('rejected')"><div class="kl">Rejetées</div><div class="kv" id="ls-rejt">0</div></div>
+          <div class="kc kc-click" title="Voir les avions vendus" onclick="filterListBy('sold')"><div class="kl">Vendues</div><div class="kv" id="ls-sold">0</div></div>
         </div>
         <!-- Ancre du bandeau « filtré par vendeur » inséré par viewSellerListings().
              Absente de la v2 : le bandeau ne s'affichait donc jamais. -->
@@ -1725,6 +1725,11 @@ async function doReject(id,reason){
 async function approveAll(){var pending=_allListings.filter(function(l){return l.status==='pending';});if(!pending.length){showToast('Aucune annonce en attente');return;}if(!confirm('Approuver les '+pending.length+' annonce(s) ?'))return;try{await sb('PATCH','listings','status=eq.pending',{status:'live'},true);showToast(pending.length+' annonce(s) approuvée(s)');await refreshAll();}catch(e){showToast('Erreur : '+e.message);}}
 
 /* ── LISTE ANNONCES ── */
+function filterListBy(status){
+  showTab('list',sel('sn-list'));
+  var selEl=sel('ls-st'); if(selEl) selEl.value=status;
+  renderList();
+}
 function renderList(){
   var q=(sel('ls-q')||{}).value||'';var st=(sel('ls-st')||{}).value||'';var cat=(sel('ls-cat')||{}).value||'';
   /* Les annonces "supprimées" par un vendeur/admin passent en status='sold' (suppression
