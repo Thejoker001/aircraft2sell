@@ -192,3 +192,14 @@ volume de contenu et les annonces réelles :
    l'aviation légère ; l'infrastructure i18n (`nav.js`, `footer.js`) est prête.
 4. **Obtenir des liens entrants** : annuaires d'aéroclubs, fédérations
    aéronautiques, forums pilotes — c'est le facteur qui manque le plus.
+
+## Audit du 06/11/2026
+
+Sitemaps lus proprement par Google (0 erreur), Cloudflare Bot Management entièrement
+désactivé (aucun blocage crawler), robots.txt propre, `www`/`http` redirigent bien en
+301 vers l'apex HTTPS. Trafic réel mais jeune domaine : marque "aircraft2sell" en
+position moyenne 2.9 (bon signal), la plupart des requêtes génériques encore en
+position 50-90 (facteur limitant = autorité de domaine, cf. ci-dessus). Prochain
+contrôle indexation hreflang/ET prévu 12-15/11 (laisser le temps au re-crawl après
+les fix du 05/11). Détails techniques complets (CI/CD, RLS, fonctions) dans le skill
+`aircraft2sell-site`.

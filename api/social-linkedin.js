@@ -349,6 +349,54 @@ async function handlePost(req, res) {
   }
 }
 
+/* ── action=comment : ajoute un commentaire sur un post existant ──
+ * Utilisé pour poster le lien aircraft2sell.eu en PREMIER COMMENTAIRE plutôt
+ * que dans le texte du post lui-même : LinkedIn pénalise fortement la
+ * portée organique des posts contenant un lien sortant dans le texte
+ * principal (l'algorithme favorise le temps passé sur la plateforme).
+ * Mis en place le 06/11/26 après constat GSC/analytics : 1 seul clic
+ * linkedin.com en 28 jours malgré un post quotidien avec lien inline. */
+async function handleComment(req, res) {
+  const cronOk = req.headers['x-vercel-cron'] === '1';
+  const keyOk = req.query.key && CRON_SECRET && req.query.key === CRON_SECRET;
+  if (!cronOk && !keyOk) {
+    return res.status(403).json({ error: 'Non autorisé' });
+  }
+  const postId = (req.body && req.body.post_id ? String(req.body.post_id) : '').trim();
+  const text = (req.body && req.body.text ? String(req.body.text) : '').trim();
+  if (!postId) return res.status(400).json({ error: 'post_id manquant (urn:li:share:... ou urn:li:ugcPost:...)' });
+  if (!text) return res.status(400).json({ error: 'text manquant' });
+
+  const t = await ensureFreshToken();
+  if (!t || !t.access_token) return res.status(409).json({ error: 'LinkedIn non connecté ou token expiré — relancer action=start' });
+  if (!t.org_urn) return res.status(409).json({ error: 'org_urn inconnu — reconnecter LinkedIn (droits admin Company Page requis)' });
+
+  try {
+    const r = await fetch(`https://api.linkedin.com/rest/socialActions/${encodeURIComponent(postId)}/comments`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + t.access_token,
+        'Content-Type': 'application/json',
+        'LinkedIn-Version': LINKEDIN_API_VERSION,
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+      body: JSON.stringify({
+        actor: t.org_urn,
+        object: postId,
+        message: { text },
+      }),
+    });
+    if (!r.ok) {
+      const errTxt = await r.text();
+      return res.status(502).json({ error: `LinkedIn ${r.status} : ${errTxt.slice(0, 300)}` });
+    }
+    const commentId = r.headers.get('x-restli-id') || null;
+    return res.status(200).json({ ok: true, comment_id: commentId });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
+
 module.exports = async function handler(req, res) {
   const action = (req.query && req.query.action) || '';
   if (!SB_URL || !SB_KEY) {
@@ -358,5 +406,6 @@ module.exports = async function handler(req, res) {
   if (action === 'callback') return handleCallback(req, res);
   if (action === 'status') return handleStatus(req, res);
   if (action === 'post') return handlePost(req, res);
-  return res.status(400).json({ error: 'action manquante ou invalide (start | callback | status | post)' });
+  if (action === 'comment') return handleComment(req, res);
+  return res.status(400).json({ error: 'action manquante ou invalide (start | callback | status | post | comment)' });
 };

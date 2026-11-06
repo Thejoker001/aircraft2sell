@@ -407,6 +407,23 @@
   </div>
 </section>
 
+<!-- NEWSLETTER -->
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <div class="card alert-box">
+      <div>
+        <h2 style="font-size:1.5rem;margin-bottom:.35rem">La sélection du mois, par email</h2>
+        <p class="muted">Chaque mois : annonces à la une, tendances du marché, conseils d'achat. Un email, zéro spam, désinscription en un clic.</p>
+      </div>
+      <form onsubmit="submitNewsletterHome(event)">
+        <input type="email" class="inp" id="newsHomeEmail" placeholder="Votre adresse email" required aria-label="Adresse email">
+        <button type="submit" class="btn-navy" id="newsHomeBtn"><i data-icon="mail"></i>S'abonner</button>
+      </form>
+    </div>
+    <p id="newsHomeMsg" style="text-align:right;font-size:.85rem;margin-top:.5rem;min-height:1.2em"></p>
+  </div>
+</section>
+
 <!-- PARTENAIRES -->
 <section class="section-sm section-alt">
   <div class="container">
@@ -633,6 +650,35 @@ function submitAlert(e){
   if(!v||v.indexOf('@')<0){showToast('Entrez une adresse email valide');return;}
   try{localStorage.setItem('a2s_alert_email',v);}catch(err){}
   go('alerts.html?email='+encodeURIComponent(v));
+}
+
+/* ── Newsletter mensuelle (Brevo) ── */
+function submitNewsletterHome(e){
+  e.preventDefault();
+  var input=document.getElementById('newsHomeEmail');
+  var btn=document.getElementById('newsHomeBtn');
+  var msg=document.getElementById('newsHomeMsg');
+  var email=(input.value||'').trim();
+  if(!email||email.indexOf('@')<0){msg.textContent='Entrez une adresse email valide';msg.style.color='var(--a2s-danger)';return;}
+  btn.disabled=true;
+  msg.textContent='';
+  fetch('/api/contact-form',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'newsletter',email:email,lang:'fr'})})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,data:d};});})
+    .then(function(res){
+      btn.disabled=false;
+      if(res.ok&&res.data&&res.data.ok){
+        msg.style.color='var(--a2s-success)';
+        msg.textContent='Inscription confirmée, merci !';
+        input.value='';
+      }else{
+        msg.style.color='var(--a2s-danger)';
+        msg.textContent='Erreur, réessayez dans un instant.';
+      }
+    }).catch(function(){
+      btn.disabled=false;
+      msg.style.color='var(--a2s-danger)';
+      msg.textContent='Erreur, réessayez dans un instant.';
+    });
 }
 
 /* ── Toast ── */
