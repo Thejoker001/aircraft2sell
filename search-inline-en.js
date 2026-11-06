@@ -535,3 +535,9 @@ window.addEventListener('DOMContentLoaded',function(){
   renderSavedSearches();
   loadAll();
 });
+
+function toggleMobileFilters(btn){
+  var s=document.getElementById('sidebar');
+  var o=s.classList.toggle('open');
+  btn.setAttribute('aria-expanded',o?'true':'false');
+}

@@ -21,6 +21,89 @@ window.A2SFavs = (function(){
 })();
 
 /* ============================================================
+   A2SActions — délégation d'événements CSP-safe (remplace onclick=/
+   onchange=/oninput=/onsubmit=/onkeydown= inline, chantier retrait
+   unsafe-inline de script-src, 06/11/26).
+
+   Attributs lus sur l'élément (ou le plus proche ancêtre qui les porte) :
+     data-action="fn"            -> appelle window['fn'](...)
+     data-action="fn1,fn2,fn3"   -> appelle chaque fonction listée, dans
+                                     l'ordre, avec les MÊMES arguments résolus
+     data-args='["mod","__this__"]'
+                                  -> JSON (valeur unique ou tableau), décodé puis
+                                     passé en arguments. Jetons spéciaux reconnus :
+                                     "__this__"  -> l'élément cible lui-même
+                                     "__value__" -> el.value (champs de formulaire)
+                                     "__event__" -> l'objet Event natif
+     data-prevent="1"            -> event.preventDefault() avant d'invoquer
+     data-stop="1"               -> event.stopPropagation() avant d'invoquer
+     data-self-only="1"          -> n'invoque QUE si evt.target === el (remplace le
+                                     garde "if(event.target===this)" des overlays de
+                                     modale : clic sur le fond ferme, clic sur le
+                                     contenu à l'intérieur ne ferme pas)
+     data-key="Enter"            -> pour un événement keydown UNIQUEMENT, n'invoque
+                                     que si evt.key correspond (liste séparée par
+                                     virgules acceptée, ex. "Enter,Spacebar"). Ignoré
+                                     pour les autres types d'événement.
+
+   Seules des fonctions DÉJÀ déclarées comme globales (window.xxx, définies
+   dans le <script> propre à la page) sont appelables : jamais d'eval/Function
+   sur une chaîne arbitraire -> aucune régression de sécurité introduite,
+   data-args ne transporte que des DONNÉES (JSON), jamais du code.
+   ============================================================ */
+(function(){
+  function resolveToken(tok, el, evt){
+    if(tok === '__this__')  return el;
+    if(tok === '__value__') return el.value;
+    if(tok === '__event__') return evt;
+    return tok;
+  }
+  function resolveArgs(el, evt){
+    var raw = el.getAttribute('data-args');
+    if(raw === null) return [];
+    var parsed;
+    try { parsed = JSON.parse(raw); }
+    catch(e){ return [raw]; }
+    var arr = Array.isArray(parsed) ? parsed : [parsed];
+    return arr.map(function(v){ return resolveToken(v, el, evt); });
+  }
+  function dispatch(evt, selector){
+    var el = evt.target.closest(selector);
+    if(!el) return;
+    if(el.getAttribute('data-self-only') === '1' && evt.target !== el) return;
+    if(evt.type === 'keydown'){
+      var keyFilter = el.getAttribute('data-key');
+      if(keyFilter){
+        var keyMatches = keyFilter.split(',').some(function(k){
+          if(k === 'Space') return evt.key === ' ' || evt.code === 'Space';
+          return k === evt.key;
+        });
+        if(!keyMatches) return;
+      }
+    }
+    var names = (el.getAttribute('data-action') || '').split(',').map(function(s){return s.trim();}).filter(Boolean);
+    if(!names.length) return;
+    if(el.getAttribute('data-prevent') === '1') evt.preventDefault();
+    if(el.getAttribute('data-stop') === '1') evt.stopPropagation();
+    var args = resolveArgs(el, evt);
+    names.forEach(function(name){
+      var fn = window[name];
+      if(typeof fn !== 'function'){
+        if(window.console) console.warn('A2SActions: fonction introuvable ->', name);
+        return;
+      }
+      fn.apply(el, args);
+    });
+  }
+  document.addEventListener('click',   function(e){ dispatch(e, '[data-action]'); }, false);
+  document.addEventListener('change',  function(e){ dispatch(e, '[data-action]'); }, false);
+  document.addEventListener('input',   function(e){ dispatch(e, '[data-action]'); }, false);
+  document.addEventListener('keydown', function(e){ dispatch(e, '[data-action]'); }, false);
+  // submit en phase de capture : doit pouvoir preventDefault() avant la soumission native
+  document.addEventListener('submit',  function(e){ dispatch(e, '[data-action]'); }, true);
+})();
+
+/* ============================================================
    nav.js — Aircraft2Sell · Navigation v2
    Barre claire, deux actions principales (Chercher / Vendre),
    méga-menu catégories, langue + devise en utilitaires.

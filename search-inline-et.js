@@ -373,3 +373,9 @@ window.addEventListener('DOMContentLoaded',function(){
   if(si)si.addEventListener('input',function(){clearTimeout(si._t);si._t=setTimeout(applyFilters,250);});
   loadAll();
 });
+
+function toggleMobileFilters(btn){
+  var s=document.getElementById('sidebar');
+  var o=s.classList.toggle('open');
+  btn.setAttribute('aria-expanded',o?'true':'false');
+}
