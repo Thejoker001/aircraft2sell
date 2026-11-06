@@ -234,6 +234,7 @@
     <div class="sb-plan-box">
       <div class="sbp-label">Formule actuelle</div>
       <div class="sbp-name" id="sbPlanName">Essentiel</div>
+      <div id="sbFounderBadge" style="display:none;margin:-.1rem 0 .6rem"><span class="badge badge-founder"><i data-icon="compass"></i>Membre Fondateur</span></div>
       <a href="checkout.html?plan=aviateur" class="sbp-link" id="sbpUpgradeLink">Passer à Aviateur<i data-icon="arrow-right"></i></a>
       <a href="#" class="sbp-link" id="sbpManageLink" style="display:none;margin-top:.4rem" onclick="openBillingPortal();return false;">Gérer mon abonnement<i data-icon="arrow-right"></i></a>
     </div>
@@ -807,7 +808,7 @@ async function initAuth(){
     try{
       var freshTk=await authToken();
       if(!freshTk){throw new Error('session expirée');}
-      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company,bio&limit=1',{
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company,bio,founder&limit=1',{
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+freshTk}
       });
       var data=await res.json();
@@ -819,6 +820,8 @@ async function initAuth(){
         if(data[0].pseudo){
           localStorage.setItem('a2s_user_pseudo',data[0].pseudo);
         }
+        var fdEl=document.getElementById('sbFounderBadge');
+        if(fdEl)fdEl.style.display=data[0].founder?'':'none';
         /* Toujours ré-appliquer après la récupération fraîche (pseudo et/ou
            nom), pas seulement si "name" était renseigné — sinon le salon
            peut rester affiché sur l'ancienne valeur du cache local. */
