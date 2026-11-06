@@ -45,7 +45,16 @@ window.A2SFavs = (function(){
   }
 
   /* ── Langue / i18n des liens ─────────────────────────────── */
-  function currentLang(){ var m = location.pathname.match(/^\/(en|et)\//); return m ? m[1] : 'fr'; }
+  function currentLang(){
+    var m = location.pathname.match(/^\/(en|et)\//);
+    if(m) return m[1];
+    /* Pages autonomes de/nl à la racine (ex. flugzeug-kaufen-deutschland.html,
+       vliegtuig-te-koop-nederland.html) : pas de dossier dédié, la langue
+       d'affichage de la nav vient du lang de la page elle-même. */
+    var htmlLang = (document.documentElement.lang || '').toLowerCase();
+    if(htmlLang === 'de' || htmlLang === 'nl') return htmlLang;
+    return 'fr';
+  }
   /* Seules les langues RÉELLEMENT traduites sont proposées (fr/en/et).
      de/it/es ont été retirés : ils étaient affichés mais leurs pages
      n'existaient pas (404 dans le sélecteur). */
@@ -76,7 +85,9 @@ window.A2SFavs = (function(){
      indépendante de la profondeur du dossier. */
   function href(page){
     var lang = currentLang();
-    if(lang === 'fr') return '/' + page;
+    /* de/nl : pages autonomes à la racine, aucun dossier /de//nl/ n'existe —
+       les liens de nav pointent toujours vers la version racine (FR). */
+    if(lang === 'fr' || lang === 'de' || lang === 'nl') return '/' + page;
     return isTranslatedPage(page) ? '/' + lang + '/' + page : '/' + page;
   }
   function currentPageBase(){
@@ -132,7 +143,14 @@ window.A2SFavs = (function(){
       dLight:'Ühe- ja kahemootorilised, reisimine', dJet:'Privaat- ja ärijet\'id', dTurbo:'Turbiin-propellermootorid', dHeli:'Harrastus, õhutöö', dUlm:'Mikrolennukid, autogüürid', dAirliner:'Kaubanduslik transport',
       login:'Logi sisse', myFavs:'Lemmikud', myAccount:'Minu konto', myDashboard:'Minu töölaud', myListings:'Minu kuulutused', myMessages:'Sõnumid', logout:'Logi välja',
       postFull:'Paku õhusõiduk', postShort:'Müü', chooseLang:'Vali keel', menu:'Menüü',
-      mmBuy:'Osta', mmSellPro:'Müü', mmSellMy:'Müü oma õhusõiduk', mmResources:'Abi ja ressursid', mmGuide:'Ostja juhend', mmLogin:'Logi sisse', mmSignup:'Loo konto', mmEstimate:'Hinda oma õhusõidukit', mmAlerts:'E-posti teavitused', mmFinancing:'Rahastamise kalkulaator', mmTrends:'Turusuundumused' }
+      mmBuy:'Osta', mmSellPro:'Müü', mmSellMy:'Müü oma õhusõiduk', mmResources:'Abi ja ressursid', mmGuide:'Ostja juhend', mmLogin:'Logi sisse', mmSignup:'Loo konto', mmEstimate:'Hinda oma õhusõidukit', mmAlerts:'E-posti teavitused', mmFinancing:'Rahastamise kalkulaator', mmTrends:'Turusuundumused' },
+    nl: { buy:'Kopen', sell:'Verkopen', pro:'Dealers', guide:'Gids', blog:'Blog', faq:'FAQ', contact:'Contact',
+      currencies:'Valuta', converter:'Valutaomrekenaar', live:'Live koersen', loading:'Laden…', invert:'Wisselen', ecbRate:'Indicatieve ECB-koers',
+      allListings:'Alle advertenties bekijken', catLight:'Lichte vliegtuigen', catJet:'Zakenjets', catTurbo:'Turboprops', catHeli:'Helikopters', catUlm:'ULM / lichte sporttoestellen', catAirliner:'Lijnvliegtuigen',
+      dLight:'Eenmotorig, tweemotorig, reizen', dJet:'Privé- en zakenjets', dTurbo:'Turbinemotoren', dHeli:'Vrije tijd, luchtwerk', dUlm:'Driewielers, trikes', dAirliner:'Commercieel vervoer',
+      login:'Inloggen', myFavs:'Favorieten', myAccount:'Mijn account', myDashboard:'Mijn dashboard', myListings:'Mijn advertenties', myMessages:'Berichten', logout:'Uitloggen',
+      postFull:'Vliegtuig plaatsen', postShort:'Verkopen', chooseLang:'Taal kiezen', menu:'Menu',
+      mmBuy:'Kopen', mmSellPro:'Verkopen', mmSellMy:'Mijn vliegtuig verkopen', mmResources:'Hulp & bronnen', mmGuide:'Koopgids', mmLogin:'Inloggen', mmSignup:'Account aanmaken', mmEstimate:'Mijn vliegtuig waarderen', mmAlerts:'E-mailwaarschuwingen', mmFinancing:'Financieringscalculator', mmTrends:'Markttrends' }
   };
   function t(key){ var lang = currentLang(); return (I18N[lang] && I18N[lang][key]) || I18N.fr[key] || key; }
 
