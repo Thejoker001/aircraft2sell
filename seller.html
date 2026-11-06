@@ -31,7 +31,7 @@
 <link rel="dns-prefetch" href="https://hlivysnlzlqdjcigqgvk.supabase.co">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0B2545">
-<link rel="stylesheet" href="styles.css?v=20261030a">
+<link rel="stylesheet" href="styles.css?v=20261106a">
 <link rel="stylesheet" href="mobile.css?v=20260909a">
 <script type="application/ld+json">
 {"@type":"ProfilePage","name":"Profil vendeur — Aircraft2Sell","url":"https://aircraft2sell.eu/seller.html","@context":"https://schema.org"}
@@ -259,7 +259,7 @@ async function sbSellerPublic(email){
     }
   }catch(e){}
   try{
-    var rows=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,certified,is_pro,seller_type,company,rating,plan,registered_at,bio&limit=1');
+    var rows=await sbGet('users','email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,certified,is_pro,seller_type,company,rating,plan,registered_at,bio,founder&limit=1');
     return (rows&&rows.length)?rows[0]:null;
   }catch(e){ return null; }
 }
@@ -404,11 +404,15 @@ function renderProfile(user,fallbackName){
   document.getElementById('sellerSince').textContent=since;
 
   /* Badges */
-  var badges='';
   var isCertified=user&&user.certified;
   var isPro=user&&user.is_pro;
   var sellerType=user&&user.seller_type;
   var plan=user&&user.plan;
+  /* Badge "Membre Fondateur" : activé manuellement depuis l'admin (onglet
+     Membres) — reconnaissance de fidélité, sans lien avec le plan ou la
+     certification. Affiché en premier, couleur or dédiée pour ne jamais
+     se confondre avec les badges commerciaux Pro/Aviateur. */
+  var badges=(user&&user.founder)?'<span class="badge badge-founder">'+A2SIcon('compass')+'Membre Fondateur</span>':'';
   if(isPro){
     badges+='<span class="badge badge-navy">'+A2SIcon('building')+'Professionnel vérifié</span>';
   }else{

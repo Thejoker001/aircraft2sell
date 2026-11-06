@@ -28,7 +28,7 @@
 <meta name="description" content="Manage your listings, track your contacts and steer your sales from your personal Aircraft2Sell account.">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>My dashboard — Aircraft2Sell</title>
-<link rel="stylesheet" href="/styles.css?v=20261030a">
+<link rel="stylesheet" href="/styles.css?v=20261106a">
 <link rel="stylesheet" href="/mobile.css?v=20260909a">
 <style>
 /* ── Dashboard layout ── */
@@ -236,6 +236,7 @@
     <div class="sb-plan-box">
       <div class="sbp-label">Current plan</div>
       <div class="sbp-name" id="sbPlanName">Essential</div>
+      <div id="sbFounderBadge" style="display:none;margin:-.1rem 0 .6rem"><span class="badge badge-founder"><i data-icon="compass"></i>Founding Member</span></div>
       <a href="checkout.html?plan=aviateur" class="sbp-link" id="sbpUpgradeLink">Upgrade to Aviator<i data-icon="arrow-right"></i></a>
       <a href="#" class="sbp-link" id="sbpManageLink" style="display:none;margin-top:.4rem" data-action="openBillingPortal" data-prevent="1">Manage my subscription<i data-icon="arrow-right"></i></a>
     </div>
@@ -766,7 +767,7 @@ async function initAuth(){
     try{
       var freshTk=await authToken();
       if(!freshTk){throw new Error('session expired');}
-      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company,bio&limit=1',{
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company,bio,founder&limit=1',{
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+freshTk}
       });
       var data=await res.json();
@@ -774,6 +775,8 @@ async function initAuth(){
         if(data[0].pseudo){
           localStorage.setItem('a2s_user_pseudo',data[0].pseudo);
         }
+        var fdEl=document.getElementById('sbFounderBadge');
+        if(fdEl)fdEl.style.display=data[0].founder?'':'none';
         if(data[0].name){
           name=data[0].name;
           localStorage.setItem('a2s_user_name',name);
