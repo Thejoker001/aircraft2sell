@@ -65,7 +65,7 @@
 </script>
 
 <link rel="stylesheet" href="styles.css?v=20261106a">
-<link rel="stylesheet" href="mobile.css?v=20260909a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
 <style>
 /* ── HERO ── */
 .hero{position:relative;overflow:hidden;background:var(--a2s-navy);color:#fff;padding:4.5rem 0 3.5rem}
@@ -465,7 +465,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="icons.js?v=20261007a"></script>
-<script src="airports-data.js?v=20260928a"></script>
+<script src="airports-data.js?v=20260928a" defer></script>
 <script>
 var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
@@ -518,10 +518,10 @@ function howTab(btn,which){
 }
 
 /* ── Carte annonce ── */
-function renderCard(l){
+function renderCard(l,i){
   var title=esc(l.title||[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ')||'Sans titre');
   var loc=(l.airport?airportLabel(l.airport):(l.country||'—'));
-  var photo=l.photos&&l.photos.length?'<img src="'+esc(l.photos[0])+'" alt="'+title+'" loading="lazy">':'<span class="lc-placeholder">'+A2SIcon(CAT_ICON[l.category]||'plane')+'</span>';
+  var photo=l.photos&&l.photos.length?'<img src="'+esc(l.photos[0])+'" alt="'+title+'" loading="'+(i<4?'eager':'lazy')+'"'+(i===0?' fetchpriority="high"':'')+'>':'<span class="lc-placeholder">'+A2SIcon(CAT_ICON[l.category]||'plane')+'</span>';
   var a=document.createElement('a');
   a.className='lc';a.href='listing.html?id='+encodeURIComponent(l.id);
   a.innerHTML='<div class="lc-img">'+photo
@@ -548,7 +548,7 @@ function filterListings(btn,cat){
   var list=cat?_all.filter(function(l){return l.category===cat;}):_all;
   grid.innerHTML='';
   if(!list.length){grid.innerHTML='<div class="empty-state"><span class="icon-box">'+A2SIcon('search')+'</span><div class="empty-title">Aucune annonce dans cette catégorie</div><p class="empty-sub">Créez une <a href="alerts.html">alerte</a> pour être prévenu dès qu\'une annonce est publiée.</p></div>';return;}
-  list.slice(0,8).forEach(function(l){grid.appendChild(renderCard(l));});
+  list.slice(0,8).forEach(function(l,i){grid.appendChild(renderCard(l,i));});
 }
 async function loadListings(){
   var grid=document.getElementById('listingsGrid');
@@ -564,7 +564,7 @@ async function loadListings(){
     document.querySelectorAll('.cat-count').forEach(function(el){el.textContent='Bientôt';});
     return;
   }
-  _all.slice(0,8).forEach(function(l){grid.appendChild(renderCard(l));});
+  _all.slice(0,8).forEach(function(l,i){grid.appendChild(renderCard(l,i));});
   var cats={};_all.forEach(function(l){cats[l.category]=true;});
   document.querySelectorAll('#catPills .pill[data-cat]').forEach(function(b){if(b.dataset.cat&&!cats[b.dataset.cat])b.style.display='none';});
   var all=await sbGet('listings_public','select=id,category,seller_pseudo,country');
@@ -697,7 +697,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
 </script>
 <script src="rgpd-consent.js?v=20261006a" defer></script>
 <script src="analytics.js" defer></script>
-<script src="nav.js?v=20261106d"></script>
+<script src="nav.js?v=20261107a"></script>
 <script src="footer.js?v=20261030a"></script>
 <script src="trust-partners.js?v=20261009a" defer></script>
 <script src="partners.js?v=20260923a" defer></script>

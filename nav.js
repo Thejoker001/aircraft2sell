@@ -508,6 +508,11 @@ window.A2SFavs = (function(){
       if(_busy) return; _busy = true;
       if(elLive) elLive.textContent = t('loading');
       var sources = [
+        /* Same-origin d'abord : exchange-rate.json est régénéré chaque jour par cron
+           (BCE via frankfurter.app). Les sources externes ci-dessous sont bloquées par
+           la CSP connect-src du site (vercel.json) : conservées en repli théorique
+           uniquement. */
+        { url:'/exchange-rate.json', parse:function(d){ return d && d.rates; } },
         { url:'https://open.er-api.com/v6/latest/EUR', parse:function(d){ return d.rates; } },
         { url:'https://api.exchangerate-api.com/v4/latest/EUR', parse:function(d){ return d.rates; } },
         { url:'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json', parse:function(d){

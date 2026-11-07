@@ -248,13 +248,13 @@ function renderPage(){
     return;
   }
 
-  grid.innerHTML=slice.map(function(l){return renderCard(l);}).join('');
+  grid.innerHTML=slice.map(function(l,i){return renderCard(l,i);}).join('');
   renderPagination(total,pages);
   injectSearchSchema(slice);
 }
 
 /* ── CARTE ANNONCE ── */
-function renderCard(l){
+function renderCard(l,i){
   var sym=CAT_SYMS[_dispCur]||'€';
   var priceEUR=toEUR(l.price,l.currency);
   var displayPrice=priceEUR?fromEUR(priceEUR,_dispCur):null;
@@ -263,7 +263,7 @@ function renderCard(l){
   var cat=CAT_LABELS[l.category]||esc(l.category||'');
   var loc=l.airport?airportLabel(l.airport):countryLabel(l.country);
   var img=l.photos&&l.photos[0]
-    ?'<img src="'+esc(l.photos[0])+'?width=480&format=webp" alt="'+title+'" loading="lazy">'
+    ?'<img src="'+esc(l.photos[0])+'?width=480&format=webp" alt="'+title+'" loading="'+(i<4?'eager':'lazy')+'"'+(i===0?' fetchpriority="high"':'')+'>'
     :'<span class="lc-placeholder">'+A2SIcon(CAT_ICON[l.category]||'plane')+'</span>';
   var fav=isFav(l.id);
   var badges='';
