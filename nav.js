@@ -32,9 +32,13 @@ window.A2SFavs = (function(){
      data-args='["mod","__this__"]'
                                   -> JSON (valeur unique ou tableau), décodé puis
                                      passé en arguments. Jetons spéciaux reconnus :
-                                     "__this__"  -> l'élément cible lui-même
-                                     "__value__" -> el.value (champs de formulaire)
-                                     "__event__" -> l'objet Event natif
+                                     "__this__"       -> l'élément cible lui-même
+                                     "__value__"      -> el.value (champs de formulaire)
+                                     "__files__"      -> el.files (FileList, input type=file)
+                                     "__parentNode__" -> el.parentNode
+                                     "__byId:xxx__"   -> document.getElementById('xxx')
+                                     "__dataset:xxx__"-> el.dataset.xxx
+                                     "__event__"      -> l'objet Event natif
      data-prevent="1"            -> event.preventDefault() avant d'invoquer
      data-stop="1"               -> event.stopPropagation() avant d'invoquer
      data-self-only="1"          -> n'invoque QUE si evt.target === el (remplace le
@@ -45,6 +49,25 @@ window.A2SFavs = (function(){
                                      que si evt.key correspond (liste séparée par
                                      virgules acceptée, ex. "Enter,Spacebar"). Ignoré
                                      pour les autres types d'événement.
+     data-action-<type>="fn"     -> SURCHARGE data-action pour un type d'événement
+     data-args-<type>='[...]'       précis (ex. data-action-dragover, data-action-drop)
+                                     quand UN MÊME élément a besoin d'actions DIFFÉRENTES
+                                     selon l'événement (ex. une dropzone : click->ouvre
+                                     le sélecteur de fichier, dragover/dragleave/drop->
+                                     logique de glisser-déposer). Nécessaire car un
+                                     attribut HTML ne peut porter qu'UNE SEULE valeur :
+                                     data-action="a" data-action="b" sur le même tag ne
+                                     garde que "a", la 2e occurrence est silencieusement
+                                     ignorée par le parser HTML -- piège réel rencontré
+                                     avec une dropzone photo (06/11/26). data-args-<type>
+                                     suit la même règle ; data-prevent/data-stop/
+                                     data-self-only/data-key restent génériques (partagés
+                                     par tous les types d'événement de l'élément).
+     data-confirm="Texte ?"      -> affiche un confirm() natif AVANT d'invoquer ;
+                                     n'invoque que si l'utilisateur clique OK (remplace
+                                     if(confirm('...'))fn()). Bloquant (confirm() natif),
+                                     à réserver aux actions destructives rares (ex. panel
+                                     admin) -- jamais sur une page à fort trafic public.
 
    Seules des fonctions DÉJÀ déclarées comme globales (window.xxx, définies
    dans le <script> propre à la page) sont appelables : jamais d'eval/Function
@@ -53,13 +76,21 @@ window.A2SFavs = (function(){
    ============================================================ */
 (function(){
   function resolveToken(tok, el, evt){
-    if(tok === '__this__')  return el;
-    if(tok === '__value__') return el.value;
-    if(tok === '__event__') return evt;
+    if(tok === '__this__')       return el;
+    if(tok === '__value__')      return el.value;
+    if(tok === '__files__')      return el.files;
+    if(tok === '__parentNode__') return el.parentNode;
+    if(tok === '__event__')      return evt;
+    if(typeof tok === 'string' && tok.indexOf('__byId:') === 0){
+      return document.getElementById(tok.slice(7, -2));
+    }
+    if(typeof tok === 'string' && tok.indexOf('__dataset:') === 0){
+      return el.dataset[tok.slice(10, -2)];
+    }
     return tok;
   }
-  function resolveArgs(el, evt){
-    var raw = el.getAttribute('data-args');
+  function resolveArgs(el, evt, argsAttrName){
+    var raw = el.getAttribute(argsAttrName);
     if(raw === null) return [];
     var parsed;
     try { parsed = JSON.parse(raw); }
@@ -81,11 +112,20 @@ window.A2SFavs = (function(){
         if(!keyMatches) return;
       }
     }
-    var names = (el.getAttribute('data-action') || '').split(',').map(function(s){return s.trim();}).filter(Boolean);
+    // data-action-<type>/data-args-<type> surchargent data-action/data-args pour CE
+    // type d'événement précis (nécessaire quand un même élément a des actions
+    // différentes selon l'événement, ex. dropzone click vs dragover vs drop).
+    var typedActionAttr = 'data-action-' + evt.type;
+    var hasTyped = el.getAttribute(typedActionAttr) !== null;
+    var actionAttr = hasTyped ? typedActionAttr : 'data-action';
+    var argsAttr   = hasTyped ? ('data-args-' + evt.type) : 'data-args';
+    var names = (el.getAttribute(actionAttr) || '').split(',').map(function(s){return s.trim();}).filter(Boolean);
     if(!names.length) return;
+    var confirmMsg = el.getAttribute('data-confirm');
+    if(confirmMsg && !window.confirm(confirmMsg)) return;
     if(el.getAttribute('data-prevent') === '1') evt.preventDefault();
     if(el.getAttribute('data-stop') === '1') evt.stopPropagation();
-    var args = resolveArgs(el, evt);
+    var args = resolveArgs(el, evt, argsAttr);
     names.forEach(function(name){
       var fn = window[name];
       if(typeof fn !== 'function'){
@@ -95,12 +135,15 @@ window.A2SFavs = (function(){
       fn.apply(el, args);
     });
   }
-  document.addEventListener('click',   function(e){ dispatch(e, '[data-action]'); }, false);
-  document.addEventListener('change',  function(e){ dispatch(e, '[data-action]'); }, false);
-  document.addEventListener('input',   function(e){ dispatch(e, '[data-action]'); }, false);
-  document.addEventListener('keydown', function(e){ dispatch(e, '[data-action]'); }, false);
+  document.addEventListener('click',     function(e){ dispatch(e, '[data-action],[data-action-click]'); }, false);
+  document.addEventListener('change',    function(e){ dispatch(e, '[data-action],[data-action-change]'); }, false);
+  document.addEventListener('input',     function(e){ dispatch(e, '[data-action],[data-action-input]'); }, false);
+  document.addEventListener('keydown',   function(e){ dispatch(e, '[data-action],[data-action-keydown]'); }, false);
+  document.addEventListener('dragover',  function(e){ dispatch(e, '[data-action],[data-action-dragover]'); }, false);
+  document.addEventListener('dragleave', function(e){ dispatch(e, '[data-action],[data-action-dragleave]'); }, false);
+  document.addEventListener('drop',      function(e){ dispatch(e, '[data-action],[data-action-drop]'); }, false);
   // submit en phase de capture : doit pouvoir preventDefault() avant la soumission native
-  document.addEventListener('submit',  function(e){ dispatch(e, '[data-action]'); }, true);
+  document.addEventListener('submit',    function(e){ dispatch(e, '[data-action],[data-action-submit]'); }, true);
 })();
 
 /* ============================================================

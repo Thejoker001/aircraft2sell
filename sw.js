@@ -1,5 +1,5 @@
 /* Aircraft2Sell — Service Worker v3.0 (design system v2) */
-var CACHE = 'a2s-v30';
+var CACHE = 'a2s-v32';
 var OFFLINE_URL = '/404.html';
 
 /* Ressources pré-cachées au premier chargement */
@@ -14,7 +14,7 @@ var PRECACHE = [
   '/styles.css?v=20261106a',
   '/mobile.css?v=20260909a',
   '/icons.js?v=20261007a',
-  '/nav.js?v=20261106b',
+  '/nav.js?v=20261106d',
   '/footer.js?v=20261030a',
   '/pseudo-gate.js?v=20260908',
   '/confirm-handler.js',
