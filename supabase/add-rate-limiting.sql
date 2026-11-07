@@ -26,6 +26,18 @@ alter table public.rate_limits enable row level security;
 -- écriture). Seul service_role (BYPASSRLS) peut utiliser cette table,
 -- via la fonction ci-dessous.
 
+-- Journal des blocages réels (audit du 06/11, pour alerte email) : une ligne
+-- par appel qui a été REFUSÉ (v_count > p_limit), pas par appel autorisé.
+-- Table volontairement petite (pas de FK, pas d'index lourd) — purge
+-- manuelle recommandée au-delà de 30 jours (voir commande en bas de fichier).
+create table if not exists public.rate_limit_blocks (
+  id bigserial primary key,
+  key text not null,
+  blocked_at timestamptz not null default now()
+);
+alter table public.rate_limit_blocks enable row level security;
+-- Aucune policy : même logique que rate_limits, accès service_role only.
+
 create or replace function public.check_rate_limit(
   p_key text,
   p_limit integer,
@@ -37,6 +49,7 @@ security definer
 as $$
 declare
   v_count integer;
+  v_ok boolean;
 begin
   insert into public.rate_limits (key, count, window_start)
   values (p_key, 1, now())
@@ -53,7 +66,13 @@ begin
         end
   returning count into v_count;
 
-  return v_count <= p_limit;
+  v_ok := v_count <= p_limit;
+
+  if not v_ok then
+    insert into public.rate_limit_blocks (key) values (p_key);
+  end if;
+
+  return v_ok;
 end;
 $$;
 
@@ -66,3 +85,4 @@ grant execute on function public.check_rate_limit(text, integer, integer) to ser
 -- reste petite : au plus une ligne par IP distincte ayant déjà appelé un
 -- endpoint protégé, pas par requête) :
 --   delete from public.rate_limits where window_start < now() - interval '7 days';
+--   delete from public.rate_limit_blocks where blocked_at < now() - interval '30 days';
