@@ -1031,8 +1031,16 @@ async function submitListing(){
       var lsActive=lsListings.filter(function(l){return l.sellerEmail===email&&(l.status==='pending'||l.status==='live');}).length;
       var totalActive=Math.max(activeCount,lsActive);
       if(totalActive>=maxSlots){
+        /* Bug corrigé le 07/11/2026 : la redirection pointait toujours vers
+           checkout.html?plan=aviateur, y compris pour un utilisateur déjà en
+           Aviateur (on lui proposait de payer à nouveau le plan qu'il a déjà
+           au lieu de lui proposer Pro, la seule offre qui lève réellement sa
+           limite). Pro (999 slots) n'atteint jamais cette limite, donc le
+           seul cas à gérer est : Essentiel -> suggérer Aviateur ; tout le
+           reste (Aviateur, plan inconnu) -> suggérer Pro. */
+        var nextPlan=(plan==='Essentiel')?'aviateur':'pro';
         showFormError('Limite atteinte : la formule '+plan+' permet '+maxSlots+' annonce'+(maxSlots>1?'s':'')+' active'+(maxSlots>1?'s':'')+'. Redirection vers les formules…');
-        setTimeout(function(){window.location.href='checkout.html?plan=aviateur';},2500);
+        setTimeout(function(){window.location.href='checkout.html?plan='+nextPlan;},2500);
         return;
       }
     }catch(e){console.warn('Vérification plan:',e);}

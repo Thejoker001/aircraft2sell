@@ -1024,8 +1024,14 @@ async function submitListing(){
       var lsActive=lsListings.filter(function(l){return l.sellerEmail===email&&(l.status==='pending'||l.status==='live');}).length;
       var totalActive=Math.max(activeCount,lsActive);
       if(totalActive>=maxSlots){
+        /* Bug fixed 07/11/2026: redirect always pointed to checkout.html?plan=aviateur,
+           even for a user already on Aviator (offering to pay again for the plan they
+           already have instead of Pro, the only offer that actually lifts the limit).
+           Pro (999 slots) never hits this limit, so the only case is:
+           Essentiel -> suggest aviateur; everything else (Aviateur, unknown plan) -> Pro. */
+        var nextPlan=(plan==='Essentiel')?'aviateur':'pro';
         showFormError('Limit reached: the '+plan+' plan allows '+maxSlots+' active listing'+(maxSlots>1?'s':'')+'. Redirecting to plans…');
-        setTimeout(function(){window.location.href='/checkout.html?plan=aviateur';},2500);
+        setTimeout(function(){window.location.href='/checkout.html?plan='+nextPlan;},2500);
         return;
       }
     }catch(e){console.warn('Plan check:',e);}

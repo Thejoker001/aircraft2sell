@@ -1008,8 +1008,14 @@ async function submitListing(){
       var lsActive=lsListings.filter(function(l){return l.sellerEmail===email&&(l.status==='pending'||l.status==='live');}).length;
       var totalActive=Math.max(activeCount,lsActive);
       if(totalActive>=maxSlots){
+        /* Viga parandatud 07.11.2026: suunamine osutas alati checkout.html?plan=aviateur,
+           isegi kasutajale, kellel on juba Aviateur (pakkudes tal uuesti maksta plaani,
+           mis tal juba on, selle asemel, et pakkuda Pro, mis tegelikult piirangu kaotab).
+           Pro (999 kohta) sellele piirangule kunagi ei jõua, seega ainus juhtum on:
+           Essentiel -> soovita aviateur; kõik muu (Aviateur, teadmata plaan) -> Pro. */
+        var nextPlan=(plan==='Essentiel')?'aviateur':'pro';
         showFormError('Piirang saavutatud: '+plan+'-plaan võimaldab '+maxSlots+' aktiivset kuulutust. Suunamine plaanidele…');
-        setTimeout(function(){window.location.href='/checkout.html?plan=aviateur';},2500);
+        setTimeout(function(){window.location.href='/checkout.html?plan='+nextPlan;},2500);
         return;
       }
     }catch(e){console.warn('Plan check:',e);}

@@ -968,8 +968,10 @@ function thumbHtml(l){
   return'<div class="li-thumb">'+A2SIcon(CAT_ICON[l.category]||'plane')+'</div>';
 }
 function emptyListingsHtml(slotsLeft){
+  // Bug fixed 07/11/2026 (see post-listing.html): link always pointed to Aviator; now depends on _userPlan.
+  var nextPlan=(_userPlan==='Essentiel')?'aviateur':'pro';
   return'<div class="card"><div class="empty-state"><span class="icon-box">'+A2SIcon('plane')+'</span><div class="empty-title">No listing</div><p class="empty-sub">Publish your first aircraft. Zero commission on the sale.</p>'
-    +(slotsLeft>0?'<a href="post-listing.html" class="btn-secondary">'+A2SIcon('plus')+'List an aircraft</a>':'<a href="checkout.html?plan=aviateur" class="btn-secondary">Change plan</a>')
+    +(slotsLeft>0?'<a href="post-listing.html" class="btn-secondary">'+A2SIcon('plus')+'List an aircraft</a>':'<a href="checkout.html?plan='+nextPlan+'" class="btn-secondary">Change plan</a>')
     +'</div></div>';
 }
 
@@ -1022,8 +1024,10 @@ async function renderListings(){
 
   var limitBanner='';
   if(slotsLeft<=0){
+    // Bug fixed 07/11/2026 (see post-listing.html): link always pointed to Aviator; now depends on _userPlan.
+    var nextPlanBanner=(_userPlan==='Essentiel')?'aviateur':'pro';
     limitBanner='<div class="alert alert-warning" style="margin-bottom:.75rem">'+A2SIcon('alert-triangle')
-      +'<span style="flex:1">Listing limit reached for the <strong>'+esc(_userPlan)+'</strong> plan. <a href="checkout.html?plan=aviateur" style="font-weight:700;text-decoration:underline">Upgrade to Aviator</a> to publish more.</span></div>';
+      +'<span style="flex:1">Listing limit reached for the <strong>'+esc(_userPlan)+'</strong> plan. <a href="checkout.html?plan='+nextPlanBanner+'" style="font-weight:700;text-decoration:underline">Upgrade to '+(nextPlanBanner==='aviateur'?'Aviator':'Pro')+'</a> to publish more.</span></div>';
   }
 
   var totalViews=listings.reduce(function(s,l){return s+(l.views||0);},0);
@@ -1073,7 +1077,8 @@ function updateNewListingBtn(slotsLeft){
   var addBtn=document.getElementById('btnNewListing');
   if(!addBtn)return;
   if(slotsLeft<=0){
-    addBtn.href='checkout.html?plan=aviateur';
+    // Bug fixed 07/11/2026 (see post-listing.html): link always pointed to Aviator; now depends on _userPlan.
+    addBtn.href='checkout.html?plan='+((_userPlan==='Essentiel')?'aviateur':'pro');
     addBtn.innerHTML=A2SIcon('arrow-up-right')+'Change plan';
   }else{
     addBtn.href='post-listing.html';
