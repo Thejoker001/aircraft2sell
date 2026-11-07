@@ -69,14 +69,62 @@ const TEMPLATES_SEO = {
 };
 const COPIE_SEO = {
   fr: { pourVente: (t, pr) => `À vendre : ${t}${pr ? ' — ' + pr : ''}. Marketplace aéronautique européenne sans commission.`,
-        base: 'https://aircraft2sell.eu/listing.html' },
+        titre: (t, pr) => `${t} à vendre${pr ? ' — ' + pr : ''} | Aircraft2Sell`,
+        base: 'https://aircraft2sell.eu/listing.html',
+        specs: ['Marque', 'Modèle', 'Année', 'Heures totales', 'Moteur', 'Immatriculation', 'Localisation', 'Documents', 'SMOH'],
+        sansDesc: 'Aucune description fournie.', surDemande: 'Prix sur demande', fil: ['Accueil', 'Annonces'] },
   en: { pourVente: (t, pr) => `For sale: ${t}${pr ? ' — ' + pr : ''}. European aviation marketplace with zero commission.`,
-        base: 'https://aircraft2sell.eu/en/listing.html' },
+        titre: (t, pr) => `${t} for sale${pr ? ' — ' + pr : ''} | Aircraft2Sell`,
+        base: 'https://aircraft2sell.eu/en/listing.html',
+        specs: ['Make', 'Model', 'Year', 'Total time', 'Engine', 'Registration', 'Location', 'Documents', 'SMOH'],
+        sansDesc: 'No description provided.', surDemande: 'Price on request', fil: ['Home', 'Listings'] },
   et: { pourVente: (t, pr) => `Müügil: ${t}${pr ? ' — ' + pr : ''}. Euroopa lennukiturg, vahendustasuta.`,
-        base: 'https://aircraft2sell.eu/et/listing.html' },
+        titre: (t, pr) => `${t} müügil${pr ? ' — ' + pr : ''} | Aircraft2Sell`,
+        base: 'https://aircraft2sell.eu/et/listing.html',
+        specs: ['Mark', 'Mudel', 'Aasta', 'Lennutunnid kokku', 'Mootor', 'Registreerimismärk', 'Asukoht', 'Dokumendid', 'SMOH'],
+        sansDesc: 'Kirjeldus puudub.', surDemande: 'Hind kokkuleppel', fil: ['Avaleht', 'Kuulutused'] },
 };
 const SYMBOLE_DEVISE = { EUR: '€', USD: '$', GBP: '£', CHF: 'Fr', CAD: 'CA$', AUD: 'AU$', AED: 'AED ' };
 const NOMS_CATEGORIE = { light: 'Avions légers', jet: "Jets d'affaires", turbo: 'Turboprops', heli: 'Hélicoptères', ulm: 'ULM', airliner: 'Avions de ligne' };
+// Libellés pays (ISO 3166-1) pour le texte SSR — le client remplace par ses
+// propres libellés (airports-data.js) dès que le JS s'exécute.
+const PAYS = {
+  fr: { FR: 'France', DE: 'Allemagne', GB: 'Royaume-Uni', ES: 'Espagne', IT: 'Italie', CH: 'Suisse', BE: 'Belgique', NL: 'Pays-Bas', AT: 'Autriche', PT: 'Portugal', PL: 'Pologne', CZ: 'République tchèque', SE: 'Suède', NO: 'Norvège', DK: 'Danemark', FI: 'Finlande', IE: 'Irlande', LU: 'Luxembourg', GR: 'Grèce', HR: 'Croatie', HU: 'Hongrie', RO: 'Roumanie', SK: 'Slovaquie', SI: 'Slovénie', BG: 'Bulgarie', EE: 'Estonie', LV: 'Lettonie', LT: 'Lituanie', US: 'États-Unis', CA: 'Canada', TR: 'Turquie', AE: 'Émirats arabes unis', ZA: 'Afrique du Sud', AU: 'Australie', MX: 'Mexique', BR: 'Brésil' },
+  en: { FR: 'France', DE: 'Germany', GB: 'United Kingdom', ES: 'Spain', IT: 'Italy', CH: 'Switzerland', BE: 'Belgium', NL: 'Netherlands', AT: 'Austria', PT: 'Portugal', PL: 'Poland', CZ: 'Czech Republic', SE: 'Sweden', NO: 'Norway', DK: 'Denmark', FI: 'Finland', IE: 'Ireland', LU: 'Luxembourg', GR: 'Greece', HR: 'Croatia', HU: 'Hungary', RO: 'Romania', SK: 'Slovakia', SI: 'Slovenia', BG: 'Bulgaria', EE: 'Estonia', LV: 'Latvia', LT: 'Lithuania', US: 'United States', CA: 'Canada', TR: 'Turkey', AE: 'United Arab Emirates', ZA: 'South Africa', AU: 'Australia', MX: 'Mexico', BR: 'Brazil' },
+};
+PAYS.et = PAYS.en;
+
+/** Normalise les espaces (certaines saisies vendeur ont des espaces en trop : "Cessna " + "Citation"). */
+const propre = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
+
+/**
+ * Pré-rendu HTML du corps de la fiche (H1, fil d'Ariane, caractéristiques,
+ * description, prix) : le crawler lit un vrai contenu unique par annonce au lieu
+ * de squelettes "Chargement…". Le JS client (render()) réécrit ensuite ces mêmes
+ * éléments par id (textContent/innerHTML) — aucun double affichage possible.
+ */
+function prerendreCorps(html, listing, lang, title, pr, canonicalUrl) {
+  const copie = COPIE_SEO[lang];
+  const pays = PAYS[lang][listing.country] || propre(listing.country);
+  const aeroport = listing.airport && listing.airport !== 'ZZZZ' ? propre(listing.airport) : '';
+  const loc = [aeroport, pays].filter(Boolean).join(' — ') || '—';
+  const n = (v) => (v != null && v !== '' && !isNaN(Number(v))) ? Number(v).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR') : null;
+  const vals = [
+    propre(listing.make) || '—', propre(listing.model) || '—', propre(listing.year) || '—',
+    n(listing.hours) ? n(listing.hours) + ' h TT' : '—', propre(listing.engine) || '—', propre(listing.registration) || '—',
+    loc, propre(listing.documents) || '—', listing.smoh ? propre(listing.smoh) + ' h' : '—',
+  ];
+  const specsHtml = copie.specs.map((label, i) => `<div class="spec-item"><div><div class="spec-label">${esc(label)}</div><div class="spec-val">${esc(vals[i])}</div></div></div>`).join('');
+  const descBrute = lang === 'en' ? (listing.description_en || listing.description) : listing.description;
+  const desc = propre(descBrute) ? esc(String(descBrute).trim()).replace(/\r?\n/g, '<br>') : esc(copie.sansDesc);
+
+  html = html.replace(/<h1 id="lTitle">[\s\S]*?<\/h1>/, `<h1 id="lTitle">${esc(title)}</h1>`);
+  html = html.replace(/<span id="bcTitle"[^>]*><\/span>/, `<span aria-current="page" id="bcTitle">${esc(title)}</span>`);
+  html = html.replace(/<div class="specs-grid" id="specsGrid">(?:\s*<div class="spec-item skel"[^>]*><\/div>)*\s*<\/div>/, `<div class="specs-grid" id="specsGrid">${specsHtml}</div>`);
+  html = html.replace(/<div class="desc-text" id="lDesc">[^<]*<\/div>/, `<div class="desc-text" id="lDesc">${desc}</div>`);
+  html = html.replace(/<div class="main-price" id="lPrice">[^<]*<\/div>/, `<div class="main-price" id="lPrice">${esc(pr || copie.surDemande)}</div>`);
+  return html;
+}
 
 async function modeSeo(req, res, url, cle) {
   const lang = ['fr', 'en', 'et'].includes(req.query.lang) ? req.query.lang : 'fr';
@@ -96,17 +144,25 @@ async function modeSeo(req, res, url, cle) {
   if (!id) { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.status(200).send(html); return; }
 
   let listing = null;
+  let sbPanne = false;
   try {
     const rows = await sbGet(url, cle, `listings?select=*&id=eq.${encodeURIComponent(id)}&limit=1`);
     listing = rows && rows[0];
   } catch (e) {
     // Supabase indisponible : on sert le gabarit statique inchangé plutôt que
     // de renvoyer une erreur — le rendu client gérera comme d'habitude.
+    sbPanne = true;
   }
 
   if (!listing || listing.status !== 'live') {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60');
+    // Annonce vendue/retirée/inexistante : page explicitement noindex (le gabarit
+    // statique porte déjà "noindex, follow") pour qu'elle sorte proprement de
+    // l'index au lieu de rester une "soft 404" avec un titre générique. En cas
+    // de panne Supabase on NE confirme PAS le noindex (fail-open : on garde
+    // "index, follow") pour ne jamais désindexer une annonce vivante par accident.
+    if (sbPanne) html = html.replace(/<meta name="robots" content="[^"]*">/, '<meta name="robots" content="index, follow">');
     res.status(200).send(html);
     return;
   }
@@ -114,28 +170,48 @@ async function modeSeo(req, res, url, cle) {
   const copie = COPIE_SEO[lang];
   const sym = SYMBOLE_DEVISE[listing.currency || 'EUR'] || '€';
   const pn = listing.price && !isNaN(Number(listing.price)) ? Number(listing.price) : null;
-  const pr = pn ? pn.toLocaleString('fr-FR') + ' ' + sym : (listing.price || null);
-  const title = [listing.make, listing.model, listing.year ? `(${listing.year})` : ''].filter(Boolean).join(' ') || 'Aéronef';
-  const fullTitle = 'Aircraft2Sell — ' + title;
+  const pr = pn ? pn.toLocaleString('fr-FR') + ' ' + sym : (propre(listing.price) || null);
+  const title = [propre(listing.make), propre(listing.model), propre(listing.year) ? `(${propre(listing.year)})` : ''].filter(Boolean).join(' ') || 'Aéronef';
+  // Modèle d'abord (c'est ce que tapent les acheteurs : "Bell 206B à vendre"),
+  // la marque du site en suffixe — l'inverse (marque d'abord) n'est pertinent
+  // que pour la page d'accueil et les requêtes de marque.
+  const fullTitle = copie.titre(title, pr);
   const description = copie.pourVente(title, pr);
   const ogTitle = title + ' — Aircraft2Sell';
   const canonicalUrl = copie.base + '?id=' + encodeURIComponent(id);
+  const idEnc = encodeURIComponent(id);
 
+  html = html.replace(/<meta name="robots" content="[^"]*">/, '<meta name="robots" content="index, follow, max-image-preview:large">');
   html = html.replace(/<title>.*?<\/title>/, `<title>${esc(fullTitle)}</title>`);
   html = html.replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(description)}">`);
   html = html.replace(/<link rel="canonical" href="[^"]*">/, `<link rel="canonical" href="${esc(canonicalUrl)}">`);
+  // hreflang PAR ANNONCE : le gabarit pointe vers /listing.html générique (sans id),
+  // ce qui déclare une alternative qui n'est pas la même page — erreur hreflang
+  // pour Google. Chaque version de langue doit cibler la même annonce.
+  html = html.replace(/<link rel="alternate" hreflang="fr" href="[^"]*">/, `<link rel="alternate" hreflang="fr" href="${COPIE_SEO.fr.base}?id=${idEnc}">`);
+  html = html.replace(/<link rel="alternate" hreflang="en" href="[^"]*">/, `<link rel="alternate" hreflang="en" href="${COPIE_SEO.en.base}?id=${idEnc}">`);
+  html = html.replace(/<link rel="alternate" hreflang="et" href="[^"]*">/, `<link rel="alternate" hreflang="et" href="${COPIE_SEO.et.base}?id=${idEnc}">`);
+  html = html.replace(/<link rel="alternate" hreflang="x-default" href="[^"]*">/, `<link rel="alternate" hreflang="x-default" href="${COPIE_SEO.fr.base}?id=${idEnc}">`);
 
-  const photos = Array.isArray(listing.photos) ? listing.photos : [];
+  const photos = Array.isArray(listing.photos) ? listing.photos.filter((p) => typeof p === 'string' && /^https:\/\//.test(p)) : [];
+  // og:image = première photo de l'annonce (partage social parlant) ; l'image de
+  // marque reste le repli. Les dimensions déclarées (1200x630) ne valent que
+  // pour l'image de marque : on les retire quand on substitue une photo.
+  if (photos.length) {
+    html = html.replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${esc(photos[0])}">`);
+    html = html.replace(/\s*<meta property="og:image:(?:width|height)" content="[^"]*">/g, '');
+  }
+  html = prerendreCorps(html, listing, lang, title, pr, canonicalUrl);
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: title,
-    description: listing.description || 'Aéronef à vendre sur Aircraft2Sell',
+    description: propre(listing.description) || 'Aéronef à vendre sur Aircraft2Sell',
     url: canonicalUrl,
     image: photos.length ? photos[0] : 'https://aircraft2sell.eu/og-image.png',
     sku: String(listing.id || ''),
-    brand: { '@type': 'Brand', name: listing.make || '' },
-    model: listing.model || '',
+    brand: { '@type': 'Brand', name: propre(listing.make) },
+    model: propre(listing.model),
     productionDate: listing.year ? String(listing.year) : '',
     category: NOMS_CATEGORIE[listing.category] || listing.category || '',
     offers: {

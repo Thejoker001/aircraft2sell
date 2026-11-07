@@ -2,7 +2,7 @@
 """Ajoute les balises hreflang fr/en/x-default sur les 15 articles de blog FR,
 juste après leur <link rel="canonical">. Idempotent (ne touche pas un fichier
 qui a déjà hreflang)."""
-import re
+import os, re
 
 ARTICLES = [
     "assurance-aeronef-guide.html", "comment-financer-avion-leger.html",
@@ -28,10 +28,14 @@ for fname in ARTICLES:
         print(f"ERREUR : pas de canonical trouvé dans {fname}")
         continue
     insert_after = canon_match.end()
+    # La ligne hreflang="en" n'est ajoutée QUE si la traduction existe réellement :
+    # déclarer une alternative qui répond 404 est une erreur hreflang pour Google
+    # (20 pages étaient dans ce cas avant l'audit du 07/11/2026).
+    ligne_en = f'<link rel="alternate" hreflang="en" href="{BASE}/en/{fname}">\n' if os.path.exists(f"en/{fname}") else ''
     block = (
         f'<link rel="alternate" hreflang="fr" href="{BASE}/{fname}">\n'
-        f'<link rel="alternate" hreflang="en" href="{BASE}/en/{fname}">\n'
-        f'<link rel="alternate" hreflang="x-default" href="{BASE}/{fname}">\n'
+        + ligne_en
+        + f'<link rel="alternate" hreflang="x-default" href="{BASE}/{fname}">\n'
     )
     html = html[:insert_after] + block + html[insert_after:]
     with open(fname, "w", encoding="utf-8") as f:

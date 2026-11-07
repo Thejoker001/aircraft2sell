@@ -33,6 +33,8 @@ EXCLUDE = {
     'alerts.html',        # outil personnel, contenu mince
     'seller.html',        # profil vendeur, généré dynamiquement
     'diag.html', 'moderation.html',
+    'listing.html',       # gabarit vide sans ?id= (noindex depuis le 07/11/2026) ;
+                           # les vraies fiches sont dans sitemap-listings.xml
     'post-listing.html',  # réservé aux membres connectés : redirige en JS vers
                            # login.html si non connecté — Googlebot ne voit jamais
                            # de contenu réel, cause un échec de "Demander une
@@ -163,14 +165,8 @@ def collect():
                 'lastmod': git_lastmod(rel), 'alts': alts,
             })
 
-    # rss.xml n'est pas une page HTML : on l'ajoute explicitement s'il existe.
-    rss_path = os.path.join(ROOT, 'rss.xml')
-    if os.path.exists(rss_path):
-        entries.append({
-            'loc': BASE + '/rss.xml', 'priority': 0.70,
-            'changefreq': 'daily', 'lastmod': git_lastmod('rss.xml'),
-            'alts': [],
-        })
+    # rss.xml : retiré du sitemap le 07/11/2026 — un flux n'est pas une page
+    # indexable (il est déjà déclaré via <link rel="alternate" type="application/rss+xml">).
 
     entries.sort(key=lambda e: (-e['priority'], e['loc']))
     return entries
