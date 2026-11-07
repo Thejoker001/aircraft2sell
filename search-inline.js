@@ -56,7 +56,7 @@ async function loadAll(){
       id:r.id,make:r.make||'',model:r.model||'',year:r.year||'',
       price:r.price||null,currency:r.currency||'EUR',
       category:r.category||'',airport:r.airport||'',
-      country:r.country||'',hours:r.hours||null,smoh:r.smoh||null,
+      country:r.country||'',hours:r.hours||null,smoh:r.smoh||null,seats:r.seats||null,
       ifr:r.ifr||false,rvsm:r.rvsm||false,adsb:r.adsb||false,
       photos:r.photos||[],description:r.description||'',
       seller_is_pro:r.seller_is_pro||false,seller_certified:r.seller_certified||false,
@@ -284,6 +284,7 @@ function renderCard(l,i){
     +'<div class="lc-specs">'
     +(l.year?'<span class="lc-spec">'+A2SIcon('calendar')+esc(String(l.year))+'</span>':'')
     +(l.hours?'<span class="lc-spec">'+A2SIcon('clock')+Number(l.hours).toLocaleString(LOCALE)+' h TT</span>':'')
+    +(l.seats?'<span class="lc-spec">'+A2SIcon('users')+esc(String(l.seats))+' pl.</span>':'')
     +(l.smoh?'<span class="lc-spec">'+A2SIcon('gauge')+Number(l.smoh).toLocaleString(LOCALE)+' h SMOH</span>':'')
     +'</div>'
     +'<div class="lc-trust lc-badges">'+trust+badges+'</div>'
