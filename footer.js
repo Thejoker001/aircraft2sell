@@ -23,6 +23,8 @@
     'documents-obligatoires-vente-avion.html','immatriculation-aeronef-europe.html','importer-avion-usa-europe.html',
     'inspection-pre-achat-avion.html','licence-pilote-prive-cout.html','louer-ou-acheter-avion.html',
     'pieges-achat-avion-occasion.html','turbopropulseur-ou-jet-affaires.html','vendre-avion-particulier-europe.html',
+    'vendre-avion-suisse.html','vendre-avion-allemagne.html','vendre-avion-royaume-uni.html',
+    'vendre-avion-canada.html','vendre-avion-etats-unis.html',
     '404.html','acheter-avion-occasion-allemagne.html','acheter-avion-occasion-espagne.html',
     'acheter-avion-occasion-italie.html','acheter-avion-occasion-royaume-uni-brexit.html',
     'acheter-avion-occasion-suisse.html','alerts.html','avions-a-vendre-allemagne.html',
@@ -147,7 +149,11 @@
           col(t('colSell'), [
             [href('post-listing.html'), t('postListing')], [href('pro-dealers.html'), t('proDealers')], [href('pricing.html'), t('pricing')],
             [href('estimation.html'), t('estimate')], [href('alerts.html'), t('createAlert')], [href('dashboard.html'), t('dashboard')]
-          ].concat(lang === 'fr' ? [['/widget.html', t('widget')]] : [])),
+          ].concat(lang === 'fr' ? [['/widget.html', t('widget')],
+            ['/vendre-avion-france.html', 'Vendre en France'], ['/vendre-avion-suisse.html', 'Vendre en Suisse'],
+            ['/vendre-avion-allemagne.html', 'Vendre en Allemagne'], ['/vendre-avion-canada.html', 'Vendre au Canada'],
+            ['/vendre-avion-etats-unis.html', 'Vendre aux États-Unis']
+          ] : [])),
           col(t('colResources'), [
             [href('guide-acheteur.html'), t('buyerGuide')], [href('blog.html'), t('blog')], [href('faq.html'), t('faq')],
             [href('inspection-pre-achat-avion.html'), t('inspection')], [href('inspecteurs.html'), t('inspectorsDir')], [href('financement.html'), t('financing')], [href('tendances-marche.html'), t('marketTrends')]

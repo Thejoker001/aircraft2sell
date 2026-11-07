@@ -193,6 +193,8 @@ window.A2SFavs = (function(){
     'immatriculation-aeronef-europe.html','importer-avion-usa-europe.html','inspection-pre-achat-avion.html',
     'licence-pilote-prive-cout.html','louer-ou-acheter-avion.html','pieges-achat-avion-occasion.html',
     'turbopropulseur-ou-jet-affaires.html','vendre-avion-particulier-europe.html',
+    'vendre-avion-suisse.html','vendre-avion-allemagne.html','vendre-avion-royaume-uni.html',
+    'vendre-avion-canada.html','vendre-avion-etats-unis.html',
     '404.html','acheter-avion-occasion-allemagne.html','acheter-avion-occasion-espagne.html',
     'acheter-avion-occasion-italie.html','acheter-avion-occasion-royaume-uni-brexit.html',
     'acheter-avion-occasion-suisse.html','alerts.html','avions-a-vendre-allemagne.html',
