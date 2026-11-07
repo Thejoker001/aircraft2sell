@@ -200,6 +200,13 @@ async function modeSeo(req, res, url, cle) {
   if (photos.length) {
     html = html.replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${esc(photos[0])}">`);
     html = html.replace(/\s*<meta property="og:image:(?:width|height)" content="[^"]*">/g, '');
+    // Préchargement de la photo principale (élément LCP) dès le HTML : sans ça le
+    // navigateur ne la découvre qu'après le fetch Supabase + render() côté client.
+    // L'URL doit être EXACTEMENT celle que render() demandera (optimizeImg(p,1200)
+    // ajoute ?width=1200&quality=80&format=webp — paramètres sans effet sur
+    // /object/public/, mais ils font partie de la clé de cache du navigateur).
+    const lcpUrl = photos[0] + (photos[0].includes('?') ? '&' : '?') + 'width=1200&quality=80&format=webp';
+    html = html.replace('</head>', `<link rel="preload" as="image" href="${esc(lcpUrl)}" fetchpriority="high">\n</head>`);
   }
   html = prerendreCorps(html, listing, lang, title, pr, canonicalUrl);
   const schema = {
