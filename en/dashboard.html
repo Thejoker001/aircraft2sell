@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="/track-beacon.js"></script>
 <script src="/confirm-handler.js"></script>
 <script src="/lang-redirect.js"></script>
 <meta charset="UTF-8">
@@ -27,7 +28,7 @@
 <meta name="description" content="Manage your listings, track your contacts and steer your sales from your personal Aircraft2Sell account.">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>My dashboard — Aircraft2Sell</title>
-<link rel="stylesheet" href="/styles.css?v=20261030a">
+<link rel="stylesheet" href="/styles.css?v=20261106a">
 <link rel="stylesheet" href="/mobile.css?v=20260909a">
 <style>
 /* ── Dashboard layout ── */
@@ -221,22 +222,23 @@
   <aside class="sidebar dash-sidebar" aria-label="Navigation de l'espace membre">
     <div class="sb-section">
       <div class="sb-label">Dashboard</div>
-      <button type="button" class="nav-tab active" id="tab-overview" onclick="switchTab('overview')"><i data-icon="layout"></i>Overview</button>
-      <button type="button" class="nav-tab" id="tab-listings" onclick="switchTab('listings')"><i data-icon="tag"></i>My listings</button>
-      <button type="button" class="nav-tab" id="tab-favs" onclick="switchTab('favs')"><i data-icon="heart"></i>Favourites<span class="tab-badge" id="badge-favs">0</span></button>
-      <button type="button" class="nav-tab" id="tab-messages" onclick="switchTab('messages')"><i data-icon="message"></i>Messages<span class="tab-badge" id="badge-msgs">0</span></button>
-      <button type="button" class="nav-tab" id="tab-alerts" onclick="switchTab('alerts')"><i data-icon="bell"></i>Alerts</button>
+      <button type="button" class="nav-tab active" id="tab-overview" data-action="switchTab" data-args='["overview"]'><i data-icon="layout"></i>Overview</button>
+      <button type="button" class="nav-tab" id="tab-listings" data-action="switchTab" data-args='["listings"]'><i data-icon="tag"></i>My listings</button>
+      <button type="button" class="nav-tab" id="tab-favs" data-action="switchTab" data-args='["favs"]'><i data-icon="heart"></i>Favourites<span class="tab-badge" id="badge-favs">0</span></button>
+      <button type="button" class="nav-tab" id="tab-messages" data-action="switchTab" data-args='["messages"]'><i data-icon="message"></i>Messages<span class="tab-badge" id="badge-msgs">0</span></button>
+      <button type="button" class="nav-tab" id="tab-alerts" data-action="switchTab" data-args='["alerts"]'><i data-icon="bell"></i>Alerts</button>
     </div>
     <div class="sb-section">
       <div class="sb-label">Account</div>
-      <button type="button" class="nav-tab" id="tab-settings" onclick="switchTab('settings')"><i data-icon="user"></i>My account</button>
-      <button type="button" class="nav-tab is-logout" onclick="doLogout()"><i data-icon="logout"></i>Log out</button>
+      <button type="button" class="nav-tab" id="tab-settings" data-action="switchTab" data-args='["settings"]'><i data-icon="user"></i>My account</button>
+      <button type="button" class="nav-tab is-logout" data-action="doLogout"><i data-icon="logout"></i>Log out</button>
     </div>
     <div class="sb-plan-box">
       <div class="sbp-label">Current plan</div>
       <div class="sbp-name" id="sbPlanName">Essential</div>
+      <div id="sbFounderBadge" style="display:none;margin:-.1rem 0 .6rem"><span class="badge badge-founder"><i data-icon="compass"></i>Founding Member</span></div>
       <a href="checkout.html?plan=aviateur" class="sbp-link" id="sbpUpgradeLink">Upgrade to Aviator<i data-icon="arrow-right"></i></a>
-      <a href="#" class="sbp-link" id="sbpManageLink" style="display:none;margin-top:.4rem" onclick="openBillingPortal();return false;">Manage my subscription<i data-icon="arrow-right"></i></a>
+      <a href="#" class="sbp-link" id="sbpManageLink" style="display:none;margin-top:.4rem" data-action="openBillingPortal" data-prevent="1">Manage my subscription<i data-icon="arrow-right"></i></a>
     </div>
   </aside>
 
@@ -265,13 +267,13 @@
 
       <div class="ov-grid">
         <div class="card">
-          <div class="dc-head"><h3>My listings</h3><button type="button" class="btn-link" onclick="switchTab('listings')">See all<i data-icon="arrow-right"></i></button></div>
+          <div class="dc-head"><h3>My listings</h3><button type="button" class="btn-link" data-action="switchTab" data-args='["listings"]'>See all<i data-icon="arrow-right"></i></button></div>
           <div class="dc-body" id="ovListingsBody">
             <div class="empty-state" style="padding:2rem 1rem"><span class="icon-box"><i data-icon="plane"></i></span><div class="empty-title">No listing published</div><p class="empty-sub">Create your first listing. Zero commission on the sale.</p><a href="post-listing.html" class="btn-secondary btn-sm"><i data-icon="plus"></i>New listing</a></div>
           </div>
         </div>
         <div class="card">
-          <div class="dc-head"><h3>Recent messages</h3><button type="button" class="btn-link" onclick="switchTab('messages')">See all<i data-icon="arrow-right"></i></button></div>
+          <div class="dc-head"><h3>Recent messages</h3><button type="button" class="btn-link" data-action="switchTab" data-args='["messages"]'>See all<i data-icon="arrow-right"></i></button></div>
           <div class="dc-body" id="ovMessagesBody">
             <div class="empty-state" style="padding:2rem 1rem"><span class="icon-box"><i data-icon="message"></i></span><div class="empty-title">No messages</div><p class="empty-sub">Interested buyers will contact you here.</p></div>
           </div>
@@ -293,7 +295,7 @@
       <div class="card">
         <div class="dc-head">
           <h3>Statistics</h3>
-          <select class="sel" id="analyticsPeriod" onchange="renderAnalytics()" style="width:auto;min-height:38px;padding:.3rem 2.2rem .3rem .75rem;font-size:.85rem" aria-label="Period">
+          <select class="sel" id="analyticsPeriod" data-action="renderAnalytics" style="width:auto;min-height:38px;padding:.3rem 2.2rem .3rem .75rem;font-size:.85rem" aria-label="Period">
             <option value="7">Last 7 days</option>
             <option value="30" selected>Last 30 days</option>
             <option value="90">Last 90 days</option>
@@ -328,17 +330,17 @@
       <!-- Multiple selection: useful for Pro/dealer accounts with several
            listings (republish, mark sold or bulk export). -->
       <div class="select-all-row" id="selectAllRow" style="display:none">
-        <input type="checkbox" id="selectAllListings" onchange="toggleAllListings(this)" aria-label="Select all">
+        <input type="checkbox" id="selectAllListings" data-action="toggleAllListings" data-args='["__this__"]' aria-label="Select all">
         <span>Select all</span>
       </div>
       <div class="dash-bulkbar" id="dashBulkbar">
         <span class="bb-count" id="bbCount">0 selected</span>
         <div class="bb-spacer"></div>
-        <button type="button" onclick="bulkMarkSold()"><i data-icon="check"></i>Mark as sold</button>
-        <button type="button" onclick="bulkRepublish()"><i data-icon="refresh"></i>Republish</button>
-        <button type="button" onclick="bulkExportCsv()"><i data-icon="download"></i>Export CSV</button>
-        <button type="button" class="danger" onclick="bulkDeleteListings()"><i data-icon="trash"></i>Delete</button>
-        <button type="button" onclick="clearListingSelection()">Cancel</button>
+        <button type="button" data-action="bulkMarkSold"><i data-icon="check"></i>Mark as sold</button>
+        <button type="button" data-action="bulkRepublish"><i data-icon="refresh"></i>Republish</button>
+        <button type="button" data-action="bulkExportCsv"><i data-icon="download"></i>Export CSV</button>
+        <button type="button" class="danger" data-action="bulkDeleteListings"><i data-icon="trash"></i>Delete</button>
+        <button type="button" data-action="clearListingSelection">Cancel</button>
       </div>
       <div id="listingsList">
         <div class="card"><div class="empty-state"><span class="icon-box"><i data-icon="plane"></i></span><div class="empty-title">No listing</div><p class="empty-sub">Publish your first aircraft. Zero commission on the sale.</p><a href="post-listing.html" class="btn-secondary"><i data-icon="plus"></i>List an aircraft</a></div></div>
@@ -352,8 +354,8 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
           <label class="sr-only" for="csvInput">CSV content</label>
           <textarea class="txta" id="csvInput" rows="6" placeholder="make;model;year;price;currency;category;airport;country;description&#10;Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition&#10;Robin;DR400;1975;32000;EUR;light;LFQQ;France;Well maintained"></textarea>
           <div class="csv-actions">
-            <label class="btn-secondary btn-sm csv-file-btn"><i data-icon="upload"></i>Upload a file<input type="file" id="csvFile" accept=".csv,.txt,text/csv" style="display:none" onchange="readCsvFile(this)"></label>
-            <button type="button" class="btn-primary btn-sm" id="btnCsvImport" onclick="importCsv()"><i data-icon="upload"></i>Import</button>
+            <label class="btn-secondary btn-sm csv-file-btn"><i data-icon="upload"></i>Upload a file<input type="file" id="csvFile" accept=".csv,.txt,text/csv" style="display:none" data-action="readCsvFile" data-args='["__this__"]'></label>
+            <button type="button" class="btn-primary btn-sm" id="btnCsvImport" data-action="importCsv"><i data-icon="upload"></i>Import</button>
           </div>
           <div id="csvResult"></div>
         </div>
@@ -362,9 +364,9 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
         <div class="dc-head">
           <h3>Views per day</h3>
           <div class="pills sc-periods">
-            <button type="button" class="pill sc-period on" onclick="setChartPeriod(7,this)">7 d</button>
-            <button type="button" class="pill sc-period" onclick="setChartPeriod(30,this)">30 d</button>
-            <button type="button" class="pill sc-period" onclick="setChartPeriod(90,this)">90 d</button>
+            <button type="button" class="pill sc-period on" data-action="setChartPeriod" data-args='[7,"__this__"]'>7 d</button>
+            <button type="button" class="pill sc-period" data-action="setChartPeriod" data-args='[30,"__this__"]'>30 d</button>
+            <button type="button" class="pill sc-period" data-action="setChartPeriod" data-args='[90,"__this__"]'>90 d</button>
           </div>
         </div>
         <div class="dc-body">
@@ -378,16 +380,16 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
       <div class="card perf-table-wrap" id="perfTableCard" style="display:none">
         <div class="dc-head">
           <h3>Compared performance</h3>
-          <button type="button" class="btn-secondary btn-sm" onclick="exportAllListingsCsv()"><i data-icon="download"></i>Export all</button>
+          <button type="button" class="btn-secondary btn-sm" data-action="exportAllListingsCsv"><i data-icon="download"></i>Export all</button>
         </div>
         <div class="dc-body table-wrap">
           <table class="table perf-table">
             <thead><tr>
-              <th class="sortable" onclick="sortPerfTable('title')">Aircraft<i data-icon="sort"></i></th>
-              <th class="sortable" onclick="sortPerfTable('views')">Views<i data-icon="sort"></i></th>
-              <th class="sortable" onclick="sortPerfTable('enquiries')">Contacts<i data-icon="sort"></i></th>
-              <th class="sortable" onclick="sortPerfTable('ratio')">Contacts / 100 views<i data-icon="sort"></i></th>
-              <th class="sortable" onclick="sortPerfTable('price')">Price<i data-icon="sort"></i></th>
+              <th class="sortable" data-action="sortPerfTable" data-args='["title"]'>Aircraft<i data-icon="sort"></i></th>
+              <th class="sortable" data-action="sortPerfTable" data-args='["views"]'>Views<i data-icon="sort"></i></th>
+              <th class="sortable" data-action="sortPerfTable" data-args='["enquiries"]'>Contacts<i data-icon="sort"></i></th>
+              <th class="sortable" data-action="sortPerfTable" data-args='["ratio"]'>Contacts / 100 views<i data-icon="sort"></i></th>
+              <th class="sortable" data-action="sortPerfTable" data-args='["price"]'>Price<i data-icon="sort"></i></th>
               <th>Status</th>
             </tr></thead>
             <tbody id="perfTableBody"></tbody>
@@ -421,7 +423,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
         <div class="msg-compose">
           <label class="sr-only" for="msgInput">Your message</label>
           <input type="text" class="inp" id="msgInput" placeholder="Write a message">
-          <button type="button" class="btn-navy" onclick="sendMsg()"><i data-icon="send"></i>Send</button>
+          <button type="button" class="btn-navy" data-action="sendMsg"><i data-icon="send"></i>Send</button>
         </div>
       </div>
       <div class="card">
@@ -449,10 +451,10 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
         <div><h2>My account</h2><p>Profile, subscription, invoices and security.</p></div>
       </div>
       <div class="tabs set-tabs" role="tablist">
-        <button type="button" class="tab active" id="stab-profile" role="tab" onclick="switchSub('profile')"><i data-icon="user"></i>Profile</button>
-        <button type="button" class="tab" id="stab-subscription" role="tab" onclick="switchSub('subscription')"><i data-icon="star"></i>Subscription</button>
-        <button type="button" class="tab" id="stab-invoices" role="tab" onclick="switchSub('invoices')"><i data-icon="file-text"></i>Invoices</button>
-        <button type="button" class="tab" id="stab-security" role="tab" onclick="switchSub('security')"><i data-icon="shield"></i>Security</button>
+        <button type="button" class="tab active" id="stab-profile" role="tab" data-action="switchSub" data-args='["profile"]'><i data-icon="user"></i>Profile</button>
+        <button type="button" class="tab" id="stab-subscription" role="tab" data-action="switchSub" data-args='["subscription"]'><i data-icon="star"></i>Subscription</button>
+        <button type="button" class="tab" id="stab-invoices" role="tab" data-action="switchSub" data-args='["invoices"]'><i data-icon="file-text"></i>Invoices</button>
+        <button type="button" class="tab" id="stab-security" role="tab" data-action="switchSub" data-args='["security"]'><i data-icon="shield"></i>Security</button>
       </div>
 
       <!-- Profile -->
@@ -477,7 +479,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
                 <textarea class="txta" id="setBio" rows="4" maxlength="600" placeholder="Tell us about yourself, your aviation experience, your aircraft… This description will be displayed on your seller page."></textarea>
                 <div class="field-hint">600 characters max. Displayed publicly on your profile.</div>
               </div>
-              <button type="button" class="btn-primary" onclick="saveProfile()">Save</button>
+              <button type="button" class="btn-primary" data-action="saveProfile">Save</button>
             </div>
           </div>
           <div class="card">
@@ -494,7 +496,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
                 </select>
               </div>
               <div class="field"><label for="setAirport">Home airport (ICAO code)</label><input type="text" class="inp" id="setAirport" placeholder="e.g. LFPG, EDDF"><div class="field-hint">Four letters, shown on your listings.</div></div>
-              <button type="button" class="btn-secondary" onclick="saveProfile()">Save</button>
+              <button type="button" class="btn-secondary" data-action="saveProfile">Save</button>
             </div>
           </div>
         </div>
@@ -522,7 +524,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
               </div>
               <div class="alert alert-info" style="margin-bottom:1rem"><i data-icon="lock"></i><span>Your information is encrypted and used only for manual verification. It is never shared with third parties.</span></div>
               <div id="verifAlert"></div>
-              <button type="button" class="btn-secondary" onclick="submitVerif()"><i data-icon="shield-check"></i>Submit my verification request</button>
+              <button type="button" class="btn-secondary" data-action="submitVerif"><i data-icon="shield-check"></i>Submit my verification request</button>
             </div>
             <div class="alert alert-info" id="verifPending" style="display:none"><i data-icon="clock"></i><span>Your request is under review. Usual turnaround: 24 to 48 business hours.</span></div>
           </div>
@@ -535,7 +537,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
             <p class="muted" style="font-size:.9rem;margin-bottom:1rem;line-height:1.6">Invite a seller: they get <strong>1 free month of Aviator</strong>, and so do you once their first listing is published.</p>
             <div class="ref-box">
               <span id="referralLink">Loading</span>
-              <button type="button" class="btn-secondary btn-sm" onclick="copyReferral()"><i data-icon="copy"></i>Copy</button>
+              <button type="button" class="btn-secondary btn-sm" data-action="copyReferral"><i data-icon="copy"></i>Copy</button>
             </div>
             <div class="small muted">Shares: <strong id="referralCount">0</strong> invitation(s) sent</div>
           </div>
@@ -561,7 +563,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
             <div class="card-body">
               <div class="sub-row"><span class="sub-row-label">Saved card</span><span class="sub-row-val">None</span></div>
               <div class="sub-row"><span class="sub-row-label">Next payment</span><span class="sub-row-val">—</span></div>
-              <div class="sub-row"><span class="sub-row-label">Invoices</span><button type="button" class="btn-link" onclick="switchSub('invoices')">View<i data-icon="arrow-right"></i></button></div>
+              <div class="sub-row"><span class="sub-row-label">Invoices</span><button type="button" class="btn-link" data-action="switchSub" data-args='["invoices"]'>View<i data-icon="arrow-right"></i></button></div>
             </div>
           </div>
         </div>
@@ -625,7 +627,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
               <div class="field"><label for="pwNew">New password</label><input type="password" class="inp" id="pwNew" autocomplete="new-password"><div class="field-hint">8 characters minimum.</div></div>
               <div class="field"><label for="pwConfirm">Confirm</label><input type="password" class="inp" id="pwConfirm" autocomplete="new-password"></div>
             </div>
-            <button type="button" class="btn-primary" onclick="changePassword()">Change password</button>
+            <button type="button" class="btn-primary" data-action="changePassword">Change password</button>
           </div>
         </div>
         <div class="card danger-zone">
@@ -634,7 +636,7 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
             <p>These actions are irreversible. All your listings and data will be permanently deleted.</p>
             <div class="btn-group">
               <button type="button" class="btn-secondary" onclick="if(confirm('Log out of all devices?'))showToast('Logged out of all devices')">Log out of all devices</button>
-              <button type="button" class="btn-danger" onclick="showToast('Contact support to delete your account')"><i data-icon="trash"></i>Delete my account</button>
+              <button type="button" class="btn-danger" data-action="showToast" data-args='["Contact support to delete your account"]'><i data-icon="trash"></i>Delete my account</button>
             </div>
           </div>
         </div>
@@ -646,11 +648,11 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
 </div><!-- /container -->
 
 <!-- MODALE MODIFIER ANNONCE -->
-<div class="modal-overlay" id="mEditListing" onclick="if(event.target===this)closeEditListing()" role="dialog" aria-modal="true" aria-labelledby="mEditTitle">
+<div class="modal-overlay" id="mEditListing" data-action="closeEditListing" data-self-only="1" role="dialog" aria-modal="true" aria-labelledby="mEditTitle">
   <div class="modal">
     <div class="modal-head">
       <div class="modal-title" id="mEditTitle">Edit listing</div>
-      <button type="button" class="modal-close" onclick="closeEditListing()" aria-label="Close"><i data-icon="close"></i></button>
+      <button type="button" class="modal-close" data-action="closeEditListing" aria-label="Close"><i data-icon="close"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="el-id">
@@ -667,16 +669,16 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
         <div class="field span2">
           <label>Photos</label>
           <div id="el-photo-grid" class="photo-grid" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem"></div>
-          <input type="file" id="el-photo-input" accept="image/*" multiple style="display:none" onchange="handleEditPhotoFiles(this.files)">
-          <button type="button" class="btn-ghost btn-sm" onclick="document.getElementById('el-photo-input').click()"><i data-icon="image"></i>Add photos</button>
+          <input type="file" id="el-photo-input" accept="image/*" multiple style="display:none" data-action="handleEditPhotoFiles" data-args='["__files__"]'>
+          <button type="button" class="btn-ghost btn-sm" data-action="a2sClickById" data-args='["el-photo-input"]'><i data-icon="image"></i>Add photos</button>
           <div id="el-photo-hint" class="muted small" style="margin-top:.3rem"></div>
         </div>
       </div>
       <div id="el-alert"></div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn-ghost" onclick="closeEditListing()">Cancel</button>
-      <button type="button" class="btn-primary" onclick="saveEditListing()">Save</button>
+      <button type="button" class="btn-ghost" data-action="closeEditListing">Cancel</button>
+      <button type="button" class="btn-primary" data-action="saveEditListing">Save</button>
     </div>
   </div>
 </div>
@@ -757,7 +759,7 @@ async function initAuth(){
       }
     }catch(e){tk=null;}
   }
-  if(!tk&&!loggedLs){window.location.href='login.html?redirect=dashboard.html';return;}
+  if(!tk&&!loggedLs){window.a2sBeacon();window.location.href='login.html?redirect=dashboard.html';return;}
   email=email||localStorage.getItem('a2s_user_email')||'';
   name=name||localStorage.getItem('a2s_user_name')||'';
   applyUserDisplay(name,email);
@@ -765,7 +767,7 @@ async function initAuth(){
     try{
       var freshTk=await authToken();
       if(!freshTk){throw new Error('session expired');}
-      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company,bio&limit=1',{
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company,bio,founder&limit=1',{
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+freshTk}
       });
       var data=await res.json();
@@ -773,6 +775,8 @@ async function initAuth(){
         if(data[0].pseudo){
           localStorage.setItem('a2s_user_pseudo',data[0].pseudo);
         }
+        var fdEl=document.getElementById('sbFounderBadge');
+        if(fdEl)fdEl.style.display=data[0].founder?'':'none';
         if(data[0].name){
           name=data[0].name;
           localStorage.setItem('a2s_user_name',name);
@@ -1036,7 +1040,7 @@ async function renderListings(){
       +(l.airport?'<span>'+A2SIcon('map-pin')+airportLabel(l.airport)+'</span>':'');
     var feat=l.featured?'<span class="badge feat-badge">'+A2SIcon('star')+'Featured</span>':'';
     return'<div class="card listing-item" data-listing-id="'+esc(String(l.id))+'">'
-      +'<span class="li-check"><input type="checkbox" class="listing-check" data-id="'+esc(String(l.id))+'" onchange="toggleListingCheck(this)" aria-label="Select this listing"></span>'
+      +'<span class="li-check"><input type="checkbox" class="listing-check" data-id="'+esc(String(l.id))+'" data-action="toggleListingCheck" data-args="[&quot;__this__&quot;]" aria-label="Select this listing"></span>'
       +thumbHtml(l)
       +'<div class="li-body"><div class="li-title">'+esc(listingTitle(l))+'</div>'+stats+(meta?'<div class="li-meta">'+meta+'</div>':'')+note+'</div>'
       +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:.45rem">'
@@ -1393,7 +1397,7 @@ function renderEditPhotos(){
     return'<div class="photo-thumb" style="position:relative;width:80px;height:60px">'
       +'<img src="'+esc(p.url)+'" alt="Photo '+(i+1)+'" style="width:100%;height:100%;object-fit:cover;border-radius:6px">'
       +(i===0?'<div class="photo-main-badge" style="position:absolute;top:2px;left:2px;background:var(--a2s-orange);color:#fff;font-size:.6rem;padding:1px 4px;border-radius:4px">Main</div>':'')
-      +'<button type="button" onclick="removeEditPhoto('+i+')" aria-label="Remove" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:18px;height:18px;line-height:1;cursor:pointer">×</button>'
+      +'<button type="button" data-action="removeEditPhoto" data-args="['+i+']" aria-label="Remove" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:18px;height:18px;line-height:1;cursor:pointer">×</button>'
       +'</div>';
   }).join('');
   var hint=document.getElementById('el-photo-hint');
@@ -1659,7 +1663,7 @@ function renderAlerts(){
     if(a.make)desc.push(a.make);
     if(a.maxPrice)desc.push('under '+Number(a.maxPrice).toLocaleString('en-GB')+' €');
     if(a.country)desc.push(a.country);
-    return'<div class="alert-item"><span class="icon-box">'+A2SIcon('bell')+'</span><div style="flex:1;min-width:0"><div class="alert-name">'+esc(a.name||'Alert '+(i+1))+'</div><div class="alert-desc">'+esc(desc.join(' · ')||'All listings')+(a.email?' — sent to '+esc(a.email):'')+'</div></div><span class="badge badge-success badge-dot">Active</span><button type="button" class="btn-danger btn-sm btn-icon" aria-label="Delete alert" onclick="delAlertDash('+i+')">'+A2SIcon('trash')+'</button></div>';
+    return'<div class="alert-item"><span class="icon-box">'+A2SIcon('bell')+'</span><div style="flex:1;min-width:0"><div class="alert-name">'+esc(a.name||'Alert '+(i+1))+'</div><div class="alert-desc">'+esc(desc.join(' · ')||'All listings')+(a.email?' — sent to '+esc(a.email):'')+'</div></div><span class="badge badge-success badge-dot">Active</span><button type="button" class="btn-danger btn-sm btn-icon" aria-label="Delete alert" data-action="delAlertDash" data-args="['+i+']">'+A2SIcon('trash')+'</button></div>';
   }).join('');
 }
 function delAlertDash(i){
@@ -1932,10 +1936,12 @@ window.addEventListener('a2s:dashLoaded',function(){
   setTimeout(renderAnalytics, 500);
 });
 setTimeout(renderAnalytics, 800);
+
+function a2sClickById(id){var el=document.getElementById(id);if(el)el.click();}
 </script>
 <script src="/rgpd-consent.js?v=20261006a" defer></script>
 <script src="/analytics.js" defer></script>
-<script src="/nav.js?v=20261006a"></script>
+<script src="/nav.js?v=20261106d"></script>
 <script src="/footer.js?v=20261030a"></script>
 </body>
 </html>

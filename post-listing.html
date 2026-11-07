@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<script src="track-beacon.js"></script>
 <script src="/confirm-handler.js"></script>
 <script src="/lang-redirect.js"></script>
 <meta charset="UTF-8">
@@ -42,7 +43,7 @@
   "@context": "https://schema.org"
 }
 </script>
-<link rel="stylesheet" href="styles.css?v=20261030a">
+<link rel="stylesheet" href="styles.css?v=20261106a">
 <link rel="stylesheet" href="mobile.css?v=20260909a">
 <style>
 /* Barre de complétude (sticky sous la nav) */
@@ -185,8 +186,8 @@
                 <select class="sel" id="fModelSel" disabled aria-label="Modèle"><option value="">Choisir un modèle</option></select>
               </div>
               <div class="mm-custom" id="mmCustomWrap">
-                <input type="text" class="inp" id="fMakeCustom" placeholder="Marque (saisie libre)" aria-label="Marque (saisie libre)" oninput="document.getElementById('fMake').value=this.value;updatePreview();updateProgress();updateCompleteness()">
-                <input type="text" class="inp" id="fModelCustom" placeholder="Modèle (saisie libre)" aria-label="Modèle (saisie libre)" oninput="document.getElementById('fModel').value=this.value;updatePreview();updateProgress();updateCompleteness()">
+                <input type="text" class="inp" id="fMakeCustom" placeholder="Marque (saisie libre)" aria-label="Marque (saisie libre)" data-action="a2sSyncAndRefresh" data-args='["__this__","fMake"]'>
+                <input type="text" class="inp" id="fModelCustom" placeholder="Modèle (saisie libre)" aria-label="Modèle (saisie libre)" data-action="a2sSyncAndRefresh" data-args='["__this__","fModel"]'>
               </div>
               <input type="hidden" id="fMake">
               <input type="hidden" id="fModel">
@@ -194,7 +195,7 @@
             </div>
             <div class="field">
               <label for="fCategory">Catégorie <span class="req">*</span></label>
-              <select class="sel" id="fCategory" onchange="updatePreview();updateProgress();updateCompleteness()">
+              <select class="sel" id="fCategory" data-action="updatePreview,updateProgress,updateCompleteness">
                 <option value="">Choisir une catégorie</option>
                 <option value="light">Avion léger</option>
                 <option value="jet">Jet d'affaires</option>
@@ -208,7 +209,7 @@
             </div>
             <div class="field">
               <label for="fYear">Année <span class="req">*</span></label>
-              <input type="number" class="inp" id="fYear" placeholder="2015" min="1940" max="2026" inputmode="numeric" oninput="updatePreview();updateProgress();updateCompleteness()">
+              <input type="number" class="inp" id="fYear" placeholder="2015" min="1940" max="2026" inputmode="numeric" data-action="updatePreview,updateProgress,updateCompleteness">
             </div>
             <div class="field span2">
               <label for="fSerial">Numéro de série ou immatriculation</label>
@@ -229,7 +230,7 @@
           <div class="form-grid col3">
             <div class="field">
               <label for="fTT">Heures totales cellule <span class="req">*</span></label>
-              <div class="input-group"><input type="number" class="inp" id="fTT" placeholder="3420" min="0" inputmode="numeric" oninput="updatePreview();updateProgress();updateCompleteness()"><span class="addon">h</span></div>
+              <div class="input-group"><input type="number" class="inp" id="fTT" placeholder="3420" min="0" inputmode="numeric" data-action="updatePreview,updateProgress,updateCompleteness"><span class="addon">h</span></div>
             </div>
             <div class="field">
               <label for="fSMOH">Heures depuis révision moteur</label>
@@ -283,8 +284,8 @@
             <div class="field">
               <label for="fPrice">Prix demandé <span class="req">*</span></label>
               <div class="input-group">
-                <input type="number" class="inp" id="fPrice" placeholder="189000" min="0" inputmode="numeric" oninput="updatePreview();updateProgress();updateCompleteness()">
-                <select class="sel addon" id="fPriceCurr" aria-label="Devise" onchange="updatePreview()">
+                <input type="number" class="inp" id="fPrice" placeholder="189000" min="0" inputmode="numeric" data-action="updatePreview,updateProgress,updateCompleteness">
+                <select class="sel addon" id="fPriceCurr" aria-label="Devise" data-action="updatePreview">
                   <option value="EUR">EUR</option>
                   <option value="USD">USD</option>
                   <option value="GBP">GBP</option>
@@ -295,7 +296,7 @@
                 </select>
               </div>
               <div class="field-hint">Hors taxes, sans les centimes. <a href="estimation.html" style="color:var(--a2s-blue);font-weight:600">Estimer mon aéronef</a></div>
-              <label class="check" style="margin-top:.5rem"><input type="checkbox" id="chkPriceOnRequest" onchange="togglePriceOnRequest()"><span>Prix sur demande (le prix ne sera pas affiché publiquement)</span></label>
+              <label class="check" style="margin-top:.5rem"><input type="checkbox" id="chkPriceOnRequest" data-action="togglePriceOnRequest"><span>Prix sur demande (le prix ne sera pas affiché publiquement)</span></label>
             </div>
             <div class="field">
               <label for="fPriceType">Type de prix</label>
@@ -308,7 +309,7 @@
             </div>
             <div class="field">
               <label for="fCountry">Pays <span class="req">*</span></label>
-              <select class="sel" id="fCountry" onchange="updatePreview();updateCompleteness()">
+              <select class="sel" id="fCountry" data-action="updatePreview,updateCompleteness">
                 <option value="AF">Afghanistan</option>
                 <option value="ZA">Afrique du Sud</option>
                 <option value="AL">Albanie</option>
@@ -563,7 +564,7 @@
             </div>
             <div class="field">
               <label for="fAirport">Aéroport de base (code OACI) <span class="req">*</span></label>
-              <div class="input-group has-icon"><i data-icon="map-pin"></i><input type="text" class="inp" id="fAirport" placeholder="LFLY" maxlength="4" style="text-transform:uppercase" autocapitalize="characters" oninput="this.value=this.value.toUpperCase();updatePreview();updateProgress();updateCompleteness()"></div>
+              <div class="input-group has-icon"><i data-icon="map-pin"></i><input type="text" class="inp" id="fAirport" placeholder="LFLY" maxlength="4" style="text-transform:uppercase" autocapitalize="characters" data-action="uppercaseSelf,updatePreview,updateProgress,updateCompleteness" data-args='["__this__"]'></div>
               <div class="field-hint">4 lettres, ex. LFPB pour Paris-Le Bourget.</div>
             </div>
           </div>
@@ -579,7 +580,7 @@
         <div class="card-body">
           <div class="field">
             <label for="fDesc">Description <span class="req">*</span></label>
-            <textarea class="txta" id="fDesc" maxlength="2000" rows="7" placeholder="Avion en excellent état, révisé en 2024. Moteur refait à 450 h. Avionique récente incluant Garmin GTN 750…" oninput="updateCharCount();updatePreview();updateProgress();updateCompleteness()"></textarea>
+            <textarea class="txta" id="fDesc" maxlength="2000" rows="7" placeholder="Avion en excellent état, révisé en 2024. Moteur refait à 450 h. Avionique récente incluant Garmin GTN 750…" data-action="updateCharCount,updatePreview,updateProgress,updateCompleteness"></textarea>
             <div class="field-hint char-count">50 caractères minimum · <span id="charCount">0</span> / 2000</div>
           </div>
           <div class="field">
@@ -588,7 +589,7 @@
           </div>
           <div class="field">
             <label for="fVideo">Lien vidéo (YouTube ou Vimeo)</label>
-            <input type="url" class="inp" id="fVideo" placeholder="https://www.youtube.com/watch?v=..." oninput="validateVideoUrl()">
+            <input type="url" class="inp" id="fVideo" placeholder="https://www.youtube.com/watch?v=..." data-action="validateVideoUrl">
             <div class="field-hint" id="fVideoHint">Une visite vidéo augmente la confiance des acheteurs — facultatif.</div>
           </div>
         </div>
@@ -602,11 +603,11 @@
         </div>
         <div class="card-body">
           <div class="alert alert-info plan-reminder" id="planPhotoReminder"><i data-icon="info"></i><span><strong>Formule Essentiel :</strong> 5 photos maximum. <a href="checkout.html?plan=aviateur">Passer à Aviateur pour 20 photos <i data-icon="arrow-right" class="ic-sm"></i></a></span></div>
-          <div class="dropzone" id="dropZone" role="button" tabindex="0" aria-label="Ajouter des photos" onclick="document.getElementById('fileInput').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('fileInput').click();}" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFiles(event)">
+          <div class="dropzone" id="dropZone" role="button" tabindex="0" aria-label="Ajouter des photos" data-action="a2sClickById" data-args='["fileInput"]' data-key="Enter,Space" data-action-dragover="dragOver" data-args-dragover='["__event__"]' data-action-dragleave="dragLeave" data-args-dragleave='["__event__"]' data-action-drop="dropFiles" data-args-drop='["__event__"]'>
             <span class="icon-box"><i data-icon="camera"></i></span>
             <span class="dropzone-title">Glissez vos photos ou cliquez</span>
             <span class="dropzone-hint">JPG ou PNG · 10 Mo maximum par photo</span>
-            <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)">
+            <input type="file" id="fileInput" accept="image/*" multiple data-action="handleFiles" data-args='["__files__"]'>
           </div>
           <div class="photo-grid" id="photoGrid"></div>
           <div class="photo-tips">
@@ -622,8 +623,8 @@
         <div class="card-body">
           <div id="formAlert"></div>
           <div class="actions-row">
-            <button class="btn-secondary" type="button" onclick="saveDraft()"><i data-icon="file-text"></i>Enregistrer le brouillon</button>
-            <button class="btn-primary btn-lg" type="button" id="submitBtn" onclick="submitListing()"><i data-icon="send"></i>Publier mon annonce</button>
+            <button class="btn-secondary" type="button" data-action="saveDraft"><i data-icon="file-text"></i>Enregistrer le brouillon</button>
+            <button class="btn-primary btn-lg" type="button" id="submitBtn" data-action="submitListing"><i data-icon="send"></i>Publier mon annonce</button>
           </div>
           <div class="reassure">
             <span><i data-icon="shield-check"></i>Vérification sous 24 h</span>
@@ -755,7 +756,7 @@ function renderPhotos(){
     return'<div class="photo-thumb">'
       +'<img src="'+p.url+'" alt="Photo '+(i+1)+'">'
       +(i===0?'<div class="photo-main-badge">Principale</div>':'')
-      +'<button class="btn-icon btn-sm photo-del" type="button" aria-label="Supprimer la photo" onclick="removePhoto('+i+')">'+A2SIcon('close')+'</button>'
+      +'<button class="btn-icon btn-sm photo-del" type="button" aria-label="Supprimer la photo" data-action="removePhoto" data-args="['+i+']">'+A2SIcon('close')+'</button>'
       +'</div>';
   }).join('');
   var prevImg=document.getElementById('previewImg');
@@ -951,7 +952,7 @@ function offerDraft(){
   var n=document.getElementById('draftNotice');if(!n)return;
   var when='';try{var d=JSON.parse(raw);if(d._savedAt)when=' du '+new Date(d._savedAt).toLocaleDateString('fr-FR');}catch(e){}
   n.innerHTML='<div class="alert alert-info" style="align-items:center;flex-wrap:wrap;gap:.75rem">'+A2SIcon('file-text')+'<span style="flex:1">Un brouillon'+when+' est enregistré sur cet appareil.</span>'
-    +'<span class="btn-group"><button class="btn-secondary btn-sm" type="button" onclick="restoreDraft()">Reprendre le brouillon</button><button class="btn-ghost btn-sm" type="button" onclick="discardDraft()">Ignorer</button></span></div>';
+    +'<span class="btn-group"><button class="btn-secondary btn-sm" type="button" data-action="restoreDraft">Reprendre le brouillon</button><button class="btn-ghost btn-sm" type="button" data-action="discardDraft">Ignorer</button></span></div>';
 }
 
 /* ── VALIDATION & ENVOI ── */
@@ -1325,7 +1326,7 @@ window.addEventListener('DOMContentLoaded',function(){
 
 /* ── Auth ── */
 (function(){
-  if(localStorage.getItem('a2s_logged_in')!=='true'){window.location.href='login.html?redirect=post-listing.html';return;}
+  if(localStorage.getItem('a2s_logged_in')!=='true'){window.a2sBeacon();window.location.href='login.html?redirect=post-listing.html';return;}
   var name=localStorage.getItem('a2s_user_name')||'';
   var first=name.split(' ')[0]||'';
   var nu=document.getElementById('navUser');
@@ -1337,10 +1338,14 @@ window.addEventListener('DOMContentLoaded',function(){
 </script>
 <script>
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}
+
+function a2sClickById(id){var el=document.getElementById(id);if(el)el.click();}
+
+function a2sSyncAndRefresh(el,targetId){document.getElementById(targetId).value=el.value;updatePreview();updateProgress();updateCompleteness();}
 </script>
 <script src="rgpd-consent.js?v=20261006a" defer></script>
 <script src="analytics.js" defer></script>
-<script src="nav.js?v=20261006a"></script>
+<script src="nav.js?v=20261106d"></script>
 <script src="footer.js?v=20261030a"></script>
 </body>
 </html>

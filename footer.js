@@ -6,7 +6,16 @@
    ============================================================ */
 (function(){
 
-  function currentLang(){ var m = location.pathname.match(/^\/(en|et)\//); return m ? m[1] : 'fr'; }
+  function currentLang(){
+    var m = location.pathname.match(/^\/(en|et)\//);
+    if(m) return m[1];
+    /* Pages autonomes de/nl à la racine (ex. flugzeug-kaufen-deutschland.html,
+       vliegtuig-te-koop-nederland.html) : pas de dossier dédié, la langue
+       d'affichage du footer vient du lang de la page elle-même. */
+    var htmlLang = (document.documentElement.lang || '').toLowerCase();
+    if(htmlLang === 'de' || htmlLang === 'nl') return htmlLang;
+    return 'fr';
+  }
   var TRANSLATED_PAGES = ['index.html','search.html','listing.html','post-listing.html',
     'avions-legers.html','jets-affaires.html','helicopteres.html','turboprops.html','ulm.html','avions-de-ligne.html',
     'blog.html','guide-acheteur.html','assurance-aeronef-guide.html','comment-financer-avion-leger.html',
@@ -28,7 +37,7 @@
     'tendances-marche.html','ulm-ou-avion-leger-debuter.html','vendeur.html',
     'vendre-avion-rapidement-erreurs-eviter.html','widget.html'];
   function isTranslatedPage(page){ return TRANSLATED_PAGES.indexOf(page.split(/[?#]/)[0]) > -1; }
-  function href(page){ var lang = currentLang(); if(lang === 'fr') return '/' + page; return isTranslatedPage(page) ? '/' + lang + '/' + page : '/' + page; }
+  function href(page){ var lang = currentLang(); if(lang === 'fr' || lang === 'de' || lang === 'nl') return '/' + page; return isTranslatedPage(page) ? '/' + lang + '/' + page : '/' + page; }
   function currentPageBase(){ var m = location.pathname.match(/^\/(?:en|et)\/(.*)$/); var rel = m ? m[1] : location.pathname.replace(/^\//, ''); return rel || 'index.html'; }
   function langSwitchHref(targetLang){ var base = currentPageBase().split(/[?#]/)[0] || 'index.html'; var target = isTranslatedPage(base) ? base : 'index.html'; return targetLang === 'fr' ? '/' + target : '/' + targetLang + '/' + target; }
   function ic(name, cls){ return window.A2SIcon ? window.A2SIcon(name, cls) : ''; }
@@ -75,7 +84,14 @@
       colBuy:'Osta', allListings:'Kõik kuulutused', catLight:'Kerglennukid', catJet:'Ärijet\'id', catTurbo:'Turbopropellerid', catHeli:'Helikopterid', catUlm:'Mikrolennukid / ULM', comparator:'Võrdleja',
       colSell:'Müü', postListing:'Paku oma õhusõiduk', proDealers:'Edasimüüjad ja professionaalid', pricing:'Hinnad', estimate:'Hinda oma õhusõidukit', createAlert:'Loo teavitus', dashboard:'Töölaud',
       colResources:'Ressursid', buyerGuide:'Ostja juhend', blog:'Blogi ja nõuanded', faq:'KKK', inspection:'Ostueelne ülevaatus', inspectorsDir:'Inspektorite kataloog', financing:'Rahasta oma lennukit', marketTrends:'Turusuundumused',
-      colCompany:'Ettevõte', contact:'Kontakt', legal:'Õiguslik teave', privacy:'Privaatsus', sitemap:'Saidi kaart', copy:'Kõik õigused kaitstud', cgv:'Tingimused', cookies:'Küpsised', followLinkedin:'Jälgi meid LinkedInis' }
+      colCompany:'Ettevõte', contact:'Kontakt', legal:'Õiguslik teave', privacy:'Privaatsus', sitemap:'Saidi kaart', copy:'Kõik õigused kaitstud', cgv:'Tingimused', cookies:'Küpsised', followLinkedin:'Jälgi meid LinkedInis' },
+    nl: { desc:'De Europese marktplaats voor luchtvaartuigen. Koop en verkoop vliegtuigen tussen particulieren en professionals, zonder commissie.',
+      trust1:'Geen commissie op uw verkopen', trust2:'Handmatig gecontroleerde verkopers', trust3:'30+ Europese landen',
+      newsTitle:'Nieuwe advertenties per e-mail', newsPlaceholder:'Uw e-mailadres', newsBtn:'Inschrijven', newsOk:'Ingeschreven! Controleer uw inbox.', newsErr:'Ongeldig e-mailadres of fout, probeer opnieuw.',
+      colBuy:'Kopen', allListings:'Alle advertenties', catLight:'Lichte vliegtuigen', catJet:'Zakenjets', catTurbo:'Turboprops', catHeli:'Helikopters', catUlm:'ULM', comparator:'Vergelijker',
+      colSell:'Verkopen', postListing:'Vliegtuig plaatsen', proDealers:'Dealers & professionals', pricing:'Tarieven', estimate:'Mijn vliegtuig waarderen', createAlert:'Waarschuwing instellen', dashboard:'Dashboard',
+      colResources:'Hulpmiddelen', buyerGuide:'Koopgids', blog:'Blog & advies', faq:'FAQ', inspection:'Aankoopinspectie', inspectorsDir:'Inspecteursgids', financing:'Vliegtuig financieren', marketTrends:'Markttrends',
+      colCompany:'Bedrijf', contact:'Contact', legal:'Juridische informatie', privacy:'Privacy', sitemap:'Sitemap', copy:'Alle rechten voorbehouden', cgv:'Voorwaarden', cookies:'Cookies', followLinkedin:'Volg ons op LinkedIn' }
   };
   function t(key){ var lang = currentLang(); return (I18N[lang] && I18N[lang][key]) || I18N.fr[key] || key; }
 
@@ -121,7 +137,12 @@
             ['/map.html', 'Carte des annonces'],
             ['/avions-a-vendre-france.html', 'Avions en France'], ['/avions-a-vendre-allemagne.html', 'Avions en Allemagne'],
             ['/avions-a-vendre-espagne.html', 'Avions en Espagne'], ['/avions-a-vendre-italie.html', 'Avions en Italie'],
-            ['/avions-a-vendre-royaume-uni.html', 'Avions au Royaume-Uni'], ['/avions-a-vendre-suisse.html', 'Avions en Suisse']
+            ['/avions-a-vendre-royaume-uni.html', 'Avions au Royaume-Uni'], ['/avions-a-vendre-suisse.html', 'Avions en Suisse'],
+            ['/avions-a-vendre-autriche.html', 'Avions en Autriche']
+          ] : lang === 'de' ? [
+            ['/flugzeug-kaufen-deutschland.html', 'Flugzeug kaufen in Deutschland'], ['/flugzeug-kaufen-schweiz.html', 'Flugzeug kaufen in der Schweiz']
+          ] : lang === 'nl' ? [
+            ['/vliegtuig-te-koop-nederland.html', 'Vliegtuig te koop in Nederland']
           ] : [])),
           col(t('colSell'), [
             [href('post-listing.html'), t('postListing')], [href('pro-dealers.html'), t('proDealers')], [href('pricing.html'), t('pricing')],
