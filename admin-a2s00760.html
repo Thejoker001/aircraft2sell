@@ -399,6 +399,7 @@ body.dense .kv{font-size:1.4rem}
       <button type="button" class="sn" id="sn-verif" data-action="showTab" data-args='["verif","__this__"]'><span class="sn-ico"><i data-icon="badge-check"></i></span><span class="sn-txt">Vérifications</span><span class="sn-badge nb-red" id="verif-badge" style="display:none"></span><span class="sn-key">6</span></button>
       <button type="button" class="sn" id="sn-subs" data-action="showTab" data-args='["subs","__this__"]'><span class="sn-ico"><i data-icon="credit-card"></i></span><span class="sn-txt">Abonnements</span><span class="sn-key">7</span></button>
       <button type="button" class="sn" id="sn-partners" data-action="showTab" data-args='["partners","__this__"]'><span class="sn-ico"><i data-icon="award"></i></span><span class="sn-txt">Partenaires</span><span class="sn-key">11</span></button>
+      <button type="button" class="sn" id="sn-inspectors" data-action="showTab" data-args='["inspectors","__this__"]'><span class="sn-ico"><i data-icon="shield-check"></i></span><span class="sn-txt">Annuaire</span><span class="sn-key">12</span></button>
 
       <div class="sg-label">Suivi</div>
       <button type="button" class="sn" id="sn-stats" data-action="showTab" data-args='["stats","__this__"]'><span class="sn-ico"><i data-icon="bar-chart"></i></span><span class="sn-txt">Statistiques</span><span class="sn-key">8</span></button>
@@ -714,6 +715,28 @@ body.dense .kv{font-size:1.4rem}
             <table>
               <thead><tr><th>Société</th><th>Catégorie</th><th>Palier</th><th>Statut</th><th>Validité</th><th></th></tr></thead>
               <tbody id="partners-body"><tr><td colspan="6" class="loading-row">Chargement...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANNUAIRE (inspecteurs pré-achat — aircraft2sell.eu/inspecteurs.html) -->
+      <div class="sec" id="tab-inspectors">
+        <div class="toolbar">
+          <div class="sec-title"><em>Annuaire</em> des inspecteurs</div>
+          <button class="tb-btn primary" data-action="openInspectorModal"><i data-icon="plus"></i>Nouvel inspecteur</button>
+          <button class="tb-btn" data-action="renderInspectors"><i data-icon="refresh"></i>Actualiser</button>
+        </div>
+        <div class="krow k3">
+          <div class="kc"><div class="kl">Publiés (actifs)</div><div class="kv" id="insp-active">0</div></div>
+          <div class="kc r"><div class="kl">En attente</div><div class="kv" id="insp-pending">0</div></div>
+          <div class="kc g"><div class="kl">Total</div><div class="kv" id="insp-total">0</div></div>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Nom / société</th><th>Pays</th><th>Email</th><th>Qualifications</th><th>Statut</th><th></th></tr></thead>
+              <tbody id="inspectors-body"><tr><td colspan="6" class="loading-row">Chargement...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -1176,6 +1199,41 @@ body.dense .kv{font-size:1.4rem}
   </div>
 </div>
 
+<div class="modal-back" id="mInspector" data-action="closeM" data-args='["mInspector"]' data-self-only="1">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-ti" id="mi-title">Nouvel <em>inspecteur</em></div><button class="modal-x" data-action="closeM" data-args='["mInspector"]'><i data-icon="close"></i></button></div>
+    <div class="modal-bd">
+      <input type="hidden" id="mi-id">
+      <div class="mfg2">
+        <div class="mfg"><label>Nom / société</label><input type="text" id="mi-name" placeholder="Nom ou atelier"></div>
+        <div class="mfg"><label>Email</label><input type="email" id="mi-email" placeholder="contact@exemple.com"></div>
+      </div>
+      <div class="mfg2">
+        <div class="mfg"><label>Téléphone</label><input type="tel" id="mi-phone" placeholder="+33 6 00 00 00 00"></div>
+        <div class="mfg"><label>Pays / zone d'intervention</label><input type="text" id="mi-country" placeholder="France, Bénélux…"></div>
+      </div>
+      <div class="mfg"><label>Site web (optionnel)</label><input type="url" id="mi-website" placeholder="https://…"></div>
+      <div class="mfg"><label>Qualifications / agréments</label><input type="text" id="mi-qualif" placeholder="Mécanicien agréé Part-66, expert EASA…"></div>
+      <div class="mfg"><label>Description publique</label><textarea id="mi-bio" style="min-height:60px;resize:vertical" placeholder="Catégories d'aéronefs couvertes, tarifs indicatifs… (affiché sur la page publique)"></textarea></div>
+      <div class="mfg2">
+        <div class="mfg"><label>Statut</label>
+          <select id="mi-status">
+            <option value="pending">En attente</option>
+            <option value="active">Publié (actif)</option>
+            <option value="rejected">Rejeté</option>
+          </select>
+        </div>
+      </div>
+      <div class="mfg"><label>Notes internes</label><textarea id="mi-notes" style="min-height:50px;resize:vertical" placeholder="Notes admin (jamais publiques)"></textarea></div>
+    </div>
+    <div class="modal-ft">
+      <button class="m-btn danger" id="mi-delete-btn" data-action="delInspectorM">Supprimer</button>
+      <button class="m-btn" data-action="closeM" data-args='["mInspector"]'>Annuler</button>
+      <button class="m-btn primary" data-action="saveInspectorM">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="adminOverlay" class="admin-overlay" data-action="toggleAdminSidebar"></div>
 
@@ -1506,13 +1564,13 @@ function statusPill(s){if(s==='live')return'<span class="pill p-live">Publiée</
 function planPill(p){if(p==='Pro')return'<span class="pill p-pro">Pro</span>';if(p==='Aviateur')return'<span class="pill p-avi">Aviateur</span>';return'<span class="pill p-ess">Essentiel</span>';}
 
 /* ── STATE ── */
-var TABS=['dash','mod','list','new','users','subs','partners','stats','msgs','reports','set'];
+var TABS=['dash','mod','list','new','users','subs','partners','inspectors','stats','msgs','reports','set'];
 var CURRENT_TAB='dash';
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
 var _allListings=[],_allUsers=[];
 
 /* ── NAV ── */
-var TITLES={dash:'Tableau de <em>bord</em>',mod:'File de <em>modération</em>',list:'Toutes les <em>annonces</em>',new:'Créer une <em>annonce</em>',users:'Gestion des <em>membres</em>',subs:'<em>Abonnements</em>',partners:'<em>Partenaires</em>',stats:'<em>Statistiques</em>',reports:'Gestion des <em>signalements</em>',set:'<em>Paramètres</em>'};
+var TITLES={dash:'Tableau de <em>bord</em>',mod:'File de <em>modération</em>',list:'Toutes les <em>annonces</em>',new:'Créer une <em>annonce</em>',users:'Gestion des <em>membres</em>',subs:'<em>Abonnements</em>',partners:'<em>Partenaires</em>',inspectors:'<em>Annuaire</em> des inspecteurs',stats:'<em>Statistiques</em>',reports:'Gestion des <em>signalements</em>',set:'<em>Paramètres</em>'};
 function showTab(id,navEl){
   TABS.forEach(function(t){var s=sel('tab-'+t);if(s)s.style.display='none';});
   document.querySelectorAll('.sn').forEach(function(n){n.classList.remove('active');});
@@ -1525,7 +1583,7 @@ function showTab(id,navEl){
       if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();
     });return;
   }
-  if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='partners')renderPartners();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();if(id==='set')loadAuditLogs();
+  if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='partners')renderPartners();if(id==='inspectors')renderInspectors();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();if(id==='set')loadAuditLogs();
 }
 
 /* ── REFRESH ── */
@@ -2725,6 +2783,100 @@ async function delPartnerM(){
     showToast('Partenaire supprimé');
     closeM('mPartner');
     renderPartners();
+  }catch(e){showToast('Erreur : '+e.message);}
+}
+
+/* ── ANNUAIRE (inspecteurs pré-achat — inspecteurs.html) ──
+   Même pattern que renderPartners/openPartnerModal, table public.inspectors
+   (lecture publique limitée aux lignes status='active', écriture admin only
+   via policy inspectors_admin_all). */
+var _allInspectors=[];
+async function renderInspectors(){
+  var tb=sel('inspectors-body');if(tb)tb.innerHTML='<tr><td colspan="6" class="loading-row">Chargement…</td></tr>';
+  try{
+    var rows=await sb('GET','inspectors','order=created_at.desc&select=*');
+    _allInspectors=rows||[];
+    var active=_allInspectors.filter(function(p){return p.status==='active';});
+    var pending=_allInspectors.filter(function(p){return p.status==='pending';});
+    setText('insp-active',active.length.toLocaleString('fr-FR'));
+    setText('insp-pending',pending.length.toLocaleString('fr-FR'));
+    setText('insp-total',_allInspectors.length.toLocaleString('fr-FR'));
+    if(!tb)return;
+    if(!_allInspectors.length){tb.innerHTML='<tr><td colspan="6" class="loading-row">Aucun inspecteur. Cliquez sur « Nouvel inspecteur ».</td></tr>';return;}
+    tb.innerHTML=_allInspectors.map(function(p){
+      var statusPill={active:'<span class="pill p-live">Publié</span>',pending:'<span class="pill p-pend">En attente</span>',rejected:'<span class="pill p-rej">Rejeté</span>'}[p.status]||p.status;
+      return '<tr>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text);font-weight:600">'+esc(p.name||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.8rem">'+esc(p.country||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.8rem">'+esc(p.email||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.8rem">'+esc(p.qualifications||'—')+'</td>'
+        +'<td style="padding:.65rem .9rem">'+statusPill+'</td>'
+        +'<td style="padding:.65rem .9rem"><div class="acts">'
+        +'<button class="act" data-action="openInspectorModal" data-args="['+p.id+']" title="Modifier">'+A2SIcon('edit')+'</button>'
+        +'</div></td></tr>';
+    }).join('');
+  }catch(e){
+    console.error('renderInspectors:',e);
+    var tb2=sel('inspectors-body');if(tb2)tb2.innerHTML='<tr><td colspan="6" style="color:var(--a2s-danger);font-size:.8rem">Erreur : '+esc(e.message)+'</td></tr>';
+  }
+}
+function openInspectorModal(id){
+  var p=id?_allInspectors.find(function(x){return x.id===id;}):null;
+  sel('mi-title').innerHTML=p?'Modifier <em>inspecteur</em>':'Nouvel <em>inspecteur</em>';
+  sel('mi-id').value=p?p.id:'';
+  sel('mi-name').value=p?(p.name||''):'';
+  sel('mi-email').value=p?(p.email||''):'';
+  sel('mi-phone').value=p?(p.phone||''):'';
+  sel('mi-country').value=p?(p.country||''):'';
+  sel('mi-website').value=p?(p.website_url||''):'';
+  sel('mi-qualif').value=p?(p.qualifications||''):'';
+  sel('mi-bio').value=p?(p.bio||''):'';
+  sel('mi-status').value=p?(p.status||'pending'):'pending';
+  sel('mi-notes').value=p?(p.notes||''):'';
+  sel('mi-delete-btn').style.display=p?'inline-flex':'none';
+  openM('mInspector');
+}
+async function saveInspectorM(){
+  var id=sel('mi-id').value;
+  var name=sel('mi-name').value.trim();
+  var email=sel('mi-email').value.trim();
+  var country=sel('mi-country').value.trim();
+  if(!name||!email||!country){showToast('Nom, email et pays/zone requis');return;}
+  var body={
+    name:name,
+    email:email,
+    phone:sel('mi-phone').value.trim()||null,
+    country:country,
+    website_url:sel('mi-website').value.trim()||null,
+    qualifications:sel('mi-qualif').value.trim()||null,
+    bio:sel('mi-bio').value.trim()||null,
+    status:sel('mi-status').value,
+    notes:sel('mi-notes').value.trim()||null,
+  };
+  try{
+    if(id){
+      await sb('PATCH','inspectors','id=eq.'+id,body,true);
+      logAdmin('inspector.update','inspector',id,{});
+      showToast('Inspecteur mis à jour');
+    }else{
+      await sb('POST','inspectors',null,body,true);
+      logAdmin('inspector.create','inspector',null,{name:name});
+      showToast('Inspecteur créé');
+    }
+    closeM('mInspector');
+    renderInspectors();
+  }catch(e){showToast('Erreur : '+e.message);}
+}
+async function delInspectorM(){
+  var id=sel('mi-id').value;
+  if(!id)return;
+  if(!confirm('Supprimer cet inspecteur ?'))return;
+  try{
+    await sb('DELETE','inspectors','id=eq.'+id);
+    logAdmin('inspector.delete','inspector',id,{});
+    showToast('Inspecteur supprimé');
+    closeM('mInspector');
+    renderInspectors();
   }catch(e){showToast('Erreur : '+e.message);}
 }
 

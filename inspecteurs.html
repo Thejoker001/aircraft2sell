@@ -45,6 +45,15 @@
 .insp-form-aside li{display:flex;align-items:flex-start;gap:.6rem;font-size:.9rem;line-height:1.5}
 .insp-form-aside li .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.15rem}
 @media(max-width:1024px){.insp-form-grid{grid-template-columns:1fr}}
+.insp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:1.25rem;margin:2rem 0}
+.insp-card{padding:1.4rem;display:flex;flex-direction:column;gap:.55rem}
+.insp-card .insp-name{font-weight:700;color:var(--a2s-text);font-size:1.05rem}
+.insp-card .insp-country{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--a2s-text-faint)}
+.insp-card .insp-qualif{font-size:.82rem;color:var(--a2s-text-muted)}
+.insp-card .insp-bio{font-size:.85rem;color:var(--a2s-text-muted);line-height:1.5}
+.insp-card .insp-contacts{display:flex;flex-direction:column;gap:.35rem;margin-top:.4rem;border-top:1px solid var(--a2s-border);padding-top:.6rem}
+.insp-card .insp-contacts a{font-size:.84rem;font-weight:600;color:var(--a2s-blue);display:flex;align-items:center;gap:.4rem;text-decoration:none}
+.insp-card .insp-contacts .ic{width:15px;height:15px}
 </style>
 <script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
 </head>
@@ -81,7 +90,9 @@
     </div>
   </div>
 
-  <div class="card insp-empty">
+  <div id="inspGrid" class="insp-grid" style="display:none"></div>
+
+  <div class="card insp-empty" id="inspEmpty">
     <span class="icon-box"><i data-icon="clipboard" class="ic"></i></span>
     <h2>L'annuaire se construit</h2>
     <p>Aircraft2Sell référence progressivement des inspecteurs indépendants en Europe. Aucun inspecteur n'est encore listé dans votre pays de recherche — revenez bientôt, ou consultez notre guide pour savoir quoi vérifier vous-même en attendant.</p>
@@ -162,6 +173,36 @@ async function submitInspecteur(e){
   finally{btn.disabled=false;btn.classList.remove('is-loading');}
 }
 ['iName','iEmail','iCountry'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){this.closest('.field').classList.remove('has-error');});});
+
+/* ── Annuaire publié (table public.inspectors, lecture publique status=active) ── */
+var SB_INSP='https://hlivysnlzlqdjcigqgvk.supabase.co';
+var SK_INSP='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
+function escInsp(s){if(s===null||s===undefined)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+function renderInspector(p){
+  var contacts=['<a href="mailto:'+escInsp(p.email)+'">'+A2SIcon('mail')+escInsp(p.email)+'</a>'];
+  if(p.phone)contacts.push('<a href="tel:'+escInsp(p.phone)+'">'+A2SIcon('phone')+escInsp(p.phone)+'</a>');
+  if(p.website_url)contacts.push('<a href="'+escInsp(p.website_url)+'" target="_blank" rel="noopener">'+A2SIcon('external')+'Site web</a>');
+  return '<div class="card insp-card">'
+    +'<div class="insp-country">'+escInsp(p.country)+'</div>'
+    +'<div class="insp-name">'+escInsp(p.name)+'</div>'
+    +(p.qualifications?'<div class="insp-qualif">'+escInsp(p.qualifications)+'</div>':'')
+    +(p.bio?'<div class="insp-bio">'+escInsp(p.bio)+'</div>':'')
+    +'<div class="insp-contacts">'+contacts.join('')+'</div>'
+    +'</div>';
+}
+window.addEventListener('DOMContentLoaded',async function(){
+  var grid=document.getElementById('inspGrid'),empty=document.getElementById('inspEmpty');
+  try{
+    var r=await fetch(SB_INSP+'/rest/v1/inspectors?select=name,email,phone,country,qualifications,bio,website_url&order=created_at.desc',{headers:{apikey:SK_INSP,Authorization:'Bearer '+SK_INSP}});
+    var rows=r.ok?await r.json():[];
+    if(rows.length){
+      grid.innerHTML=rows.map(renderInspector).join('');
+      grid.style.display='grid';
+      empty.style.display='none';
+      if(window.A2SIcon&&A2SIcon.hydrate)A2SIcon.hydrate(grid);
+    }
+  }catch(e){/* silencieux : repli sur le bloc "annuaire se construit" déjà affiché */}
+});
 </script>
 </body>
 </html>
