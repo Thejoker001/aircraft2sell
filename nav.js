@@ -349,7 +349,7 @@ window.A2SFavs = (function(){
       '<nav id="mainNav" aria-label="Navigation principale">',
         '<div class="nav-inner">',
           '<a href="' + href('index.html') + '" class="logo" aria-label="Aircraft2Sell — accueil">',
-            '<img src="' + href('logo.png') + '?v=20260908" alt="Aircraft2Sell" class="logo-img" width="180" height="29" loading="eager">',
+            '<img src="' + href('logo.webp') + '?v=20261109" alt="Aircraft2Sell" class="logo-img" width="180" height="29" loading="eager">',
           '</a>',
           '<ul class="nav-links">',
             '<li class="nav-mega" id="navMega">',
