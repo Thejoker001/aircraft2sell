@@ -205,8 +205,29 @@ async function modeSeo(req, res, url, cle) {
     // L'URL doit être EXACTEMENT celle que render() demandera (optimizeImg(p,1200)
     // ajoute ?width=1200&quality=80&format=webp — paramètres sans effet sur
     // /object/public/, mais ils font partie de la clé de cache du navigateur).
-    const lcpUrl = photos[0] + (photos[0].includes('?') ? '&' : '?') + 'width=1200&quality=80&format=webp';
+    const photosOpt = photos.map((p) => p + (p.includes('?') ? '&' : '?') + 'width=1200&quality=80&format=webp');
+    const lcpUrl = photosOpt[0];
     html = html.replace('</head>', `<link rel="preload" as="image" href="${esc(lcpUrl)}" fetchpriority="high">\n</head>`);
+    // Audit Lighthouse mobile 09/11/2026 : le <link preload> ci-dessus met bien
+    // les octets en cache navigateur tôt, mais l'élément <img> candidat au LCP
+    // n'existait QUE côté client (render() le crée après un fetch Supabase
+    // REDONDANT avec celui déjà fait ici) -> "Load Delay" = 48% du LCP mesuré
+    // (10 s sur listing.html mobile). Fix : rendre la vraie galerie en HTML
+    // brut, identique au markup que render() injectera ensuite par-dessus
+    // (même ids/classes -> aucun flash, le client écrase avec le même contenu
+    // une fois les données chargées, comme déjà fait pour specs/desc/price).
+    const photosThumb = photos.map((p) => p + (p.includes('?') ? '&' : '?') + 'width=300&quality=80&format=webp');
+    const mainImg = `<img src="${esc(photosOpt[0])}" alt="${esc(title)}" loading="eager" fetchpriority="high">`
+      + (photos.length > 1 ? `<span class="gallery-count">${photos.length} photos</span>` : '');
+    const thumbsHtml = photosThumb.slice(0, 5).map((p, i) => {
+      const argAttr = `[${i},&quot;${esc(photosOpt[i])}&quot;]`;
+      return `<button type="button" class="gallery-thumb${i === 0 ? ' active' : ''}" data-action="setMainPhoto" data-args="${argAttr}" style="background-image:url('${esc(p)}')" aria-label="Photo ${i + 1}"></button>`;
+    }).join('');
+    html = html.replace(
+      '<div class="gallery" id="gallery"><div class="gallery-main skel"></div></div>',
+      `<div class="gallery" id="gallery"><div class="gallery-main" id="galleryMain" data-action="openLightboxCurrent" title="Cliquer pour agrandir">${mainImg}</div>`
+      + `${thumbsHtml ? `<div class="gallery-thumbs">${thumbsHtml}</div>` : ''}</div>`,
+    );
   }
   html = prerendreCorps(html, listing, lang, title, pr, canonicalUrl);
   const schema = {
