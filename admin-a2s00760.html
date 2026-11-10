@@ -842,8 +842,9 @@ body.dense .kv{font-size:1.4rem}
       <!-- ABONNEMENTS -->
       <div class="sec" id="tab-subs">
         <div class="sec-title">Gestion des <em>abonnements</em></div>
+        <p class="muted small" style="margin:-.5rem 0 1rem">Abonnements vendeurs (Essentiel/Aviateur/Pro) et abonnements publicitaires (partenaires — Découverte/Visibilité/Premium) réunis dans une seule liste et un seul MRR.</p>
         <div class="krow k3">
-          <div class="kc"><div class="kl">MRR estimé</div><div class="kv" id="sub-mrr">0</div></div>
+          <div class="kc"><div class="kl">MRR estimé (vendeurs + pub)</div><div class="kv" id="sub-mrr">0</div></div>
           <div class="kc g"><div class="kl">Abonnés payants</div><div class="kv" id="sub-act">0</div></div>
           <div class="kc b"><div class="kl">ARR estimé</div><div class="kv" id="sub-arr">0</div></div>
         </div>
@@ -2059,12 +2060,26 @@ async function loadStripeAdmin(){
     el.innerHTML=h;
   }catch(e){el.innerHTML='<div style="color:var(--a2s-danger);font-size:.8rem">Erreur : '+esc(e.message)+'</div>';}
 }
-function renderSubs(){
-  var avi=_allUsers.filter(function(u){return u.plan==='Aviateur'&&!u.is_free;});var pro=_allUsers.filter(function(u){return u.plan==='Pro'&&!u.is_free;});var mrr=avi.length*29+pro.length*79;
-  setText('sub-mrr',mrr+' EUR');setText('sub-act',avi.length+pro.length);setText('sub-arr',(mrr*12)+' EUR');
-  var paid=avi.concat(pro);var tb=sel('subs-body');if(!tb)return;
-  if(!paid.length){tb.innerHTML='<tr><td colspan="5" class="loading-row">Aucun abonné payant</td></tr>';return;}
-  tb.innerHTML=paid.map(function(u){var price=u.is_free?'<span class="pill p-live">Offert</span>':(u.plan==='Pro'?'79':'29')+' EUR/mois';return'<tr><td style="color:var(--a2s-text)">'+esc(u.name||'--')+'</td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+(u.is_free?'<span class="pill p-live" style="margin-left:.3rem">Offert</span>':'')+(u.founder?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(138,99,39,.14);border:1px solid rgba(138,99,39,.35);color:#8A6327;padding:.1rem .35rem;margin-left:.3rem">FONDATEUR</span>':'')+(u.is_pro?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);color:#93c5fd;padding:.1rem .35rem;margin-left:.3rem">PRO</span>':u.seller_type==='particulier'?'<span style="font-size:.6rem;color:var(--a2s-text-faint);margin-left:.3rem">Particulier</span>':'')+(u.status==='banned'?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#fca5a5;padding:.1rem .35rem;margin-left:.3rem">BANNI</span>':'')+(u.last_login_at?'<span style="font-size:.6rem;color:var(--a2s-text-faint);margin-left:.3rem" title="Dernière connexion">· '+fmtDate(u.last_login_at)+'</span>':'')+'</td><td style="color:var(--a2s-text-faint);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td style="color:var(--a2s-accent)">'+price+'</td></tr>';}).join('');
+async function renderSubs(){
+  var avi=_allUsers.filter(function(u){return u.plan==='Aviateur'&&!u.is_free;});var pro=_allUsers.filter(function(u){return u.plan==='Pro'&&!u.is_free;});var sellerMrr=avi.length*29+pro.length*79;
+  var tb=sel('subs-body');
+  /* Abonnements publicitaires (table public.partners) intégrés à la même liste
+     que les abonnements vendeurs — un partenaire actif et non offert compte
+     comme un abonné payant au même titre qu'un Aviateur/Pro. */
+  var adPartners=[];
+  try{
+    var prows=_allPartners&&_allPartners.length?_allPartners:await sb('GET','partners','order=created_at.desc&select=*');
+    _allPartners=prows||[];
+    adPartners=_allPartners.filter(function(p){return p.status==='active';});
+  }catch(e){console.error('renderSubs (partners):',e);}
+  var adMrr=adPartners.reduce(function(s,p){return s+(p.is_complimentary?0:(PARTNER_TIER_PRICE[p.tier]||0));},0);
+  var mrr=sellerMrr+adMrr;
+  setText('sub-mrr',mrr+' EUR');setText('sub-act',avi.length+pro.length+adPartners.length);setText('sub-arr',(mrr*12)+' EUR');
+  var paid=avi.concat(pro);if(!tb)return;
+  if(!paid.length&&!adPartners.length){tb.innerHTML='<tr><td colspan="5" class="loading-row">Aucun abonné payant</td></tr>';return;}
+  var sellerRows=paid.map(function(u){var price=u.is_free?'<span class="pill p-live">Offert</span>':(u.plan==='Pro'?'79':'29')+' EUR/mois';return'<tr><td style="color:var(--a2s-text)">'+esc(u.name||'--')+'</td><td>'+esc(u.email||'--')+'</td><td>'+planPill(u.plan)+(u.is_free?'<span class="pill p-live" style="margin-left:.3rem">Offert</span>':'')+(u.founder?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(138,99,39,.14);border:1px solid rgba(138,99,39,.35);color:#8A6327;padding:.1rem .35rem;margin-left:.3rem">FONDATEUR</span>':'')+(u.is_pro?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);color:#93c5fd;padding:.1rem .35rem;margin-left:.3rem">PRO</span>':u.seller_type==='particulier'?'<span style="font-size:.6rem;color:var(--a2s-text-faint);margin-left:.3rem">Particulier</span>':'')+(u.status==='banned'?'<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#fca5a5;padding:.1rem .35rem;margin-left:.3rem">BANNI</span>':'')+(u.last_login_at?'<span style="font-size:.6rem;color:var(--a2s-text-faint);margin-left:.3rem" title="Dernière connexion">· '+fmtDate(u.last_login_at)+'</span>':'')+'</td><td style="color:var(--a2s-text-faint);font-size:.65rem">'+fmtDate(u.registered_at)+'</td><td style="color:var(--a2s-accent)">'+price+'</td></tr>';});
+  var adRows=adPartners.map(function(p){var price=p.is_complimentary?'<span class="pill p-live">Offert</span>':(PARTNER_TIER_PRICE[p.tier]||0)+' EUR/mois';var tierBadge='<span class="pill" style="background:rgba(232,160,32,.12);border:1px solid rgba(232,160,32,.3);color:var(--a2s-accent)">Pub · '+esc(PARTNER_TIER_LABELS[p.tier]||p.tier||'—')+'</span>';return'<tr><td style="color:var(--a2s-text)">'+esc(p.company||'--')+'</td><td>'+esc(p.contact_email||'--')+'</td><td>'+tierBadge+'</td><td style="color:var(--a2s-text-faint);font-size:.65rem">'+fmtDate(p.created_at)+'</td><td style="color:var(--a2s-accent)">'+price+'</td></tr>';});
+  tb.innerHTML=sellerRows.concat(adRows).join('');
 }
 
 /* ── LISTING EDIT ── */
