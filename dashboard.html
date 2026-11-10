@@ -2066,15 +2066,19 @@ async function submitVerif(){
   if(num.length<5){al.innerHTML='<div class="alert alert-error" style="margin-bottom:1rem">'+A2SIcon('alert-triangle')+'<span>Indiquez le numéro de votre pièce d\'identité.</span></div>';return;}
   var email=localStorage.getItem('a2s_user_email')||'';
   var tk=sessionStorage.getItem('a2s_auth_token')||'';
-  if(email){
-    try{
-      await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{
-        method:'PATCH',
-        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY),'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({verification_status:'pending',verification_doc_type:document.getElementById('verifDocType').value,verification_doc_country:document.getElementById('verifDocCountry').value})
-      });
-    }catch(e){}
-  }
+  if(!email){al.innerHTML='<div class="alert alert-error" style="margin-bottom:1rem">'+A2SIcon('alert-triangle')+'<span>Reconnectez-vous pour envoyer votre demande.</span></div>';return;}
+  try{
+    /* La demande est stockée dans verification_requests (lu par le panneau
+       admin « Vérifications »). N'écrit JAMAIS sur users.verification_* :
+       ces colonnes n'existent pas dans le schéma, le PATCH échouait en
+       silence et aucune demande n'atteignait jamais l'admin. */
+    var r=await fetch(SB_URL+'/rest/v1/verification_requests',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY),'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({email:email,doc_type:document.getElementById('verifDocType').value,doc_number:num,doc_country:document.getElementById('verifDocCountry').value})
+    });
+    if(!r.ok){var d=await r.json().catch(function(){return{};});throw new Error(d.message||'Envoi impossible.');}
+  }catch(e){al.innerHTML='<div class="alert alert-error" style="margin-bottom:1rem">'+A2SIcon('alert-triangle')+'<span>Erreur: '+e.message+'</span></div>';return;}
   localStorage.setItem('a2s_verif_status','pending');
   applyVerifState();
   showToast('Demande de vérification envoyée.');

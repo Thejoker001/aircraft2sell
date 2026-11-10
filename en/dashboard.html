@@ -1914,15 +1914,19 @@ async function submitVerif(){
   if(num.length<5){al.innerHTML='<div class="alert alert-error" style="margin-bottom:1rem">'+A2SIcon('alert-triangle')+'<span>Enter your identity document number.</span></div>';return;}
   var email=localStorage.getItem('a2s_user_email')||'';
   var tk=sessionStorage.getItem('a2s_auth_token')||'';
-  if(email){
-    try{
-      await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email),{
-        method:'PATCH',
-        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY),'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({verification_status:'pending',verification_doc_type:document.getElementById('verifDocType').value,verification_doc_country:document.getElementById('verifDocCountry').value})
-      });
-    }catch(e){}
-  }
+  if(!email){al.innerHTML='<div class="alert alert-error" style="margin-bottom:1rem">'+A2SIcon('alert-triangle')+'<span>Please log in again to send your request.</span></div>';return;}
+  try{
+    /* Stored in verification_requests (read by the admin "Verifications"
+       tab). Never write to users.verification_*: those columns don't exist
+       in the schema, the PATCH failed silently and no request ever
+       reached the admin panel. */
+    var r=await fetch(SB_URL+'/rest/v1/verification_requests',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY),'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({email:email,doc_type:document.getElementById('verifDocType').value,doc_number:num,doc_country:document.getElementById('verifDocCountry').value})
+    });
+    if(!r.ok){var d=await r.json().catch(function(){return{};});throw new Error(d.message||'Could not send request.');}
+  }catch(e){al.innerHTML='<div class="alert alert-error" style="margin-bottom:1rem">'+A2SIcon('alert-triangle')+'<span>Error: '+e.message+'</span></div>';return;}
   localStorage.setItem('a2s_verif_status','pending');
   applyVerifState();
   showToast('Verification request sent.');
