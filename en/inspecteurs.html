@@ -443,8 +443,12 @@ window.addEventListener('DOMContentLoaded',async function(){
 
     /* Map (only if coordinates exist; otherwise list only). The map container
        must be visible BEFORE Leaflet initialises, or its tile grid is sized
-       against a 0×0 box and never recovers — show the layout first, init
-       after, then force an invalidateSize() once layout has settled. */
+       against a 0×0 box — but even with the container visible, calling
+       fitBounds() in the same tick can still see an unsettled size (CSS
+       grid, web fonts). Build the map with a default view first, then
+       recompute invalidateSize() + fitBounds/setView inside a setTimeout,
+       once layout has actually settled (otherwise: zoom pushed to max on a
+       single tile, rest stays grey). */
     var geo=rows.map(function(p,i){return{p:p,i:i};}).filter(function(x){return typeof x.p.lat==='number'&&typeof x.p.lng==='number';});
     combo.style.display='grid';
     toolbar.style.display='flex';
@@ -458,14 +462,17 @@ window.addEventListener('DOMContentLoaded',async function(){
         inspState.markers[x.i]=m;
         m.on('click',function(){inspHighlight(x.i);});
       });
-      if(geo.length>1){
-        var bounds=L.latLngBounds(geo.map(function(x){return [x.p.lat,x.p.lng];}));
-        map.fitBounds(bounds,{padding:[40,40],maxZoom:6});
-      }else{
-        map.setView([geo[0].p.lat,geo[0].p.lng],5);
+      function inspFitMap(){
+        map.invalidateSize();
+        if(geo.length>1){
+          var bounds=L.latLngBounds(geo.map(function(x){return [x.p.lat,x.p.lng];}));
+          map.fitBounds(bounds,{padding:[40,40],maxZoom:6});
+        }else{
+          map.setView([geo[0].p.lat,geo[0].p.lng],5);
+        }
       }
-      setTimeout(function(){map.invalidateSize();},50);
-      setTimeout(function(){map.invalidateSize();},350);
+      setTimeout(inspFitMap,80);
+      setTimeout(function(){map.invalidateSize();},400);
     }else{
       document.getElementById('inspMap').style.display='none';
     }

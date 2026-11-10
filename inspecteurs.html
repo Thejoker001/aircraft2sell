@@ -442,9 +442,12 @@ window.addEventListener('DOMContentLoaded',async function(){
 
     /* Carte (seulement si des coordonnées existent ; sinon liste seule).
        Le conteneur doit être visible AVANT l'initialisation Leaflet, sinon
-       la grille de tuiles est calculée sur une boîte 0×0 et ne se corrige
-       jamais ensuite — on affiche d'abord la mise en page, puis on initialise,
-       puis on force un invalidateSize() une fois la mise en page stabilisée. */
+       la grille de tuiles est calculée sur une boîte 0×0 — mais même avec le
+       conteneur visible, fitBounds() appelé dans le même tick peut encore
+       recevoir une taille non stabilisée (grid CSS, polices). On construit
+       donc la carte avec une vue par défaut, puis on recale invalidateSize()
+       + fitBounds/setView dans un setTimeout, après que le layout se soit
+       posé (sinon : zoom poussé à fond sur un seul tile, reste gris). */
     var geo=rows.map(function(p,i){return{p:p,i:i};}).filter(function(x){return typeof x.p.lat==='number'&&typeof x.p.lng==='number';});
     combo.style.display='grid';
     toolbar.style.display='flex';
@@ -458,14 +461,17 @@ window.addEventListener('DOMContentLoaded',async function(){
         inspState.markers[x.i]=m;
         m.on('click',function(){inspHighlight(x.i);});
       });
-      if(geo.length>1){
-        var bounds=L.latLngBounds(geo.map(function(x){return [x.p.lat,x.p.lng];}));
-        map.fitBounds(bounds,{padding:[40,40],maxZoom:6});
-      }else{
-        map.setView([geo[0].p.lat,geo[0].p.lng],5);
+      function inspFitMap(){
+        map.invalidateSize();
+        if(geo.length>1){
+          var bounds=L.latLngBounds(geo.map(function(x){return [x.p.lat,x.p.lng];}));
+          map.fitBounds(bounds,{padding:[40,40],maxZoom:6});
+        }else{
+          map.setView([geo[0].p.lat,geo[0].p.lng],5);
+        }
       }
-      setTimeout(function(){map.invalidateSize();},50);
-      setTimeout(function(){map.invalidateSize();},350);
+      setTimeout(inspFitMap,80);
+      setTimeout(function(){map.invalidateSize();},400);
     }else{
       document.getElementById('inspMap').style.display='none';
     }
