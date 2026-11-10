@@ -1772,8 +1772,12 @@ async function refreshAll(){
        vendeurs). listings_admin est une vue security_definer qui ne
        renvoie des lignes QUE si le JWT appelant est contact@aircraft2sell.eu
        (vérifié en base, pas côté client) — l'admin garde un accès complet
-       à toutes les colonnes de toutes les annonces. */
-    var rows=await sb('GET','listings_admin','order=submitted_at.desc&limit=500');
+       à toutes les colonnes de toutes les annonces.
+       sbAll() (pagination par pages de 1000, voir S14 plus haut) au lieu
+       d'un sb(...,'limit=500') fixe : au-delà de 500 annonces, les plus
+       anciennes (potentiellement en attente de modération) disparaissaient
+       silencieusement de l'admin sans aucune erreur visible. */
+    var rows=await sbAll('listings_admin','order=submitted_at.desc');
     _allListings=rows.map(sbToL);
     setConnStatus(true);
   }catch(e){
