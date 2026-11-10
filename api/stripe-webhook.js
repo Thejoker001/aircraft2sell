@@ -583,6 +583,90 @@ export default async function handler(req, res) {
     }
   }
 
+  /* Session de paiement expirée sans conversion (abandon de panier) —
+     relance (10/11/26) : uniquement pour un abonnement (metadata.plan),
+     jamais pour la mise en avant d'annonce (trop ponctuel pour relancer)
+     ni si l'email est absent. Un seul email, pas de boucle de relance. */
+  if (event.type === 'checkout.session.expired') {
+    try {
+      const session = event.data.object || {};
+      const plan = (session.metadata && session.metadata.plan) || '';
+      const featureAbandon = (session.metadata && session.metadata.feature) || '';
+      const email = session.customer_details?.email || session.customer_email || '';
+      if (email && plan && !featureAbandon) {
+        const planLabel = plan === 'pro' ? 'Pro' : 'Aviateur';
+        envoyer({
+          to: email,
+          toName: email,
+          sujet: 'Votre abonnement vous attend — Aircraft2Sell',
+          html: gabarit({
+            titre: 'Finalisez votre abonnement',
+            intro: `Vous avez commencé à souscrire à la formule <strong>${esc(planLabel)}</strong> ` +
+                   `mais le paiement n'a pas été finalisé. Vous pouvez reprendre à tout moment, ` +
+                   `aucun montant n'a été débité.`,
+            cta: `${SITE}/checkout.html?plan=${encodeURIComponent(plan)}`,
+            ctaLabel: 'Reprendre mon abonnement',
+          }),
+        }).catch((e) => console.error('email panier abandonné client:', e.message));
+      }
+    } catch (e) {
+      console.error('webhook checkout.session.expired:', e.message);
+    }
+  }
+
+  /* Remboursement — alerte admin pour vérification manuelle (un
+     remboursement doit en principe s'accompagner d'une révocation d'accès
+     payant ou d'un retrait de mise en avant, mais le charge ne porte pas
+     fiablement les métadonnées de la session d'origine : pas d'automatisme
+     risqué ici, juste un signal pour agir à la main). */
+  if (event.type === 'charge.refunded') {
+    try {
+      const charge = event.data.object || {};
+      const email = charge.billing_details?.email || charge.receipt_email || 'inconnu';
+      const montant = ((charge.amount_refunded || 0) / 100).toLocaleString('fr-FR');
+      const devise = (charge.currency || 'eur').toUpperCase();
+      envoyer({
+        to: ADMIN_EMAIL,
+        toName: 'Administration Aircraft2Sell',
+        sujet: `Remboursement effectué — ${email}`,
+        html: gabarit({
+          titre: 'Remboursement Stripe',
+          intro: `${esc(email)} — <strong>${montant} ${devise}</strong> remboursé(s) sur la charge ` +
+                 `${esc(charge.id || '')}. Vérifier si l'accès payant ou la mise en avant d'annonce ` +
+                 `doivent être révoqués manuellement.`,
+        }),
+      }).catch((e) => console.error('email refund admin:', e.message));
+    } catch (e) {
+      console.error('webhook charge.refunded:', e.message);
+    }
+  }
+
+  /* Litige bancaire (chargeback) — alerte admin immédiate, c'est le cas le
+     plus urgent (délai de réponse imposé par la banque du client). */
+  if (event.type === 'charge.dispute.created') {
+    try {
+      const dispute = event.data.object || {};
+      const montant = ((dispute.amount || 0) / 100).toLocaleString('fr-FR');
+      const devise = (dispute.currency || 'eur').toUpperCase();
+      envoyer({
+        to: ADMIN_EMAIL,
+        toName: 'Administration Aircraft2Sell',
+        sujet: `⚠ Litige bancaire ouvert — ${montant} ${devise}`,
+        html: gabarit({
+          titre: 'Litige bancaire (chargeback)',
+          intro: `Un client a contesté un paiement de <strong>${montant} ${devise}</strong> ` +
+                 `auprès de sa banque (motif Stripe : ${esc(dispute.reason || 'inconnu')}). ` +
+                 `Charge ${esc(dispute.charge || '')}. Répondre dans le Dashboard Stripe avant ` +
+                 `l'échéance indiquée, sous peine de perdre le litige par défaut.`,
+          cta: 'https://dashboard.stripe.com/disputes',
+          ctaLabel: 'Voir le litige dans Stripe',
+        }),
+      }).catch((e) => console.error('email dispute admin:', e.message));
+    } catch (e) {
+      console.error('webhook charge.dispute.created:', e.message);
+    }
+  }
+
   /* Toujours accuser réception (200) pour les événements connus/ignorés. */
   return res.status(200).json({ received: true });
 }

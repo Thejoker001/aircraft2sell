@@ -26,9 +26,39 @@ const PLANS = {
 const ADDON_PRICE = 10;
 const FEATURE_PRICE = 9;  /* mise en avant d'une annonce 30 jours (paiement unique) */
 const PROMOS = { AVIATION2026: 5, A2S2026: 10 };
+const LOCALES_CONNUES = new Set(['fr', 'en', 'et']);
 
 function eurToCents(n) {
   return Math.round(n * 100);
+}
+
+/* Contrôle (10/11/26) : empêche un double abonnement actif pour le même
+   email — un double-clic ou une relance du formulaire créait sinon une
+   deuxième session Stripe sans vérifier qu'un abonnement payant tournait
+   déjà, avec un risque réel de double prélèvement mensuel. */
+async function aDejaUnAbonnementActif(email, cle) {
+  try {
+    const rc = await fetch(`${STRIPE}/customers?email=${encodeURIComponent(email)}&limit=3`, {
+      headers: { Authorization: `Bearer ${cle}` },
+    });
+    if (!rc.ok) return false;
+    const cd = await rc.json();
+    const customers = (cd && cd.data) || [];
+    for (const customer of customers) {
+      const rs = await fetch(
+        `${STRIPE}/subscriptions?customer=${customer.id}&status=active&limit=1`,
+        { headers: { Authorization: `Bearer ${cle}` } }
+      );
+      if (!rs.ok) continue;
+      const sd = await rs.json();
+      if (sd && sd.data && sd.data.length) return true;
+    }
+    return false;
+  } catch {
+    /* Panne de la vérification : on n'bloque jamais un paiement légitime
+       pour ça — au pire un doublon rarissime, à corriger manuellement. */
+    return false;
+  }
 }
 
 export default async function handler(req, res) {
@@ -43,6 +73,8 @@ export default async function handler(req, res) {
   const addon = !!c.addon;
   const promo = String(c.promo || '').trim().toUpperCase();
   const featureId = c.feature ? String(c.feature) : '';
+  const localeDemandee = String(c.locale || '').trim().toLowerCase();
+  const locale = LOCALES_CONNUES.has(localeDemandee) ? localeDemandee : 'auto';
 
   if (!email || email.indexOf('@') === -1) {
     return res.status(400).json({ error: 'Email invalide' });
@@ -103,7 +135,7 @@ export default async function handler(req, res) {
       form.set('cancel_url', 'https://aircraft2sell.eu/cancel.html');
       form.set('client_reference_id', email);
       form.set('customer_email', email);
-      form.set('locale', 'fr');
+      form.set('locale', locale);
       form.set('line_items[0][price_data][currency]', 'eur');
       form.set('line_items[0][price_data][unit_amount]', String(eurToCents(total)));
       form.set('line_items[0][price_data][product_data][name]', 'Aircraft2Sell — Mise en avant annonce');
@@ -139,6 +171,17 @@ export default async function handler(req, res) {
     return res.status(200).json({ free: true });
   }
 
+  /* Anti-doublon (10/11/26) : un email avec un abonnement Stripe déjà actif
+     ne doit pas pouvoir en créer un second — on le renvoie vers le portail
+     self-service pour gérer/changer sa formule existante plutôt que de
+     risquer un double prélèvement mensuel. */
+  if (await aDejaUnAbonnementActif(email, cle)) {
+    return res.status(409).json({
+      error: 'Un abonnement est déjà actif pour cet email. Gérez-le depuis votre tableau de bord.',
+      already_subscribed: true,
+    });
+  }
+
   /* Calcul serveur : sous-total = plan + addon - promo (jamais négatif).
      Aircraft2Sell OÜ n'étant pas assujettie à la TVA, le prix affiché est
      le prix final — aucun montant de TVA n'est ajouté. */
@@ -157,7 +200,7 @@ export default async function handler(req, res) {
     form.set('cancel_url', 'https://aircraft2sell.eu/cancel.html');
     form.set('client_reference_id', email);
     form.set('customer_email', email);
-    form.set('locale', 'fr');
+    form.set('locale', locale);
     form.set('line_items[0][price_data][currency]', 'eur');
     form.set('line_items[0][price_data][unit_amount]', String(eurToCents(total)));
     form.set('line_items[0][price_data][product_data][name]', `Aircraft2Sell — ${p.label}`);
