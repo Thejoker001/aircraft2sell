@@ -1610,11 +1610,6 @@ async function loadAuditLogs(){
 }
 
 /* ── INIT CHECK ── */
-console.log('[A2S Admin] Script chargé, SB_URL=', typeof SB_URL !== 'undefined' ? SB_URL : 'UNDEFINED');
-document.addEventListener('DOMContentLoaded', function(){
-  console.log('[A2S Admin] DOM prêt, loginWrap=', document.getElementById('loginWrap') ? 'OK' : 'ABSENT');
-  console.log('[A2S Admin] Bouton=', document.querySelector('.lb-btn') ? 'OK' : 'ABSENT');
-});
 
 /* ── AUTH ── */
 async function login(){
@@ -1636,22 +1631,17 @@ async function login(){
   btn.disabled=true;
   
   try{
-    console.log('[A2S Admin] Tentative login:', em);
-    console.log('[A2S Admin] SB_URL:', SB_URL);
-    console.log('[A2S Admin] SB_KEY début:', SB_KEY.substring(0,20)+'...');
     var res=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
       method:'POST',
       headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({email:em,password:pw})
     });
-    console.log('[A2S Admin] HTTP status:', res.status);
     /* Le service Auth Supabase peut renvoyer du texte brut (503) quand il
        est indisponible : res.json() jetterait « Unexpected token » sans
        message compréhensible. On parse le texte manuellement. */
     var text=await res.text();
     var data=null;
     try{data=JSON.parse(text);}catch(e){data=null;}
-    console.log('[A2S Admin] Réponse:', String(text).substring(0,200));
     
     if(!res.ok||!data||!data.access_token){
       var msg=(data&&(data.error_description||data.msg||data.error))||((res.status===503||res.status===502)&&text.indexOf('upstream')!==-1?'Service de connexion (Supabase Auth) momentanément indisponible. Réessayez dans quelques minutes.':'Réponse inattendue du serveur (HTTP '+res.status+').');
@@ -2402,7 +2392,7 @@ async function injectTestListing(){var t=_td[_ti%_td.length];_ti++;var body={id:
 function exportCSV(type){
   var rows=[],h=[];
   if(type==='list'){h=['Aéronef','Vendeur','Email','Prix','Vues','Statut','Date'];rows=_allListings.map(function(l){return[ltitle(l).replace(/<[^>]*>/g,''),l.sellerName,l.sellerEmail,l.price,l.views||0,l.status,fmtDate(l.submittedAt)];});}
-  else if(type==='stats'){h=['Période','Visites uniques','Pages vues','Vues annonces','Taux mobile'];rows=[['30 derniers jours',_statsCache.sessions,_statsCache.pageviews,_statsCache.listviews,_statsCache.mobileRate]];h=['Métrique','Valeur'];rows=[['Visites uniques',_statsCache.sessions],['Pages vues',_statsCache.pageviews],['Vues annonces',_statsCache.listviews],['Taux mobile',_statsCache.mobileRate]];}
+  else if(type==='stats'){h=['Métrique','Valeur'];rows=[['Visites uniques',_statsCache.sessions],['Pages vues',_statsCache.pageviews],['Vues annonces',_statsCache.listviews],['Taux mobile',_statsCache.mobileRate]];}
   else{h=['Nom','Email','Plan','Statut','Inscrit le','Dernière connexion'];rows=_allUsers.map(function(u){return[u.name,u.email,u.plan,u.status,fmtDate(u.registered_at),fmtDate(u.last_login_at)];});}
   var csv=[h].concat(rows).map(function(r){return r.map(function(v){return'"'+String(v==null?'':v).split('"').join('""')+'"';}).join(',');}).join('\n');
   var b=new Blob([csv],{type:'text/csv;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='a2s_'+(type||'export')+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();showToast('CSV téléchargé');
@@ -2530,7 +2520,6 @@ var _statsCache={sessions:0,pageviews:0,listviews:0,mobileRate:'0%'};
 /* ── STATISTIQUES ── */
 async function renderStats(){
   var days=parseInt((sel('stats-period')||{value:'7'}).value)||7;
-  console.log('[Stats] Chargement stats, period='+days+'j');
   var since=new Date(Date.now()-days*86400000).toISOString();
   ['st-pages','st-countries','st-top-listings','st-devices','st-referrers'].forEach(function(id){
     var el=sel(id);if(el)el.innerHTML='<div class="loading-row">Chargement...</div>';
@@ -2538,9 +2527,6 @@ async function renderStats(){
   try{
     var analytics=await sbAll('analytics','created_at=gte.'+since+'&order=created_at.desc');
     var listViews=await sbAll('listing_views','created_at=gte.'+since+'&order=created_at.desc');
-    console.log('[Stats] analytics:', analytics ? analytics.length : 'null/error', 'rows');
-    console.log('[Stats] sample:', analytics && analytics[0] ? JSON.stringify(analytics[0]) : 'vide');
-    console.log('[Stats] listViews:', listViews ? listViews.length : 'null/error', 'rows');
 
     /* ── KPIs ── */
     var sessions=new Set(analytics.map(function(r){return r.session_id;})).size;
@@ -2600,8 +2586,6 @@ async function renderStats(){
       countryCounts[code]=(countryCounts[code]||0)+1;
     });
     var countries=Object.entries(countryCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
-    console.log('[Stats] countryCounts:', JSON.stringify(countryCounts));
-    console.log('[Stats] countries:', countries.length);
     var maxC=countries[0]?countries[0][1]:1;
     sel('st-countries').innerHTML=countries.length?countries.map(function(c,i){
       var pct=Math.round(c[1]/maxC*100);
