@@ -1740,13 +1740,13 @@ function statusPill(s){if(s==='live')return'<span class="pill p-live">Publiée</
 function planPill(p){if(p==='Pro')return'<span class="pill p-pro">Pro</span>';if(p==='Aviateur')return'<span class="pill p-avi">Aviateur</span>';return'<span class="pill p-ess">Essentiel</span>';}
 
 /* ── STATE ── */
-var TABS=['dash','mod','list','new','users','subs','partners','inspectors','stats','msgs','reports','set'];
+var TABS=['dash','mod','list','new','users','verif','subs','partners','inspectors','stats','msgs','reports','set'];
 var CURRENT_TAB='dash';
 var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
 var _allListings=[],_allUsers=[];
 
 /* ── NAV ── */
-var TITLES={dash:'Tableau de <em>bord</em>',mod:'File de <em>modération</em>',list:'Toutes les <em>annonces</em>',new:'Créer une <em>annonce</em>',users:'Gestion des <em>membres</em>',subs:'<em>Abonnements</em>',partners:'<em>Partenaires</em>',inspectors:'<em>Annuaire</em> des inspecteurs',stats:'<em>Statistiques</em>',reports:'Gestion des <em>signalements</em>',set:'<em>Paramètres</em>'};
+var TITLES={dash:'Tableau de <em>bord</em>',mod:'File de <em>modération</em>',list:'Toutes les <em>annonces</em>',new:'Créer une <em>annonce</em>',users:'Gestion des <em>membres</em>',verif:'Vérifications <em>identité</em>',subs:'<em>Abonnements</em>',partners:'<em>Partenaires</em>',inspectors:'<em>Annuaire</em> des inspecteurs',stats:'<em>Statistiques</em>',reports:'Gestion des <em>signalements</em>',set:'<em>Paramètres</em>'};
 function showTab(id,navEl){
   TABS.forEach(function(t){var s=sel('tab-'+t);if(s)s.style.display='none';});
   document.querySelectorAll('.sn').forEach(function(n){n.classList.remove('active');});
@@ -1756,10 +1756,10 @@ function showTab(id,navEl){
   CURRENT_TAB=id;
   if((id==='users'||id==='subs'||id==='mod'||id==='list')&&_allUsers.length===0&&_allListings.length===0){
     refreshAll().then(function(){
-      if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();
+      if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='verif')loadVerifRequests();if(id==='subs')renderSubs();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();
     });return;
   }
-  if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='subs')renderSubs();if(id==='partners')renderPartners();if(id==='inspectors')renderInspectors();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();if(id==='set')loadAuditLogs();
+  if(id==='mod')renderMod();if(id==='list')renderList();if(id==='users')renderUsers();if(id==='verif')loadVerifRequests();if(id==='subs')renderSubs();if(id==='partners')renderPartners();if(id==='inspectors')renderInspectors();if(id==='stats')renderStats();if(id==='msgs')renderMsgs();if(id==='reports')renderReports();if(id==='set')loadAuditLogs();
 }
 
 /* ── REFRESH ── */
@@ -3235,6 +3235,15 @@ function updateSidebarBadges(){
   sb('GET','reports','status=eq.pending&select=id').then(function(reps){
     var n=(reps||[]).length;
     var rb=sel('badge-reports');if(rb){rb.textContent=n||'';rb.style.display=n?'':'none';}
+  }).catch(function(){});
+  /* badge verif — nombre de demandes de vérification identité en attente.
+     Avant ce correctif, ce badge n'était mis à jour QUE depuis loadVerifRequests(),
+     elle-même jamais appelée à l'ouverture de l'onglet ni au chargement de la page
+     (bug : 'verif' absent de TABS/dispatch showTab) — un admin pouvait ne jamais
+     voir qu'il y avait des demandes en attente. */
+  sb('GET','verification_requests','status=eq.pending&select=id').then(function(reqs){
+    var n=(reqs||[]).length;
+    var vb=sel('verif-badge');if(vb){vb.textContent=n||'';vb.style.display=n?'':'none';}
   }).catch(function(){});
 }
 
