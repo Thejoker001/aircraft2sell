@@ -440,8 +440,15 @@ window.addEventListener('DOMContentLoaded',async function(){
     document.getElementById('inspSearch').addEventListener('input',inspApplyFilters);
     countryFilter.addEventListener('change',inspApplyFilters);
 
-    /* Carte (seulement si des coordonnées existent ; sinon liste seule) */
+    /* Carte (seulement si des coordonnées existent ; sinon liste seule).
+       Le conteneur doit être visible AVANT l'initialisation Leaflet, sinon
+       la grille de tuiles est calculée sur une boîte 0×0 et ne se corrige
+       jamais ensuite — on affiche d'abord la mise en page, puis on initialise,
+       puis on force un invalidateSize() une fois la mise en page stabilisée. */
     var geo=rows.map(function(p,i){return{p:p,i:i};}).filter(function(x){return typeof x.p.lat==='number'&&typeof x.p.lng==='number';});
+    combo.style.display='grid';
+    toolbar.style.display='flex';
+    empty.style.display='none';
     if(window.L&&geo.length){
       var map=L.map('inspMap',{scrollWheelZoom:false}).setView([20,10],2);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
@@ -457,13 +464,12 @@ window.addEventListener('DOMContentLoaded',async function(){
       }else{
         map.setView([geo[0].p.lat,geo[0].p.lng],5);
       }
+      setTimeout(function(){map.invalidateSize();},50);
+      setTimeout(function(){map.invalidateSize();},350);
     }else{
       document.getElementById('inspMap').style.display='none';
     }
 
-    combo.style.display='grid';
-    toolbar.style.display='flex';
-    empty.style.display='none';
     if(window.A2SIcon&&A2SIcon.hydrate)A2SIcon.hydrate(list);
   }catch(e){/* silencieux : repli sur le bloc "annuaire se construit" déjà affiché */}
 });

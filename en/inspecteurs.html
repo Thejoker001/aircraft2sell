@@ -441,8 +441,14 @@ window.addEventListener('DOMContentLoaded',async function(){
     document.getElementById('inspSearch').addEventListener('input',inspApplyFilters);
     countryFilter.addEventListener('change',inspApplyFilters);
 
-    /* Map (only if coordinates exist; otherwise list only) */
+    /* Map (only if coordinates exist; otherwise list only). The map container
+       must be visible BEFORE Leaflet initialises, or its tile grid is sized
+       against a 0×0 box and never recovers — show the layout first, init
+       after, then force an invalidateSize() once layout has settled. */
     var geo=rows.map(function(p,i){return{p:p,i:i};}).filter(function(x){return typeof x.p.lat==='number'&&typeof x.p.lng==='number';});
+    combo.style.display='grid';
+    toolbar.style.display='flex';
+    empty.style.display='none';
     if(window.L&&geo.length){
       var map=L.map('inspMap',{scrollWheelZoom:false}).setView([20,10],2);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
@@ -458,13 +464,12 @@ window.addEventListener('DOMContentLoaded',async function(){
       }else{
         map.setView([geo[0].p.lat,geo[0].p.lng],5);
       }
+      setTimeout(function(){map.invalidateSize();},50);
+      setTimeout(function(){map.invalidateSize();},350);
     }else{
       document.getElementById('inspMap').style.display='none';
     }
 
-    combo.style.display='grid';
-    toolbar.style.display='flex';
-    empty.style.display='none';
     if(window.A2SIcon&&A2SIcon.hydrate)A2SIcon.hydrate(list);
   }catch(e){/* silent fallback to the "directory is being built" block already shown */}
 });
