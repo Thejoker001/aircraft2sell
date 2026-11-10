@@ -1050,7 +1050,7 @@ body.dense .kv{font-size:1.4rem}
 <!-- MODAL DETAIL -->
 
 <div class="modal-back" id="mViewListing" data-action="closeM" data-args='["mViewListing"]' data-self-only="1">
-  <div class="modal" style="max-width:600px">
+  <div class="modal" style="max-width:760px">
     <div class="modal-hd"><div class="modal-ti" id="mViewTitle">Détail annonce</div><button class="modal-x" data-action="closeM" data-args='["mViewListing"]'><i data-icon="close"></i></button></div>
     <div class="modal-bd" id="mViewBody"></div>
     <div class="modal-ft">
@@ -1060,6 +1060,16 @@ body.dense .kv{font-size:1.4rem}
       <button class="m-btn" id="mViewEditBtn" data-action="editFromView"><i data-icon="edit"></i>Modifier</button>
       <button class="m-btn" data-action="a2sOpenCurrentListing"><i data-icon="external"></i>Voir public</button>
     </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX ZOOM PHOTO -->
+<div id="a2sLightbox" onclick="closeLightbox(event)" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(10,14,20,.92);align-items:center;justify-content:center;flex-direction:column;cursor:zoom-out">
+  <img id="a2sLightboxImg" src="" style="max-width:92vw;max-height:88vh;object-fit:contain;box-shadow:0 10px 40px rgba(0,0,0,.5)">
+  <div style="display:flex;gap:1rem;margin-top:1rem">
+    <button type="button" onclick="event.stopPropagation();lbNav(-1)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:.5rem 1rem;cursor:pointer;border-radius:4px">‹ Précédente</button>
+    <span id="a2sLightboxCount" style="color:#fff;font-size:.85rem;align-self:center"></span>
+    <button type="button" onclick="event.stopPropagation();lbNav(1)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:.5rem 1rem;cursor:pointer;border-radius:4px">Suivante ›</button>
   </div>
 </div>
 
@@ -1171,7 +1181,7 @@ body.dense .kv{font-size:1.4rem}
 
       <!-- Photos existantes -->
       <div class="mfg" id="ml-photos-wrap" style="display:none">
-        <label>Photos <span style="color:var(--a2s-text-faint);font-size:.62rem">(cliquer pour supprimer)</span></label>
+        <label>Photos <span style="color:var(--a2s-text-faint);font-size:.62rem">(glisser pour réordonner · cliquer sur la croix pour supprimer · 1ère = couverture)</span></label>
         <div id="ml-photos-grid" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem"></div>
       </div>
 
@@ -1551,7 +1561,7 @@ async function sbAll(table,baseParams){
 }
 
 /* ── MAPPING ── */
-function sbToL(r){return{id:r.id,make:r.make,model:r.model,year:r.year,price:r.price,currency:r.currency||'EUR',category:r.category,airport:r.airport,desc:r.description,status:r.status||'pending',sellerName:r.seller_name,sellerEmail:r.seller_email,views:r.views||0,enquiries:r.enquiries||0,submittedAt:r.submitted_at,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')};}
+function sbToL(r){return{id:r.id,make:r.make,model:r.model,year:r.year,price:r.price,currency:r.currency||'EUR',category:r.category,airport:r.airport,desc:r.description,status:r.status||'pending',sellerName:r.seller_name,sellerEmail:r.seller_email,views:r.views||0,enquiries:r.enquiries||0,submittedAt:r.submitted_at,photos:Array.isArray(r.photos)?r.photos:[],seller_rating:r.seller_rating,seller_certified:r.seller_certified,title:[r.make,r.model,r.year?'('+r.year+')':''].filter(Boolean).join(' ')};}
 
 /* ── JOURNAL D'AUDIT (S9) ──
    Trace chaque action admin dans la table admin_logs (qui/quoi/quand).
@@ -2157,27 +2167,60 @@ function editListing(id) {
     badge.style.background = autoCat ? 'rgba(34,197,94,.15)' : 'rgba(232,160,32,.1)';
     badge.style.color = autoCat ? 'var(--a2s-success)' : 'var(--a2s-accent)';
   }
-  // Photos
+  // Photos (galerie réordonnable par glisser-déposer, 1ère photo = couverture)
   var photos = l.photos || [];
-  var wrap = document.getElementById('ml-photos-wrap');
-  var grid = document.getElementById('ml-photos-grid');
-  if(wrap && grid) {
-    if(photos.length) {
-      wrap.style.display = '';
-      grid.innerHTML = photos.map(function(url, i) {
-        return '<div style="position:relative;width:72px;height:54px;cursor:pointer" title="Cliquer pour supprimer" data-action="mlRemovePhoto" data-args="['+i+']">'
-          +'<img src="'+url+'?width=150" style="width:100%;height:100%;object-fit:cover;border:1px solid var(--a2s-border-2)">'
-          +'<div style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,.8);color:#fff;font-size:.55rem;padding:1px 4px;border-radius:2px">'+A2SIcon('close')+'</div>'
-          +'</div>';
-      }).join('');
-    } else {
-      wrap.style.display = 'none';
-      grid.innerHTML = '';
-    }
-  }
+  mlRenderPhotosGrid(photos);
   // Init datalist marques
   mlInitMakesList();
   openM('mListing');
+}
+
+/* Rend la grille de vignettes photos avec drag & drop pour réordonner
+   (la 1ère position = photo de couverture, utilisée sur les cartes/listing). */
+function mlRenderPhotosGrid(photos) {
+  var wrap = document.getElementById('ml-photos-wrap');
+  var grid = document.getElementById('ml-photos-grid');
+  if(!wrap || !grid) return;
+  if(!photos.length) { wrap.style.display = 'none'; grid.innerHTML = ''; return; }
+  wrap.style.display = '';
+  grid.innerHTML = photos.map(function(url, i) {
+    return '<div class="ml-photo-tile" draggable="true" data-idx="'+i+'" title="Glisser pour réordonner · cliquer sur la croix pour supprimer" '
+      +'style="position:relative;width:72px;height:54px;cursor:grab;border:1px solid var(--a2s-border-2)">'
+      +'<img src="'+url+'?width=150" style="width:100%;height:100%;object-fit:cover;display:block;pointer-events:none">'
+      +(i===0 ? '<div style="position:absolute;bottom:2px;left:2px;background:rgba(30,142,90,.85);color:#fff;font-size:.5rem;padding:1px 4px;border-radius:2px;pointer-events:none">Couverture</div>' : '')
+      +'<div style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,.8);color:#fff;font-size:.55rem;padding:1px 4px;border-radius:2px;cursor:pointer" data-action="mlRemovePhoto" data-args="['+i+']">'+A2SIcon('close')+'</div>'
+      +'</div>';
+  }).join('');
+  if(window.A2SIcon && window.A2SIcon.hydrate) window.A2SIcon.hydrate(grid);
+  mlBindPhotoDrag(grid);
+}
+
+var _mlDragIdx = null;
+function mlBindPhotoDrag(grid) {
+  var tiles = grid.querySelectorAll('.ml-photo-tile');
+  tiles.forEach(function(tile) {
+    tile.addEventListener('dragstart', function(e) {
+      _mlDragIdx = parseInt(tile.dataset.idx, 10);
+      tile.style.opacity = '.4';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    tile.addEventListener('dragend', function() { tile.style.opacity = ''; });
+    tile.addEventListener('dragover', function(e) { e.preventDefault(); tile.style.outline = '2px solid var(--a2s-accent)'; });
+    tile.addEventListener('dragleave', function() { tile.style.outline = ''; });
+    tile.addEventListener('drop', function(e) {
+      e.preventDefault();
+      tile.style.outline = '';
+      var dropIdx = parseInt(tile.dataset.idx, 10);
+      if(_mlDragIdx === null || _mlDragIdx === dropIdx) return;
+      var id = sel('ml-id').value;
+      var l = _allListings.find(function(l){ return String(l.id)===String(id); });
+      if(!l || !l.photos) return;
+      var moved = l.photos.splice(_mlDragIdx, 1)[0];
+      l.photos.splice(dropIdx, 0, moved);
+      mlRenderPhotosGrid(l.photos);
+      _mlDragIdx = null;
+    });
+  });
 }
 
 function mlRemovePhoto(idx) {
@@ -2186,16 +2229,7 @@ function mlRemovePhoto(idx) {
   if(!l || !l.photos) return;
   if(!confirm('Supprimer cette photo ?')) return;
   l.photos.splice(idx, 1);
-  // Rafraîchir le grid
-  var grid = document.getElementById('ml-photos-grid');
-  var wrap = document.getElementById('ml-photos-wrap');
-  if(grid) grid.innerHTML = l.photos.map(function(url,i){
-    return '<div style="position:relative;width:72px;height:54px;cursor:pointer" title="Cliquer pour supprimer" data-action="mlRemovePhoto" data-args="['+i+']">'
-      +'<img src="'+url+'?width=150" style="width:100%;height:100%;object-fit:cover;border:1px solid var(--a2s-border-2)">'
-      +'<div style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,.8);color:#fff;font-size:.55rem;padding:1px 4px;border-radius:2px">'+A2SIcon('close')+'</div>'
-      +'</div>';
-  }).join('');
-  if(wrap) wrap.style.display = l.photos.length ? '' : 'none';
+  mlRenderPhotosGrid(l.photos);
 }
 
 async function saveListingM() {
@@ -2395,6 +2429,20 @@ function viewListing(id){
     +'<label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.75rem"><input type="checkbox" id="certifiedCheck" '+(l.seller_certified?'checked':'')+' data-action="toggleCertified" style="accent-color:var(--a2s-success);width:14px;height:14px"> Vendeur certifié</label>'
     +'<div style="font-size:.62rem;color:var(--a2s-text-faint)">ID: '+l.id+'</div>'
     +'</div></div>';
+  var photosV=l.photos||[];
+  body+='<div style="border-top:1px solid var(--a2s-border);padding-top:.75rem;margin-top:.75rem">'
+    +'<div style="font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--a2s-text-faint);margin-bottom:.5rem">Photos ('+photosV.length+')<span style="text-transform:none;letter-spacing:0;color:var(--a2s-text-faint);font-size:.95em"> — cliquer sur la croix pour supprimer</span></div>'
+    +(photosV.length
+      ? '<div id="vwPhotosGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">'
+        +photosV.map(function(url,i){
+          return '<div style="position:relative;aspect-ratio:4/3;background:var(--a2s-surface-2);border:1px solid var(--a2s-border-2);overflow:hidden">'
+            +'<img src="'+url+'?width=500" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" data-action="vwZoomPhoto" data-args="['+i+']">'
+            +'<button type="button" title="Supprimer cette photo" data-action="vwRemovePhoto" data-args="['+i+']" style="position:absolute;top:4px;right:4px;background:rgba(239,68,68,.85);color:#fff;border:none;width:22px;height:22px;border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center">'+A2SIcon('close')+'</button>'
+          +'</div>';
+        }).join('')
+        +'</div>'
+      : '<div style="font-size:.78rem;color:var(--a2s-text-faint)">Aucune photo fournie par le vendeur.</div>')
+    +'</div>';
   sel('mViewBody').innerHTML=body;
   sel('mViewTitle').innerHTML=ltitle(l)+' '+statusPill(l.status);
   sel('mViewApproveBtn').style.display=l.status==='pending'?'inline-flex':'none';
@@ -2404,6 +2452,48 @@ function viewListing(id){
 async function approveFromView(){if(!_viewListingId)return;await approve(_viewListingId);closeM('mViewListing');}
 async function rejectFromView(){if(!_viewListingId)return;await doReject(_viewListingId);closeM('mViewListing');}
 function editFromView(){if(!_viewListingId)return;closeM('mViewListing');editListing(_viewListingId);}
+
+/* ── GALERIE PHOTOS — modale Détail (suppression + zoom, avant validation) ── */
+async function vwRemovePhoto(idx){
+  var l=_allListings.find(function(l){return String(l.id)===String(_viewListingId);});
+  if(!l||!l.photos||!l.photos.length)return;
+  if(!confirm('Supprimer définitivement cette photo de l\'annonce ?'))return;
+  var removed=l.photos.splice(idx,1);
+  try{
+    await sb('PATCH','listings','id=eq.'+l.id,{photos:l.photos},true);
+    logAdmin('listing.photo_removed','listing',String(l.id),{photo:removed[0]});
+    showToast('Photo supprimée');
+  }catch(e){
+    l.photos.splice(idx,0,removed[0]); // rollback local si l'API échoue
+    showToast('Erreur : '+e.message);
+  }
+  viewListing(_viewListingId); // ré-affiche la galerie à jour
+}
+var _lbPhotos=[],_lbIdx=0;
+function vwZoomPhoto(idx){
+  var l=_allListings.find(function(l){return String(l.id)===String(_viewListingId);});
+  if(!l||!l.photos)return;
+  _lbPhotos=l.photos;_lbIdx=idx;
+  lbRender();
+  document.getElementById('a2sLightbox').style.display='flex';
+}
+function lbRender(){
+  if(!_lbPhotos.length)return closeLightbox();
+  document.getElementById('a2sLightboxImg').src=_lbPhotos[_lbIdx]+'?width=1600';
+  document.getElementById('a2sLightboxCount').textContent=(_lbIdx+1)+' / '+_lbPhotos.length;
+}
+function lbNav(dir){ _lbIdx=(_lbIdx+dir+_lbPhotos.length)%_lbPhotos.length; lbRender(); }
+function closeLightbox(e){
+  if(e&&e.target!==document.getElementById('a2sLightbox'))return;
+  document.getElementById('a2sLightbox').style.display='none';
+}
+document.addEventListener('keydown',function(e){
+  var lb=document.getElementById('a2sLightbox');
+  if(!lb||lb.style.display==='none')return;
+  if(e.key==='Escape')closeLightbox();
+  if(e.key==='ArrowLeft')lbNav(-1);
+  if(e.key==='ArrowRight')lbNav(1);
+});
 
 /* ── SYNC VENDEURS ── */
 async function syncSellersAsMembers(){
