@@ -44,7 +44,7 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const SCOPES = ['w_organization_social', 'r_organization_social', 'rw_organization_admin'];
+const SCOPES = ['w_organization_social', 'r_organization_social', 'rw_organization_admin', 'w_organization_social_feed', 'r_organization_social_feed'];
 
 /* Version de l'API REST LinkedIn (format YYYYMM). LinkedIn retire les
  * versions ~1 an après publication (ex. 202401 a été sunset courant 2025) —
@@ -355,7 +355,24 @@ async function handlePost(req, res) {
  * portée organique des posts contenant un lien sortant dans le texte
  * principal (l'algorithme favorise le temps passé sur la plateforme).
  * Mis en place le 06/11/26 après constat GSC/analytics : 1 seul clic
- * linkedin.com en 28 jours malgré un post quotidien avec lien inline. */
+ * linkedin.com en 28 jours malgré un post quotidien avec lien inline.
+ *
+ * DIAGNOSTIC 11/11/26 : échouait systématiquement en 502 via le domaine
+ * public aircraft2sell.eu (Cloudflare) — mais ce 502 masquait la vraie
+ * cause. En contournant Cloudflare (vercel curl direct sur l'origine),
+ * LinkedIn répond en réalité 403 ACCESS_DENIED "Not enough permissions to
+ * access: partnerApiSocialActions.CREATE" : l'endpoint socialActions/comments
+ * exige le scope w_organization_social_feed (LinkedIn a migré cette
+ * permission depuis w_organization_social, qui ne couvre plus que les
+ * posts). Scope ajouté à SCOPES le 11/11/26 — nécessite une RECONNEXION
+ * OAuth manuelle (action=start, ouverture navigateur par un humain avec
+ * droits admin de la Page) pour obtenir un nouveau token avec ce scope ;
+ * le token actuel ne l'aura jamais même après ce fix de code tant que la
+ * reconnexion n'a pas été faite. Si action=comment échoue encore 403 avec
+ * ce message APRÈS reconnexion, vérifier dans LinkedIn Developer Portal
+ * que le produit "Community Management API" de l'app expose bien ce scope
+ * (parfois nécessite une ré-approbation du produit, pas juste la demande
+ * de scope côté OAuth). */
 async function handleComment(req, res) {
   const cronOk = req.headers['x-vercel-cron'] === '1';
   const keyOk = req.query.key && CRON_SECRET && req.query.key === CRON_SECRET;
