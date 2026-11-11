@@ -41,7 +41,7 @@
   function isTranslatedPage(page){ return TRANSLATED_PAGES.indexOf(page.split(/[?#]/)[0]) > -1; }
   function href(page){ var lang = currentLang(); if(lang === 'fr' || lang === 'de' || lang === 'nl') return '/' + page; return isTranslatedPage(page) ? '/' + lang + '/' + page : '/' + page; }
   function currentPageBase(){ var m = location.pathname.match(/^\/(?:en|et)\/(.*)$/); var rel = m ? m[1] : location.pathname.replace(/^\//, ''); return rel || 'index.html'; }
-  function langSwitchHref(targetLang){ var base = currentPageBase().split(/[?#]/)[0] || 'index.html'; var target = isTranslatedPage(base) ? base : 'index.html'; return targetLang === 'fr' ? '/' + target : '/' + targetLang + '/' + target; }
+  function langSwitchHref(targetLang){ var base = currentPageBase().split(/[?#]/)[0] || 'index.html'; var target = isTranslatedPage(base) ? base : 'index.html'; var suffix = (target === base) ? (location.search + location.hash) : ''; return (targetLang === 'fr' ? '/' + target : '/' + targetLang + '/' + target) + suffix; }
   function ic(name, cls){ return window.A2SIcon ? window.A2SIcon(name, cls) : ''; }
 
   var I18N = {

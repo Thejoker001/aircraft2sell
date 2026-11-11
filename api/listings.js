@@ -86,6 +86,13 @@ const COPIE_SEO = {
 };
 const SYMBOLE_DEVISE = { EUR: '€', USD: '$', GBP: '£', CHF: 'Fr', CAD: 'CA$', AUD: 'AU$', AED: 'AED ' };
 const NOMS_CATEGORIE = { light: 'Avions légers', jet: "Jets d'affaires", turbo: 'Turboprops', heli: 'Hélicoptères', ulm: 'ULM', airliner: 'Avions de ligne' };
+// Libellés catégorie par langue, pour le fil d'Ariane (BreadcrumbList) uniquement.
+const NOMS_CATEGORIE_LANG = {
+  fr: NOMS_CATEGORIE,
+  en: { light: 'Light aircraft', jet: 'Business jets', turbo: 'Turboprops', heli: 'Helicopters', ulm: 'Ultralights', airliner: 'Airliners' },
+  et: { light: 'Kerglennukid', jet: 'Ärireaktiivlennukid', turbo: 'Turbopropellerlennukid', heli: 'Helikopterid', ulm: 'Ultrakerged', airliner: 'Reisilennukid' },
+};
+const LIBELLE_ACCUEIL = { fr: 'Accueil', en: 'Home', et: 'Avaleht' };
 // Libellés pays (ISO 3166-1) pour le texte SSR — le client remplace par ses
 // propres libellés (airports-data.js) dès que le JS s'exécute.
 const PAYS = {
@@ -251,12 +258,31 @@ async function modeSeo(req, res, url, cle) {
       availability: 'https://schema.org/InStock',
       itemCondition: 'https://schema.org/UsedCondition',
       url: canonicalUrl,
+      // Vendeur : particulier (nom renseigné à l'annonce) ou Aircraft2Sell en
+      // repli — jamais vide, Google signale ce champ manquant sinon.
+      seller: {
+        '@type': listing.seller_certified ? 'Organization' : 'Person',
+        name: propre(listing.seller_name) || 'Aircraft2Sell',
+      },
     },
+  };
+  // Fil d'Ariane (BreadcrumbList), séparé du schema Product — Accueil > Catégorie > Annonce.
+  const siteRoot = copie.base.replace(/listing\.html$/, '');
+  const catSlug = listing.category || '';
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: LIBELLE_ACCUEIL[lang] || 'Accueil', item: siteRoot },
+      ...(catSlug ? [{ '@type': 'ListItem', position: 2, name: (NOMS_CATEGORIE_LANG[lang] || NOMS_CATEGORIE)[catSlug] || catSlug, item: siteRoot + 'search.html?cat=' + encodeURIComponent(catSlug) }] : []),
+      { '@type': 'ListItem', position: catSlug ? 3 : 2, name: title, item: canonicalUrl },
+    ],
   };
   const injection = `<meta property="og:title" content="${esc(ogTitle)}">\n`
     + `<meta property="og:description" content="${esc(description)}">\n`
     + `<meta property="og:url" content="${esc(canonicalUrl)}">\n`
-    + `<script type="application/ld+json" id="listing-schema">${JSON.stringify(schema)}</script>\n</head>`;
+    + `<script type="application/ld+json" id="listing-schema">${JSON.stringify(schema)}</script>\n`
+    + `<script type="application/ld+json" id="listing-breadcrumb-schema">${JSON.stringify(breadcrumb)}</script>\n</head>`;
   html = html.replace('</head>', injection);
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');

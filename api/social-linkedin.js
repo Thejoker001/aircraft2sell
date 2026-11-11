@@ -359,20 +359,24 @@ async function handlePost(req, res) {
  *
  * DIAGNOSTIC 11/11/26 : échouait systématiquement en 502 via le domaine
  * public aircraft2sell.eu (Cloudflare) — mais ce 502 masquait la vraie
- * cause. En contournant Cloudflare (vercel curl direct sur l'origine),
- * LinkedIn répond en réalité 403 ACCESS_DENIED "Not enough permissions to
- * access: partnerApiSocialActions.CREATE" : l'endpoint socialActions/comments
- * exige le scope w_organization_social_feed (LinkedIn a migré cette
- * permission depuis w_organization_social, qui ne couvre plus que les
- * posts). Scope ajouté à SCOPES le 11/11/26 — nécessite une RECONNEXION
- * OAuth manuelle (action=start, ouverture navigateur par un humain avec
- * droits admin de la Page) pour obtenir un nouveau token avec ce scope ;
- * le token actuel ne l'aura jamais même après ce fix de code tant que la
- * reconnexion n'a pas été faite. Si action=comment échoue encore 403 avec
- * ce message APRÈS reconnexion, vérifier dans LinkedIn Developer Portal
+ * cause (notre propre code forçait un 502 générique sur TOUTE erreur
+ * LinkedIn, voir fix ci-dessous). En contournant Cloudflare (vercel curl
+ * direct sur l'origine), LinkedIn répond en réalité 403 ACCESS_DENIED
+ * "Not enough permissions to access: partnerApiSocialActions.CREATE" :
+ * l'endpoint socialActions/comments exige le scope w_organization_social_feed
+ * (LinkedIn a migré cette permission depuis w_organization_social, qui ne
+ * couvre plus que les posts). Scope ajouté à SCOPES le 11/11/26 — nécessite
+ * une RECONNEXION OAuth manuelle (action=start, ouverture navigateur par un
+ * humain avec droits admin de la Page) pour obtenir un nouveau token avec ce
+ * scope ; le token actuel ne l'aura jamais même après ce fix de code tant
+ * que la reconnexion n'a pas été faite. Si action=comment échoue encore 403
+ * avec ce message APRÈS reconnexion, vérifier dans LinkedIn Developer Portal
  * que le produit "Community Management API" de l'app expose bien ce scope
  * (parfois nécessite une ré-approbation du produit, pas juste la demande
- * de scope côté OAuth). */
+ * de scope côté OAuth). EN ATTENDANT la reconnexion, le cron de publication
+ * (job 981b7601a9d7) est repassé au lien aircraft2sell.eu DANS le texte du
+ * post plutôt que d'appeler cette route — stopgap fiable qui ne dépend pas
+ * d'une action manuelle de l'utilisateur. */
 async function handleComment(req, res) {
   const cronOk = req.headers['x-vercel-cron'] === '1';
   const keyOk = req.query.key && CRON_SECRET && req.query.key === CRON_SECRET;
@@ -405,7 +409,10 @@ async function handleComment(req, res) {
     });
     if (!r.ok) {
       const errTxt = await r.text();
-      return res.status(502).json({ error: `LinkedIn ${r.status} : ${errTxt.slice(0, 300)}` });
+      // Forward le vrai statut LinkedIn (ex. 403 ACCESS_DENIED Partner API)
+      // au lieu de masquer toute erreur derrière un 502 générique.
+      return res.status(r.status >= 400 && r.status < 600 ? r.status : 502)
+        .json({ error: `LinkedIn ${r.status} : ${errTxt.slice(0, 300)}` });
     }
     const commentId = r.headers.get('x-restli-id') || null;
     return res.status(200).json({ ok: true, comment_id: commentId });

@@ -226,7 +226,13 @@ window.A2SFavs = (function(){
   function langSwitchHref(targetLang){
     var base = currentPageBase().split(/[?#]/)[0] || 'index.html';
     var target = isTranslatedPage(base) ? base : 'index.html';
-    return targetLang === 'fr' ? '/' + target : '/' + targetLang + '/' + target;
+    /* Préserve ?id=.../filtres de recherche et #hash quand on reste sur la
+       même page traduite (ex. listing.html?id=X, search.html?brand=...) —
+       sinon le changement de langue perd le paramètre et atterrit sur une
+       page "introuvable" (listing) ou sans filtres (recherche). Si on
+       retombe sur index.html (page non traduite), on abandonne la query. */
+    var suffix = (target === base) ? (location.search + location.hash) : '';
+    return (targetLang === 'fr' ? '/' + target : '/' + targetLang + '/' + target) + suffix;
   }
 
   var I18N = {
