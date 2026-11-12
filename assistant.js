@@ -156,13 +156,32 @@
   /* ── Interface ──────────────────────────────────────────────── */
   var root, panel, log, input, opened = false;
 
+  /* Mobile : le bouton flottant peut recouvrir du contenu du haut de page
+     (hero, galerie photo) quel que soit le gabarit — on le masque tant que
+     l'utilisateur n'a pas scrollé un minimum, pour ne jamais gêner le
+     premier écran visible à l'arrivée. */
+  var MOBILE_MQ = window.matchMedia('(max-width:600px)');
+  var SCROLL_SHOW_AT = 240;
+  function syncBtnVisibility() {
+    if (opened) return;
+    var btn = document.getElementById('a2sBotBtn');
+    if (!btn) return;
+    if (MOBILE_MQ.matches && window.scrollY < SCROLL_SHOW_AT) {
+      btn.classList.add('a2sb-hide');
+    } else {
+      btn.classList.remove('a2sb-hide');
+    }
+  }
+  addEventListener('scroll', syncBtnVisibility, { passive: true });
+  addEventListener('resize', syncBtnVisibility);
+
   function css() {
     var s = document.createElement('style');
     s.textContent = [
       '#a2sBotBtn{position:fixed;bottom:1.25rem;right:1.25rem;z-index:498;display:inline-flex;',
       'align-items:center;gap:.5rem;min-height:48px;padding:0 1.1rem;border:none;border-radius:999px;',
       'cursor:pointer;background:var(--a2s-navy,#0B2545);color:#fff;font-family:var(--font-body,Manrope,sans-serif);',
-      'font-size:.88rem;font-weight:700;box-shadow:0 8px 24px rgba(11,37,69,.22);transition:background .15s,transform .15s}',
+      'font-size:.88rem;font-weight:700;box-shadow:0 8px 24px rgba(11,37,69,.22);transition:background .15s,transform .15s,opacity .2s}',
       '#a2sBotBtn:hover{background:var(--a2s-navy-light,#163A6B);transform:translateY(-1px)}',
       '#a2sBotBtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}',
       /* La nav est fixe (z-index 500, hauteur --nav-h) : la fenêtre doit rester
@@ -205,6 +224,10 @@
          sur search.html, champ "Modèle" sur listing.html) : on le réduit et le
          remonte légèrement pour qu'il gêne moins sans disparaître. */
       '#a2sBotBtn{bottom:4.5rem;right:.75rem;padding:0 .75rem;min-height:40px;font-size:.78rem;box-shadow:0 4px 16px rgba(11,37,69,.28)}}',
+      /* Près du haut de page (hero, galerie photo), le bouton peut tomber sur du
+         contenu quel que soit le gabarit de la page : masqué tant qu'on n'a pas
+         scrollé un minimum sur mobile (voir syncBtnVisibility ci-dessous). */
+      '@media(max-width:600px){#a2sBotBtn.a2sb-hide{opacity:0;pointer-events:none}}',
       '@media print{#a2sBotBtn,#a2sBot{display:none}}'
     ].join('');
     document.head.appendChild(s);
@@ -337,6 +360,7 @@
     btn.innerHTML = ICON.chat + '<span>' + T.launch + '</span>';
     btn.addEventListener('click', open);
     document.body.appendChild(btn);
+    syncBtnVisibility();
 
     root = document.createElement('section');
     root.id = 'a2sBot';
@@ -435,6 +459,7 @@
     opened = false;
     panel.classList.remove('open');
     document.getElementById('a2sBotBtn').style.display = '';
+    syncBtnVisibility();
   }
 
   /* Après le chargement complet : ne concurrence jamais le rendu initial. */
