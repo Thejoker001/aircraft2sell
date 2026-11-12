@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Guide d'achat ULM pendulaire d'occasion : budget, points de contrôle technique, réglementation et formalités avant de choisir son appareil en Europe.">
+<meta property="og:title" content="ULM pendulaire d'occasion : guide d'achat | Aircraft2Sell">
+<meta property="og:description" content="Guide d'achat ULM pendulaire d'occasion : budget, points de contrôle technique, réglementation et formalités avant de choisir son appareil en Europe.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/ulm-pendulaire-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/ulm-pendulaire-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/ulm-pendulaire-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/ulm-pendulaire-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>ULM pendulaire d'occasion : guide d'achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "ULM pendulaire d'occasion : le guide d'achat complet", "description": "Guide d'achat ULM pendulaire d'occasion : budget, points de contrôle technique, réglementation et formalités avant de choisir son appareil en Europe.", "datePublished": "2026-11-12", "dateModified": "2026-11-12", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/ulm-pendulaire-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "ULM pendulaire d'occasion : le guide d'achat complet", "item": "https://aircraft2sell.eu/ulm-pendulaire-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">ULM pendulaire d'occasion</span></nav>
+    <span class="eyebrow">ULM</span>
+    <h1>ULM pendulaire d'occasion : le guide d'achat complet</h1>
+    <p>Budget, points de contrôle technique, réglementation et formalités à connaître avant d'acheter un ULM pendulaire d'occasion en Europe.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 12 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#definition">Qu'est-ce qu'un ULM pendulaire</a></li><li><a href="#budget">Budget d'achat selon l'âge et l'état</a></li><li><a href="#technique">Les points à vérifier avant d'acheter</a></li><li><a href="#reglementation">Réglementation et immatriculation</a></li><li><a href="#assurance">Assurance et formation</a></li><li><a href="#ou-acheter">Où trouver un ULM pendulaire d'occasion</a></li><li><a href="#negociation">Négocier et finaliser l'achat</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">Qu'est-ce qu'un ULM pendulaire</h2>
+<p>L'ULM pendulaire (ou « chariot ») est un ultra-léger motorisé composé de deux éléments distincts : une aile delta souple fixée au-dessus d'un chariot motorisé porteur du pilote, du passager éventuel et du moteur. Le pilotage se fait par déplacement du poids du corps via un trapèze de commande, un principe très différent du manche d'un avion classique. C'est historiquement l'une des catégories les plus accessibles de l'aviation légère, aussi bien à l'achat qu'à l'entretien.</p>
+<p>Le marché de l'occasion est actif en France, en Belgique et dans les autres pays francophones, avec une offre répartie entre appareils biplaces de loisir, machines d'école et ULM équipés pour la photo aérienne ou le vol en campagne. Avant d'acheter, il est utile de bien distinguer l'aile (souple, à remplacer périodiquement) et le chariot (structure, moteur, instruments), car leur état et leur âge ne suivent pas forcément le même calendrier.</p>
+
+<h2 id="budget">Budget d'achat selon l'âge et l'état</h2>
+<p>Le prix d'un ULM pendulaire d'occasion dépend avant tout de l'âge de l'aile, du nombre d'heures moteur et du niveau d'équipement (instruments, parachute de secours, biplace ou monoplace). Un chariot ancien avec une aile usagée se négocie nettement moins cher qu'un appareil récent équipé pour la navigation et la sécurité.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Profil d'appareil</th><th>Ordre de grandeur du marché</th></tr></thead>
+<tbody>
+<tr><td>Chariot ancien, aile usagée, peu d'équipements</td><td>Entrée de gamme du marché de l'occasion</td></tr>
+<tr><td>Appareil d'âge intermédiaire, biplace, bien entretenu</td><td>Milieu de gamme</td></tr>
+<tr><td>Appareil récent ou aile récente, équipements complets</td><td>Haut de gamme de l'occasion</td></tr>
+</tbody></table></div>
+<p>Au-delà du prix d'achat, prévoyez le remplacement de l'aile si son état ou son âge l'impose, la révision moteur, l'entretien courant (hélice, train d'atterrissage, câblage) et les frais de hangar ou de parking sur un aérodrome. Ces postes peuvent représenter une part significative du budget global sur la durée de possession.</p>
+
+<h2 id="technique">Les points à vérifier avant d'acheter</h2>
+<p>Un ULM pendulaire se contrôle différemment d'un avion : l'aile et le chariot doivent chacun faire l'objet d'une inspection spécifique, idéalement avec l'aide d'un mécanicien ou d'un instructeur expérimenté sur ce type de machine.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>État du tissu de l'aile : décoloration, porosité, traces d'UV ou d'humidité prolongée, usure des coutures et des câbles de haubanage.</span></li>
+  <li><i data-icon="check"></i><span>Historique du chariot : heures moteur, entretiens réalisés, pièces remplacées, documents de suivi disponibles.</span></li>
+  <li><i data-icon="check"></i><span>État du moteur : fuites, vibrations anormales, carnet d'entretien et dates des dernières révisions.</span></li>
+  <li><i data-icon="check"></i><span>Train d'atterrissage, roues, freins et structure du chariot : absence de corrosion ou de déformation.</span></li>
+  <li><i data-icon="check"></i><span>Présence et validité d'un parachute de secours si l'appareil en est équipé.</span></li>
+  <li><i data-icon="check"></i><span>Essai en vol avec le vendeur ou un instructeur avant finalisation, dans la mesure du possible.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — L'aile d'un ULM pendulaire a une durée de vie limitée dans le temps et à l'usage, indépendamment de l'état du chariot. Demandez systématiquement sa date de fabrication et son historique d'exposition aux UV.</div></div>
+
+<h2 id="reglementation">Réglementation et immatriculation</h2>
+<p>En France, les ULM relèvent d'une réglementation spécifique, distincte de celle des aéronefs certifiés : immatriculation simplifiée, pas de certificat de navigabilité classique, mais des obligations déclaratives et un contrôle technique selon les règles en vigueur dans le pays d'exploitation. Les règles varient d'un pays européen à l'autre (France, Belgique, Suisse, Allemagne notamment ont chacun leurs propres cadres), il est donc indispensable de vérifier la réglementation applicable avant un achat transfrontalier.</p>
+<p>Lors d'un changement de propriétaire, pensez à transférer la déclaration ou l'immatriculation auprès de l'autorité compétente et à vérifier que l'appareil est à jour de ses éventuelles obligations de contrôle. Un appareil vendu sans documents à jour peut retarder, voire compliquer, sa remise en vol.</p>
+
+<h2 id="assurance">Assurance et formation</h2>
+<p>Piloter un ULM pendulaire nécessite un brevet et une qualification spécifiques à cette classe d'appareil, distincts de la licence de pilote privé classique. Si vous découvrez cette pratique, un complément de formation auprès d'un instructeur qualifié sur pendulaire est généralement nécessaire avant de prendre les commandes seul, même si vous êtes déjà pilote d'un autre type d'aéronef.</p>
+<p>Une assurance responsabilité civile est obligatoire pour exploiter un ULM. Une garantie dommages (corps de l'appareil) reste optionnelle mais recommandée, en particulier pour un appareil récent ou de valeur. Le coût de l'assurance dépend de l'expérience du pilote, de l'usage (loisir, école) et des garanties choisies.</p>
+
+<h2 id="ou-acheter">Où trouver un ULM pendulaire d'occasion</h2>
+<p>Le marché se partage entre annonces entre particuliers, clubs ULM et écoles qui renouvellent leur flotte. Privilégier un vendeur capable de fournir un historique complet et transparent — carnet de suivi, factures d'entretien, date de fabrication de l'aile — réduit nettement le risque de mauvaise surprise après achat. Comparer plusieurs annonces similaires permet aussi de se faire une idée réaliste des prix pratiqués au moment de l'achat.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Consultez les annonces d'ULM disponibles sur Aircraft2Sell pour comparer les profils d'appareils et les niveaux de prix avant de vous engager.</div></div>
+
+<h2 id="negociation">Négocier et finaliser l'achat</h2>
+<p>Une fois l'inspection réalisée, les éléments à faire valoir dans la négociation sont surtout l'âge de l'aile, l'état du moteur et la complétude des documents de suivi. Un appareil sans historique clair doit être négocié à la baisse ou écarté si le doute persiste sur des points de sécurité essentiels.</p>
+<p>À la vente, rédigez un contrat précisant l'identité des parties, la description de l'appareil (chariot et aile), le prix, les éventuelles garanties et la date de transfert de propriété. Conservez une copie de tous les documents transmis par l'ancien propriétaire : ils seront utiles pour l'entretien futur et pour une revente ultérieure.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Comparez les ULM disponibles</h3>
+            <p>Consultez les annonces d'ULM en Europe pour affiner votre budget et votre choix.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="ulm-ou-avion-leger-debuter.html" class="card"><span class="icon-box"><i data-icon="swap"></i></span><span class="eyebrow">Guide débutant</span><strong>ULM ou avion léger : quelle formule pour débuter</strong><p>Comparatif pour choisir entre ULM et avion léger certifié selon votre budget et votre projet de vol.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un appareil d'occasion, documents et historique inclus.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Assurance</span><strong>Assurer son aéronef en Europe : le guide complet</strong><p>Responsabilité civile, corps de l'appareil, garanties indispensables pour bien assurer votre ULM ou avion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261007a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>
