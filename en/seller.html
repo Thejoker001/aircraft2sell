@@ -254,6 +254,25 @@ document.addEventListener('click', function (e) {
 .tabs{margin-bottom:1.25rem}
 /* Skeleton */
 .lc-skel{aspect-ratio:4/3;border-radius:12px 12px 0 0}
+/* Banner + showcase */
+.profile-banner{height:120px;border-radius:var(--a2s-radius) var(--a2s-radius) 0 0;background:linear-gradient(135deg,var(--a2s-navy),#13385f);background-size:cover;background-position:center;margin:-1px -1px 0}
+.profile-hero{position:relative}
+.profile-avatar{overflow:hidden;background-size:cover;background-position:center}
+.specialty-tags{display:flex;gap:.35rem;flex-wrap:wrap;justify-content:center;margin:.4rem 0 .2rem}
+.specialty-tag{font-size:.7rem;font-weight:600;color:var(--a2s-navy);background:var(--a2s-surface-2);border-radius:999px;padding:.2rem .6rem}
+.profile-stats.stats-3{grid-template-columns:1fr 1fr 1fr}
+.btn-whatsapp{background:#25D366;color:#fff;border-color:#25D366}
+.btn-whatsapp:hover{background:#1ebe59}
+.profile-share{padding:.6rem 1.25rem .9rem;text-align:center}
+.profile-share button{background:none;border:none;color:var(--a2s-text-muted);font-size:.78rem;cursor:pointer;display:inline-flex;align-items:center;gap:.3rem}
+.profile-share button:hover{color:var(--a2s-blue)}
+.featured-listing{display:grid;grid-template-columns:280px minmax(0,1fr);gap:1.25rem;margin-bottom:1.5rem;padding:1.25rem;align-items:center}
+.featured-listing .fl-img{aspect-ratio:4/3;border-radius:var(--a2s-radius-sm);overflow:hidden;background:var(--a2s-surface-2);display:flex;align-items:center;justify-content:center}
+.featured-listing .fl-img img{width:100%;height:100%;object-fit:cover}
+.featured-listing .fl-tag{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--a2s-accent);font-weight:800;margin-bottom:.3rem}
+.featured-listing .fl-title{font-family:var(--font-display);font-weight:800;font-size:1.3rem;color:var(--a2s-navy);margin-bottom:.4rem}
+.featured-listing .fl-price{font-size:1.4rem;font-weight:800;color:var(--a2s-navy);margin:.4rem 0}
+@media(max-width:600px){.featured-listing{grid-template-columns:1fr}}
 @media(max-width:900px){.seller-layout{grid-template-columns:1fr}.seller-side{position:static}}
 </style>
 <script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
@@ -276,6 +295,7 @@ document.addEventListener('click', function (e) {
     <!-- PROFILE COLUMN -->
     <aside class="seller-side">
       <div class="card">
+        <div class="profile-banner" id="profileBanner"></div>
         <div class="profile-hero">
           <div class="profile-avatar" id="sellerAvatar">?</div>
           <div class="stars" id="sellerStars" aria-label="Seller rating">
@@ -284,9 +304,10 @@ document.addEventListener('click', function (e) {
           <div class="profile-name" id="sellerName">Loading…</div>
           <div class="profile-pseudo" id="sellerPseudo"></div>
           <div class="badges" id="sellerBadges"></div>
+          <div class="specialty-tags" id="sellerSpecialties" style="display:none"></div>
           <div class="profile-since" id="sellerSince"></div>
         </div>
-        <div class="profile-stats">
+        <div class="profile-stats" id="profileStats">
           <div class="kpi"><div class="kpi-value" id="statListings">—</div><div class="kpi-label">Listings</div></div>
           <div class="kpi"><div class="kpi-value" id="statViews">—</div><div class="kpi-label">Total views</div></div>
         </div>
@@ -294,6 +315,10 @@ document.addEventListener('click', function (e) {
         <div class="profile-info" id="sellerInfo"></div>
         <div class="profile-cta">
           <button type="button" class="btn-primary btn-block" data-action="openContact"><i data-icon="message"></i>Contact this seller</button>
+          <button type="button" class="btn-whatsapp btn-block" id="btnWhatsapp" style="display:none;margin-top:.6rem;border-radius:var(--a2s-radius-sm);padding:.6rem 1rem;font-weight:700;align-items:center;justify-content:center;gap:.4rem" onclick="window.open(this.dataset.href,'_blank')"><i data-icon="message"></i>WhatsApp</button>
+        </div>
+        <div class="profile-share">
+          <button type="button" onclick="shareSellerProfile()"><i data-icon="share"></i>Share this profile</button>
         </div>
       </div>
 
@@ -314,6 +339,7 @@ document.addEventListener('click', function (e) {
         </div>
         <span class="badge badge-navy" id="listingCount">0 listing</span>
       </div>
+      <div id="featuredListingWrap"></div>
       <div class="tabs" id="catTabs" role="tablist">
         <button type="button" class="tab active" role="tab" aria-selected="true" data-cat="" data-action="filterCat" data-args='["__this__",""]'>All</button>
         <button type="button" class="tab" role="tab" aria-selected="false" data-cat="light" data-action="filterCat" data-args='["__this__","light"]'>Light aircraft</button>
@@ -532,6 +558,7 @@ window.addEventListener('DOMContentLoaded',async function(){
 
   renderProfile(user,sellerNameParam);
   renderListings(_allListings);
+  renderFeaturedListing(_allListings);
   updateCatTabs();
   loadReviews(_sellerPseudo,_sellerEmail);
 
@@ -556,6 +583,15 @@ function renderProfile(user,fallbackName){
   _sellerName=name;
 
   document.getElementById('sellerAvatar').textContent=(name[0]||'S').toUpperCase();
+  if(user&&user.avatar_url){
+    document.getElementById('sellerAvatar').style.backgroundImage='url('+esc(user.avatar_url)+')';
+    document.getElementById('sellerAvatar').textContent='';
+  }
+  var bannerEl=document.getElementById('profileBanner');
+  if(bannerEl){
+    if(user&&user.banner_url){bannerEl.style.backgroundImage='url('+esc(user.banner_url)+')';bannerEl.style.display='';}
+    else{bannerEl.style.display='none';}
+  }
   document.getElementById('sellerName').textContent=name;
   document.getElementById('sellerNameTitle').textContent=name;
   document.title='Aircraft2Sell — Profile of '+name;
@@ -591,6 +627,18 @@ function renderProfile(user,fallbackName){
   else if(plan==='Aviateur')badges+='<span class="badge badge-accent">Aviator</span>';
   document.getElementById('sellerBadges').innerHTML=badges;
 
+  /* Specialties (free tags set by the seller). */
+  var spEl=document.getElementById('sellerSpecialties');
+  if(spEl){
+    var spList=(user&&user.specialties)?String(user.specialties).split(',').map(function(s){return s.trim();}).filter(Boolean).slice(0,6):[];
+    if(spList.length){
+      spEl.style.display='';
+      spEl.innerHTML=spList.map(function(s){return '<span class="specialty-tag">'+esc(s)+'</span>';}).join('');
+    }else{
+      spEl.style.display='none';spEl.innerHTML='';
+    }
+  }
+
   /* Rating */
   var rating=user&&user.rating?parseInt(user.rating):0;
   document.querySelectorAll('#sellerStars .star').forEach(function(s,i){s.classList.toggle('on',i<rating);});
@@ -610,8 +658,22 @@ function renderProfile(user,fallbackName){
 
   /* Stats */
   var totalViews=_allListings.reduce(function(s,l){return s+(l.views||0);},0);
+  var soldCount=user&&user.sold_count?parseInt(user.sold_count)||0:0;
   document.getElementById('statListings').textContent=_allListings.length;
   document.getElementById('statViews').textContent=totalViews>999?(Math.round(totalViews/100)/10)+'k':totalViews;
+  var statsEl=document.getElementById('profileStats');
+  var soldEl=document.getElementById('statSold');
+  if(soldCount>0){
+    if(!soldEl){
+      statsEl.insertAdjacentHTML('beforeend','<div class="kpi"><div class="kpi-value" id="statSold">'+soldCount+'</div><div class="kpi-label">Sold</div></div>');
+    }else{
+      soldEl.textContent=soldCount;
+    }
+    statsEl.classList.add('stats-3');
+  }else if(soldEl){
+    soldEl.parentElement.remove();
+    statsEl.classList.remove('stats-3');
+  }
 
   /* Information */
   var info='';
@@ -620,10 +682,56 @@ function renderProfile(user,fallbackName){
   var countryCode=(user&&user.country)||(_allListings.length&&_allListings[0].country)||'';
   if(countryCode)info+='<div class="pi-row">'+A2SIcon('globe')+'<span class="pi-val">'+esc(countryLabel(countryCode))+'</span></div>';
   if(user&&user.company)info+='<div class="pi-row">'+A2SIcon('building')+'<span class="pi-val">'+esc(user.company)+'</span></div>';
+  if(user&&user.website_url)info+='<div class="pi-row">'+A2SIcon('link')+'<span class="pi-val"><a href="'+esc(user.website_url)+'" target="_blank" rel="noopener nofollow">'+esc(user.website_url.replace(/^https?:\/\//,'').replace(/\/$/,''))+'</a></span></div>';
   if(user&&user.phone)info+='<div class="pi-row">'+A2SIcon('phone')+'<span class="pi-val"><a href="tel:'+esc(user.phone)+'">'+esc(user.phone)+'</a></span></div>';
   if(isPro)info+='<div class="alert alert-info" style="margin:.6rem 0 .2rem">'+A2SIcon('shield-check')+'<span>This seller is a <strong>professional verified</strong> by Aircraft2Sell.</span></div>';
   if(!info)info='<div class="pi-empty">This seller has not provided any additional information.</div>';
   document.getElementById('sellerInfo').innerHTML=info;
+
+  /* WhatsApp button: wa.me link, number stripped of spaces/plus. */
+  var waBtn=document.getElementById('btnWhatsapp');
+  if(waBtn){
+    if(user&&user.whatsapp){
+      var waNum=String(user.whatsapp).replace(/[^0-9]/g,'');
+      waBtn.dataset.href='https://wa.me/'+waNum;
+      waBtn.style.display='flex';
+    }else{
+      waBtn.style.display='none';
+    }
+  }
+}
+
+/* ── SHARE ── */
+function shareSellerProfile(){
+  var url=location.href;
+  if(navigator.share){
+    navigator.share({title:'Profile of '+_sellerName+' — Aircraft2Sell',url:url}).catch(function(){});
+    return;
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(function(){showToast('Link copied to clipboard');}).catch(function(){showToast('Could not copy the link');});
+  }
+}
+
+/* ── FEATURED LISTING ── */
+function renderFeaturedListing(listings){
+  var wrap=document.getElementById('featuredListingWrap');
+  if(!wrap)return;
+  if(!listings||!listings.length){wrap.innerHTML='';return;}
+  var best=listings.find(function(l){return l.featured;})||listings.slice().sort(function(a,b){return (Number(b.price)||0)-(Number(a.price)||0);})[0];
+  if(!best){wrap.innerHTML='';return;}
+  var title=esc([best.make,best.model,best.year?'('+best.year+')':''].filter(Boolean).join(' ')||'Listing');
+  var cat=CAT_LABELS[best.category]||best.category||'';
+  var photo=best.photos&&best.photos[0]
+    ?'<img src="'+esc(optimizeImg(best.photos[0],500))+'" alt="'+title+'" loading="lazy">'
+    :A2SIcon(CAT_ICON[best.category]||'plane');
+  var loc=best.airport?airportLabel(best.airport):(countryLabel(best.country)||'—');
+  wrap.innerHTML='<a class="card featured-listing" href="listing.html?id='+encodeURIComponent(best.id)+'">'
+    +'<div class="fl-img">'+photo+'</div>'
+    +'<div><div class="fl-tag">'+(cat?esc(cat)+' · ':'')+'Featured listing</div>'
+    +'<div class="fl-title">'+title+'</div>'
+    +'<div class="fl-price">'+fmtPrice(best.price,best.currency)+'</div>'
+    +'<div class="lc-loc">'+A2SIcon('map-pin')+loc+'</div></div></a>';
 }
 
 /* ── LISTINGS ── */

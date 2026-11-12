@@ -649,6 +649,35 @@ Cessna;172;1980;45000;EUR;light;LFPG;France;Very good condition, low flight hour
             </div>
           </div>
           <div class="card">
+            <div class="dc-head"><h3>Public showcase <span class="muted" style="font-weight:500">(optional)</span></h3></div>
+            <div class="card-body">
+              <div class="field">
+                <label>Profile banner</label>
+                <div id="bannerPreview" style="width:100%;height:110px;border-radius:var(--a2s-radius-sm);background:var(--a2s-surface-2);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--a2s-text-faint);font-size:.8rem;margin-bottom:.5rem;overflow:hidden">No banner</div>
+                <div style="display:flex;gap:.5rem">
+                  <label class="btn-secondary btn-sm" style="cursor:pointer">Choose an image<input type="file" accept="image/png,image/jpeg,image/webp" id="bannerInput" style="display:none" onchange="handleShowcaseFile('banner',this.files)"></label>
+                  <button type="button" class="btn-secondary btn-sm" id="bannerRemoveBtn" style="display:none" onclick="removeShowcaseImage('banner')">Remove</button>
+                </div>
+                <div class="field-hint">Landscape format recommended (about 1600×500).</div>
+              </div>
+              <div class="field">
+                <label>Profile photo / logo</label>
+                <div style="display:flex;align-items:center;gap:.9rem">
+                  <div id="avatarPreview" style="width:72px;height:72px;border-radius:50%;background:var(--a2s-surface-2);background-size:cover;background-position:center;flex-shrink:0"></div>
+                  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                    <label class="btn-secondary btn-sm" style="cursor:pointer">Choose an image<input type="file" accept="image/png,image/jpeg,image/webp" id="avatarInput" style="display:none" onchange="handleShowcaseFile('avatar',this.files)"></label>
+                    <button type="button" class="btn-secondary btn-sm" id="avatarRemoveBtn" style="display:none" onclick="removeShowcaseImage('avatar')">Remove</button>
+                  </div>
+                </div>
+                <div class="field-hint">Never upload a real ID photo if you want to stay pseudonymous.</div>
+              </div>
+              <div class="field"><label for="setWebsite">Website</label><input type="url" class="inp" id="setWebsite" placeholder="https://your-site.com" autocomplete="url"></div>
+              <div class="field"><label for="setWhatsapp">WhatsApp <span class="muted" style="font-weight:500">(international number, e.g. +33600000000)</span></label><input type="tel" class="inp" id="setWhatsapp" placeholder="+33600000000"></div>
+              <div class="field"><label for="setSpecialties">Specialties</label><input type="text" class="inp" id="setSpecialties" maxlength="150" placeholder="e.g. Turboprops, Business jets, Import/export"><div class="field-hint">Separate specialties with a comma.</div></div>
+              <button type="button" class="btn-primary" data-action="saveProfile">Save</button>
+            </div>
+          </div>
+          <div class="card">
             <div class="dc-head"><h3>Company <span class="muted" style="font-weight:500">(optional)</span></h3></div>
             <div class="card-body">
               <div class="field"><label for="setCompany">Company name</label><input type="text" class="inp" id="setCompany" placeholder="Aviation SAS" autocomplete="organization"></div>
@@ -933,7 +962,7 @@ async function initAuth(){
     try{
       var freshTk=await authToken();
       if(!freshTk){throw new Error('session expired');}
-      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company,bio,founder&limit=1',{
+      var res=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&select=name,pseudo,plan,registered_at,company,bio,founder,avatar_url,banner_url,website_url,whatsapp,specialties&limit=1',{
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+freshTk}
       });
       var data=await res.json();
@@ -952,6 +981,11 @@ async function initAuth(){
         }
         var fc=document.getElementById('setCompany');if(fc)fc.value=data[0].company||'';
         var fb=document.getElementById('setBio');if(fb)fb.value=data[0].bio||'';
+        var fw=document.getElementById('setWebsite');if(fw)fw.value=data[0].website_url||'';
+        var fwa=document.getElementById('setWhatsapp');if(fwa)fwa.value=data[0].whatsapp||'';
+        var fsp=document.getElementById('setSpecialties');if(fsp)fsp.value=data[0].specialties||'';
+        _avatarUrl=data[0].avatar_url||'';_bannerUrl=data[0].banner_url||'';
+        renderShowcasePreviews();
         if(data[0].registered_at||data[0].created_at){
           var ms=document.getElementById('memberSince');
           if(ms){var d=new Date(data[0].registered_at||data[0].created_at);ms.textContent=d.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});}
@@ -1846,6 +1880,46 @@ function delAlertDash(i){
   renderAlerts();showToast('Alert deleted.');
 }
 
+/* ── SELLER SHOWCASE (avatar/banner) ── */
+var _avatarUrl='',_bannerUrl='',_avatarFile=null,_bannerFile=null;
+function renderShowcasePreviews(){
+  var ap=document.getElementById('avatarPreview'),bp=document.getElementById('bannerPreview');
+  var arb=document.getElementById('avatarRemoveBtn'),brb=document.getElementById('bannerRemoveBtn');
+  if(ap){ap.style.backgroundImage=_avatarUrl?'url('+_avatarUrl+')':'';}
+  if(arb)arb.style.display=_avatarUrl?'':'none';
+  if(bp){
+    if(_bannerUrl){bp.style.backgroundImage='url('+_bannerUrl+')';bp.textContent='';}
+    else{bp.style.backgroundImage='';bp.textContent='No banner';}
+  }
+  if(brb)brb.style.display=_bannerUrl?'':'none';
+}
+function handleShowcaseFile(kind,files){
+  if(!files||!files[0])return;
+  var f=files[0];
+  if(f.size>10*1024*1024){showToast('Image too large (10 MB maximum).');return;}
+  var url=URL.createObjectURL(f);
+  if(kind==='avatar'){_avatarFile=f;_avatarUrl=url;}else{_bannerFile=f;_bannerUrl=url;}
+  renderShowcasePreviews();
+}
+function removeShowcaseImage(kind){
+  if(kind==='avatar'){_avatarFile=null;_avatarUrl='';document.getElementById('avatarInput').value='';}
+  else{_bannerFile=null;_bannerUrl='';document.getElementById('bannerInput').value='';}
+  renderShowcasePreviews();
+}
+async function uploadShowcaseImage(kind,file,tk){
+  var f=await compressImageForEdit(file);
+  var ext=(f.name||'img').split('.').pop().toLowerCase();
+  if(!/^(jpg|jpeg|png|webp)$/.test(ext))ext='jpg';
+  var fname=(kind==='avatar'?'avatars/':'banners/')+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+  var r=await fetch(SB_URL+'/storage/v1/object/photos/'+fname,{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tk||SB_KEY),'Content-Type':f.type||'image/jpeg','x-upsert':'true'},
+    body:f
+  });
+  if(!r.ok)throw new Error('upload_failed');
+  return SB_URL+'/storage/v1/object/public/photos/'+fname;
+}
+
 /* ── SETTINGS ── */
 async function saveProfile(){
   var first=document.getElementById('setFirst').value.trim();
@@ -1862,6 +1936,11 @@ async function saveProfile(){
   var userEmail=localStorage.getItem('a2s_user_email')||'';
   var tk=await authToken();
   if(!tk){showToast('Session expired: please log in again.');return;}
+  var website=(document.getElementById('setWebsite')||{value:''}).value.trim();
+  if(website&&!/^https?:\/\//i.test(website))website='https://'+website;
+  var whatsapp=(document.getElementById('setWhatsapp')||{value:''}).value.trim();
+  if(whatsapp&&!/^\+?[0-9 ]{6,20}$/.test(whatsapp)){showToast('Invalid WhatsApp number (international format, e.g. +33600000000).');return;}
+  var specialties=(document.getElementById('setSpecialties')||{value:''}).value.trim().slice(0,150);
   if(userEmail){
     var payload={};
     var nm=(first+' '+last).trim();
@@ -1869,6 +1948,21 @@ async function saveProfile(){
     payload.pseudo=pseudo;
     payload.company=company||null;
     payload.bio=bio||null;
+    payload.website_url=website||null;
+    payload.whatsapp=whatsapp||null;
+    payload.specialties=specialties||null;
+    if(_avatarFile){
+      try{payload.avatar_url=await uploadShowcaseImage('avatar',_avatarFile,tk);_avatarFile=null;}
+      catch(e){showToast('Failed to upload the profile photo.');return;}
+    }else if(_avatarUrl===''){
+      payload.avatar_url=null;
+    }
+    if(_bannerFile){
+      try{payload.banner_url=await uploadShowcaseImage('banner',_bannerFile,tk);_bannerFile=null;}
+      catch(e){showToast('Failed to upload the banner.');return;}
+    }else if(_bannerUrl===''){
+      payload.banner_url=null;
+    }
     if(Object.keys(payload).length){
       try{
         var r=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(userEmail),{
