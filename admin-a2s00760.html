@@ -754,7 +754,7 @@ body.dense .kv{font-size:1.4rem}
             </div>
             <div class="mfg2">
               <div class="mfg"><label>Aéroport OACI *</label><input type="text" id="new-airport" placeholder="ex: LFPG"></div>
-              <div class="mfg"><label>Pays</label><input type="text" id="new-country" placeholder="ex: France"></div>
+              <div class="mfg"><label>Pays *</label><input type="text" id="new-country" placeholder="ex: France"></div>
             </div>
           </div>
         </div>
@@ -1126,7 +1126,7 @@ body.dense .kv{font-size:1.4rem}
       <!-- Aéroport + Pays -->
       <div class="mfg2">
         <div class="mfg"><label>Code OACI / Aéroport</label><input type="text" id="ml-airport" placeholder="LFPG" style="text-transform:uppercase"></div>
-        <div class="mfg"><label>Pays</label>
+        <div class="mfg"><label>Pays *</label>
           <select id="ml-country">
             <option value="">— Sélectionner —</option>
             <option value="FR">France</option>
@@ -2244,6 +2244,8 @@ function mlRemovePhoto(idx) {
 async function saveListingM() {
   var id = sel('ml-id').value;
   if(!id) return;
+  var countryVal = sel('ml-country').value;
+  if(!countryVal){ showToast('Le pays est obligatoire pour toute annonce.'); sel('ml-country').focus(); return; }
   // Récupérer les photos éventuellement modifiées
   var l = _allListings.find(function(l){ return String(l.id)===String(id); });
   var photos = l && l.photos ? l.photos : undefined;
@@ -2255,7 +2257,7 @@ async function saveListingM() {
     price:       sel('ml-price').value,
     currency:    sel('ml-currency').value||'EUR',
     airport:     sel('ml-airport').value.toUpperCase().trim(),
-    country:     sel('ml-country').value,
+    country:     countryVal,
     status:      sel('ml-status').value,
     category:    sel('ml-cat').value,
     description: sel('ml-desc').value.trim(),
@@ -2407,7 +2409,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')document.que
 function clearNewListing(){['new-make','new-model','new-year','new-price','new-airport','new-country','new-seller-name','new-seller-email','new-hours','new-desc'].forEach(function(id){var el=sel(id);if(el)el.value='';});var c=sel('new-currency');if(c)c.value='EUR';var ct=sel('new-category');if(ct)ct.value='light';var st=sel('new-status');if(st)st.value='live';}
 async function submitNewListing(){
   var make=(sel('new-make')||{}).value.trim();var model=(sel('new-model')||{}).value.trim();var year=(sel('new-year')||{}).value.trim();var price=(sel('new-price')||{}).value.trim();var currency=(sel('new-currency')||{}).value||'EUR';var category=(sel('new-category')||{}).value||'light';var airport=(sel('new-airport')||{}).value.trim();var country=(sel('new-country')||{}).value.trim();var sName=(sel('new-seller-name')||{}).value.trim();var sEmail=(sel('new-seller-email')||{}).value.trim();var status=(sel('new-status')||{}).value||'live';var hours=(sel('new-hours')||{}).value.trim();var desc=(sel('new-desc')||{}).value.trim();
-  if(!make||!model||!year||!price||!desc){showToast('Remplissez les champs obligatoires (*)');return;}
+  if(!make||!model||!year||!price||!desc||!airport||!country){showToast('Remplissez les champs obligatoires (*) — aéroport et pays inclus');return;}
   var listing={id:Date.now(),make,model,year,price,currency,category,airport,country,description:desc,status,seller_name:sName,seller_email:sEmail,hours,views:0,enquiries:0,submitted_at:new Date().toISOString()};
   try{await sb('POST','listings',null,listing,true);showToast('Annonce créée !');await refreshAll();clearNewListing();showTab('list',sel('sn-list'));}catch(e){showToast('Erreur : '+e.message);}
 }
