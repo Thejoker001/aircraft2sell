@@ -463,7 +463,12 @@ async function finishOnboarding(){
   promoResult = PARAMS.get('promo') === 'won' ? { granted: true } : null;
 
   btn.disabled=false;btn.classList.remove('is-loading');
-  if(REDIRECT){window.location.href=REDIRECT;return;}
+  if(REDIRECT){
+    var finalRedirect=REDIRECT;
+    if(promoResult&&promoResult.granted)finalRedirect+=(finalRedirect.indexOf('?')>-1?'&':'?')+'promo=won';
+    window.location.href=finalRedirect;
+    return;
+  }
   ['st1','st2','st3'].forEach(function(id){var s=document.getElementById(id);s.classList.remove('active');s.classList.add('done');});
   hide('step3');show('stepSuccess');
   if(promoResult&&promoResult.granted){
@@ -474,11 +479,13 @@ async function finishOnboarding(){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-// "Skip" link and final button honour ?redirect=
+// "Skip" link and final button honour ?redirect= (and forward promo=won if granted)
 (function(){
   if(REDIRECT){
-    var s=document.getElementById('skipLink');if(s)s.href=REDIRECT;
-    var d=document.getElementById('doneBtnDash');if(d)d.href=REDIRECT;
+    var finalRedirect=REDIRECT;
+    if(PARAMS.get('promo')==='won')finalRedirect+=(finalRedirect.indexOf('?')>-1?'&':'?')+'promo=won';
+    var s=document.getElementById('skipLink');if(s)s.href=finalRedirect;
+    var d=document.getElementById('doneBtnDash');if(d)d.href=finalRedirect;
   }
 })();
 
