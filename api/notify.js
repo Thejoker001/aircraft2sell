@@ -17,7 +17,7 @@
  *
  * Les corps acceptés sont identiques à ceux des anciennes fonctions.
  */
-import { preambule, sb, sbEcrire, sbPatch, traduireEnAnglais, envoyer, gabarit, esc, prix, titreAeronef, ADMIN_EMAIL, SITE, ipClient, debitAutorise } from './_lib.js';
+import { preambule, sb, sbEcrire, sbPatch, traduireEnAnglais, envoyer, envoyerPush, gabarit, esc, prix, titreAeronef, ADMIN_EMAIL, SITE, ipClient, debitAutorise } from './_lib.js';
 
 export default async function handler(req, res) {
   const type = (req.query && req.query.type) || '';
@@ -160,6 +160,14 @@ async function message(req, res) {
     });
 
     if (!r.ok) return res.status(502).json({ error: r.erreur });
+
+    /* Push (best-effort, n'affecte jamais la réponse email ci-dessus) */
+    envoyerPush(destinataire, {
+      title: titre ? `Nouveau message — ${titre}` : 'Nouveau message',
+      body: `${expediteurNom} : ${contenu}`.slice(0, 150),
+      data: { type: 'message', threadId, listingId },
+    }).catch(() => {});
+
     return res.status(200).json({ ok: true, messageId: r.id, threadId, sellerEmail: destinataire });
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -300,6 +308,13 @@ async function moderated(req, res) {
     });
 
     if (!r.ok) return res.status(502).json({ error: r.erreur });
+
+    envoyerPush(l.seller_email, {
+      title: decision === 'approved' ? 'Votre annonce est en ligne' : "Votre annonce n'a pas été validée",
+      body: titre,
+      data: { type: 'moderated', listingId: l.id, decision },
+    }).catch(() => {});
+
     return res.status(200).json({ ok: true, decision, messageId: r.id });
   } catch (e) {
     return res.status(500).json({ error: e.message });

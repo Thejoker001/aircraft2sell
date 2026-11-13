@@ -316,6 +316,34 @@ export async function envoyer({ to, toName, sujet, html, replyTo }) {
   }
 }
 
+/** Envoi d'une notification push via Expo Push Service (gratuit, pas de clé
+ * requise). Best-effort : toute erreur est avalée, un push raté ne doit
+ * jamais bloquer l'email transactionnel associé. userEmail identifie les
+ * lignes de push_tokens (table créée pour l'app mobile). */
+export async function envoyerPush(userEmail, { title, body, data } = {}) {
+  if (!userEmail) return { ok: false };
+  try {
+    const rows = await sb(`push_tokens?user_email=eq.${encodeURIComponent(userEmail.toLowerCase())}&select=expo_push_token`);
+    if (!Array.isArray(rows) || rows.length === 0) return { ok: false, sent: 0 };
+    const messages = rows.map((r) => ({
+      to: r.expo_push_token,
+      sound: 'default',
+      title,
+      body,
+      data: data || {},
+    }));
+    const r = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(messages),
+    });
+    if (!r.ok) return { ok: false, sent: 0 };
+    return { ok: true, sent: messages.length };
+  } catch (e) {
+    return { ok: false, erreur: e.message };
+  }
+}
+
 /** En-têtes CORS : le site appelle ces fonctions depuis le navigateur. */
 export function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', SITE);
