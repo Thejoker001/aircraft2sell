@@ -13,7 +13,7 @@
  * Corps dealer  : { company, name, email, phone, type, volume, message }
  * Corps partner : { kind:'partner', company, name, email, phone, category, tier, website, message }
  */
-import { preambule, envoyer, gabarit, esc, ADMIN_EMAIL } from './_lib.js';
+import { preambule, envoyer, gabarit, esc, ADMIN_EMAIL, entreeSuspecte } from './_lib.js';
 
 const TYPES = {
   dealer: 'Dealer / négociant',
@@ -62,6 +62,10 @@ async function traiterPartenaire(corps, res) {
   if (message.length > 5000) {
     return res.status(400).json({ error: 'Message trop long' });
   }
+  /* Sonde d'intrusion (audit 16/11) : rejet silencieux, aucun email envoyé. */
+  if (entreeSuspecte(company, name, phone, website, category, tier, message)) {
+    return res.status(400).json({ error: 'Requête invalide' });
+  }
 
   const categoryLabel = CATEGORIES[category] || category || '—';
   const tierLabel = TIERS[tier] || tier || '—';
@@ -106,6 +110,10 @@ async function traiterDealer(corps, res) {
   }
   if (message.length > 5000) {
     return res.status(400).json({ error: 'Message trop long' });
+  }
+  /* Sonde d'intrusion (audit 16/11) : rejet silencieux, aucun email envoyé. */
+  if (entreeSuspecte(company, name, phone, type, volume, message)) {
+    return res.status(400).json({ error: 'Requête invalide' });
   }
 
   const typeLabel = TYPES[type] || type || '—';

@@ -7,7 +7,7 @@
  *
  * Corps accepté : { first, last, email, subject, message }
  */
-import { preambule, envoyer, gabarit, esc, ADMIN_EMAIL, ipClient, debitAutorise } from './_lib.js';
+import { preambule, envoyer, gabarit, esc, ADMIN_EMAIL, ipClient, debitAutorise, entreeSuspecte } from './_lib.js';
 
 const SUJETS = {
   support: 'Support / Problème technique',
@@ -114,6 +114,10 @@ export default async function handler(req, res) {
     }
     if (message.length > 5000) {
       return res.status(400).json({ error: 'Message trop long' });
+    }
+    /* Sonde d'intrusion (audit 16/11) : rejet silencieux, aucun email envoyé. */
+    if (entreeSuspecte(first, last, subject, message)) {
+      return res.status(400).json({ error: 'Message invalide' });
     }
 
     const sujetLabel = SUJETS[subject] || subject || 'Contact';

@@ -93,6 +93,42 @@ export async function sbPatch(chemin, corps) {
   if (!r.ok) throw new Error(`Supabase ${r.status} : ${(await r.text()).slice(0, 200)}`);
 }
 
+/**
+ * Détecte les payloads d'injection (SQL/NoSQL/shell) envoyés dans les champs
+ * texte libres des formulaires publics (audit du 16/11 : scanner automatisé
+ * ayant bombardé contact-form et pro-request avec des charges du type
+ * `' OR '1'='1`, `; SELECT pg_sleep(5)#`, encodées ou non en URL).
+ * Volontairement large (faux positifs acceptables sur ces champs texte libres,
+ * un vrai message légitime ne contient jamais ces motifs) : mieux vaut
+ * rejeter un message bizarre que de laisser passer une sonde d'intrusion et
+ * polluer la boîte admin avec. Décodage URL tenté avant le test pour
+ * attraper les variantes %27/%3B envoyées telles quelles (non interprétées
+ * par le navigateur, donc jamais décodées côté client).
+ */
+export function entreeSuspecte(...valeurs) {
+  const motifs = [
+    /\bor\b\s*['"]?\s*1\s*['"]?\s*=\s*['"]?\s*1/i,   // ' OR '1'='1
+    /\bunion\b\s+\bselect\b/i,
+    /\bselect\b.{0,30}\bfrom\b/i,
+    /;\s*select\b/i,
+    /\bpg_sleep\s*\(/i,
+    /\bsleep\s*\(\s*\d/i,
+    /\bdrop\s+table\b/i,
+    /\binsert\s+into\b/i,
+    /<script[\s>]/i,
+    /javascript:/i,
+  ];
+  for (const brut of valeurs) {
+    const v = String(brut ?? '');
+    let decode = v;
+    try { decode = decodeURIComponent(v); } catch { /* valeur non encodée, on garde v */ }
+    for (const m of motifs) {
+      if (m.test(v) || m.test(decode)) return true;
+    }
+  }
+  return false;
+}
+
 /** Récupère l'IP client réelle derrière le proxy Vercel. */
 export function ipClient(req) {
   const xff = req.headers['x-forwarded-for'];
