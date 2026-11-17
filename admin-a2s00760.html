@@ -2350,7 +2350,9 @@ async function sendMsgUser(){
 function editUser(id){var u=_allUsers.find(function(u){return String(u.id)===String(id);});if(!u)return;sel('mu-id').value=u.id;sel('mu-name').value=u.name||'';sel('mu-pseudo').value=u.pseudo||'';sel('mu-company').value=u.company||'';var mb=sel('mu-bio');if(mb)mb.value=u.bio||'';sel('mu-email').value=u.email||'';sel('mu-plan').value=u.plan||'Essentiel';sel('mu-status').value=u.status||'active';sel('mu-rating').value=u.rating||0;sel('mu-certified').checked=u.certified||false;sel('mu-free').checked=u.is_free||false;var map=sel('mu-addon-photos');if(map)map.checked=u.addon_photos||false;var mfd=sel('mu-founder');if(mfd)mfd.checked=u.founder||false;
   var mst=sel('mu-seller-type');if(mst)mst.value=u.seller_type||'';
   var mip=sel('mu-is-pro');if(mip)mip.checked=u.is_pro||false;var r=parseInt(u.rating)||0;document.querySelectorAll('#mu-stars [data-star]').forEach(function(s){s.style.color=parseInt(s.dataset.star)<=r?'#f5c518':'rgba(200,220,240,.2)';});openM('mUser');}
-async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var isPro=sel('mu-is-pro')?sel('mu-is-pro').checked:false;var sellerType=sel('mu-seller-type')?sel('mu-seller-type').value:'';var addonPhotos=sel('mu-addon-photos')?sel('mu-addon-photos').checked:false;var isFounder=sel('mu-founder')?sel('mu-founder').checked:false;var body={name:sel('mu-name').value,pseudo:sel('mu-pseudo')?sel('mu-pseudo').value.trim():null,company:sel('mu-company')?sel('mu-company').value.trim():null,bio:sel('mu-bio')?sel('mu-bio').value.trim():null,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree,is_pro:isPro,seller_type:sellerType,addon_photos:addonPhotos,founder:isFounder};try{
+async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rating').value)||null;var isFree=sel('mu-free').checked;var isPro=sel('mu-is-pro')?sel('mu-is-pro').checked:false;var sellerType=sel('mu-seller-type')?sel('mu-seller-type').value:'';var addonPhotos=sel('mu-addon-photos')?sel('mu-addon-photos').checked:false;var isFounder=sel('mu-founder')?sel('mu-founder').checked:false;
+  var _prevUser=_allUsers.find(function(u){return String(u.id)===String(id);});var _prevStatus=_prevUser?_prevUser.status:null;
+  var body={name:sel('mu-name').value,pseudo:sel('mu-pseudo')?sel('mu-pseudo').value.trim():null,company:sel('mu-company')?sel('mu-company').value.trim():null,bio:sel('mu-bio')?sel('mu-bio').value.trim():null,plan:sel('mu-plan').value,status:sel('mu-status').value,rating:_r,certified:sel('mu-certified').checked,is_free:isFree,is_pro:isPro,seller_type:sellerType,addon_photos:addonPhotos,founder:isFounder};try{
   var uEmail=sel('mu-email').value;
   /* Diagnostic : vérifier que la RLS reconnaît bien ce compte avant le PATCH.
      Un SELECT sur la ligne cible avec le jeton admin : s'il revient vide,
@@ -2375,9 +2377,15 @@ async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rat
        un échec ici ne doit pas masquer le succès de la mise à jour membre. */
     try{await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail),{seller_rating:_r,seller_certified:sel('mu-certified').checked},true);}catch(e2){console.warn('Propagation annonces:',e2.message);}
     /* Bannissement (S8) : le compte ne peut plus rien faire et ses annonces
-       publiques sont masquées immédiatement (rejet avec motif explicite). */
+       publiques sont masquées immédiatement (rejet avec motif explicite).
+       Blocage permanent (17/11) : email + IP connues du membre ajoutées
+       aux listes noires (banned_emails/banned_ips), qui bloquent toute
+       réinscription future même après suppression du compte. */
     if((sel('mu-status').value)==='banned'){
-      try{await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail)+'&status=in.(pending,live)',{status:'rejected',rejection_reason:'Compte banni par l\'administration'},true);}catch(e3){console.warn('Masquage annonces banni:',e3.message);}
+      try{await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail)+'&status=in.(pending,live)',{status:'rejected',rejection_reason:'Compte banni par l'+String.fromCharCode(39)+'administration'},true);}catch(e3){console.warn('Masquage annonces banni:',e3.message);}
+      try{await sb('POST','rpc/ban_identity_permanently',null,{p_email:uEmail,p_by:'admin'},true);}catch(e4){console.warn('Blocage permanent email/IP:',e4.message);}
+    }else if(_prevStatus==='banned'){
+      try{await sb('POST','rpc/unban_identity',null,{p_email:uEmail},true);}catch(e5){console.warn('Retrait liste noire:',e5.message);}
     }
   }
   logAdmin('user.update','user',id,{plan:body.plan,status:body.status,certified:body.certified,rating:_r,is_free:isFree,founder:isFounder});

@@ -459,6 +459,15 @@ async function handleRegister(e){
   var btn=document.getElementById('registerBtn');btn.disabled=true;btn.classList.add('is-loading');
   var fullName=first+' '+last;
   try{
+    /* Garde-fou bannissement (email + IP) : appelé AVANT la création du
+       compte. Si l'email/IP est en liste noire permanente, on arrête ici
+       sans jamais appeler /auth/v1/signup. Fail-open si l'endpoint est
+       indisponible : ne jamais bloquer une inscription légitime pour un
+       souci d'infra côté garde-fou. */
+    try{
+      var guard=await fetch('/api/register-guard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
+      if(guard.status===403){var gj=await guard.json();throw new Error(gj.error||'Inscription refusée.');}
+    }catch(guardErr){if(guardErr.message&&guardErr.message.indexOf('banni')!==-1)throw guardErr;}
     var r=await fetch(SB+'/auth/v1/signup',{method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw,options:{data:{full_name:fullName,lang:'fr'}}})});
     var d=await r.json();
     if(!r.ok)throw new Error(translateAuthError(d.error_description||d.msg)||'Impossible de créer le compte.');
