@@ -79,11 +79,18 @@ async function registerGuard(req, res) {
       }
     }
 
-    fetch(`${url}/rest/v1/rpc/log_signup_ip`, {
-      method: 'POST',
-      headers: { apikey: cle, Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_email: email, p_ip: ip }),
-    }).catch(() => {});
+    // Journalisation AWAIT (pas fire-and-forget) : Vercel tue les promesses
+    // en suspens dès que la réponse est envoyée, un fetch non attendu ici
+    // ne s'exécuterait jamais (constaté en test prod le 17/11). Best-effort
+    // quand même : un échec de journalisation ne doit jamais bloquer
+    // l'inscription elle-même.
+    try {
+      await fetch(`${url}/rest/v1/rpc/log_signup_ip`, {
+        method: 'POST',
+        headers: { apikey: cle, Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_email: email, p_ip: ip }),
+      });
+    } catch {}
 
     return res.status(200).json({ ok: true });
   } catch (e) {
