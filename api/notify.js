@@ -10,6 +10,12 @@
  *   POST /api/notify?type=weekly-pick  → annonce choisie "annonce de la semaine" (vendeur)
  *                                         appelé depuis admin-a2s00760.html (toggleWeeklyPick)
  *                                         et depuis le cron api/cron-jobs.js?job=weekly-pick
+ *   POST /api/notify?type=register-guard → garde-fou bannissement (17/11, fusionné ici
+ *                                         pour la même raison : limite Hobby), appelé par
+ *                                         handleRegister() AVANT /auth/v1/signup. Bloque si
+ *                                         l'email/IP est dans banned_emails/banned_ips, et
+ *                                         journalise l'IP (signup_ips) sinon. Voir
+ *                                         supabase/ban-permanent-email-ip.sql.
  *   GET  /api/notify?type=stats        → compteur public "aéronefs vendus"
  *                                         (aucune donnée personnelle, agrégat
  *                                         only — status=sold est invisible à
@@ -29,8 +35,62 @@ export default async function handler(req, res) {
   if (type === 'new-listing') return newListing(req, res);
   if (type === 'moderated') return moderated(req, res);
   if (type === 'weekly-pick') return weeklyPick(req, res);
+  if (type === 'register-guard') return registerGuard(req, res);
   return message(req, res); /* défaut : message (compatibilité /api/notify sans type) */
 }
+
+/* ── TYPE register-guard : garde-fou bannissement (email + IP) ──
+   Appelé AVANT la création du compte. Bloque si l'email ou l'IP figure
+   dans la liste noire permanente (persiste même après suppression du
+   compte banni) ; journalise l'IP de l'inscription sinon, pour que
+   l'admin puisse plus tard bannir les IP connues d'un membre.
+   FAIL-OPEN : toute erreur Supabase renvoie ok:true (ne jamais bloquer
+   une inscription légitime pour un souci d'infra côté garde-fou). */
+async function registerGuard(req, res) {
+  try {
+    const email = (req.body && req.body.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Email invalide' });
+    }
+    const ip = ipClient(req);
+
+    const autorise = await debitAutorise(`register-guard:${ip}`, 8, 600);
+    if (!autorise) {
+      return res.status(429).json({ ok: false, error: 'Trop de tentatives, réessayez plus tard.' });
+    }
+
+    const url = process.env.SUPABASE_URL;
+    const cle = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !cle) return res.status(200).json({ ok: true });
+
+    const rpc = await fetch(`${url}/rest/v1/rpc/is_signup_blocked`, {
+      method: 'POST',
+      headers: { apikey: cle, Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_email: email, p_ip: ip }),
+    });
+    if (rpc.ok) {
+      const blocked = await rpc.json();
+      if (blocked === true) {
+        return res.status(403).json({
+          ok: false,
+          blocked: true,
+          error: "Ce compte a été définitivement banni et ne peut pas être recréé. Contactez contact@aircraft2sell.eu si vous pensez qu'il s'agit d'une erreur.",
+        });
+      }
+    }
+
+    fetch(`${url}/rest/v1/rpc/log_signup_ip`, {
+      method: 'POST',
+      headers: { apikey: cle, Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_email: email, p_ip: ip }),
+    }).catch(() => {});
+
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    return res.status(200).json({ ok: true });
+  }
+}
+
 
 /* ── TYPE stats : compteur public, sans donnée personnelle ──
    La table listings n'expose que status='live' à l'anonyme (RLS) : le

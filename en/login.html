@@ -433,7 +433,7 @@ async function handleRegister(e){
        /auth/v1/signup. Fail-open if the guard endpoint is unreachable:
        never block a legitimate signup because of a guard outage. */
     try{
-      var guard=await fetch('/api/register-guard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
+      var guard=await fetch('/api/notify?type=register-guard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
       if(guard.status===403){var gj=await guard.json();throw new Error(gj.error||'Registration refused.');}
     }catch(guardErr){if(guardErr.message&&guardErr.message.indexOf('banned')!==-1)throw guardErr;}
     var r=await fetch(SB+'/auth/v1/signup',{method:'POST',headers:{'apikey':SK,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw,options:{data:{full_name:fullName,lang:'en'}}})});
