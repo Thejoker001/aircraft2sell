@@ -129,8 +129,16 @@ export function entreeSuspecte(...valeurs) {
   return false;
 }
 
-/** Récupère l'IP client réelle derrière le proxy Vercel. */
+/** Récupère l'IP client réelle derrière le proxy Vercel.
+ *  Le site est proxifié par Cloudflare (DNS orange cloud) : Vercel ne voit
+ *  que l'IP du nœud Cloudflare côté TCP, et x-forwarded-for est alors écrasé
+ *  par CETTE IP (constaté le 17/11 : toutes les IP journalisées étaient des
+ *  plages Cloudflare 172.68.x/172.71.x, jamais l'IP réelle du visiteur —
+ *  même bug pré-existant sur le rate-limiting notify-message). Cloudflare
+ *  transmet la vraie IP visiteur dans `cf-connecting-ip`, à privilégier. */
 export function ipClient(req) {
+  const cf = req.headers['cf-connecting-ip'];
+  if (cf) return String(cf).split(',')[0].trim();
   const xff = req.headers['x-forwarded-for'];
   if (xff) return String(xff).split(',')[0].trim();
   return req.headers['x-real-ip'] || req.socket?.remoteAddress || 'inconnue';
