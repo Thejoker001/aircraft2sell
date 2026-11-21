@@ -407,7 +407,7 @@ function renderCard(l){{
 window.addEventListener('DOMContentLoaded',async function(){{
   var grid=document.getElementById('catGrid');
   try{{
-    var r=await fetch(SB+'/rest/v1/listings?status=eq.live&country=eq.{code}&order=featured.desc.nullslast,submitted_at.desc&limit=12',{{headers:{{'apikey':SK}}}});
+    var r=await fetch(SB+'/rest/v1/listings?status=eq.live&country=eq.{code}&order=submitted_at.desc&limit=12',{{headers:{{'apikey':SK}}}});
     var rows=r.ok?await r.json():[];
     if(!rows.length){{grid.innerHTML=emptyState();return;}}
     grid.innerHTML=rows.map(renderCard).join('');
