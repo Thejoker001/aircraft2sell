@@ -420,7 +420,10 @@ document.addEventListener('click', function (e) {
               <option value="turbo">Turbopropulseurs</option>
               <option value="heli">Hélicoptères</option>
               <option value="ulm">ULM</option>
-              <option value="airliner">Avions de ligne</option>
+              <option value="planeur">Planeurs</option>
+              <option value="voltige">Voltige</option>
+              <option value="experimental">Expérimental</option>
+              <option value="warbird">Avions militaires</option>
             </select>
           </div>
           <div class="field">
@@ -465,7 +468,7 @@ document.addEventListener('click', function (e) {
       <button class="pill" type="button" data-action="filterListings" data-args='["__this__","turbo"]' data-cat="turbo">Turboprops</button>
       <button class="pill" type="button" data-action="filterListings" data-args='["__this__","heli"]' data-cat="heli">Hélicoptères</button>
       <button class="pill" type="button" data-action="filterListings" data-args='["__this__","ulm"]' data-cat="ulm">ULM</button>
-      <button class="pill" type="button" data-action="filterListings" data-args='["__this__","airliner"]' data-cat="airliner">Avions de ligne</button>
+      <button class="pill" type="button" data-action="filterListings" data-args='["__this__","warbird"]' data-cat="warbird">Avions militaires</button>
     </div>
     <div class="listings-grid" id="listingsGrid"></div>
     <div class="text-center" style="margin-top:2rem">
@@ -492,7 +495,7 @@ document.addEventListener('click', function (e) {
       <a class="cat-card" href="turboprops.html"><div class="cat-bg" style="background-image:url('images/cat-turboprops.jpg');background-image:-webkit-image-set(url('images/cat-turboprops.webp') 1x);background-image:image-set(url('images/cat-turboprops.webp') type('image/webp'), url('images/cat-turboprops.jpg') type('image/jpeg'))"></div><div class="cat-overlay"></div><div class="cat-content"><span class="icon-box"><i data-icon="turboprop"></i></span><div class="cat-name">Turbopropulseurs</div><div class="cat-count" id="cc-turbo">—</div></div></a>
       <a class="cat-card" href="helicopteres.html"><div class="cat-bg" style="background-image:url('images/cat-helicopteres.jpg');background-image:-webkit-image-set(url('images/cat-helicopteres.webp') 1x);background-image:image-set(url('images/cat-helicopteres.webp') type('image/webp'), url('images/cat-helicopteres.jpg') type('image/jpeg'))"></div><div class="cat-overlay"></div><div class="cat-content"><span class="icon-box"><i data-icon="helicopter"></i></span><div class="cat-name">Hélicoptères</div><div class="cat-count" id="cc-heli">—</div></div></a>
       <a class="cat-card" href="ulm.html"><div class="cat-bg" style="background-image:url('images/cat-ulm.jpg');background-image:-webkit-image-set(url('images/cat-ulm.webp') 1x);background-image:image-set(url('images/cat-ulm.webp') type('image/webp'), url('images/cat-ulm.jpg') type('image/jpeg'))"></div><div class="cat-overlay"></div><div class="cat-content"><span class="icon-box"><i data-icon="ulm"></i></span><div class="cat-name">ULM</div><div class="cat-count" id="cc-ulm">—</div></div></a>
-      <a class="cat-card" href="avions-de-ligne.html"><div class="cat-bg" style="background-image:url('images/cat-ligne.jpg');background-image:-webkit-image-set(url('images/cat-ligne.webp') 1x);background-image:image-set(url('images/cat-ligne.webp') type('image/webp'), url('images/cat-ligne.jpg') type('image/jpeg'))"></div><div class="cat-overlay"></div><div class="cat-content"><span class="icon-box"><i data-icon="airliner"></i></span><div class="cat-name">Avions de ligne</div><div class="cat-count" id="cc-airliner">—</div></div></a>
+      <a class="cat-card" href="avions-de-ligne.html"><div class="cat-bg" style="background-image:url('images/cat-ligne.jpg');background-image:-webkit-image-set(url('images/cat-ligne.webp') 1x);background-image:image-set(url('images/cat-ligne.webp') type('image/webp'), url('images/cat-ligne.jpg') type('image/jpeg'))"></div><div class="cat-overlay"></div><div class="cat-content"><span class="icon-box"><i data-icon="rocket"></i></span><div class="cat-name">Avions militaires</div><div class="cat-count" id="cc-airliner">—</div></div></a>
     </div>
   </div>
 </section>
@@ -634,8 +637,8 @@ document.addEventListener('click', function (e) {
 <script>
 var SB='https://hlivysnlzlqdjcigqgvk.supabase.co';
 var SK='sb_publishable_ZxG0uz1u36X-y_JrAs_g6g_CAwFFRSe';
-var CAT_LABEL={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',airliner:'Avion de ligne'};
-var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
+var CAT_LABEL={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',planeur:'Planeur',voltige:'Voltige',experimental:'Expérimental',warbird:'Avion militaire'};
+var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',planeur:'ulm',voltige:'refresh',experimental:'wrench',warbird:'rocket'};
 var SYM={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$',AED:'AED '};
 
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -745,7 +748,7 @@ async function loadListings(){
      conception) plutôt que seller_email (jamais exposé à un visiteur non
      connecté, cf. RLS colonne sur listings). */
   loadCertifiedCount(new Set(all.map(function(x){return x.seller_pseudo;}).filter(Boolean)).size);
-  ['light','jet','turbo','heli','ulm','airliner'].forEach(function(c){var el=document.getElementById('cc-'+c);if(el){var n=all.filter(function(x){return x.category===c;}).length;el.textContent=n>0?(n+' annonce'+(n>1?'s':'')):'Bientôt disponible';}});
+  ['light','jet','turbo','heli','ulm','planeur','voltige','experimental','warbird'].forEach(function(c){var el=document.getElementById('cc-'+c);if(el){var n=all.filter(function(x){return x.category===c;}).length;el.textContent=n>0?(n+' annonce'+(n>1?'s':'')):'Bientôt disponible';}});
 }
 
 /* ── Nombre de vendeurs certifiés ──

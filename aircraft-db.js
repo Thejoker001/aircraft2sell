@@ -256,34 +256,34 @@ const AIRCRAFT_DB = {
   'EuroFox': { cat: 'ulm', models: ['EuroFox 912','EuroFox 915'] },
   'Savannah': { cat: 'ulm', models: ['S','VG','XL','Jabiru'] },
 
-  /* ── AVIONS DE LIGNE / RÉGIONAUX ─────────────────────────── */
+  /* ── AVIONS DE LIGNE (reclassés "warbird" : marché inexistant sur A2S, catégorie repurposée) ─ */
   'ATR': {
-    cat: 'airliner',
+    cat: 'warbird',
     models: ['ATR 42-300','ATR 42-500','ATR 42-600','ATR 42-600S',
       'ATR 72-200','ATR 72-500','ATR 72-600']
   },
   'Bombardier Q (Dash 8)': {
-    cat: 'airliner',
+    cat: 'warbird',
     models: ['DHC-8-100','DHC-8-200','DHC-8-300','DHC-8-400 (Q400)',
       'Q100','Q200','Q300','Q400','Q400 NextGen']
   },
   'Embraer ERJ': {
-    cat: 'airliner',
+    cat: 'warbird',
     models: ['ERJ-135','ERJ-140','ERJ-145','ERJ-145XR']
   },
   'Embraer E-Jet': {
-    cat: 'airliner',
+    cat: 'warbird',
     models: ['E170','E175','E190','E190-E2','E195','E195-E2']
   },
   'Boeing': {
-    cat: 'airliner',
+    cat: 'warbird',
     models: ['737-300','737-400','737-500','737-600','737-700','737-800','737-900',
       '737 MAX 7','737 MAX 8','737 MAX 9','737 MAX 10',
       '747-400','747-8','757-200','767-200','767-300','777-200','777-300',
       '777X','787-8','787-9','787-10']
   },
   'Airbus': {
-    cat: 'airliner',
+    cat: 'warbird',
     models: ['A318','A319','A319neo','A320','A320neo','A321','A321neo','A321XLR',
       'A220-100','A220-300',
       'A330-200','A330-300','A330-800neo','A330-900neo',
@@ -291,37 +291,49 @@ const AIRCRAFT_DB = {
       'A350-900','A350-1000','A380-800']
   },
   'De Havilland Canada': {
-    cat: 'airliner',
+    cat: 'warbird',
     models: ['DHC-1 Chipmunk','DHC-2 Beaver','DHC-3 Otter','DHC-4 Caribou',
       'DHC-6 Twin Otter','DHC-6-300','DHC-6-400',
       'DHC-7','Dash 8 Q100','Dash 8 Q200','Dash 8 Q300','Dash 8 Q400']
   },
   'Fokker': {
-    cat: 'airliner',
+    cat: 'warbird',
     models: ['F27 Friendship','F28 Fellowship','F50','F70','F100']
   },
   'BAe / British Aerospace': {
-    cat: 'airliner',
+    cat: 'warbird',
     models: ['ATP','Jetstream 31','Jetstream 41','BAe 146-100','BAe 146-200',
       'BAe 146-300','Avro RJ70','Avro RJ85','Avro RJ100']
   },
 
   /* ── MILITAIRES / CLASSIQUES (occasion) ─────────────────── */
   'North American': {
-    cat: 'light',
+    cat: 'warbird',
     models: ['T-6 Texan','T-6G','T-28 Trojan','P-51 Mustang','B-25 Mitchell']
   },
   'Yakovlev': {
-    cat: 'light',
+    cat: 'warbird',
     models: ['Yak-11','Yak-18T','Yak-52','Yak-55']
   },
   'Aero Vodochody': {
-    cat: 'light',
+    cat: 'warbird',
     models: ['L-39 Albatros','L-39C','L-39ZA','L-159 ALCA']
   },
   'Zlin': {
-    cat: 'light',
+    cat: 'warbird',
     models: ['Z-42','Z-43','Z-126','Z-226','Z-242','Z-526','Z-726']
+  },
+  'MiG': {
+    cat: 'warbird',
+    models: ['MiG-15','MiG-17','MiG-21','MiG-21UM','MiG-23']
+  },
+  'FOUGA': {
+    cat: 'warbird',
+    models: ['Magister CM170','CM170R']
+  },
+  'Ryan': {
+    cat: 'warbird',
+    models: ['PT22','ST3KR']
   },
 
   /* ── AUTRE ────────────────────────────────────────────────── */

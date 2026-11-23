@@ -20,8 +20,8 @@ var COUNTRY_NAMES={AF:'Afghanistan',ZA:'Afrique du Sud',AL:'Albanie',DZ:'Algéri
 function countryLabel(code){if(!code)return'';return COUNTRY_NAMES[code]||code;}
 
 /* ── CATÉGORIES ── */
-var CAT_LABELS={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',planeur:'Planeur',voltige:'Voltige',experimental:'Expérimental',airliner:'Avion de ligne'};
-var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',planeur:'ulm',voltige:'refresh',experimental:'wrench',airliner:'airliner'};
+var CAT_LABELS={light:'Avion léger',jet:"Jet d'affaires",turbo:'Turboprop',heli:'Hélicoptère',ulm:'ULM',planeur:'Planeur',voltige:'Voltige',experimental:'Expérimental',warbird:'Avion militaire'};
+var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',planeur:'ulm',voltige:'refresh',experimental:'wrench',warbird:'rocket'};
 var CAT_SYMS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$'};
 
 /* ── TOAST ── */
@@ -71,7 +71,7 @@ async function loadAll(){
 
 /* ── COMPTEURS CATÉGORIES ── */
 function updateCounts(){
-  var cats=['light','jet','turbo','heli','ulm','planeur','voltige','experimental','airliner'];
+  var cats=['light','jet','turbo','heli','ulm','planeur','voltige','experimental','warbird'];
   var el=document.getElementById('cnt-all');
   if(el)el.textContent=ALL.length;
   cats.forEach(function(c){
@@ -355,7 +355,7 @@ function setView(v){
    de nouvel appel réseau, la carte est purement une re-projection des
    résultats déjà chargés côté client. */
 var _searchMap=null,_searchMarkerLayer=null;
-var SEARCH_CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',planeur:'ulm',voltige:'refresh',experimental:'wrench',airliner:'airliner'};
+var SEARCH_CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',planeur:'ulm',voltige:'refresh',experimental:'wrench',warbird:'rocket'};
 function ensureSearchMap(){
   if(_searchMap)return;
   _searchMap=L.map('searchMap',{center:[47,6],zoom:5,zoomControl:true,scrollWheelZoom:false});
@@ -445,7 +445,7 @@ function currentSearchCriteria(){
   };
 }
 function searchCriteriaLabel(c){
-  var CAT_LABELS={light:'Avion léger',jet:'Jet d\'affaires',turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',planeur:'Planeur',voltige:'Voltige',experimental:'Expérimental',airliner:'Avion de ligne'};
+  var CAT_LABELS={light:'Avion léger',jet:'Jet d\'affaires',turbo:'Turbopropulseur',heli:'Hélicoptère',ulm:'ULM',planeur:'Planeur',voltige:'Voltige',experimental:'Expérimental',warbird:'Avion militaire'};
   var parts=[];
   if(c.cat)parts.push(CAT_LABELS[c.cat]||c.cat);
   if(c.q)parts.push('« '+c.q+' »');

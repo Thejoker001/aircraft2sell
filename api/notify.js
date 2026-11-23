@@ -260,7 +260,7 @@ async function newListing(req, res) {
     const titre = titreAeronef(l);
     const CAT = {
       light: 'Avion léger', jet: "Jet d'affaires", turbo: 'Turbopropulseur',
-      heli: 'Hélicoptère', ulm: 'ULM', airliner: 'Avion de ligne',
+      heli: 'Hélicoptère', ulm: 'ULM', planeur: 'Planeur', voltige: 'Voltige', experimental: 'Expérimental', warbird: 'Avion militaire',
     };
 
     const html = gabarit({

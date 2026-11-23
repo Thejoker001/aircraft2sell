@@ -20,8 +20,8 @@ var COUNTRY_NAMES={AF:'Afganistan',AX:'Ahvenamaa',AL:'Albaania',DZ:'Alžeeria',A
 function countryLabel(code){if(!code)return'';return COUNTRY_NAMES[code]||code;}
 
 /* ── KATEGOORIAD ── */
-var CAT_LABELS={light:'Kerglennuk',jet:'Ärijet',turbo:'Turbopropeller',heli:'Helikopter',ulm:'Mikrolennuk',planeur:'Purilennuk',voltige:'Akrolennuk',experimental:'Eksperimentaallennuk',airliner:'Reisilennuk'};
-var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',planeur:'ulm',voltige:'refresh',experimental:'wrench',airliner:'airliner'};
+var CAT_LABELS={light:'Kerglennuk',jet:'Ärijet',turbo:'Turbopropeller',heli:'Helikopter',ulm:'Mikrolennuk',planeur:'Purilennuk',voltige:'Akrolennuk',experimental:'Eksperimentaallennuk',warbird:'Militaarlennuk'};
+var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',planeur:'ulm',voltige:'refresh',experimental:'wrench',warbird:'rocket'};
 var CAT_SYMS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$'};
 
 /* ── TOAST ── */
@@ -71,7 +71,7 @@ async function loadAll(){
 
 /* ── KATEGOORIATE LOENDURID ── */
 function updateCounts(){
-  var cats=['light','jet','turbo','heli','ulm','planeur','voltige','experimental','airliner'];
+  var cats=['light','jet','turbo','heli','ulm','planeur','voltige','experimental','warbird'];
   var el=document.getElementById('cnt-all');
   if(el)el.textContent=ALL.length;
   cats.forEach(function(c){

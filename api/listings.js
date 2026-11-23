@@ -85,12 +85,12 @@ const COPIE_SEO = {
         sansDesc: 'Kirjeldus puudub.', surDemande: 'Hind kokkuleppel', fil: ['Avaleht', 'Kuulutused'] },
 };
 const SYMBOLE_DEVISE = { EUR: '€', USD: '$', GBP: '£', CHF: 'Fr', CAD: 'CA$', AUD: 'AU$', AED: 'AED ' };
-const NOMS_CATEGORIE = { light: 'Avions légers', jet: "Jets d'affaires", turbo: 'Turboprops', heli: 'Hélicoptères', ulm: 'ULM', airliner: 'Avions de ligne' };
+const NOMS_CATEGORIE = { light: 'Avions légers', jet: "Jets d'affaires", turbo: 'Turboprops', heli: 'Hélicoptères', ulm: 'ULM', planeur: 'Planeurs', voltige: 'Voltige', experimental: 'Expérimental', warbird: 'Avions militaires' };
 // Libellés catégorie par langue, pour le fil d'Ariane (BreadcrumbList) uniquement.
 const NOMS_CATEGORIE_LANG = {
   fr: NOMS_CATEGORIE,
-  en: { light: 'Light aircraft', jet: 'Business jets', turbo: 'Turboprops', heli: 'Helicopters', ulm: 'Ultralights', airliner: 'Airliners' },
-  et: { light: 'Kerglennukid', jet: 'Ärireaktiivlennukid', turbo: 'Turbopropellerlennukid', heli: 'Helikopterid', ulm: 'Ultrakerged', airliner: 'Reisilennukid' },
+  en: { light: 'Light aircraft', jet: 'Business jets', turbo: 'Turboprops', heli: 'Helicopters', ulm: 'Ultralights', planeur: 'Gliders', voltige: 'Aerobatics', experimental: 'Experimental', warbird: 'Military aircraft' },
+  et: { light: 'Kerglennukid', jet: 'Ärireaktiivlennukid', turbo: 'Turbopropellerlennukid', heli: 'Helikopterid', ulm: 'Ultrakerged', planeur: 'Purilennukid', voltige: 'Akrolennukid', experimental: 'Eksperimentaallennukid', warbird: 'Militaarlennukid' },
 };
 const LIBELLE_ACCUEIL = { fr: 'Accueil', en: 'Home', et: 'Avaleht' };
 // Libellés pays (ISO 3166-1) pour le texte SSR — le client remplace par ses
@@ -407,7 +407,7 @@ function sha256(texte) {
   return crypto.createHash('sha256').update(texte, 'utf8').digest('hex');
 }
 
-const CATEGORIES_VALIDES = ['light', 'jet', 'turbo', 'heli', 'ulm', 'airliner'];
+const CATEGORIES_VALIDES = ['light', 'jet', 'turbo', 'heli', 'ulm', 'planeur', 'voltige', 'experimental', 'warbird'];
 
 async function sbGet(url, cle, chemin) {
   const r = await fetch(`${url}/rest/v1/${chemin}`, {
