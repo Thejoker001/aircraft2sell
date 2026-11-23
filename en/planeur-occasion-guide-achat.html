@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used glider for sale: the complete buyer's guide. Budget, reference brands (Schleicher, Stemme, Valentin), pre-purchase inspection checks, licensing and resale.">
+<meta property="og:title" content="Used Glider Buyer's Guide | Aircraft2Sell">
+<meta property="og:description" content="Used glider for sale: the complete buyer's guide. Budget, reference brands (Schleicher, Stemme, Valentin), pre-purchase inspection checks, licensing and resale.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/planeur-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/planeur-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/planeur-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/planeur-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/planeur-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Glider Buyer's Guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Glider Buyer's Guide", "description": "Used glider for sale: the complete buyer's guide. Budget, reference brands (Schleicher, Stemme, Valentin), pre-purchase inspection checks, licensing and resale.", "datePublished": "2026-11-23", "dateModified": "2026-11-23", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/planeur-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Glider Buyer's Guide", "item": "https://aircraft2sell.eu/en/planeur-occasion-guide-achat.html"}]}
+</script>
+<script type="application/ld+json">
+{"@type": "FAQPage", "@context": "https://schema.org", "mainEntity": [{"@type": "Question", "name": "Pure glider or motor glider: what's the difference for buyers?", "acceptedAnswer": {"@type": "Answer", "text": "A pure glider needs a winch or a tow plane to launch and is generally cheaper to buy and maintain. A motor glider carries its own engine, often retractable, allowing self-launch: it is more versatile but costs more to buy and to maintain on the powerplant side."}}, {"@type": "Question", "name": "Do I need a specific licence to buy and fly a glider?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, a glider pilot licence (SPL) is generally required for a pure glider. For a motor glider, an aeroplane licence (LAPL or PPL) can sometimes be sufficient depending on the engine: always check the applicable national regulation before finalising a purchase."}}, {"@type": "Question", "name": "What is the main cost after buying a glider?", "acceptedAnswer": {"@type": "Answer", "text": "The periodic airworthiness check (ARC or equivalent) and, where needed, a structural repair of the composite or a fabric/metal skin. For a motor glider, add the engine's own maintenance and powerplant hours."}}, {"@type": "Question", "name": "How do I estimate a glider's resale value before buying?", "acceptedAnswer": {"@type": "Answer", "text": "Compare listings for similar models, weighing airframe hours, skin condition, glide ratio and documented maintenance history. A complete logbook and maintenance tracked through an approved workshop clearly add value at resale."}}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/en/index.html">Home</a><i data-icon="chevron-right"></i><a href="/en/blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used glider</span></nav>
+    <span class="eyebrow">Category guide</span>
+    <h1>Used Glider Buyer's Guide</h1>
+    <p>Budget to plan for, reference brands, pre-purchase inspection checks, regulation and resale outlook to buy a used glider or motor glider with full confidence.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published November 23, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Table of contents</div>
+        <ol><li><a href="#market">The used glider market in Europe</a></li><li><a href="#types">Pure glider or motor glider: which to choose</a></li><li><a href="#brands">Reference brands and models</a></li><li><a href="#budget">What budget should you plan for</a></li><li><a href="#inspection">What to check before you buy</a></li><li><a href="#regulation">Licensing and registration</a></li><li><a href="#maintenance">Maintenance and running costs</a></li><li><a href="#resale">Resale and the used market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="market">The used glider market in Europe</h2>
+<p>Gliding remains a very active discipline across Europe, backed by a dense network of clubs and dedicated airfields, particularly in Germany, France, Poland and the Alpine countries. The used market has been well established for decades: many gliders change hands between clubs, co-ownership groups and private owners, which guarantees a regular supply across the full price range.</p>
+<p>Two main families coexist on this market: pure gliders, with no engine, and motor gliders, fitted with an engine that allows a fully self-launched take-off. Add to that a fine segmentation by performance category — trainer gliders, club two-seaters, and high-glide-ratio single-seat competition gliders — which strongly shapes the buyer profile and the budget to plan for.</p>
+<p>Unlike powered aircraft, a well-maintained glider tends to depreciate relatively slowly: a composite or metal airframe, correctly stored and maintained, keeps most of its value over several decades. That's an important point to keep in mind, both when buying and when thinking ahead to a future resale.</p>
+
+<h2 id="types">Pure glider or motor glider: which to choose</h2>
+<p>The choice between a pure glider and a motor glider depends mostly on intended use. A pure glider relies on a winch or a tow plane to launch: it's the classic choice for club flying, competition or pure performance flying, generally at a more accessible purchase and running cost.</p>
+<p>A motor glider carries an engine, most often retractable into the fuselage, which allows a fully self-launched take-off and relaunch without depending on the availability of a tow plane or a winch. That autonomy comes at a price: the purchase cost is higher, and engine and retraction-system maintenance adds to the airframe's own upkeep. Some touring motor gliders, designed for long legs, come close to a light aircraft in terms of comfort and range.</p>
+<p>For a first-time private owner, a club two-seater or single-seat pure glider is usually the simplest and most affordable entry point. The motor glider appeals more to pilots who want the freedom of self-launched flying without depending on club infrastructure.</p>
+
+<h2 id="brands">Reference brands and models</h2>
+<p>The European used market is dominated by a handful of historic manufacturers, whose reputation and parts availability make long-term maintenance considerably easier.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Schleicher</strong> — a leading German manufacturer, from the Ka8 trainer two-seater to the ASW/ASG family of competition gliders, prized for glide ratio and reliability.</span></li>
+  <li><i data-icon="check"></i><span><strong>Stemme</strong> — a high-end motor glider specialist, notably the S10 series, well regarded for touring and long-range missions.</span></li>
+  <li><i data-icon="check"></i><span><strong>Valentin</strong> — maker of the Taifun motor glider, valued for its versatility between soaring and light powered flight.</span></li>
+  <li><i data-icon="check"></i><span><strong>DG Flugzeugbau / Schempp-Hirth</strong> — other key German references in performance and competition gliders, with a large installed base across Europe.</span></li>
+</ul>
+<p>Before targeting a specific model, it pays to clearly define your priority use — training, club, competition or touring — because performance, price and maintenance constraints vary widely between these families.</p>
+
+<h2 id="budget">What budget should you plan for</h2>
+<p>The price of a used glider mainly depends on its age, airframe hours, the condition of its skin (composite, metal or fabric depending on the generation), its glide ratio and, for a motor glider, engine hours and condition. The oldest trainer or club two-seaters, built in metal and fabric, trade at a clearly accessible entry level, while recent high-performance competition gliders or high-end touring motor gliders represent a far larger investment, reaching several hundred thousand euros for the best-performing models.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Factor</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Age and generation</td><td>Recent high-glide-ratio competition gliders trade considerably higher</td></tr>
+<tr><td>Skin condition</td><td>A composite airframe with no major repair reassures buyers and adds value</td></tr>
+<tr><td>Airframe hours and flight history</td><td>Low hours and documented club use are valued positively</td></tr>
+<tr><td>Powerplant (motor glider)</td><td>Engine hours and maintenance weigh heavily on the asking price</td></tr>
+</tbody></table></div>
+<p>Beyond the purchase price, budget for the additional costs: a pre-purchase inspection by an independent mechanic or an approved workshop familiar with the type, registration and transfer fees, insurance, plus towing, hangarage or a parking spot depending on how you plan to operate the glider.</p>
+
+<h2 id="inspection">What to check before you buy</h2>
+<p>A pre-purchase inspection by an independent, type-qualified mechanic remains essential before finalising any transaction, just as it would be for a powered aircraft. For a glider, a few points deserve particular attention.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Skin condition: look for impacts, delamination or past repairs on a composite airframe, or corrosion and tears on a metal/fabric skin.</span></li>
+  <li><i data-icon="check"></i><span>Total airframe hours and the history of periodic airworthiness checks (ARC or equivalent), with a complete logbook and no gaps.</span></li>
+  <li><i data-icon="check"></i><span>For a motor glider, engine hours and maintenance, plus the condition of the powerplant retraction system.</span></li>
+  <li><i data-icon="check"></i><span>Condition of flight controls, cables, bearings and airbrakes, as well as the canopy's overall fit and seal.</span></li>
+  <li><i data-icon="check"></i><span>Past storage conditions (hangar or trailer): a glider regularly stored under cover keeps its skin in noticeably better shape.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Never rely solely on the seller's description of the aircraft's condition: a written independent inspection report, ideally from a workshop approved for the type, is your best protection against an unpleasant surprise after the purchase.</div></div>
+
+<h2 id="regulation">Licensing and registration</h2>
+<p>Gliding in Europe is governed by a regulatory framework distinct from that of light aeroplanes. A glider pilot licence (SPL) is generally required to fly a pure glider. For a motor glider, an aeroplane licence (LAPL or PPL) can sometimes be sufficient depending on engine power and use: it is essential to check the applicable regulation with the national authority (such as DGAC, or the relevant EASA-based rule depending on the country) before finalising a purchase.</p>
+<p>On the registration side, the process varies by country of registration: certificate of airworthiness (or its glider equivalent), registration marking and transfer of ownership should be checked carefully, especially for a cross-border purchase within the European Union.</p>
+
+<h2 id="maintenance">Maintenance and running costs</h2>
+<p>A glider's running costs remain considerably lower than those of a comparably sized powered aircraft, which partly explains its appeal. The main cost items remain the periodic airworthiness check, insurance, storage (hangar or trailer) and, for a motor glider, maintenance of the engine and its retraction system.</p>
+<p>Having the aircraft maintained by a workshop approved for the type and familiar with its materials (composite, metal or fabric) limits unpleasant surprises and preserves resale value. Rigorous, well-documented maintenance is a strong selling point at any future resale.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for the complete logbook and the latest periodic inspection reports before making an offer: they give a faithful picture of how seriously the aircraft has been maintained.</div></div>
+
+<h2 id="resale">Resale and the used market</h2>
+<p>The used glider market benefits from a solid installed base across Europe, with good parts availability for the most common brands such as Schleicher, Stemme or DG Flugzeugbau. A well-maintained aircraft, with a transparent history and skin in good condition, generally resells more easily and on better terms than one with gaps in its technical file.</p>
+<p>Comparing several listings for similar models remains the best way to judge a fair price, whether you're buying now or preparing a future resale. Price differences between two aircraft of the same type almost always come down to airframe hours, skin condition and documented maintenance quality.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your glider</h3>
+            <p>Compare used glider and motor glider listings available across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="/en/search.html?cat=planeur" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To take your buying or selling project further.</p>
+      </div>
+      <a href="/en/blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="/en/inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer guide</span><strong>Pre-purchase inspection of an aircraft: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Buyer guide</span><strong>Registering an aircraft in Europe</strong><p>The steps and documents required to register an aircraft bought on the used market.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Buyer guide</span><strong>Aircraft insurance: the complete guide</strong><p>Understand the coverage options and properly insure your aircraft, gliders and motor gliders included.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>
