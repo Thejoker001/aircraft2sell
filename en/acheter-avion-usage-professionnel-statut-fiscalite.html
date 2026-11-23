@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Redirection automatique par langue navigateur
+   --------------------------------------------------------------------------
+   Sur une page FR (racine, sans /en/ ni /et/), si le navigateur du visiteur
+   est configuré en anglais ET qu'une version EN de cette page existe, on
+   redirige une seule fois vers /en/<page>. Le choix est mémorisé (localStorage)
+   pour ne plus jamais re-rediriger ensuite, y compris si le visiteur revient
+   volontairement en FR via le sélecteur de langue du footer.
+
+   Ne s'exécute PAS :
+   - sur les pages déjà sous /en/ ou /et/ (pas de boucle)
+   - si un choix de langue a déjà été fait une fois (a2s_lang_choice_made)
+   - si la page n'a pas d'équivalent EN (TRANSLATED_PAGES)
+   - pour les crawlers (voir isLikelyBot ci-dessous)
+
+   CORRECTIF 2026-09-21 : contrairement à l'hypothèse initiale, Googlebot rend
+   la page avec Chrome headless (navigator.language = "en-US" par défaut) et
+   EXÉCUTE ce script — confirmé via Search Console URL Inspection sur la page
+   d'accueil (userCanonical basculait sur /en/index.html malgré une visite de
+   l'URL FR). Impact : le "signal utilisateur" observé par Google pour la
+   page racine pouvait dériver vers la version anglaise. Un filtrage sur
+   navigator.webdriver + une liste d'UA de crawlers connus élimine ce risque
+   sans changer le comportement pour un vrai visiteur humain.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* Détection best-effort des crawlers : navigator.webdriver est vrai pour
+     Chrome headless (Googlebot, Bingbot, Puppeteer/Playwright...) ; on
+     couvre aussi les UA de crawlers connus au cas où webdriver ne serait pas
+     exposé. Un faux négatif reste sans danger (au pire, ancien comportement) ;
+     un faux positif ne fait que priver un humain de la redirection auto,
+     jamais casser la navigation (le sélecteur de langue manuel reste dispo). */
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  /* Déjà sur une version traduite : ne rien faire. */
+  if (/^\/(en|et)\//.test(path)) return;
+
+  /* Un choix a déjà été fait une fois (redirection automatique OU clic
+     manuel sur le sélecteur de langue) : ne plus jamais re-rediriger. */
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  /* Pages disponibles en anglais (même liste que nav.js/footer.js). */
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  /* Langue du navigateur (première préférence uniquement, en minuscules,
+     code ISO 2 lettres avant le tiret éventuel : "en-US" -> "en"). */
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  /* Marquer le choix comme fait AVANT de rediriger, pour que la page /en/
+     de destination (qui charge aussi ce script) ne redirige pas à son tour
+     ni ne déclenche de nouvelle vérification au retour arrière. */
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+/* Marque tout choix MANUEL de langue (clic sur un lien hreflang du nav/footer)
+   comme définitif, pour ne plus jamais déclencher la redirection automatique
+   ci-dessus — y compris si le visiteur revient volontairement en FR. Délégué
+   sur document pour capter les liens injectés dynamiquement par nav.js/footer.js. */
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Buying an aircraft for professional use: which legal status to choose (company, leasing, professional co-ownership) and the tax implications.">
+<meta property="og:title" content="Buying an aircraft for professional use: status and tax | Aircraft2Sell">
+<meta property="og:description" content="Buying an aircraft for professional use: which legal status to choose (company, leasing, professional co-ownership) and the tax implications based on how the aircraft is actually used.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/acheter-avion-usage-professionnel-statut-fiscalite.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/acheter-avion-usage-professionnel-statut-fiscalite.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-usage-professionnel-statut-fiscalite.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-usage-professionnel-statut-fiscalite.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-usage-professionnel-statut-fiscalite.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Buying an aircraft for professional use: status and tax | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Buying an aircraft for professional use: status and tax", "description": "Buying an aircraft for professional use: which legal status to choose (company, leasing, professional co-ownership) and the tax implications based on how the aircraft is actually used.", "datePublished": "2026-10-14", "dateModified": "2026-10-14", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/acheter-avion-usage-professionnel-statut-fiscalite.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Buying an aircraft for professional use", "item": "https://aircraft2sell.eu/en/acheter-avion-usage-professionnel-statut-fiscalite.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Professional use</span></nav>
+    <span class="eyebrow">Tax &amp; legal status</span>
+    <h1>Buying an aircraft for professional use: status and tax</h1>
+    <p>Company, leasing, professional co-ownership: which legal structure to choose to acquire an aircraft for professional use, and the tax implications depending on the activity carried out.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on 14 October 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#pourquoi">Why the acquisition status changes everything</a></li><li><a href="#societe">Buying through an operating company</a></li><li><a href="#leasing">Leasing and professional finance leasing</a></li><li><a href="#copropriete">Professional co-ownership and partnership</a></li><li><a href="#usage-mixte">The case of mixed private/professional use</a></li><li><a href="#fiscalite">Tax implications depending on the activity</a></li><li><a href="#documents">Documents to prepare before buying</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Why the acquisition status changes everything</h2>
+<p>An aircraft bought for professional use (aerial work, flying school, charter, business transport) is not acquired under the same conditions as a leisure aircraft. The choice of legal status — direct purchase through a company, leasing, finance leasing or professional co-ownership — determines VAT recovery, accounting depreciation, liability in the event of a claim, and future resale. This is a decision to make before searching for the aircraft, not after signing a preliminary agreement.</p>
+<p>On Aircraft2Sell, many listings for turboprops, jets and helicopters are specifically aimed at this professional audience: operators, schools, aerial work companies. Both the seller and the buyer therefore have every interest in clarifying this status from the very first exchanges.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Key point</strong> — The buyer's legal status (private individual, company, leasing structure) should be settled before price negotiation: it determines the applicable VAT and the clauses of the sale contract.</div></div>
+
+<h2 id="societe">Buying through an operating company</h2>
+<p>The most direct structure is to have the aircraft acquired by the company that will operate it (aerial work company, flying school, charter operator). Several points require attention:</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>VAT on the purchase is in principle recoverable if the aircraft is used for a taxable economic activity — see our dedicated guide on VAT and tax on buying an aircraft in Europe for the detail of the intra-EU rules.</span></li>
+  <li><i data-icon="check"></i><span>Accounting depreciation of the aircraft is generally spread over several years according to local rules, with a direct impact on the company's taxable result.</span></li>
+  <li><i data-icon="check"></i><span>The company must hold, or arrange to hold, the necessary operating approvals (air operator's certificate, school approval) before commercial entry into service — a point often underestimated when buying.</span></li>
+</ul>
+
+<h2 id="leasing">Leasing and professional finance leasing</h2>
+<p>For high-value aircraft (jets, turboprops), finance leasing (leasing) remains a common option to preserve the operator's cash flow:</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>The leasing company remains the legal owner for the duration of the contract; the operator has a right of use in exchange for rent payments, with a purchase option at the end of the period.</span></li>
+  <li><i data-icon="check"></i><span>Rent payments are generally deductible from the operator's taxable result, unlike standard depreciation — a trade-off to discuss with your accountant depending on the balance sheet structure.</span></li>
+  <li><i data-icon="check"></i><span>The leasing contract must specify who bears maintenance, insurance and end-of-contract reinstatement costs — clauses that vary significantly from one lessor to another.</span></li>
+</ul>
+<p>For a detailed comparison of financing structures (standard bank loan, finance leasing, co-ownership), see our guide on financing a business jet.</p>
+
+<h2 id="copropriete">Professional co-ownership and partnership</h2>
+<p>When no single operator justifies full-time use of an expensive aircraft, a group of operators or a professional co-ownership (several co-owning companies sharing the same aircraft) allows the investment to be pooled:</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>A dedicated co-ownership agreement or shareholders' pact must precisely set out the rules on use, cost-sharing and the exit of a co-owner.</span></li>
+  <li><i data-icon="check"></i><span>Operational management (scheduling, maintenance, piloting) is most often delegated to a third-party manager (aircraft management), whose fees add to the fixed costs.</span></li>
+  <li><i data-icon="check"></i><span>Reselling a share is generally more complex than reselling an aircraft owned outright: plan for pre-emption clauses between co-owners from the outset.</span></li>
+</ul>
+
+<h2 id="usage-mixte">The case of mixed private/professional use</h2>
+<p>Many business owners use their company's aircraft both for professional travel and personal trips. This common situation is also one of the most closely scrutinised by the tax authorities:</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Undocumented mixed use exposes the company to tax reclassification (benefit in kind, challenge to VAT or expense deductions). A detailed flight logbook, clearly distinguishing professional flights from private flights, is the best protection in the event of a tax audit.</div></div>
+<p>Common practice is to establish an annual professional/private use ratio, reviewed each financial year, and where applicable to invoice the business owner for the private-use portion at market price — a compliance step that must be anticipated from the time of purchase, not corrected afterwards.</p>
+
+<h2 id="fiscalite">Tax implications depending on the activity</h2>
+<p>The precise rules vary by country and type of activity carried out; they must be confirmed with a tax adviser specialised in aviation before any acquisition. Some general benchmarks observed on the European market:</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Activity</th><th>Main tax point to watch</th></tr></thead>
+<tbody>
+<tr><td><strong>Flying school</strong></td><td>VAT regime on training services, often specific depending on the country (partial exemptions possible).</td></tr>
+<tr><td><strong>Aerial work / charter</strong></td><td>VAT recovery conditional on actual, documented use for a taxable activity.</td></tr>
+<tr><td><strong>Business transport (business owner)</strong></td><td>Risk of reclassification as a benefit in kind if private use is not isolated and valued.</td></tr>
+<tr><td><strong>Resale after professional use</strong></td><td>The VAT status of the aircraft on resale depends on its acquisition history — to be documented for the next buyer.</td></tr>
+</tbody></table></div>
+<p>These points remain general benchmarks: each case must be validated with an accountant or tax specialist familiar with the aviation sector, the amounts involved amply justifying this advice.</p>
+
+<h2 id="documents">Documents to prepare before buying</h2>
+<p>To secure a professional-use acquisition, a file should be put together even before signing:</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Articles of association and operating approvals of the acquiring company (air operator's certificate, school approval, aerial work authorisation depending on the activity).</span></li>
+  <li><i data-icon="check"></i><span>Detailed financing plan (direct purchase, leasing or co-ownership) validated by the structure's accountant.</span></li>
+  <li><i data-icon="check"></i><span>Projected annual utilisation of the aircraft, useful both for financing and to justify the professional allocation to the tax authorities.</span></li>
+  <li><i data-icon="check"></i><span>Tax history and VAT status of the aircraft in question, to be systematically requested from the seller before final negotiation.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Before contacting a seller on Aircraft2Sell for a professional purchase, prepare this file in advance: it speeds up the negotiation and avoids unpleasant tax surprises after signing.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Compare market listings</h3>
+            <p>Browse aircraft available in Europe to refine your professional purchase project.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To take your professional purchase project further.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="tva-fiscalite-achat-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Tax &amp; legal</span><strong>VAT and tax on buying an aircraft in Europe</strong><p>Understand VAT, customs duties and the tax regimes applicable to buying an aircraft.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="financer-jet-affaires-leasing-credit-bail-copropriete.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Financing</span><strong>Financing a business jet: leasing, finance leasing and co-ownership</strong><p>Professional financing options for acquiring a business jet.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="choisir-courtier-aviation-questions.html" class="card"><span class="icon-box"><i data-icon="user-check"></i></span><span class="eyebrow">Process</span><strong>Choosing an aviation broker: the right questions to ask</strong><p>How to select the right intermediary for a complex professional purchase.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>
