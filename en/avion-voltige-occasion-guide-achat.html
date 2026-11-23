@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used aerobatic aircraft: what to know before you buy. Budget, G-logbook, pre-purchase inspection checks, aerobatic qualification and resale.">
+<meta property="og:title" content="Used Aerobatic Aircraft: What to Know Before You Buy | Aircraft2Sell">
+<meta property="og:description" content="Used aerobatic aircraft: what to know before you buy. Budget, G-logbook, pre-purchase inspection checks, aerobatic qualification and resale.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/avion-voltige-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/avion-voltige-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/avion-voltige-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/avion-voltige-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/avion-voltige-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Aerobatic Aircraft: What to Know Before You Buy | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Aerobatic Aircraft: What to Know Before You Buy", "description": "Used aerobatic aircraft: what to know before you buy. Budget, G-logbook, pre-purchase inspection checks, aerobatic qualification and resale.", "datePublished": "2026-11-23", "dateModified": "2026-11-23", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/avion-voltige-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Aerobatic Aircraft: What to Know Before You Buy", "item": "https://aircraft2sell.eu/en/avion-voltige-occasion-guide-achat.html"}]}
+</script>
+<script type="application/ld+json">
+{"@type": "FAQPage", "@context": "https://schema.org", "mainEntity": [{"@type": "Question", "name": "What's the difference between an Extra and a Pitts Special for a first buy?", "acceptedAnswer": {"@type": "Answer", "text": "The Extra is a modern composite monoplane optimised for top-level competition, with very sharp handling. The Pitts Special is a traditional tube-and-fabric biplane, lighter, often cheaper to buy, and long favoured for aerobatic training or leisure flying."}}, {"@type": "Question", "name": "What is a G-logbook and why does it matter so much?", "acceptedAnswer": {"@type": "Answer", "text": "A G-logbook records the actual load factors the airframe has experienced across flights and figures. It is the best way to estimate real structural fatigue: a missing or incomplete G-logbook should make any buyer cautious before purchasing."}}, {"@type": "Question", "name": "What load factors do these aircraft withstand?", "acceptedAnswer": {"@type": "Answer", "text": "Typically around +/-10G depending on the model, sometimes more for top-level competition machines. The structure is reinforced accordingly, which is exactly why tracking the history of load factors through the G-logbook matters so much when buying used."}}, {"@type": "Question", "name": "Do I need a specific qualification to fly an aerobatic aircraft?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, a specific aerobatic rating or training is generally required in addition to the standard pilot licence, with experience minimums that vary by country and by the level of figures flown. Always check the applicable regulation before buying."}}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/en/index.html">Home</a><i data-icon="chevron-right"></i><a href="/en/blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used aerobatic aircraft</span></nav>
+    <span class="eyebrow">Category guide</span>
+    <h1>Used Aerobatic Aircraft: What to Know Before You Buy</h1>
+    <p>Budget to plan for, reference brands, the G-logbook, pre-purchase inspection checks, required qualification and resale outlook to buy a used aerobatic aircraft with full confidence.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published November 23, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Table of contents</div>
+        <ol><li><a href="#market">The used aerobatic aircraft market in Europe</a></li><li><a href="#types">Composite monoplane or traditional biplane: which to choose</a></li><li><a href="#brands">Reference brands and models</a></li><li><a href="#budget">What budget should you plan for</a></li><li><a href="#glogbook">The G-logbook: the single most important document</a></li><li><a href="#inspection">What to check before you buy</a></li><li><a href="#qualification">Qualification and regulation</a></li><li><a href="#resale">Maintenance, resale and the used market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="market">The used aerobatic aircraft market in Europe</h2>
+<p>Aerobatic flying attracts a passionate crowd of pilots, whether they fly for leisure, training or top-level competition. The European used market is particularly active in France, Germany, the Czech Republic and Poland, historic homes to several well-known aerobatic manufacturers and training schools.</p>
+<p>This market stands clearly apart from the classic touring aircraft segment: these airframes are designed to withstand far higher structural loads, which directly shapes their design, maintenance needs and, above all, the points a buyer must watch closely in a used purchase. An aerobatic aircraft with an intensive competition history does not carry the same fatigue profile as one flown only occasionally for leisure.</p>
+<p>The used supply spans a wide spectrum, from an accessible entry-level biplane to an internationally competitive aircraft optimised for the most demanding figures, with considerable differences in price and performance between these two extremes.</p>
+
+<h2 id="types">Composite monoplane or traditional biplane: which to choose</h2>
+<p>Two main families structure the used aerobatic market. On one side, modern composite monoplanes optimised for top-level competition, offering very sharp handling and strong roll rate and climb performance. On the other, traditional tube-and-fabric biplanes, lighter, usually cheaper to buy, and long favoured for aerobatic training or leisure flying.</p>
+<p>Beyond these two historic families, more recent competition monoplanes push performance even further, purpose-built for the most demanding levels of international competition. The right choice depends mostly on the intended flying level and the budget available, both for purchase and for upkeep.</p>
+
+<h2 id="brands">Reference brands and models</h2>
+<p>A handful of manufacturers have historically dominated the aerobatic market, with good parts availability and a network of specialised workshops across Europe.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Extra</strong> — a leading German manufacturer of composite monoplanes, notably the 300 and 330 series, widely flown in international competition.</span></li>
+  <li><i data-icon="check"></i><span><strong>Pitts</strong> — the traditional, widely produced Pitts Special biplane remains a historic reference for aerobatic training and leisure flying.</span></li>
+  <li><i data-icon="check"></i><span><strong>Zivko</strong> — maker of the Edge 540, a high-performance monoplane prominent in top-level competition and in certain air-racing disciplines.</span></li>
+  <li><i data-icon="check"></i><span><strong>CAP</strong> — a French line of aerobatic monoplanes, notably the CAP 232, valued for its flying behaviour and ruggedness.</span></li>
+</ul>
+<p>Before targeting a specific model, clearly define your flying level and ambitions: a Pitts biplane for leisure beginners does not answer the same needs as an Extra or an Edge 540 built for international competition.</p>
+
+<h2 id="budget">What budget should you plan for</h2>
+<p>The price of a used aerobatic aircraft depends heavily on its age, airframe and engine hours, its documented load-factor history in the G-logbook, and its equipment level. Entry-level traditional biplanes trade at an accessible price point, while recent, well-equipped competition monoplanes — especially those with a recognised competition record — can represent a considerably larger investment.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Factor</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Age and generation</td><td>Recent competition monoplanes trade considerably higher</td></tr>
+<tr><td>Load-factor history (G-logbook)</td><td>A history of frequent high loads weighs heavily on price</td></tr>
+<tr><td>Remaining engine and propeller potential</td><td>A high-performance engine close to overhaul reduces value</td></tr>
+<tr><td>Competition record</td><td>An aircraft with a competition history can add or subtract value depending on actual wear</td></tr>
+</tbody></table></div>
+<p>Beyond the purchase price, budget for the additional costs: a pre-purchase inspection by a mechanic specialised in the type, aerobatic-specific insurance (often pricier than a standard touring policy), and possibly an overhaul of the high-performance engine or a propeller upgrade.</p>
+
+<h2 id="glogbook">The G-logbook: the single most important document</h2>
+<p>The G-logbook, which records the actual load factors the airframe has experienced across flights and aerobatic figures, is arguably the single most decisive document when buying a used aerobatic aircraft. It lets you estimate real structural fatigue far more accurately than flight hours alone ever could.</p>
+<p>These aircraft are designed to withstand load factors typically around +/-10G depending on the model, sometimes more for top-level competition machines. The structure is reinforced accordingly, but every repeated loading close to structural limits adds to material fatigue, whether the airframe is metal, composite, or tube-and-fabric.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — A missing, incomplete or clearly outdated G-logbook should make any buyer cautious: it can hide intensive competition use whose structural impact is very difficult to assess without that traceability.</div></div>
+
+<h2 id="inspection">What to check before you buy</h2>
+<p>A pre-purchase inspection by an independent mechanic specialised in the type is essential before finalising any transaction. For an aerobatic aircraft, a few points deserve particular attention.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>A complete G-logbook consistent with the aircraft's declared history, especially if it has a competition background.</span></li>
+  <li><i data-icon="check"></i><span>Fuselage condition: look for cracks, delamination or past repairs on a composite structure, or corrosion and tears on a tube-and-fabric structure.</span></li>
+  <li><i data-icon="check"></i><span>Complete engine history for the high-performance powerplant: hours since last overhaul, compliance with the manufacturer's maintenance programme.</span></li>
+  <li><i data-icon="check"></i><span>Propeller condition and balance, often a constant-speed unit on recent competition models.</span></li>
+  <li><i data-icon="check"></i><span>Flight controls and canopy operation, plus a fully traceable logbook with no gaps.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Never rely solely on the seller's description of the aircraft's condition: a written independent inspection report, ideally from a workshop approved for the type, is your best protection against an unpleasant surprise after the purchase.</div></div>
+
+<h2 id="qualification">Qualification and regulation</h2>
+<p>Beyond the standard pilot licence, a specific aerobatic rating or training is generally required to fly this discipline, with experience minimums that vary by country and by the level of figures flown. National authorities (such as DGAC, or the relevant EASA-based rule depending on the country) set these requirements, which should be checked before any purchase, especially if you are new to the discipline.</p>
+<p>On the registration side, the process follows the general rules applicable to any aircraft, with particular attention to the certificate of airworthiness and its ongoing validity, given the specific structural stresses this type of aircraft is designed for.</p>
+
+<h2 id="resale">Maintenance, resale and the used market</h2>
+<p>Running an aerobatic aircraft adds, on top of the usual cost items (mandatory annual inspection, insurance, parking), close monitoring of the airframe and high-performance engine, plus specific insurance that is often pricier than a standard touring policy given the discipline's risk profile.</p>
+<p>On the resale market, an aircraft with a complete G-logbook, documented maintenance and no apparent accident history generally resells more easily and on better terms than one with a murky past. Comparing several listings for similar models, factoring in competition record and load-factor history, remains the best way to judge a fair price, whether you're buying now or preparing a future resale.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your aerobatic aircraft</h3>
+            <p>Compare used aerobatic aircraft listings available across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="/en/search.html?cat=voltige" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To take your buying or selling project further.</p>
+      </div>
+      <a href="/en/blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="/en/inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer guide</span><strong>Pre-purchase inspection of an aircraft: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Buyer guide</span><strong>Aircraft insurance: the complete guide</strong><p>Understand the coverage options and properly insure your aircraft, including for aerobatic use.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/licence-pilote-prive-cout.html" class="card"><span class="icon-box"><i data-icon="award"></i></span><span class="eyebrow">Buyer guide</span><strong>Private pilot licence: how much does it cost</strong><p>The budget to plan for getting your private pilot licence and moving on to specific ratings.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>
