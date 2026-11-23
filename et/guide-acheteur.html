@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Redirection automatique par langue navigateur
+   --------------------------------------------------------------------------
+   Sur une page FR (racine, sans /en/ ni /et/), si le navigateur du visiteur
+   est configuré en anglais ET qu'une version EN de cette page existe, on
+   redirige une seule fois vers /en/<page>. Le choix est mémorisé (localStorage)
+   pour ne plus jamais re-rediriger ensuite, y compris si le visiteur revient
+   volontairement en FR via le sélecteur de langue du footer.
+
+   Ne s'exécute PAS :
+   - sur les pages déjà sous /en/ ou /et/ (pas de boucle)
+   - si un choix de langue a déjà été fait une fois (a2s_lang_choice_made)
+   - si la page n'a pas d'équivalent EN (TRANSLATED_PAGES)
+   - pour les crawlers (voir isLikelyBot ci-dessous)
+
+   CORRECTIF 2026-09-21 : contrairement à l'hypothèse initiale, Googlebot rend
+   la page avec Chrome headless (navigator.language = "en-US" par défaut) et
+   EXÉCUTE ce script — confirmé via Search Console URL Inspection sur la page
+   d'accueil (userCanonical basculait sur /en/index.html malgré une visite de
+   l'URL FR). Impact : le "signal utilisateur" observé par Google pour la
+   page racine pouvait dériver vers la version anglaise. Un filtrage sur
+   navigator.webdriver + une liste d'UA de crawlers connus élimine ce risque
+   sans changer le comportement pour un vrai visiteur humain.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* Détection best-effort des crawlers : navigator.webdriver est vrai pour
+     Chrome headless (Googlebot, Bingbot, Puppeteer/Playwright...) ; on
+     couvre aussi les UA de crawlers connus au cas où webdriver ne serait pas
+     exposé. Un faux négatif reste sans danger (au pire, ancien comportement) ;
+     un faux positif ne fait que priver un humain de la redirection auto,
+     jamais casser la navigation (le sélecteur de langue manuel reste dispo). */
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  /* Déjà sur une version traduite : ne rien faire. */
+  if (/^\/(en|et)\//.test(path)) return;
+
+  /* Un choix a déjà été fait une fois (redirection automatique OU clic
+     manuel sur le sélecteur de langue) : ne plus jamais re-rediriger. */
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  /* Pages disponibles en anglais (même liste que nav.js/footer.js). */
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  /* Langue du navigateur (première préférence uniquement, en minuscules,
+     code ISO 2 lettres avant le tiret éventuel : "en-US" -> "en"). */
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  /* Marquer le choix comme fait AVANT de rediriger, pour que la page /en/
+     de destination (qui charge aussi ce script) ne redirige pas à son tour
+     ni ne déclenche de nouvelle vérification au retour arrière. */
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+/* Marque tout choix MANUEL de langue (clic sur un lien hreflang du nav/footer)
+   comme définitif, pour ne plus jamais déclencher la redirection automatique
+   ci-dessus — y compris si le visiteur revient volontairement en FR. Délégué
+   sur document pour capter les liens injectés dynamiquement par nav.js/footer.js. */
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="keywords" content="lennuki ostmise juhend, ostueelne ülevaatus, õhusõiduki finantseerimine, lennuki ostunõuanded">
+<meta name="robots" content="index, follow">
+<title>Kuidas osta lennukit Euroopas — Ostujuhend | Aircraft2Sell</title>
+<meta name="description" content="Kuidas osta lennukit Euroopas: täielik ostujuhend — eelarve, ostueelne ülevaatus, dokumendid, registreerimine, finantseerimine ja vead, mida vältida.">
+<link rel="canonical" href="https://aircraft2sell.eu/et/guide-acheteur.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/guide-acheteur.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/guide-acheteur.html">
+<link rel="alternate" hreflang="et" href="https://aircraft2sell.eu/et/guide-acheteur.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/guide-acheteur.html">
+<meta property="og:title" content="Ostja juhend — Aircraft2Sell">
+<meta property="og:description" content="Täielik juhend õhusõiduki ostmiseks Euroopas: eelarve, ostueelne ülevaatus, dokumendid, registreerimine, finantseerimine ja vead, mida vältida.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/et/guide-acheteur.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="et_EE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Ostja juhend — Aircraft2Sell">
+<meta name="twitter:description" content="Täielik juhend õhusõiduki ostmiseks Euroopas: eelarve, ostueelne ülevaatus, dokumendid, registreerimine, finantseerimine ja vead, mida vältida.">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://hlivysnlzlqdjcigqgvk.supabase.co">
+<script type="application/ld+json">
+{
+  "@type": "HowTo",
+  "@context": "https://schema.org",
+  "name": "Kuidas osta õhusõidukit Euroopas",
+  "description": "Täielik juhend lennuki või helikopteri turvaliseks ostmiseks Euroopas.",
+  "url": "https://aircraft2sell.eu/et/guide-acheteur.html",
+  "step": [
+    {"@type": "HowToStep", "name": "Määra eelarve", "text": "Määra kogueelarve, mis hõlmab ostuhinda, maksusid, kindlustust ja hooldust."},
+    {"@type": "HowToStep", "name": "Vali õige õhusõiduk", "text": "Võrdle saadaolevaid mudeleid vastavalt oma vajadustele: lennukaugus, reisijate arv, sertifikaadid."},
+    {"@type": "HowToStep", "name": "Kontrolli ajalugu", "text": "Küsi lennuraamatuid, mootori logiraamatut ja täielikku hooldusajalugu."},
+    {"@type": "HowToStep", "name": "Ostueelne ülevaatus", "text": "Lase teha ostueelne ülevaatus müüjast sõltumatu sertifitseeritud mehaaniku poolt."},
+    {"@type": "HowToStep", "name": "Vormista tehing", "text": "Allkirjasta müügileping, teosta makse ja korralda omandiõiguse üleminek pädeva asutuse juures."}
+  ]
+}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .pills{margin-top:1.25rem}
+.page-head .pill{min-height:34px;font-size:.78rem}
+
+/* Layout */
+.guide-wrap{display:grid;grid-template-columns:250px minmax(0,1fr);gap:3rem;align-items:start}
+.guide-sidebar{position:sticky;top:calc(var(--nav-h) + 1.25rem)}
+.sidebar-label{font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--a2s-text-faint);margin-bottom:.6rem}
+.sidebar-nav{display:flex;flex-direction:column}
+.sidebar-nav a{display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;font-size:.84rem;font-weight:600;color:var(--a2s-text-muted);border-left:2px solid var(--a2s-border);line-height:1.35;transition:color .15s,border-color .15s}
+.sidebar-nav a:hover{color:var(--a2s-navy)}
+.sidebar-nav a.active{color:var(--a2s-navy);border-left-color:var(--a2s-accent)}
+.sidebar-nav .s-num{font-family:var(--font-display);font-weight:800;font-size:.7rem;color:var(--a2s-text-faint);width:1.4em}
+.sidebar-cta{margin-top:1.5rem;padding:1.25rem}
+.sidebar-cta h4{margin-bottom:.35rem}
+.sidebar-cta p{font-size:.82rem;color:var(--a2s-text-muted);line-height:1.5;margin-bottom:.9rem}
+
+/* Contenu éditorial */
+.guide-content{max-width:800px}
+.guide-section{padding-bottom:3rem;margin-bottom:3rem;border-bottom:1px solid var(--a2s-border);scroll-margin-top:calc(var(--nav-h) + 1rem)}
+.guide-section:last-of-type{border-bottom:0;margin-bottom:0}
+.section-header{display:flex;align-items:flex-start;gap:1rem;margin-bottom:1.25rem}
+.section-num{font-family:var(--font-display);font-weight:800;font-size:.85rem;color:var(--a2s-accent);letter-spacing:.06em;width:44px;height:44px;border-radius:var(--a2s-radius-btn);background:var(--a2s-accent-soft);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.section-eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.2rem}
+.section-title{font-size:clamp(1.4rem,2.4vw,1.8rem);line-height:1.2}
+.guide-prose{font-size:1rem;color:var(--a2s-text);line-height:1.8;margin-bottom:1.5rem;max-width:68ch}
+.guide-prose strong{color:var(--a2s-navy)}
+
+/* Cartes d'information */
+.cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+.g-card{padding:1.25rem;display:flex;flex-direction:column;gap:.6rem}
+.g-card .icon-box{width:40px;height:40px}
+.g-card .icon-box .ic{width:20px;height:20px}
+.g-card-title{font-size:.98rem;margin:0}
+.g-card-text{font-size:.88rem;color:var(--a2s-text-muted);line-height:1.65}
+
+/* Tableau */
+.table td:first-child{font-weight:700;color:var(--a2s-navy)}
+.table td:first-child .ic{width:18px;height:18px;margin-right:.4rem;color:var(--a2s-text-muted)}
+.table-wrap.card{margin-bottom:1.5rem}
+
+/* Checklist */
+.checklist{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.5rem}
+.checklist li{display:flex;align-items:flex-start;gap:.8rem;padding:.85rem 1.1rem;font-size:.9rem;line-height:1.6}
+.checklist li .ic{width:20px;height:20px;color:var(--a2s-success);flex-shrink:0;margin-top:.15rem}
+.checklist li strong{color:var(--a2s-navy)}
+
+/* Étapes */
+.steps-list{display:flex;flex-direction:column;gap:.6rem;margin-bottom:1.5rem}
+.step-item{display:flex;align-items:flex-start;gap:1rem;padding:1.1rem 1.25rem}
+.step-num-badge{width:36px;height:36px;border-radius:50%;background:var(--a2s-navy);color:#fff;font-family:var(--font-display);font-weight:800;font-size:.85rem;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-title{font-size:.98rem;margin-bottom:.3rem}
+.step-text{font-size:.88rem;color:var(--a2s-text-muted);line-height:1.7}
+
+/* Encadrés */
+.alert{margin-bottom:1.5rem}
+.alert .alert-title{display:block;font-weight:800;margin-bottom:.2rem}
+
+/* FAQ */
+.faq details{border-bottom:1px solid var(--a2s-border)}
+.faq details:last-child{border-bottom:0}
+.faq summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;font-weight:700;font-size:.95rem;color:var(--a2s-navy);cursor:pointer;min-height:44px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .ic{transition:transform .15s;color:var(--a2s-text-muted);flex-shrink:0}
+.faq details[open] summary .ic{transform:rotate(180deg)}
+.faq .faq-a{padding:0 1.25rem 1.1rem;font-size:.9rem;color:var(--a2s-text-muted);line-height:1.75}
+
+/* CTA final */
+.final-cta{background:var(--a2s-navy);color:#fff;border-radius:var(--a2s-radius-lg);padding:2.5rem;text-align:center;margin-top:3rem}
+.final-cta h2{color:#fff;margin:.5rem 0}
+.final-cta p{color:rgba(255,255,255,.8);max-width:480px;margin:0 auto 1.5rem}
+.final-cta .btn-group{justify-content:center}
+.final-cta .btn-secondary{background:transparent;color:#fff;border-color:rgba(255,255,255,.45)}
+.final-cta .btn-secondary:hover{border-color:#fff;color:#fff}
+
+/* Retour en haut */
+.back-top{position:fixed;bottom:1.5rem;right:1.5rem;width:44px;height:44px;border-radius:50%;background:var(--a2s-navy);color:#fff;display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--a2s-shadow-lg);opacity:0;pointer-events:none;transition:opacity .15s;z-index:200}
+.back-top.visible{opacity:1;pointer-events:auto}
+.back-top:hover{background:var(--a2s-navy-light)}
+
+@media(max-width:960px){.guide-wrap{grid-template-columns:1fr}.guide-sidebar{position:static;display:none}.cards-grid{grid-template-columns:1fr}}
+@media(max-width:768px){.final-cta{padding:1.75rem}.section-header{gap:.75rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Avaleht</a><i data-icon="chevron-right"></i><a href="blog.html">Juhendid</a><i data-icon="chevron-right"></i><span aria-current="page">Ostja juhend</span></nav>
+    <h1>Kuidas osta lennukit Euroopas täiesti rahulikult</h1>
+    <p>Täielik lennuki ostmise juhend: tehnilised kontrollid, õigusdokumendid, läbirääkimised, omandiõiguse üleminek, maksustamine ja finantseerimine — kõik, mida peate teadma enne allkirjastamist.</p>
+    <div class="pills" aria-label="Accès rapide">
+      <a href="#section1" class="pill">Projekti ettevalmistamine</a>
+      <a href="#section2" class="pill">Õhusõiduki valik</a>
+      <a href="#section3" class="pill">Kontrollid</a>
+      <a href="#section4" class="pill">Läbirääkimised</a>
+      <a href="#section5" class="pill">Dokumendid</a>
+      <a href="#section6" class="pill">Registreerimine</a>
+      <a href="#section8" class="pill">Käibemaks</a>
+      <a href="#section10" class="pill">Finantseerimine</a>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="guide-wrap">
+
+      <!-- SIDEBAR -->
+      <aside class="guide-sidebar">
+        <div class="sidebar-label">Sisukord</div>
+        <nav class="sidebar-nav" id="sidebarNav" aria-label="Sommaire du guide">
+          <a href="#section1"><span class="s-num">01</span><span>Projekti ettevalmistamine</span></a>
+          <a href="#section2"><span class="s-num">02</span><span>Õhusõiduki valik</span></a>
+          <a href="#section3"><span class="s-num">03</span><span>Olulised kontrollid</span></a>
+          <a href="#section4"><span class="s-num">04</span><span>Hinna läbirääkimine</span></a>
+          <a href="#section5"><span class="s-num">05</span><span>Dokumendid ja leping</span></a>
+          <a href="#section6"><span class="s-num">06</span><span>Üleminek ja registreerimine</span></a>
+          <a href="#section8"><span class="s-num">07</span><span>Käibemaks ja maksud</span></a>
+          <a href="#section9"><span class="s-num">08</span><span>Kaasomand</span></a>
+          <a href="#section10"><span class="s-num">09</span><span>Finantseerimine</span></a>
+          <a href="#section7"><span class="s-num">10</span><span>Korduma kippuvad küsimused</span></a>
+        </nav>
+        <div class="card sidebar-cta">
+          <h4>Valmis otsima?</h4>
+          <p>Vaata kontrollitud kuulutusi, vahendustasuta.</p>
+          <a href="search.html" class="btn-primary btn-block"><i data-icon="search"></i>Vaata kuulutusi</a>
+        </div>
+      </aside>
+
+      <!-- CONTENU -->
+      <div class="guide-content">
+
+        <!-- SECTION 1 -->
+        <div class="guide-section" id="section1">
+          <div class="section-header">
+            <span class="section-num">01</span>
+            <div><div class="section-eyebrow">Esimene etapp</div><h2 class="section-title">Ostuprojekti ettevalmistamine</h2></div>
+          </div>
+          <p class="guide-prose">Õhusõiduki ostmine on oluline otsus, mis nõuab hoolikat ettevalmistust. Enne kuulutuste vaatamist määra selgelt oma projekt: kavandatud kasutus, kvalifikatsioonitase, kogueelarve, mis hõlmab käituskulusid.</p>
+          <div class="cards-grid">
+            <div class="card g-card"><span class="icon-box"><i data-icon="compass"></i></span><h3 class="g-card-title">Määra kasutusotstarve</h3><p class="g-card-text">Kohalik lõbulend, kaugsõidud, instrumentaallennud, liuglennuki vedamine, väljaõpe: iga kasutus eeldab erinevat õhusõiduki tüüpi.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="clipboard"></i></span><h3 class="g-card-title">Kontrolli oma kvalifikatsiooni</h3><p class="g-card-text">PPL, LAPL, CPL, IR, ME, tüübikvalifikatsioon: veendu, et sinu litsents sobib sihitud õhusõidukiga.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="euro"></i></span><h3 class="g-card-title">Koosta eelarve</h3><p class="g-card-text">Ostuhind, ülevaatus, kindlustus, angaar, kütus, hooldus. Arvesta varuga — ebameeldivad üllatused tulevad ette.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="map-pin"></i></span><h3 class="g-card-title">Vali baas</h3><p class="g-card-text">Lähedus lennuväljale, kus on saadaval angaar ja usaldusväärne hooldustöökoda.</p></div>
+          </div>
+          <div class="alert alert-success"><i data-icon="thumbs-up"></i><div><span class="alert-title">Nõuanne</span>Planeeri kogueelarve, mis hõlmab ostu, esmast ülevaatust, kindlustust, angaari ja iga-aastast hooldust. Aastased käituskulud moodustavad üldiselt 10–20% ostuhinnast.</div></div>
+        </div>
+
+        <!-- SECTION 2 -->
+        <div class="guide-section" id="section2">
+          <div class="section-header">
+            <span class="section-num">02</span>
+            <div><div class="section-eyebrow">Valik</div><h2 class="section-title">Õige õhusõidukitüübi valimine</h2></div>
+          </div>
+          <p class="guide-prose">Valik sõltub otseselt sinu kasutusotstarbest, kvalifikatsioonist ja lennupiirkonnast. Siin on võrdlus Aircraft2Sellis saadaolevate peamiste kategooriate kohta.</p>
+          <div class="card table-wrap">
+            <table class="table">
+              <thead><tr><th>Kategooria</th><th>Tüüpiline kasutus</th><th>Minimaalne kvalifikatsioon</th><th>Keskmine eelarve</th></tr></thead>
+              <tbody>
+                <tr><td><i data-icon="plane-light"></i>Kerge ühemootoriline lennuk</td><td>Kohalik lõbulend, VFR-reisid, esmane väljaõpe</td><td>PPL / LAPL</td><td>30 000 – 250 000 €</td></tr>
+                <tr><td><i data-icon="plane"></i>Mitmemootoriline kolbmootor</td><td>Kaugsõidud, IFR-väljaõpe</td><td>PPL + ME (MEP)</td><td>80 000 – 400 000 €</td></tr>
+                <tr><td><i data-icon="turboprop"></i>Turbopropeller</td><td>Ärireisid, kerge lastivedu, charter</td><td>PPL + IR + ME või tüübikvalifikatsioon</td><td>300 000 € – 3 M€</td></tr>
+                <tr><td><i data-icon="jet"></i>Kerge / väga kerge reaktiivlennuk (VLJ)</td><td>Kiired ärireisid, erakorraline charter</td><td>Tüübikvalifikatsioon (ATPL)</td><td>800 000 € – 5 M€</td></tr>
+                <tr><td><i data-icon="jet"></i>Keskmise / raske klassi reaktiivlennuk</td><td>Kaugsõidud, VIP-reisijad, lastivedu</td><td>Tüübikvalifikatsioon + ATPL</td><td>3 – 30 M€</td></tr>
+                <tr><td><i data-icon="airliner"></i>Reisilennuk</td><td>Kommertstransport, lastivedu, ACMI</td><td>ATPL + tüübikvalifikatsioon</td><td>500 000 € – 80 M€</td></tr>
+                <tr><td><i data-icon="helicopter"></i>Ühemootoriline helikopter</td><td>Lõbulend, väljaõpe, järelevalve, turism</td><td>PPL(H) / LAPL(H)</td><td>80 000 – 500 000 €</td></tr>
+                <tr><td><i data-icon="helicopter"></i>Mitmemootoriline helikopter</td><td>Avameretööd, SAR, VIP-transport, EMS</td><td>CPL(H) + tüübikvalifikatsioon</td><td>500 000 € – 5 M€</td></tr>
+                <tr><td><i data-icon="ulm"></i>ULM / ultrakerge</td><td>Lõbulend, avastamine, kohalik lend</td><td>ULM-luba (3-teljeline / rippuv)</td><td>10 000 – 150 000 €</td></tr>
+                <tr><td><i data-icon="plane-light"></i>Amfiiblennuk / hüdrolennuk</td><td>Veeturism, kõrvalised piirkonnad</td><td>PPL + hüdrolennuki kvalifikatsioon</td><td>100 000 € – 1 M€</td></tr>
+                <tr><td><i data-icon="plane-light"></i>Liuglennuk / mootorliuglennuk</td><td>Sooritusõhk, võistlused, avastamine</td><td>Liuglennuki piloodiluba</td><td>20 000 – 200 000 €</td></tr>
+                <tr><td><i data-icon="award"></i>Sõjaajalooline lennuk</td><td>Kogumine, õhuüritused, säilitamine</td><td>PPL + spetsiifiline tüübikvalifikatsioon</td><td>50 000 € – 5 M€</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><span class="alert-title">Oluline</span>Kontrolli alati, et sinu kvalifikatsioon vastab sihitud õhusõidukile. Üle 5700 kg õhusõiduk või mitmemootoriline turbiiniõhusõiduk vajab spetsiifilisi kvalifikatsioone.</div></div>
+        </div>
+
+        <!-- SECTION 3 -->
+        <div class="guide-section" id="section3">
+          <div class="section-header">
+            <span class="section-num">03</span>
+            <div><div class="section-eyebrow">Põhjalik kontroll</div><h2 class="section-title">Olulised kontrollid</h2></div>
+          </div>
+          <p class="guide-prose">Enne ostupakkumise tegemist on need kontrollid kohustuslikud. Ära allkirjasta midagi ja ära tee ettemakset enne nende läbiviimist.</p>
+          <ul class="checklist">
+            <li class="card"><i data-icon="check-circle"></i><span><strong>Lennukõlblikkussertifikaat (CdN)</strong>: see peab olema kehtiv ja mitte peatatud.</span></li>
+            <li class="card"><i data-icon="check-circle"></i><span><strong>Lennuraamat ja mootori logiraamatud</strong>: kannete järjepidevus on kohustuslik.</span></li>
+            <li class="card"><i data-icon="check-circle"></i><span><strong>AD (lennukõlblikkusdirektiivid) ja SB (teeninduskirjad)</strong>: kõik kohaldatavad peavad olema täidetud.</span></li>
+            <li class="card"><i data-icon="check-circle"></i><span><strong>Konstruktsiooni seisukord</strong>: kere, tiivad, juhtseadised, raamid.</span></li>
+            <li class="card"><i data-icon="check-circle"></i><span><strong>Mootorid ja propeller</strong>: tunnid viimasest ülevaatusest (TSN / SMOH).</span></li>
+            <li class="card"><i data-icon="check-circle"></i><span><strong>Avioonika</strong>: kohustuslike seadmete kehtivus (transponder, kõrgusmõõtur).</span></li>
+            <li class="card"><i data-icon="check-circle"></i><span><strong>Kehtiv kindlustus</strong> ja kahjujuhtumite ajalugu.</span></li>
+            <li class="card"><i data-icon="check-circle"></i><span><strong>Pandid ja hüpoteegid</strong>: riikliku tsiviillennundusameti register.</span></li>
+            <li class="card"><i data-icon="check-circle"></i><span><strong>Ostueelne ülevaatus (pre-buy)</strong> müüjast sõltumatu AMO poolt.</span></li>
+          </ul>
+          <div class="alert alert-error"><i data-icon="alert-triangle"></i><div><span class="alert-title">Mida ei tohi kunagi tähelepanuta jätta</span>Lase alati teha ostueelne ülevaatus müüjast sõltumatu sertifitseeritud hooldusorganisatsiooni (AMO / CAMO) poolt. See 500–2000 € kuluv ülevaatus võib säästa sind kümnete tuhandete eurode suurustest üllatustest.</div></div>
+          <div class="alert alert-success"><i data-icon="thumbs-up"></i><div><span class="alert-title">Nõuanne</span>Vali ülevaatuseks oma hooldusorganisatsioon, mitte müüja soovitatut. Sõltumatus on hädavajalik.</div></div>
+        </div>
+
+        <!-- SECTION 4 -->
+        <div class="guide-section" id="section4">
+          <div class="section-header">
+            <span class="section-num">04</span>
+            <div><div class="section-eyebrow">Pakkumine ja hind</div><h2 class="section-title">Õiglase hinna läbirääkimine</h2></div>
+          </div>
+          <p class="guide-prose">Näidatud hind on harva lõplik hind. Siin on, kuidas struktureerida oma pakkumist ja mis mõjutab läbirääkimisi.</p>
+          <div class="steps-list">
+            <div class="card step-item"><span class="step-num-badge">1</span><div><h3 class="step-title">Hinda turuväärtust</h3><p class="step-text">Vaata viitehindade andmebaase: <strong>AVAC</strong> (euroopa viide), <strong>Vref</strong> või <strong>Aircraft Bluebook</strong> (ameerika viited). Võrdle Aircraft2Sellis sarnaste kuulutustega, et teada hetke turgu.</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">2</span><div><h3 class="step-title">Tuvasta läbirääkimise argumendid</h3><p class="step-text">Suured mootoritunnid, täitmata AD-d, vananenud avioonika, värvi seisukord, lähenevad ülevaatused: iga punkt on argument.</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">3</span><div><h3 class="step-title">Esita tingimuslik pakkumine</h3><p class="step-text">Tee pakkumine tingimusel, et ostueelne ülevaatus on rahuldav. Maksa vaid sümboolne, tagastatav ettemakse juhuks, kui ülevaatus tuvastab suuri puudusi.</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">4</span><div><h3 class="step-title">Pea läbirääkimisi pärast ülevaatust</h3><p class="step-text">Kui ülevaatus tuvastab vajalikke töid, hangi hinnapakkumine ja taotle vastav hinnaalandus, või nõua, et tööd tehtaks enne müüki.</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">5</span><div><h3 class="step-title">Vormista kokkulepe</h3><p class="step-text">Kui hind on kokku lepitud, koosta müügieelleping edasilükkavate tingimustega enne jääksumma tasumist.</p></div></div>
+          </div>
+          <div class="alert alert-success"><i data-icon="thumbs-up"></i><div><span class="alert-title">Nõuanne</span>Müüja, kes keeldub sõltumatust ostueelsest ülevaatusest või kiirustab allkirjastamist, on hoiatussignaal. Võta vajalik aeg: õhusõidukitehingut ei tehta rabedalt.</div></div>
+        </div>
+
+        <!-- SECTION 5 -->
+        <div class="guide-section" id="section5">
+          <div class="section-header">
+            <span class="section-num">05</span>
+            <div><div class="section-eyebrow">Haldus</div><h2 class="section-title">Dokumendid ja müügileping</h2></div>
+          </div>
+          <p class="guide-prose">Õhusõiduki müüki reguleerivad strangid reeglid. Siin on tehingu käigus kontrollitavad ja nõutavad hädavajalikud dokumendid.</p>
+          <div class="cards-grid">
+            <div class="card g-card"><span class="icon-box"><i data-icon="shield-check"></i></span><h3 class="g-card-title">Lennukõlblikkussertifikaat</h3><p class="g-card-text">Väljastatud DGAC (Prantsusmaa) või EASA poolt. Peab olema kehtiv üleminekuhetkel.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="file-text"></i></span><h3 class="g-card-title">Registreerimistunnistus</h3><p class="g-card-text">Ametlik omandiõiguse tõend. Kontrolli, et müüja nimi vastab täpselt.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="book"></i></span><h3 class="g-card-title">Tehnilised logiraamatud</h3><p class="g-card-text">Lennuraamat, mootori logiraamatud, kere logiraamat: järjepidevus on kohustuslik.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="wrench"></i></span><h3 class="g-card-title">Hooldusaruanne</h3><p class="g-card-text">Täielik tööde, AD-de, SB-de ja muudatuste ajalugu. Küsi töökäsud.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="clipboard"></i></span><h3 class="g-card-title">Lennukäsiraamat (AFM / POH)</h3><p class="g-card-text">Kohustuslik pardadokument. Peab vastama registreeritud versioonile.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="edit"></i></span><h3 class="g-card-title">Müügileping</h3><p class="g-card-text">Koosta leping, mis määrab: osapooled, objekt, hind, seisukord, garantiid, edasilükkavad tingimused.</p></div>
+          </div>
+          <div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><span class="alert-title">Tähelepanu</span>Ära kunagi maksa täissummat kontrollimata, et õhusõiduk on vaba kõigist pantidest. Prantsusmaal kontrolli DGAC pantide registrit. Teistes riikides pöördu vastava riikliku tsiviillennundusameti poole.</div></div>
+        </div>
+
+        <!-- SECTION 6 -->
+        <div class="guide-section" id="section6">
+          <div class="section-header">
+            <span class="section-num">06</span>
+            <div><div class="section-eyebrow">Vormistamine</div><h2 class="section-title">Omandiõiguse üleminek ja registreerimine</h2></div>
+          </div>
+          <p class="guide-prose">Pärast lepingu allkirjastamist ja makse teostamist on vajalikud mitmed haldustoimingud, et viimistleda üleminek ja seaduslikult lennata.</p>
+          <div class="steps-list">
+            <div class="card step-item"><span class="step-num-badge">1</span><div><h3 class="step-title">Müügilepingu allkirjastamine</h3><p class="step-text">Mõlemad osapooled allkirjastavad lepingu. Hoia alles originaalkoopia. Jääksumma makse võib olla tagatud SWIFT ülekande või notariaalse deposiidiga.</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">2</span><div><h3 class="step-title">Üleandmisdeklaratsioon</h3><p class="step-text">Prantsusmaal: esita üleandmistoimik DSAC Nord-ile (õhusõidukite registreerimisamet, Athis-Mons) või portaali <strong>demarches-immat.aviation-civile.gouv.fr</strong> kaudu. Nõutav on originaal müügiakt. Teistes riikides: teavitus pädevale riiklikule asutusele.</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">3</span><div><h3 class="step-title">Registreerimise muutus</h3><p class="step-text">Kui õhusõiduk vahetab registrit (näiteks D- vastu F-), esita registrist kustutamise toimik vanale registrile ja registreerimistoimik uuele.</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">4</span><div><h3 class="step-title">Kindlustuse ajakohastamine</h3><p class="step-text">Võta ühendust kindlustajaga enne lendu. Pead olema kaetud alates valdusse võtmisest, mitte registreerimise kuupäevast.</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">5</span><div><h3 class="step-title">Esimene lend pärast ülevaatust</h3><p class="step-text">Teosta vastuvõtulend koos kvalifitseeritud piloodiga, et kinnitada korralikku toimimist enne esimest üksinda lendu.</p></div></div>
+          </div>
+          <div class="alert alert-info"><i data-icon="clock"></i><div><span class="alert-title">Tähtajad</span>Üleminekuaeg Prantsuse registris (DSAC Nord, Athis-Mons) on üldiselt 4–12 nädalat. Selle aja jooksul võib pädev asutus väljastada ajutise lennuloa.</div></div>
+        </div>
+
+        <!-- SECTION 8 — TVA -->
+        <div class="guide-section" id="section8">
+          <div class="section-header">
+            <span class="section-num">07</span>
+            <div><div class="section-eyebrow">Maksustamine</div><h2 class="section-title">Käibemaks ja maksuaspektid</h2></div>
+          </div>
+          <p class="guide-prose">Õhusõiduki ost tõstatab olulisi maksuküsimusi, eriti piiriülese ostu puhul Euroopas. Reeglid sõltuvad ostja ja õhusõiduki staatusest.</p>
+          <div class="cards-grid">
+            <div class="card g-card"><span class="icon-box"><i data-icon="globe"></i></span><h3 class="g-card-title">Ühendusesisene ost (eraisik)</h3><p class="g-card-text">Uue õhusõiduki ostmisel teisest ELi riigist on käibemaks tasumisele sinu elukohariigis. <strong>Kasutatud</strong> õhusõiduki eraisikute vahelisel tehingul käibemaks üldjuhul ei kehti.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="building"></i></span><h3 class="g-card-title">Ost ELi ettevõtjalt</h3><p class="g-card-text">Kui müüja on käibemaksukohustuslane, võib ostu puhul tekkida ühendusesisene käibemaks: sihtriigi käibemaks rakendub pöördmaksustamise või otsearve kaudu.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="map"></i></span><h3 class="g-card-title">Import väljastpoolt ELi (nt N-reg)</h3><p class="g-card-text">Ameerika õhusõiduki ost nõuab EASA impordiprotseduuri, võimalikke tollimakse ja impordi käibemaksu (20% Prantsusmaal). Võib olla nõutav DGAC vastavuskontroll.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="briefcase"></i></span><h3 class="g-card-title">Kommertskasutus</h3><p class="g-card-text">Rent, charter, tasustatud transport: kehtivad spetsiifilised käibemaksureeglid. Siselennud on maksustatud, rahvusvahelised lennud maksuvabad.</p></div>
+          </div>
+          <div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><span class="alert-title">Maksukonsultatsioon hädavajalik</span>Õhusõidukite maksustamine on keeruline ja varieerub õhusõiduki tüübi, ostja staatuse ja üleminekuriigi järgi. Konsulteeri aviatsioonile spetsialiseerunud maksunõustajaga enne üle 50 000 € tehingut.</div></div>
+        </div>
+
+        <!-- SECTION 9 — COPROPRIÉTÉ -->
+        <div class="guide-section" id="section9">
+          <div class="section-header">
+            <span class="section-num">08</span>
+            <div><div class="section-eyebrow">Ühisost</div><h2 class="section-title">Õhusõiduki kaasomand</h2></div>
+          </div>
+          <p class="guide-prose">Õhusõiduki ostmine koos teistega (2–4 kaasomanikku) on levinud tava kerglennunduses. See võimaldab jagada püsikulusid, säilitades korrapärase pääsu õhusõidukile, kuid eeldab kindlat õiguslikku raamistikku.</p>
+          <div class="steps-list">
+            <div class="card step-item"><span class="step-num-badge">1</span><div><h3 class="step-title">Õiguslik olemus: kaasomand</h3><p class="step-text">Jagatud õhusõiduk kujutab õiguslikult <strong>kaasomandit</strong>. Igal kaasomanikul on osa (50/50, 33/33/33). Advokaadi koostatud kaasomandi leping on tugevalt soovitatav.</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">2</span><div><h3 class="step-title">Kaasomandi leping</h3><p class="step-text">Selles peavad olema määratud osad, kasutamise ja broneerimise reeglid, kulude jaotus, otsustamisreeglid ja väljumistingimused (osa tagasiost, ostuõigus, sundmüük).</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">3</span><div><h3 class="step-title">Kindlustus kaasomandi korral</h3><p class="step-text">Poliis peab selgelt loetlema kõik lubatud piloodid. Kindlustusmakse, mis arvutatakse õhusõiduki väärtuse alusel, jagatakse proportsionaalselt: arvesta 2–5% kindlustatud väärtusest.</p></div></div>
+            <div class="card step-item"><span class="step-num-badge">4</span><div><h3 class="step-title">Ennetatavad riskid</h3><p class="step-text">Lahkarvamuste korral võib kaasomanik kohtu kaudu taotleda õhusõiduki müüki. Planeeri eelisostuklausel ja juhtum, kui kaasomaniku meditsiiniline sobivus on peatatud.</p></div></div>
+          </div>
+          <div class="alert alert-info"><i data-icon="info"></i><div><span class="alert-title">Alternatiiv: äriühing või mittetulundusühing</span>Mõned grupid loovad äriühingu või mittetulundusühingu õhusõiduki omamiseks. See hõlbustab osade loovutamist, raamatupidamist ja võib pakkuda maksusoodustusi ärilise kasutuse korral.</div></div>
+        </div>
+
+        <!-- SECTION 10 — FINANCEMENT -->
+        <div class="guide-section" id="section10">
+          <div class="section-header">
+            <span class="section-num">09</span>
+            <div><div class="section-eyebrow">Finantseerimine</div><h2 class="section-title">Õhusõiduki ostu finantseerimine</h2></div>
+          </div>
+          <p class="guide-prose">Sularahaostud on kerglennunduses enamuses, kuid finantseerimislahendused on olemas äri-õhusõidukitele ja mõnedele kerglennukitele üle 50 000 €.</p>
+          <div class="cards-grid">
+            <div class="card g-card"><span class="icon-box"><i data-icon="credit-card"></i></span><h3 class="g-card-title">Klassikaline pangalaen</h3><p class="g-card-text">Kerglennukite jaoks (30 000 – 150 000 €) võib piisata personaallaenust või sihtlaenust. Tavaline sissemakse: 20–30%. Õhusõiduk on sageli tagatiseks <strong>õhusõiduki hüpoteegi</strong> kaudu, kantuna DGAC registrisse.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="file-text"></i></span><h3 class="g-card-title">Kapitalirent</h3><p class="g-card-text">Rent 5–12 aasta jooksul ostuvõimalusega, sobiv ettevõtetele (mahaarvatavad kulud). Pakub muuhulgas Global Jet Capital, Crédit Agricole CIB ja Société Générale Private Banking äri-reaktiivlennukitele.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="users"></i></span><h3 class="g-card-title">Üldlennunduse spetsialistid</h3><p class="g-card-text">Organisatsioonid nagu General Aviation Partner pakuvad kerglennundusele, helikopteritele ja ULM-idele kohandatud finantseerimist, kus klassikalised pangad kõhklevad.</p></div>
+            <div class="card g-card"><span class="icon-box"><i data-icon="bar-chart"></i></span><h3 class="g-card-title">Õhusõiduki hüpoteek</h3><p class="g-card-text">Õhusõiduk võib olla tagatiseks DGAC registrisse kantud hüpoteegi kaudu. See mehhanism kaitseb laenuandjat ja võimaldab saada paremaid tingimusi.</p></div>
+          </div>
+          <div class="alert alert-success"><i data-icon="thumbs-up"></i><div><span class="alert-title">Praktiline nõuanne</span>Hangi finantseerimise põhimõtteline kokkulepe <strong>enne</strong> ostulubaduse allkirjastamist ja lisa müügieellepingusse finantseerimise edasilükkav tingimus. Mõned asutused keelduvad rahastamast ülehinnatud õhusõidukeid.</div></div>
+        </div>
+
+        <!-- SECTION 7 — FAQ -->
+        <div class="guide-section" id="section7">
+          <div class="section-header">
+            <span class="section-num">10</span>
+            <div><div class="section-eyebrow">Korduma kippuvad küsimused</div><h2 class="section-title">Ostja KKK</h2></div>
+          </div>
+          <div class="card faq">
+            <details>
+              <summary>Kas õhusõidukit saab enne ostu proovida?<i data-icon="chevron-down"></i></summary>
+              <div class="faq-a">Jah, proovilend on levinud ja tugevalt soovitatav. See tuleb teha mõlema osapoole (või kvalifitseeritud esindaja) juuresolekul ja müüja kindlustuse katte all. Mõned müüjad võtavad selle eest sümboolse tasu, kui müük ei toimu. See lend võimaldab kontrollida õhusõiduki käitumist, seadmete toimimist ja vastavust kirjeldusele.</div>
+            </details>
+            <details>
+              <summary>Kas saab osta välismaal registreeritud õhusõiduki?<i data-icon="chevron-down"></i></summary>
+              <div class="faq-a">Jah, see on levinud Euroopas. Õhusõiduk peab vastama EASA reeglitele ja oma registreerimisriigi regulatsioonile. Registri vahetamiseks tuleb esitada kustutamistoimik vanale registrile ja registreerimistoimik DSAC Nord-ile. Keerulise piiriülese ostu puhul konsulteeri lennuõigusele spetsialiseerunud advokaadiga.</div>
+            </details>
+            <details>
+              <summary>Kas makse jaoks on vajalik deposiitarve?<i data-icon="chevron-down"></i></summary>
+              <div class="faq-a">See ei ole kohustuslik, kuid tugevalt soovitatav üle 50 000 €. Notar, advokaat või usaldusväärne kolmas isik võib täita selle rolli. Deposiit vabastab vahendid vaid siis, kui tingimused on täidetud (rahuldav ülevaatus, dokumendid üle antud, registreerimine alustatud).</div>
+            </details>
+            <details>
+              <summary>Millist kindlustust tuleb sõlmida?<i data-icon="chevron-down"></i></summary>
+              <div class="faq-a">Vähemalt vastutuskindlustus vastavalt Euroopa määrusele EÜ 785/2004, mis on kohustuslik lendamiseks. Väärtuslike õhusõidukite jaoks on soovitatav täiskindlustus (hull). Kindlustusmaksed varieeruvad 2–5% kindlustatud väärtusest. Võrdle aviatsioonile spetsialiseerunud kindlustajaid. Kate peab olema aktiivne valdusse võtmisest alates.</div>
+            </details>
+            <details>
+              <summary>Kas ostueelne ülevaatus on kohustuslik?<i data-icon="chevron-down"></i></summary>
+              <div class="faq-a">Ei, see ei ole seaduslikult kohustuslik, kuid see on sinu peamine kaitse varjatud puuduste vastu. See maksab 500–2000 € sõltuvalt õhusõiduki tüübist. Vali oma AMO / CAMO, sõltumatu müüjast. Müüja, kes sellest keeldub, on tugev hoiatussignaal.</div>
+            </details>
+            <details>
+              <summary>Kas õhusõiduki ostu saab finantseerida?<i data-icon="chevron-down"></i></summary>
+              <div class="faq-a">Jah, üldiselt üle 50 000 €. Valikud hõlmavad pangalaenu õhusõiduki hüpoteegiga, kapitalirenti või üldlennunduse spetsialiste. Tavaline sissemakse on 20–30%. Hangi alati põhimõtteline kokkulepe enne ostulubaduse allkirjastamist.</div>
+            </details>
+            <details>
+              <summary>Mida teha, kui pärast ostu ilmnevad puudused?<i data-icon="chevron-down"></i></summary>
+              <div class="faq-a">Kui müüja on varjanud teadaolevaid puudusi, võid tugineda varjatud puuduste garantiile, kahe aasta jooksul puuduse avastamisest. Hoia alles kõik dokumendid, fotod ja kirjavahetus ning konsulteeri spetsialiseerunud advokaadiga.</div>
+            </details>
+          </div>
+        </div>
+
+        <!-- CTA FINAL -->
+        <div class="final-cta">
+          <span class="eyebrow" style="color:#FFB37A">Valmis alustama?</span>
+          <h2>Leia oma õhusõiduk kohe</h2>
+          <p>Vaata kontrollitud kuulutusi eraisikutelt ja professionaalidelt üle Euroopa, vahendustasuta.</p>
+          <div class="btn-group">
+            <a href="search.html" class="btn-primary btn-lg"><i data-icon="search"></i>Otsi õhusõidukit</a>
+            <a href="comparateur.html" class="btn-secondary btn-lg">Võrdle mudeleid</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<button class="back-top" id="backTop" type="button" aria-label="Retour en haut" data-action="scrollToTopSmooth"><i data-icon="chevron-up"></i></button>
+
+<script src="/icons.js?v=20261007a"></script>
+<script>
+/* Sommaire actif + bouton retour en haut */
+var sections=document.querySelectorAll('.guide-section');
+var navLinks=document.querySelectorAll('.sidebar-nav a');
+window.addEventListener('scroll',function(){
+  var bt=document.getElementById('backTop');if(bt)bt.classList.toggle('visible',window.scrollY>400);
+  var scrollY=window.scrollY+120;
+  sections.forEach(function(s){
+    if(s.offsetTop<=scrollY&&s.offsetTop+s.offsetHeight>scrollY){
+      navLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+s.id);});
+    }
+  });
+},{passive:true});
+
+function scrollToTopSmooth(){window.scrollTo({top:0,behavior:'smooth'});}
+</script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>
