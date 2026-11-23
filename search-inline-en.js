@@ -19,8 +19,8 @@ var COUNTRY_NAMES={AF:'Afghanistan',AL:'Albania',DZ:'Algeria',AS:'American Samoa
 function countryLabel(code){if(!code)return'';return COUNTRY_NAMES[code]||code;}
 
 /* ── CATÉGORIES ── */
-var CAT_LABELS={light:'Light aircraft',jet:'Business jet',turbo:'Turboprop',heli:'Helicopter',ulm:'ULM',airliner:'Airliner'};
-var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
+var CAT_LABELS={light:'Light aircraft',jet:'Business jet',turbo:'Turboprop',heli:'Helicopter',ulm:'ULM',planeur:'Glider',voltige:'Aerobatic',experimental:'Experimental',airliner:'Airliner'};
+var CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',planeur:'ulm',voltige:'refresh',experimental:'wrench',airliner:'airliner'};
 var CAT_SYMS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr',CAD:'CA$',AUD:'AU$'};
 
 /* ── TOAST ── */
@@ -70,7 +70,7 @@ async function loadAll(){
 
 /* ── COMPTEURS CATÉGORIES ── */
 function updateCounts(){
-  var cats=['light','jet','turbo','heli','ulm','airliner'];
+  var cats=['light','jet','turbo','heli','ulm','planeur','voltige','experimental','airliner'];
   var el=document.getElementById('cnt-all');
   if(el)el.textContent=ALL.length;
   cats.forEach(function(c){
@@ -349,7 +349,7 @@ function setView(v){
    map.html (airports-data.js, A2S_AIRPORTS) — no new network call, purely
    a client-side re-projection of already loaded results. */
 var _searchMap=null,_searchMarkerLayer=null;
-var SEARCH_CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',airliner:'airliner'};
+var SEARCH_CAT_ICON={light:'plane-light',jet:'jet',turbo:'turboprop',heli:'helicopter',ulm:'ulm',planeur:'ulm',voltige:'refresh',experimental:'wrench',airliner:'airliner'};
 function ensureSearchMap(){
   if(_searchMap)return;
   _searchMap=L.map('searchMap',{center:[47,6],zoom:5,zoomControl:true,scrollWheelZoom:false});
@@ -434,7 +434,7 @@ function currentSearchCriteria(){
   };
 }
 function searchCriteriaLabel(c){
-  var CAT_LABELS={light:'Light aircraft',jet:'Business jet',turbo:'Turboprop',heli:'Helicopter',ulm:'Microlight',airliner:'Airliner'};
+  var CAT_LABELS={light:'Light aircraft',jet:'Business jet',turbo:'Turboprop',heli:'Helicopter',ulm:'Microlight',planeur:'Glider',voltige:'Aerobatic',experimental:'Experimental',airliner:'Airliner'};
   var parts=[];
   if(c.cat)parts.push(CAT_LABELS[c.cat]||c.cat);
   if(c.q)parts.push('"'+c.q+'"');
