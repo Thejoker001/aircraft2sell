@@ -962,20 +962,21 @@ body.dense .kv{font-size:1.4rem}
             <option value="30" selected>30 derniers jours</option>
             <option value="90">90 derniers jours</option>
           </select>
+          <input type="text" class="filter-sel" id="msgs-search" placeholder="Filtrer par email…" oninput="filterThreads()" style="min-width:180px">
           <button class="tb-btn" data-action="renderMsgs"><i data-icon="refresh"></i>Actualiser</button>
         </div>
         <div class="krow">
           <div class="kc"><div class="kl">Total messages</div><div class="kv" id="msg-total">—</div></div>
           <div class="kc g"><div class="kl">Non lus</div><div class="kv" id="msg-unread">—</div></div>
-          <div class="kc b"><div class="kl">Cette période</div><div class="kv" id="msg-week">—</div></div>
+          <div class="kc b"><div class="kl">Conversations</div><div class="kv" id="msg-threads">—</div></div>
         </div>
         <div class="card">
           <div class="tbl-wrap">
             <table>
               <thead><tr>
-                <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">De</th>
+                <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Participants</th>
                 <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Annonce</th>
-                <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Message</th>
+                <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Dernier message</th>
                 <th style="text-align:left;padding:.6rem .9rem;font-size:.62rem;color:var(--a2s-text-faint);font-weight:600;letter-spacing:.1em;text-transform:uppercase">Date</th>
                 <th style="padding:.6rem .9rem"></th>
               </tr></thead>
@@ -1067,6 +1068,18 @@ body.dense .kv{font-size:1.4rem}
       <button class="m-btn danger" id="mViewRejectBtn" style="display:none" data-action="rejectFromView"><i data-icon="close"></i>Rejeter</button>
       <button class="m-btn" id="mViewEditBtn" data-action="editFromView"><i data-icon="edit"></i>Modifier</button>
       <button class="m-btn" data-action="a2sOpenCurrentListing"><i data-icon="external"></i>Voir public</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONVERSATION (MESSAGES) -->
+<div class="modal-back" id="mThread" data-action="closeM" data-args='["mThread"]' data-self-only="1">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-hd"><div class="modal-ti" id="mThreadTitle">Conversation</div><button class="modal-x" data-action="closeM" data-args='["mThread"]'><i data-icon="close"></i></button></div>
+    <div class="modal-bd" id="mThreadBody" style="max-height:60vh;overflow-y:auto"></div>
+    <div class="modal-ft" id="mThreadFoot">
+      <button class="m-btn" data-action="closeM" data-args='["mThread"]'>Fermer</button>
+      <button class="m-btn danger" id="mThreadDelBtn" data-action="delThreadFromModal"><i data-icon="close"></i>Supprimer le fil</button>
     </div>
   </div>
 </div>
@@ -2804,60 +2817,150 @@ async function renderStats(){
   }
 }
 /* ── MESSAGES ── */
-/* ── MESSAGES (S13) ──
-   Lit la table messages (pas seulement listing_views) avec pagination
-   et statut lu/non-lu. */
-var _allMsgs=[];var _pageMsgs=1;
+/* ── MESSAGES (S14) ──
+   Regroupe les lignes de la table messages par thread_id pour afficher
+   des CONVERSATIONS (et non des messages isolés) : liste des fils avec
+   participants/annonce/dernier message, modale de détail chronologique,
+   suppression (message ou fil complet) et raccourci de bannissement
+   d'un participant (réutilise rpc ban_identity_permanently, S8/17-11). */
+var _allMsgs=[];var _allThreads=[];var _pageMsgs=1;var _curThreadId=null;
+function buildThreads(msgs){
+  var byId={};
+  msgs.forEach(function(m){
+    var t=byId[m.thread_id];
+    if(!t){t={thread_id:m.thread_id,listing_id:m.listing_id,msgs:[],participants:{},unread:0,last:null};byId[m.thread_id]=t;}
+    t.msgs.push(m);
+    if(m.sender_email)t.participants[m.sender_email]=true;
+    if(m.receiver_email)t.participants[m.receiver_email]=true;
+    if(!m.read)t.unread++;
+    if(!t.last||new Date(m.created_at)>new Date(t.last.created_at))t.last=m;
+    if(!t.listing_id&&m.listing_id)t.listing_id=m.listing_id;
+  });
+  var arr=Object.values(byId);
+  arr.forEach(function(t){t.msgs.sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at);});});
+  arr.sort(function(a,b){return new Date(b.last.created_at)-new Date(a.last.created_at);});
+  return arr;
+}
 async function renderMsgs(){
-  var days=parseInt((sel('msgs-period')||{value:'7'}).value)||7;
-  var el=sel('msgs-body');if(!el)el=sel('msgs-by-listing');
+  var days=parseInt((sel('msgs-period')||{value:'30'}).value)||30;
+  var el=sel('msgs-body');
   if(el)el.innerHTML='<tr><td colspan="5" class="loading-row">Chargement…</td></tr>';
   try{
     var since=new Date(Date.now()-days*86400000).toISOString();
-    var rows=await sb('GET','messages','created_at=gte.'+since+'&order=created_at.desc&limit=500');
+    var rows=await sb('GET','messages','created_at=gte.'+since+'&order=created_at.desc&limit=1000');
     _allMsgs=rows||[];
     setText('msg-total',_allMsgs.length.toLocaleString('fr-FR'));
     setText('msg-unread',_allMsgs.filter(function(m){return !m.read;}).length.toLocaleString('fr-FR'));
-    setText('msg-week',_allMsgs.length.toLocaleString('fr-FR'));
-    /* Références annonces pour afficher le titre */
-    var listingIds={};
-    _allMsgs.forEach(function(m){if(m.listing_id)listingIds[m.listing_id]=true;});
-    var titleMap={};
-    try{
-      var ids=Object.keys(listingIds).slice(0,50);
-      if(ids.length){
-        var ls=await sb('GET','listings','id=in.('+ids.join(',')+')&select=id,make,model,year');
-        (ls||[]).forEach(function(l){titleMap[l.id]=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ');});
-      }
-    }catch(e){}
-    var tb=sel('msgs-body');if(!tb)return;
-    if(!_allMsgs.length){tb.innerHTML='<tr><td colspan="5" class="loading-row">Aucun message sur cette période</td></tr>';sel('pager-msgs').innerHTML='';return;}
-    var total=Math.max(1,Math.ceil(_allMsgs.length/PER_PAGE));
-    if(_pageMsgs>total)_pageMsgs=total;
-    var slice=_allMsgs.slice((_pageMsgs-1)*PER_PAGE,_pageMsgs*PER_PAGE);
-    tb.innerHTML=slice.map(function(m){
-      var title=titleMap[m.listing_id]||('Annonce #'+(m.listing_id||'—'));
-      var unread=!m.read;
-      return '<tr style="'+(unread?'background:rgba(232,160,32,.04)':'')+'">'
-        +'<td style="padding:.65rem .9rem;color:var(--a2s-text);font-weight:'+(unread?'700':'400')+'">'+esc(m.sender_email||'—')+(unread?' <span style="color:var(--a2s-accent);font-size:.6rem">NON LU</span>':'')+'</td>'
-        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.78rem">'+esc(title)+'</td>'
-        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.78rem;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.content||'')+'</td>'
-        +'<td style="padding:.65rem .9rem;color:var(--a2s-text-faint);font-size:.68rem;white-space:nowrap">'+fmtDate(m.created_at)+'</td>'
-        +'<td style="padding:.65rem .9rem"><div class="acts"><button class="act" data-action="toggleMsgRead" data-args="['+m.id+','+(unread?'false':'true')+']" title="'+(unread?'Marquer lu':'Marquer non lu')+'">'+A2SIcon(unread?'check':'mail')+'</button></div></td></tr>';
-    }).join('');
-    var pg=sel('pager-msgs');
-    if(pg)pg.innerHTML=pagerHTML('msgs',{slice:slice,page:_pageMsgs,total:total,count:_allMsgs.length});
+    _allThreads=buildThreads(_allMsgs);
+    setText('msg-threads',_allThreads.length.toLocaleString('fr-FR'));
+    await renderThreadRows(_allThreads);
   }catch(e){
     console.error('renderMsgs:',e);
     var tb2=sel('msgs-body');if(tb2)tb2.innerHTML='<tr><td colspan="5" style="color:var(--a2s-danger);font-size:.8rem">Erreur : '+esc(e.message)+'</td></tr>';
   }
 }
-async function toggleMsgRead(id,markUnread){
+function filterThreads(){
+  var q=(sel('msgs-search').value||'').trim().toLowerCase();
+  if(!q){renderThreadRows(_allThreads);return;}
+  var f=_allThreads.filter(function(t){return Object.keys(t.participants).some(function(p){return p.toLowerCase().indexOf(q)>-1;});});
+  _pageMsgs=1;
+  renderThreadRows(f);
+}
+async function renderThreadRows(threads){
+  var tb=sel('msgs-body');if(!tb)return;
+  if(!threads.length){tb.innerHTML='<tr><td colspan="5" class="loading-row">Aucune conversation sur cette période</td></tr>';sel('pager-msgs').innerHTML='';return;}
+  /* Références annonces pour afficher le titre */
+  var listingIds={};
+  threads.forEach(function(t){if(t.listing_id)listingIds[t.listing_id]=true;});
+  var titleMap={};
   try{
-    await sb('PATCH','messages','id=eq.'+id,{read:!markUnread});
-    logAdmin('message.read','message',String(id),{});
-    renderMsgs();
+    var ids=Object.keys(listingIds).slice(0,80);
+    if(ids.length){
+      var ls=await sb('GET','listings','id=in.('+ids.join(',')+')&select=id,make,model,year');
+      (ls||[]).forEach(function(l){titleMap[l.id]=[l.make,l.model,l.year?'('+l.year+')':''].filter(Boolean).join(' ');});
+    }
+  }catch(e){}
+  var total=Math.max(1,Math.ceil(threads.length/PER_PAGE));
+  if(_pageMsgs>total)_pageMsgs=total;
+  var slice=threads.slice((_pageMsgs-1)*PER_PAGE,_pageMsgs*PER_PAGE);
+  tb.innerHTML=slice.map(function(t){
+    var title=titleMap[t.listing_id]||(t.listing_id?('Annonce #'+t.listing_id):'—');
+    var parts=Object.keys(t.participants).filter(function(p){return p!=='contact@aircraft2sell.eu';});
+    if(!parts.length)parts=Object.keys(t.participants);
+    var unread=t.unread>0;
+    var preview=esc((t.last.content||'').slice(0,80));
+    return '<tr style="'+(unread?'background:rgba(232,160,32,.04)':'')+'">'
+      +'<td style="padding:.65rem .9rem;color:var(--a2s-text);font-weight:'+(unread?'700':'400')+'">'+esc(parts.join(' ↔ '))+(unread?' <span style="color:var(--a2s-accent);font-size:.6rem">'+t.unread+' NON LU</span>':'')+'</td>'
+      +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.78rem">'+esc(title)+'</td>'
+      +'<td style="padding:.65rem .9rem;color:var(--a2s-text-muted);font-size:.78rem;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+preview+'</td>'
+      +'<td style="padding:.65rem .9rem;color:var(--a2s-text-faint);font-size:.68rem;white-space:nowrap">'+fmtDate(t.last.created_at)+' · '+t.msgs.length+' msg</td>'
+      +'<td style="padding:.65rem .9rem"><div class="acts">'
+        +'<button class="act" data-action="viewThread" data-args=\'["'+esc(t.thread_id)+'"]\' title="Voir la conversation">'+A2SIcon('mail')+'</button>'
+        +'<button class="act" data-action="delThread" data-args=\'["'+esc(t.thread_id)+'"]\' title="Supprimer le fil">'+A2SIcon('trash')+'</button>'
+      +'</div></td></tr>';
+  }).join('');
+  var pg=sel('pager-msgs');
+  if(pg)pg.innerHTML=pagerHTML('msgs',{slice:slice,page:_pageMsgs,total:total,count:threads.length});
+}
+function findThread(threadId){return _allThreads.find(function(t){return t.thread_id===threadId;});}
+function viewThread(threadId){
+  var t=findThread(threadId);if(!t)return;
+  _curThreadId=threadId;
+  sel('mThreadTitle').textContent='Conversation — '+Object.keys(t.participants).join(' ↔ ');
+  sel('mThreadBody').innerHTML=t.msgs.map(function(m){
+    var mine=m.sender_email==='contact@aircraft2sell.eu';
+    return '<div style="margin-bottom:.9rem;padding:.65rem .8rem;border-radius:6px;background:'+(mine?'rgba(59,130,246,.08)':'rgba(255,255,255,.03)')+';border:1px solid rgba(255,255,255,.06)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem;gap:.5rem">'
+        +'<span style="font-size:.72rem;font-weight:600;color:var(--a2s-text)">'+esc(m.sender_email||'—')+' <span style="color:var(--a2s-text-faint);font-weight:400">→ '+esc(m.receiver_email||'—')+'</span></span>'
+        +'<span style="font-size:.62rem;color:var(--a2s-text-faint);white-space:nowrap">'+fmtDate(m.created_at)+'</span>'
+      +'</div>'
+      +'<div style="font-size:.82rem;color:var(--a2s-text);white-space:pre-wrap;word-break:break-word">'+esc(m.content||'')+'</div>'
+      +'<div style="margin-top:.4rem;display:flex;gap:.5rem">'
+        +'<button class="m-btn" style="padding:.2rem .5rem;font-size:.65rem" data-action="delMessageFromThread" data-args=\'['+m.id+',"'+esc(threadId)+'"]\'>'+A2SIcon('trash')+' Supprimer</button>'
+        +(m.sender_email&&m.sender_email!=='contact@aircraft2sell.eu'?'<button class="m-btn danger" style="padding:.2rem .5rem;font-size:.65rem" data-action="banEmailFromThread" data-args=\'["'+esc(m.sender_email)+'"]\'>'+A2SIcon('x-circle')+' Bannir '+esc(m.sender_email)+'</button>':'')
+      +'</div>'
+    +'</div>';
+  }).join('');
+  openM('mThread');
+}
+async function delMessageFromThread(id,threadId){
+  if(!confirm('Supprimer ce message ?'))return;
+  try{
+    await sb('DELETE','messages','id=eq.'+id);
+    logAdmin('message.delete','message',String(id),{thread_id:threadId});
+    await renderMsgs();
+    var t=findThread(threadId);
+    if(t&&t.msgs.length){viewThread(threadId);}else{closeM('mThread');showToast('Fil vide, conversation retirée');}
   }catch(e){showToast('Erreur : '+e.message);}
+}
+async function delThread(threadId){
+  if(!confirm('Supprimer toute la conversation (tous les messages de ce fil) ?'))return;
+  try{
+    await sb('DELETE','messages','thread_id=eq.'+encodeURIComponent(threadId));
+    logAdmin('thread.delete','thread',threadId,{});
+    await renderMsgs();
+    showToast('Conversation supprimée');
+  }catch(e){showToast('Erreur : '+e.message);}
+}
+async function delThreadFromModal(){
+  if(!_curThreadId)return;
+  await delThread(_curThreadId);
+  closeM('mThread');
+}
+async function banEmailFromThread(email){
+  if(!email)return;
+  if(!confirm('Bannir définitivement '+email+' (compte + email + IP connues) ?'))return;
+  try{
+    var users=await sb('GET','users','email=eq.'+encodeURIComponent(email)+'&select=id');
+    if(Array.isArray(users)&&users.length){
+      await sb('PATCH','users','email=eq.'+encodeURIComponent(email),{status:'banned'});
+      try{await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(email)+'&status=in.(pending,live)',{status:'rejected',rejection_reason:'Compte banni par l'+String.fromCharCode(39)+'administration'},true);}catch(e2){console.warn('Masquage annonces banni:',e2.message);}
+    }
+    await sb('POST','rpc/ban_identity_permanently',null,{p_email:email,p_by:'admin'},true);
+    logAdmin('user.ban','user',email,{source:'messages'});
+    showToast(email+' banni définitivement');
+    await refreshAll();
+  }catch(e){showToast('Erreur bannissement : '+e.message);}
 }
 
 /* ── SIGNALEMENTS (A3/D1) ──
