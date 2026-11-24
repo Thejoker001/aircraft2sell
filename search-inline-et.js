@@ -272,7 +272,7 @@ function renderCard(l,i){
   if(l.rvsm)badges+='<span class="badge">RVSM</span>';
   if(l.adsb)badges+='<span class="badge">ADS-B</span>';
   if(l.seller_is_pro)badges+='<span class="badge badge-accent">PRO</span>';
-  var trust='<span class="badge-verified">'+(l.seller_certified?'Sertifitseeritud müüja':'Kontrollitud müüja')+'</span>';
+  var trust=l.seller_certified?'<span class="badge-verified">Sertifitseeritud müüja</span>':'';
   return '<a class="lc" href="listing.html?id='+encodeURIComponent(l.id)+'">'
     +'<div class="lc-img">'+img
     +(cat?'<span class="lc-cat-badge">'+cat+'</span>':'')

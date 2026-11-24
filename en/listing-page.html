@@ -699,7 +699,7 @@ function render(l){
   var catEl=document.getElementById('lCat');
   if(catEl){catEl.style.display='inline-flex';catEl.innerHTML=A2SIcon(CAT_ICON[l.category]||'plane')+esc(cat);}
   document.getElementById('lTitle').textContent=title;
-  var ver=document.getElementById('lVerified');if(ver)ver.style.display='inline-flex';
+  var ver=document.getElementById('lVerified');if(ver)ver.style.display=l.seller_certified?'inline-flex':'none';
 
   /* Galerie */
   var photos=l.photos&&Array.isArray(l.photos)&&l.photos.length?l.photos:[];
@@ -740,7 +740,7 @@ function render(l){
   (async function(){
     var badgeEl=document.getElementById('sellerBadge');
     if(!badgeEl)return;
-    if(!l.seller_pseudo){badgeEl.innerHTML='<span class="badge-verified">Verified seller</span>';return;}
+    if(!l.seller_pseudo){badgeEl.innerHTML='';return;}
     try{
       var _sp=await sbSellerPublic(l.seller_pseudo);
       var userData=_sp?[_sp]:[];
@@ -755,9 +755,9 @@ function render(l){
       }
       if(u&&u.company&&u.is_pro){var snEl=document.getElementById('sellerSince');if(snEl)snEl.textContent=u.company;}
       if(u&&u.rating)badges+='<span class="badge badge-warning">'+A2SIcon('star')+Number(u.rating).toFixed(1)+'/5</span>';
-      badgeEl.innerHTML=badges||'<span class="badge-verified">Verified seller</span>';
+      badgeEl.innerHTML=badges;
     }catch(e){
-      badgeEl.innerHTML='<span class="badge-verified">Verified seller</span>';
+      badgeEl.innerHTML='';
     }
   })();
   var sellerUrl='/seller.html?pseudo='+encodeURIComponent(l.seller_pseudo||'')+'&name='+encodeURIComponent(sellerDisplay);
