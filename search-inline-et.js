@@ -275,6 +275,7 @@ function renderCard(l,i){
   var trust=l.seller_certified?'<span class="badge-verified">Sertifitseeritud müüja</span>':'';
   return '<a class="lc" href="listing.html?id='+encodeURIComponent(l.id)+'">'
     +'<div class="lc-img">'+img
+    +(l.country?'<span class="lc-flag" title="'+esc(countryLabel(l.country))+'">'+flagEmoji(l.country)+'</span>':'')
     +(cat?'<span class="lc-cat-badge">'+cat+'</span>':'')
     +'<button type="button" class="lc-fav'+(fav?' liked':'')+'" aria-pressed="'+(fav?'true':'false')+'" aria-label="Lisa lemmikutesse" onclick="event.preventDefault();event.stopPropagation();toggleFav(\''+esc(String(l.id))+'\',this)">'+A2SIcon('heart')+'</button>'
     +'</div>'

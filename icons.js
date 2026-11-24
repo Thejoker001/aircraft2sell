@@ -146,3 +146,16 @@
     hydrate();
   }
 })();
+
+/* Drapeau discret du pays (coin des vignettes d'annonce). Code ISO 3166-1
+   alpha-2 -> emoji drapeau Unicode (indicateurs régionaux) : zéro asset à
+   héberger/maintenir, rendu natif du navigateur. 'OTHER' ou code invalide
+   -> chaîne vide (pas de drapeau plutôt qu'un rendu cassé). */
+function flagEmoji(cc){
+  if(!cc||typeof cc!=='string')return'';
+  var up=cc.trim().toUpperCase();
+  if(!/^[A-Z]{2}$/.test(up))return'';
+  var base=127397;
+  return String.fromCodePoint(base+up.charCodeAt(0),base+up.charCodeAt(1));
+}
+window.flagEmoji=flagEmoji;
