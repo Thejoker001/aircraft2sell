@@ -148,14 +148,15 @@
 })();
 
 /* Drapeau discret du pays (coin des vignettes d'annonce). Code ISO 3166-1
-   alpha-2 -> emoji drapeau Unicode (indicateurs régionaux) : zéro asset à
-   héberger/maintenir, rendu natif du navigateur. 'OTHER' ou code invalide
-   -> chaîne vide (pas de drapeau plutôt qu'un rendu cassé). */
+   alpha-2 -> petite image de drapeau colorée (flagcdn.com, PNG léger),
+   plus fiable que l'emoji Unicode (qui se rend en texte "FR" sans couleur
+   sur Windows et certains navigateurs). 'OTHER' ou code invalide ->
+   chaîne vide (pas de drapeau plutôt qu'un rendu cassé). */
 function flagEmoji(cc){
   if(!cc||typeof cc!=='string')return'';
   var up=cc.trim().toUpperCase();
   if(!/^[A-Z]{2}$/.test(up))return'';
-  var base=127397;
-  return String.fromCodePoint(base+up.charCodeAt(0),base+up.charCodeAt(1));
+  var lo=up.toLowerCase();
+  return '<img src="https://flagcdn.com/w40/'+lo+'.png" srcset="https://flagcdn.com/w80/'+lo+'.png 2x" width="20" height="15" alt="" loading="lazy" decoding="async">';
 }
 window.flagEmoji=flagEmoji;
