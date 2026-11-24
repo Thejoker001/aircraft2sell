@@ -190,6 +190,7 @@ async function message(req, res) {
         receiver_email: destinataire,
         content: prefixe ? `${prefixe}${contenu}` : contenu,
         read: false,
+        sender_ip: ip,
       });
     } catch (e) {
       /* On ne bloque pas l'email transactionnel si l'écriture échoue */
