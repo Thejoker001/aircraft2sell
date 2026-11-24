@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Buying guide for a used experimental or kit-built aircraft: budget by kit type, legal status in Europe, inspection, maintenance and resale.">
+<meta name="keywords" content="used experimental aircraft, kit-built aircraft, used Van's RV, used Rutan, experimental status Europe">
+<meta property="og:title" content="Used experimental / kit-built aircraft: a buying guide | Aircraft2Sell">
+<meta property="og:description" content="Buying guide for a used experimental or kit-built aircraft: budget by kit type, legal status in Europe, inspection, maintenance and resale.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/avion-experimental-kit-occasion-guide.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/avion-experimental-kit-occasion-guide.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/avion-experimental-kit-occasion-guide.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/avion-experimental-kit-occasion-guide.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/avion-experimental-kit-occasion-guide.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used experimental / kit-built aircraft: a buying guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used experimental / kit-built aircraft: a buying guide", "description": "Buying guide for a used experimental or kit-built aircraft: budget by kit type, legal status in Europe, inspection, maintenance and resale.", "datePublished": "2026-11-23", "dateModified": "2026-11-23", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/avion-experimental-kit-occasion-guide.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used experimental / kit-built aircraft: a buying guide", "item": "https://aircraft2sell.eu/en/avion-experimental-kit-occasion-guide.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used experimental / kit-built aircraft</span></nav>
+    <span class="eyebrow">Category guide</span>
+    <h1>Used experimental / kit-built aircraft: a buying guide</h1>
+    <p>Budget by kit type, legal status in Europe, inspection checkpoints, maintenance and resale: everything you need to know before buying a used experimental or amateur-built aircraft.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published 23 November 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#definition">What is an experimental or kit-built aircraft</a></li><li><a href="#budget">What budget to plan for by kit type</a></li><li><a href="#status">Legal status in Europe: restricted airworthiness and permit to fly</a></li><li><a href="#inspection">Inspection checkpoints for a used kit aircraft</a></li><li><a href="#maintenance">Maintaining an amateur-built aircraft</a></li><li><a href="#insurance">Insurance and pilot training</a></li><li><a href="#brands">Choosing your kit: the reference brands</a></li><li><a href="#resale">Resale and the second-hand market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">What is an experimental or kit-built aircraft</h2>
+<p>An experimental, or "kit-built," aircraft is one assembled from a kit sold by a manufacturer (Van's Aircraft, Rutan designs, Alpi Aviation, Zenair and many others) by a private individual or a small workshop, then certified under a regime distinct from the standard type certification issued for series-produced aircraft. This particular status gives the amateur builder greater design and equipment freedom, in exchange for a different regulatory framework managed at national level by each civil aviation authority, in coordination with European rules.</p>
+<p>The used market for these aircraft has grown noticeably in Europe over the past decade, driven by the rising popularity of well-established kits such as the Van's RV series, by the often very favorable performance-to-price ratio of these aircraft, and by a particularly active community of builders and owners that makes it easy to pass on technical knowledge from one generation of owners to the next.</p>
+
+<h2 id="budget">What budget to plan for by kit type</h2>
+<p>The price of a used experimental aircraft varies considerably depending on the kit model, build quality, engine installed and avionics. A simple two-seat kit, carefully built but modestly equipped, remains noticeably more affordable than a high-performance four-seat model fitted with recent integrated avionics and a top-of-the-line certified engine.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Factor</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Kit model and popularity</td><td>Widely built kits (Van's RV in particular) benefit from a larger, more liquid resale market</td></tr>
+<tr><td>Build quality</td><td>A complete, carefully kept builder log adds significant value</td></tr>
+<tr><td>Engine</td><td>A certified aviation-grade engine is more reassuring than an adapted automotive engine</td></tr>
+<tr><td>Avionics</td><td>A recent digital cockpit can represent a significant share of the aircraft's total value</td></tr>
+</tbody></table></div>
+<p>On top of the purchase price, budget for the usual costs of a used aircraft: a pre-purchase inspection, registration transfer fees, insurance, and possibly an avionics or finish upgrade if the aircraft needs one. You should also allow time and budget to obtain the flight authorization from the competent authority if the aircraft changes national register as part of the transaction.</p>
+
+<h2 id="status">Legal status in Europe: restricted airworthiness and permit to fly</h2>
+<p>In Europe, amateur-built aircraft fall outside the standard EASA type-certification regime and are, in most countries, governed by a specific national status (often referred to by terms similar to "restricted certificate of airworthiness for amateur-built aircraft," with varying names and acronyms by country). This status implies a continued-airworthiness regime distinct from certified aircraft, including a conformity statement issued at the end of construction, a supervised flight-test program, and maintenance obligations adapted to amateur construction.</p>
+<p>Each member state applies its own rules for recognizing and transferring this status, which can complicate buying an aircraft registered in another European country or imported from a third country (notably the United States, where the "Experimental Amateur-Built" category is particularly common). Before any cross-border purchase, it is essential to check with the destination country's civil aviation authority on the precise conditions for registration transfer and maintaining experimental status, as these procedures can take several months depending on the country.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Experimental status generally restricts the aircraft to private, non-commercial use, and may include restrictions on overflying densely populated areas. Always check these limitations with the competent authority before buying.</div></div>
+
+<h2 id="inspection">Inspection checkpoints for a used kit aircraft</h2>
+<p>Inspecting a used experimental aircraft differs noticeably from inspecting a series-produced certified aircraft, since the aircraft's quality depends directly on the original amateur builder's skill. A few points deserve particular attention.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>The complete builder log: assembly photos, parts invoices, and records of inspections carried out during construction. Its absence or incompleteness should raise a red flag.</span></li>
+  <li><i data-icon="check"></i><span>The visible quality of structural assembly work (riveting, composite bonding, welding depending on kit type) and its consistency with the kit manufacturer's plans and instructions.</span></li>
+  <li><i data-icon="check"></i><span>The history and traceability of the installed engine, whether aviation-certified or an adapted automotive unit, as well as its hours and maintenance program.</span></li>
+  <li><i data-icon="check"></i><span>Consistency between the equipment advertised and the restricted airworthiness certificate or conformity statement issued by the competent authority.</span></li>
+  <li><i data-icon="check"></i><span>The existence and validity of an initial flight-test report documenting the aircraft's measured performance after construction.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Using an inspector or mechanic familiar with the specific kit model (often recommended by amateur-builder associations) is particularly valuable for an experimental aircraft, whose build quality can vary from one example to another far more than on a series-produced aircraft.</div></div>
+
+<h2 id="maintenance">Maintaining an amateur-built aircraft</h2>
+<p>Maintenance of an experimental aircraft generally follows a program defined by the owner-builder, based on the recommendations of the kit manufacturer and engine maker, under the supervision of the competent authority according to the terms of the relevant country's experimental status. This flexibility is an advantage for a technically competent owner, but represents a risk for a buyer who cannot verify how rigorously that maintenance was actually carried out.</p>
+<p>A detailed maintenance logbook, kept diligently since construction, remains the best indicator of how well an aircraft has been cared for. Conversely, a patchy maintenance history or frequent changes of ownership without complete transfer of documentation should prompt caution, or even a thorough technical inspection before any financial commitment.</p>
+
+<h2 id="insurance">Insurance and pilot training</h2>
+<p>Insurance for an experimental aircraft takes into account both the aircraft's value and the pilot's experience on that specific type (often new to a first-time owner), and in some cases the documented quality of the build. A transition training course with an instructor experienced on the type, or failing that on a model with similar flying characteristics, is strongly recommended before any solo flight, especially for kits known to be more demanding on takeoff and landing.</p>
+<p>On the regulatory side, pilots should check that their license and ratings genuinely cover the aircraft type in question, as rules can vary from country to country for experimental-status aircraft.</p>
+
+<h2 id="brands">Choosing your kit: the reference brands</h2>
+<p>Several kit families dominate the European used market. The Van's RV series (RV-6, RV-7, RV-9, RV-10...) remains the most widespread reference, prized for its flying qualities, parts availability, and a very active owner community that greatly eases technical support. Burt Rutan's designs (Long-EZ, VariEze and derivatives) appeal through their aerodynamic originality and cruise performance, but require more extensive technical familiarization. Alpi Aviation, notably with the Pioneer 300, offers more recent kits geared toward travel and comfort, while Zenair (CH series) tends to target a more versatile and economical use case.</p>
+<p>Beyond the brand, the single most decisive factor remains the build quality of the specific example in question: two aircraft built from the same kit model can show considerable quality differences depending on the care taken by the original amateur builder.</p>
+
+<h2 id="resale">Resale and the second-hand market</h2>
+<p>The resale market for experimental aircraft depends heavily on how well-known the kit model is: the most widespread series, such as the Van's RV, enjoy a liquid market with a broad pool of potential buyers, while rarer or older kits can take longer to find a buyer. In every case, a complete builder log, documented maintenance and full transparency about the aircraft's history remain the best assets for a quick sale at a fair price.</p>
+<p>Comparing several listings of the same kit model, while accounting for build quality and equipment, allows you to assess a price consistent with the real market rather than relying on a single isolated reference.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your experimental aircraft</h3>
+            <p>Compare used experimental and kit-built aircraft listings available across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Regulation</span><strong>Registering an aircraft in Europe: the complete guide</strong><p>What you need to know to register or transfer an aircraft between European countries.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Insurance</span><strong>Aircraft insurance: the complete guide</strong><p>Understand coverage, pricing factors, and how to choose the right aircraft insurance.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>
