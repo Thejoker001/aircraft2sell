@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Buying guide for the used Robinson R22: budget, pre-purchase inspection checkpoints, maintenance, insurance and resale for the entry-level light helicopter.">
+<meta name="keywords" content="used Robinson R22, entry-level helicopter, buy light helicopter, R22 price, R22 maintenance">
+<meta property="og:title" content="Used Robinson R22: the entry-level helicopter | Aircraft2Sell">
+<meta property="og:description" content="Buying guide for the used Robinson R22: budget, pre-purchase inspection checkpoints, maintenance, insurance and resale for the entry-level light helicopter.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/robinson-r22-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/robinson-r22-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/robinson-r22-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/robinson-r22-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/robinson-r22-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Robinson R22: the entry-level helicopter | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Robinson R22: the entry-level helicopter", "description": "Buying guide for the used Robinson R22: budget, pre-purchase inspection checkpoints, maintenance, insurance and resale for the entry-level light helicopter.", "datePublished": "2026-11-23", "dateModified": "2026-11-23", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/robinson-r22-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Robinson R22: the entry-level helicopter", "item": "https://aircraft2sell.eu/en/robinson-r22-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used Robinson R22</span></nav>
+    <span class="eyebrow">Model guide</span>
+    <h1>Used Robinson R22: the entry-level helicopter</h1>
+    <p>Budget to plan for, airframe and rotor-specific checkpoints, insurance considerations and resale outlook for buying a used Robinson R22 with full knowledge of the facts.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published 23 November 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#why">Why the R22 remains the reference for first-time helicopter buyers</a></li><li><a href="#budget">What budget to plan for at purchase</a></li><li><a href="#inspection">Inspection checkpoints to watch</a></li><li><a href="#school">Flight-school use vs. private use: a direct impact on price</a></li><li><a href="#maintenance">Maintenance and engine overhaul</a></li><li><a href="#insurance">Insurance and regulation for a less-experienced pilot</a></li><li><a href="#resale">Resale and the second-hand market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="why">Why the R22 remains the reference for first-time helicopter buyers</h2>
+<p>Launched in the early 1980s, the Robinson R22 established itself as the most widely used two-seat helicopter in its category worldwide, and remains today the go-to type for primary flight training. Its lightweight airframe, low-inertia two-blade rotor system and piston engine make it the least expensive helicopter to buy and operate on the market, which explains its enduring popularity with both flight schools and private individuals looking for a first taste of helicopter ownership without the outlay of an R44 or a light turbine.</p>
+<p>The flip side of this simplicity is an aircraft that is genuinely demanding to fly: the R22's low-inertia rotor system is far less forgiving of collective pitch handling errors than a heavier rotor, and the manufacturer imposes a specific set of operational limitations (notably around flight in strong winds and low-speed, low-altitude maneuvers) that have, over the decades, justified a dedicated type-specific training syllabus beyond standard private pilot training. For a prospective owner, this means budgeting not only for the aircraft itself but also for serious type familiarization before any solo flying.</p>
+
+<h2 id="budget">What budget to plan for at purchase</h2>
+<p>The price of a used R22 depends mainly on year of manufacture, total airframe and engine hours, the remaining potential before the next major overhaul, and prior usage history (intensive flight-school use versus more moderate private use). The oldest airframes closest to their overhaul limit trade at a noticeably more accessible entry point than recent or freshly overhauled examples, which represent a significantly higher investment.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Factor</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Total airframe and engine hours</td><td>An aircraft nearing its major overhaul trades at a discount reflecting the upcoming overhaul cost</td></tr>
+<tr><td>Prior use (flight school vs. private)</td><td>Flight-school history generally means a heavier usage rhythm and more start/stop cycles</td></tr>
+<tr><td>Condition of main rotor blades and tail rotor</td><td>Life-limited components whose replacement weighs on residual value</td></tr>
+<tr><td>Avionics and equipment</td><td>A training-dedicated R22 is usually basic; extra equipment (radio, newer transponder) adds value</td></tr>
+</tbody></table></div>
+<p>On top of the purchase price, budget for the usual ancillary costs of a used aircraft: a pre-purchase inspection by an independent mechanic qualified on type, registration and transfer fees, insurance, and possibly documentation remediation if the logbook has any gaps.</p>
+
+<h2 id="inspection">Inspection checkpoints to watch</h2>
+<p>Beyond the standard checks applicable to any light helicopter (logbook, compliance with airworthiness directives, general airframe condition), the R22 has a few technical particularities that deserve extra scrutiny during a pre-purchase inspection.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Condition of the main rotor blades and rotor head: these components have a limited life in hours or calendar time, and replacing them represents a significant expense relative to the aircraft's value.</span></li>
+  <li><i data-icon="check"></i><span>History of any hard landing or rotor overspeed event, two incidents that occur fairly often on aircraft used for primary training and whose consequences must be documented in the logbook.</span></li>
+  <li><i data-icon="check"></i><span>Time remaining before the next major engine overhaul, and consistency between the engine logbook, maintenance invoices and displayed hours.</span></li>
+  <li><i data-icon="check"></i><span>Condition of the transmission and clutch, components stressed by the repeated start/stop cycles typical of flight-school use.</span></li>
+  <li><i data-icon="check"></i><span>Signs of corrosion on the airframe and landing gear, particularly for aircraft parked outdoors or operated near the coast.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — A pre-purchase inspection carried out by a Robinson-approved shop is strongly recommended, especially to check the condition of the main rotor and transmission, two costly items if any overhaul shortfall is not accounted for in the sale price.</div></div>
+
+<h2 id="school">Flight-school use vs. private use: a direct impact on price</h2>
+<p>The R22 leads a double life on the used market: a large share of the fleet has served, or still serves, in flight schools for primary training, while another share, often newer or less used, remains in the hands of private owners for occasional leisure flying. An airframe that comes from a school fleet generally has accumulated more flight hours, but also more start/stop cycles and demanding exercises for the mechanics (autorotations, challenging landings) that the logbook does not always reflect in detail.</p>
+<p>Conversely, a privately-used aircraft may show fewer hours but also longer periods of inactivity, which is not without consequences for certain components (seals, internal corrosion). In both cases, asking for the full operational history and, where possible, the name of the organization that handled maintenance, helps better assess whether the asking price matches the aircraft's actual condition.</p>
+
+<h2 id="maintenance">Maintenance and engine overhaul</h2>
+<p>Like any light helicopter, the R22 requires a tighter periodic maintenance rhythm, with life-limited components (main rotor blades, tail rotor blade, certain transmission parts) that must be replaced after a set number of hours or calendar time defined by the manufacturer, regardless of apparent condition. The major engine overhaul is the heaviest item to plan for financially: its due date, clearly documented in the technical file, should always be factored into price negotiations.</p>
+<p>Having the aircraft maintained by a Robinson-approved shop familiar with the type's particularities limits the risk of unpleasant surprises and preserves resale value. A complete maintenance file, with detailed invoices and traceability of replaced parts, remains one of the most convincing arguments when it comes time to sell.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for the complete engine logbook and the last three maintenance invoices: they reveal, often better than the listing itself, how seriously the aircraft has been maintained.</div></div>
+
+<h2 id="insurance">Insurance and regulation for a less-experienced pilot</h2>
+<p>Because the R22 is so heavily used for primary training, a large share of its pilots have limited time on type at the moment of purchase. This reality is directly reflected in insurance costs: insurers factor in the total and on-type hours of the insured pilot, which can make premiums noticeably higher for a first-time owner than for an experienced pilot. It is advisable to request an insurance quote before finalizing a purchase, since this item can represent a meaningful share of the annual operating budget.</p>
+<p>From a regulatory standpoint, registration and continued airworthiness of a used R22 follow the rules applicable to light aircraft under the EASA framework, with particularities specific to each member state when transferring registration from a non-European register. An incomplete transfer file or an open airworthiness directive can significantly delay putting the aircraft into service after purchase; it is therefore advisable to check these points with a continuing airworthiness management organization (CAMO) before signing.</p>
+
+<h2 id="resale">Resale and the second-hand market</h2>
+<p>Thanks to a very large worldwide fleet and good parts availability, the R22 benefits from an active resale market, driven largely by steady demand from flight schools and by owners wanting to start flying helicopters at the lowest possible cost. An aircraft with a transparent maintenance file, clearly documented usage history and recently replaced life-limited components generally sells faster and on better terms.</p>
+<p>Comparing several listings of aircraft with similar generation and hours remains the best way to assess a fair price, both when buying and when preparing a future resale. Price differences between two seemingly similar R22s almost always come down to the remaining potential of life-limited parts, proximity to the next major engine overhaul, and the documented quality of past maintenance.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Robinson R22</h3>
+            <p>Compare used Robinson R22 listings available across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="robinson-r44-occasion-guide-achat-helicoptere.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Robinson R44: the complete buying guide</strong><p>Budget, points to watch and maintenance for the world's most widely used light helicopter.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="helicoptere-occasion-guide-achat-particulier.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buying</span><strong>Used helicopters: a buying guide for private owners</strong><p>The key benchmarks for a confident first helicopter purchase.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>
