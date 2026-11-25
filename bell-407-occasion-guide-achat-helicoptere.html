@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Bell 407 d'occasion : guide d'achat de cet hélicoptère monoturbine polyvalent. Usages typiques, points de vigilance, budget d'exploitation et marché de la revente.">
+<meta property="og:title" content="Bell 407 d'occasion : guide d'achat | Aircraft2Sell">
+<meta property="og:description" content="Bell 407 d'occasion : guide d'achat de cet hélicoptère monoturbine polyvalent. Usages typiques, points de vigilance, budget d'exploitation et marché de la revente.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/bell-407-occasion-guide-achat-helicoptere.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/bell-407-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/bell-407-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/bell-407-occasion-guide-achat-helicoptere.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Bell 407 d'occasion : guide d'achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Bell 407 d'occasion : guide d'achat", "description": "Bell 407 d'occasion : guide d'achat de cet hélicoptère monoturbine polyvalent. Usages typiques, points de vigilance, budget d'exploitation et marché de la revente.", "datePublished": "2026-11-25", "dateModified": "2026-11-25", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/bell-407-occasion-guide-achat-helicoptere.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Bell 407 d'occasion : guide d'achat", "item": "https://aircraft2sell.eu/bell-407-occasion-guide-achat-helicoptere.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Bell 407</span></nav>
+    <span class="eyebrow">Achat</span>
+    <h1>Bell 407 d'occasion : guide d'achat</h1>
+    <p>Bell 407 d'occasion : guide d'achat de cet hélicoptère monoturbine polyvalent. Usages typiques, points de vigilance, budget d'exploitation et marché de la revente.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>25 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Le Bell 407, un monoturbine polyvalent très répandu</a></li><li><a href="#usages">Usages typiques : utilitaire, VIP, EMS et travail aérien</a></li><li><a href="#inspection">Points de vigilance à l'inspection</a></li><li><a href="#entretien">Entretien et composants à potentiel limité</a></li><li><a href="#budget">Fourchette de prix et budget d'exploitation</a></li><li><a href="#revente">Marché et revente</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Le Bell 407, un monoturbine polyvalent très répandu</h2>
+<p>Le Bell 407 est un hélicoptère léger monoturbine conçu par Bell Textron, dérivé de la famille du Bell 206 JetRanger/LongRanger mais doté d'un rotor principal à quatre pales et d'une cellule élargie. Mis en service dans les années 1990 et toujours produit aujourd'hui sous ses versions les plus récentes (dont le 407GXi), il s'est imposé comme l'un des hélicoptères utilitaires monoturbine les plus répandus au monde, avec un parc important en Amérique du Nord et une présence croissante sur le marché européen de l'occasion.</p>
+<p>Sa popularité tient à un équilibre reconnu entre capacité d'emport, performances et coûts d'exploitation raisonnables pour sa catégorie. Sur le marché de l'occasion, on distingue généralement les premières générations (moteur Rolls-Royce/Allison 250-C47) des versions plus récentes GX et GXi, qui bénéficient d'avioniques modernisées (Garmin G1000H sur la GXi) et de pales composites perfectionnées.</p>
+
+<h2 id="usages">Usages typiques : utilitaire, VIP, EMS et travail aérien</h2>
+<p>Comme pour tout hélicoptère de ce segment, l'historique d'exploitation d'un exemplaire d'occasion a une influence directe sur son état et sa cote. Les principaux usages rencontrés sur le marché sont :</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Évacuation sanitaire (EMS/HEMS) et secours, un usage intensif qui implique souvent un suivi d'entretien rigoureux mais aussi un nombre d'heures de vol élevé.</span></li>
+  <li><i data-icon="check"></i><span>Transport VIP et affaires, avec des cabines aménagées confortables pouvant accueillir plusieurs passagers.</span></li>
+  <li><i data-icon="check"></i><span>Travail aérien utilitaire : héliportage, surveillance de lignes et d'infrastructures, soutien à des chantiers isolés.</span></li>
+  <li><i data-icon="check"></i><span>Missions de police, de surveillance ou paramilitaires sur certains marchés, avec des configurations spécifiques (caméras, treuils).</span></li>
+  <li><i data-icon="check"></i><span>Formation avancée pour des pilotes passant du monomoteur à pistons au monoturbine.</span></li>
+</ul>
+<p>Avant toute visite, demandez systématiquement le détail de l'usage antérieur de l'appareil : un exemplaire ayant servi en EMS ou en travail aérien intensif n'a pas le même profil d'usure qu'un hélicoptère utilisé occasionnellement en transport privé, même avec un nombre d'heures de vol comparable.</p>
+
+<h2 id="inspection">Points de vigilance à l'inspection</h2>
+<p>Au-delà des vérifications standards applicables à tout hélicoptère d'occasion (carnet de route complet, conformité aux consignes de navigabilité, état général de la cellule et de la peinture), certains points méritent une attention particulière sur un Bell 407.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Historique d'utilisation précis (EMS, VIP, utilitaire, formation) et cohérence avec les heures de vol déclarées et le carnet de route.</span></li>
+  <li><i data-icon="check"></i><span>État et potentiel restant des pales du rotor principal et du rotor de queue, composants composites à durée de vie limitée dont le remplacement représente un poste de dépense important.</span></li>
+  <li><i data-icon="check"></i><span>Temps restant avant la prochaine grande visite de la turbine (Rolls-Royce 250 series) et cohérence avec le carnet moteur et les factures d'entretien.</span></li>
+  <li><i data-icon="check"></i><span>État de la boîte de transmission principale et des éléments de la chaîne cinématique, dont certains sont également soumis à des limites calendaires ou horaires strictes.</span></li>
+  <li><i data-icon="check"></i><span>Version et standard avionique (classique, GX ou GXi) : ils influencent fortement la valeur et la facilité de revente.</span></li>
+  <li><i data-icon="check"></i><span>Historique d'éventuels incidents (atterrissage dur, dommage à la transmission, FOD moteur) consigné dans le carnet ou auprès de l'autorité d'immatriculation.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Une inspection pré-achat réalisée par un atelier agréé Bell est fortement recommandée avant toute offre ferme, en particulier pour vérifier l'état des pales, de la transmission et le dossier complet de la turbine, trois postes coûteux en cas de dépassement de potentiel.</div></div>
+
+<h2 id="entretien">Entretien et composants à potentiel limité</h2>
+<p>Comme tout hélicoptère à turbine, le Bell 407 impose un rythme d'entretien périodique soutenu, avec des composants à potentiel limité (pales, certains éléments de transmission, pièces dynamiques) qui doivent être remplacés après un nombre d'heures ou une durée calendaire définis par le constructeur, indépendamment de leur état apparent.</p>
+<p>La grande visite de la turbine constitue le poste d'entretien le plus lourd à anticiper : son coût et son échéance doivent être clairement documentés dans le dossier technique de l'appareil avant tout achat, car un exemplaire proche de cette échéance se négocie logiquement avec une décote correspondant au coût de la révision à venir. Vérifiez également la disponibilité d'un atelier de maintenance agréé Bell à proximité de la base d'exploitation prévue.</p>
+
+<h2 id="budget">Fourchette de prix et budget d'exploitation</h2>
+<p>Le Bell 407 se positionne sur un segment de prix supérieur à celui des hélicoptères légers à pistons, dans une catégorie comparable à d'autres monoturbines utilitaires présentés ailleurs sur Aircraft2Sell. Sur le marché de l'occasion, les prix observés varient très largement selon l'année, le standard (classique, GX ou GXi), les heures de cellule et de turbine, et l'historique d'usage.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Poste</th><th>Ce qu'il faut anticiper</th></tr></thead>
+<tbody>
+<tr><td>Prix d'achat d'occasion</td><td>Très variable selon l'année, le standard avionique, les heures et l'historique d'usage</td></tr>
+<tr><td>Carburant</td><td>Turbine, consommation sensiblement supérieure à un hélicoptère léger à pistons équivalent</td></tr>
+<tr><td>Assurance (RC + corps)</td><td>Variable selon l'expérience du pilote, l'usage déclaré et la valeur assurée de l'appareil</td></tr>
+<tr><td>Visite périodique</td><td>Rythme soutenu, typique d'un appareil professionnel à forte utilisation</td></tr>
+<tr><td>Pales et composants à potentiel limité</td><td>Remplacement programmé indépendant de l'état apparent, poste à provisionner à l'avance</td></tr>
+<tr><td>Grande visite turbine</td><td>Poste le plus lourd, à anticiper en fonction des heures restantes avant l'échéance constructeur</td></tr>
+<tr><td>Hangar / abri</td><td>Recommandé pour limiter l'usure environnementale et préserver la valeur de revente</td></tr>
+</tbody></table></div>
+<p>Avant toute négociation, comparez plusieurs annonces de configurations comparables (année, standard, heures, usage antérieur) afin de situer le prix demandé par rapport au marché réel, plutôt que de vous fier à une seule référence isolée.</p>
+
+<h2 id="revente">Marché et revente</h2>
+<p>Le Bell 407 bénéficie d'un marché de revente actif et international, porté par un parc important en circulation et une demande soutenue aussi bien chez les opérateurs professionnels (EMS, travail aérien) que chez certains particuliers et exploitants privés. La revente est généralement facilitée par un dossier d'entretien complet et transparent, un historique d'utilisation clairement documenté et des composants à potentiel limité récemment remplacés ou avec une marge confortable avant échéance.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Conservez systématiquement les factures de maintenance et les rapports d'inspection : ils constituent un argument de poids au moment de la revente, en particulier pour la turbine et les pales du rotor.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre prochain hélicoptère</h3>
+            <p>Comparez les annonces d'hélicoptères d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="airbus-h125-occasion-guide-achat-helicoptere.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Achat</span><strong>Airbus H125 d'occasion : guide d'achat hélicoptère</strong><p>Usages typiques, fourchette de prix, points de vigilance et marché de la revente de cet hélicoptère utilitaire monoturbine.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="robinson-r66-occasion-guide-achat-helicoptere.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Achat</span><strong>Robinson R66 d'occasion : turbine légère, ce qu'il faut savoir</strong><p>La turbine légère expliquée, budget d'achat et d'exploitation, points de vigilance à l'inspection et marché de la revente.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="helicoptere-occasion-guide-achat-particulier.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Achat</span><strong>Hélicoptère d'occasion : guide d'achat pour particuliers</strong><p>Les grands repères pour aborder sereinement l'achat d'un premier hélicoptère.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>
