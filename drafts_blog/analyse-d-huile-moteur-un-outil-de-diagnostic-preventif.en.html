@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Engine oil analysis: how it catches wear before it becomes a failure, which parameters to track, and how to use it when buying a used aircraft.">
+<meta name="keywords" content="aircraft engine oil analysis, SOAP aviation, spectrometric oil analysis, used aircraft engine wear, Lycoming Continental oil analysis">
+<meta property="og:title" content="Engine Oil Analysis: A Preventive Diagnostic Tool | Aircraft2Sell">
+<meta property="og:description" content="Engine oil analysis: how it catches wear before it becomes a failure, which parameters to track, and how to use it when buying a used aircraft.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Engine Oil Analysis: A Preventive Diagnostic Tool | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Engine Oil Analysis: A Preventive Diagnostic Tool", "description": "Engine oil analysis: how it catches wear before it becomes a failure, which parameters to track, and how to use it when buying a used aircraft.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Engine Oil Analysis: A Preventive Diagnostic Tool", "item": "https://aircraft2sell.eu/en/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Engine oil analysis</span></nav>
+    <span class="eyebrow">Technical guide</span>
+    <h1>Engine Oil Analysis: A Preventive Diagnostic Tool</h1>
+    <p>How engine oil analysis catches wear before it turns into a failure, which parameters matter, and how to use it when buying a used aircraft.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#principe">How engine oil analysis works</a></li><li><a href="#parametres">The parameters measured and what they reveal</a></li><li><a href="#interpretation">Reading the results: trend over single data points</a></li><li><a href="#achat">A valuable tool when buying a used aircraft</a></li><li><a href="#frequence">Frequency and sampling method</a></li><li><a href="#limites">The limits of oil analysis</a></li><li><a href="#cout">Cost and practical implementation</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="principe">How engine oil analysis works</h2>
+<p>Engine oil analysis, commonly known by the acronym SOAP (Spectrometric Oil Analysis Program), involves sending an oil sample taken at every oil change to a specialised laboratory. The goal is not to grade the quality of the oil itself, but to look for trace wear metals coming from the engine's internal components: bearings, cylinder barrels, piston rings, gears, bushings. Each alloy leaves a distinct chemical signature, which means a lab can not only confirm that wear is occurring, but often pinpoint which part is the likely source.</p>
+<p>This fits squarely into preventive maintenance thinking: instead of waiting for a failure or a noticeable drop in performance, you track indicators that are invisible to the naked eye but measurable in a lab, well before an incident occurs. On the Lycoming and Continental piston engines that power the vast majority of light aircraft, this practice has become widespread among attentive operators — private owners, flight schools and commercial fleets alike.</p>
+
+<h2 id="parametres">The parameters measured and what they reveal</h2>
+<p>A standard oil analysis report measures the concentration of several metals, expressed in parts per million (ppm), plus a few additional indicators of the oil's own condition.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Iron</strong> — mainly from cylinder barrels, camshafts and bearings; a gradual rise can indicate normal barrel wear, while a sudden spike points to a localised problem.</span></li>
+  <li><i data-icon="check"></i><span><strong>Aluminium</strong> — a signature of pistons and certain crankcase components; high levels alongside silicon can suggest contamination by abrasive particles entering the engine.</span></li>
+  <li><i data-icon="check"></i><span><strong>Copper, lead, tin</strong> — associated with plain bearings; a combined rise in all three strongly points towards bearing wear.</span></li>
+  <li><i data-icon="check"></i><span><strong>Chromium</strong> — present on some chrome-plated piston rings; its presence alone isn't necessarily alarming, but a fast-rising trend should be watched.</span></li>
+  <li><i data-icon="check"></i><span><strong>Silicon</strong> — a key indicator of dust or sand contamination, often linked to a faulty or poorly maintained air filter.</span></li>
+  <li><i data-icon="check"></i><span><strong>Viscosity and water/fuel content</strong> — give insight into the oil's overall condition and any combustion or sealing anomalies.</span></li>
+</ul>
+<p>Laboratories routinely compare these values against statistical reference ranges built from large populations of the same engine type, which allows them to tell a normal value for a given engine apart from a genuinely concerning one.</p>
+
+<h2 id="interpretation">Reading the results: trend over single data points</h2>
+<p>The single most important rule in oil analysis is that one reading on its own has little diagnostic value. Every engine has its own "baseline": a slightly above-average iron level can be perfectly normal for a given engine, as long as it stays stable from one oil change to the next. What actually matters is the trend over time, tracked across at least three to five consecutive samples.</p>
+<p>A gradual, steady upward trend usually reflects normal wear slowly accelerating with engine age. A sharp jump in one or more metals between two closely spaced oil changes, on the other hand, is the signal that should raise concern: it often means a localised wear process has just started or worsened, and warrants a follow-up inspection — cutting open the oil filter to examine debris, a borescope check of the cylinders, or a review of oil pressure.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Worth remembering</strong> — Always keep the full history of analysis reports in the engine logbook. A single report with no prior comparison loses much of its diagnostic value.</div></div>
+
+<h2 id="achat">A valuable tool when buying a used aircraft</h2>
+<p>For a buyer, the history of oil analysis reports is one of the most informative documents a seller can provide, on a par with the engine logbook and flight logbook. A complete, regularly maintained history with no unexplained anomaly is a strong sign of diligent upkeep, and gives a far more reliable picture of the engine's real condition than the hours-since-overhaul (SMOH) figure quoted in the listing alone.</p>
+<p>Conversely, a complete lack of oil analysis history is not disqualifying on its own — plenty of perfectly healthy engines have never been tracked this way — but it deprives the buyer of a valuable indicator and should push for an even more thorough pre-purchase inspection, ideally including an oil analysis taken at the oil change immediately before or after the transaction.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Always ask for the reports from the last three to five oil changes, not just the most recent one.</span></li>
+  <li><i data-icon="check"></i><span>Cross-check the flight hours noted on each report against the engine logbook.</span></li>
+  <li><i data-icon="check"></i><span>If no history exists, consider arranging an analysis as part of the pre-purchase inspection.</span></li>
+  <li><i data-icon="check"></i><span>A stable trend across several oil changes often carries more weight in negotiation than a low SMOH figure alone.</span></li>
+</ul>
+
+<h2 id="frequence">Frequency and sampling method</h2>
+<p>Oil analysis is done at every oil change, meaning at the interval recommended by the engine manufacturer — typically every 25 to 50 flight hours for most Lycoming and Continental piston engines, sometimes longer with certain full-flow filter setups. The sample should be taken while the engine is still warm, right after a recent flight, so suspended particles are properly represented, then shipped promptly to the lab in the kit it provides.</p>
+<p>Most specialised laboratories, in Europe as well as in the United States, turn reports around within a few days, giving the measured values, the reference thresholds for that engine type, and interpretive comments. Many mechanics simply fold this sample into every shop visit, making it a routine step with very little added time or hassle.</p>
+
+<h2 id="limites">The limits of oil analysis</h2>
+<p>Oil analysis is a complementary diagnostic tool, not an absolute guarantee. It only detects what dissolves or disperses finely in the oil: a large metal particle from a sudden failure can easily be caught by the oil filter without showing up significantly in the spectrometric analysis. That's why cutting open the oil filter and visually inspecting the debris it has trapped remains an essential complement, particularly after an oil change following abnormal operation (overspeed, overheat, shock loading).</p>
+<p>Likewise, oil analysis is no substitute for cylinder compression checks, borescope inspections, or tracking oil consumption between changes — all of which remain essential pieces of the broader engine diagnostic picture. Think of it as one piece of the puzzle, to be combined with other monitoring practices rather than relied on in isolation.</p>
+
+<h2 id="cout">Cost and practical implementation</h2>
+<p>The cost of an oil analysis is modest relative to what's at stake: expect roughly €20 to €40 per sample, depending on the laboratory and the level of detail in the report. Over an engine's lifetime, accumulated across every oil change, this cost remains negligible compared with an unexpected engine failure or a premature overhaul.</p>
+<p>Many approved maintenance shops offer this service as a matter of routine and can build and track the history on the owner's behalf. For a buyer or a soon-to-be owner, starting this practice from the very first oil change after purchase is one of the most cost-effective preventive maintenance steps available, alongside regular servicing and a thorough pre-purchase inspection.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — Switch laboratories with care: reference thresholds can vary slightly between providers, which can distort trend readings if you change lab mid-way through a tracking history.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to compare aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Maintenance</span><strong>The cost of maintaining a light aircraft</strong><p>Overhauls, parts, labour: what it really costs to maintain a light aircraft over its flight hours.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="pieges-achat-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="alert-triangle"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pitfalls to avoid when buying a used aircraft</strong><p>The most common mistakes and how to protect yourself when buying a used light aircraft.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

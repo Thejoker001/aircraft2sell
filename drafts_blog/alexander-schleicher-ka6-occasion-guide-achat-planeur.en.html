@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used Alexander Schleicher Ka6 buying guide: budget, wood-and-fabric structure inspection, specific maintenance and the vintage glider market in Europe.">
+<meta property="og:title" content="Used Alexander Schleicher Ka6: buying guide | Aircraft2Sell">
+<meta property="og:description" content="Used Alexander Schleicher Ka6 buying guide: budget, wood-and-fabric structure inspection, specific maintenance and the vintage glider market in Europe.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/alexander-schleicher-ka6-occasion-guide-achat-planeur.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/alexander-schleicher-ka6-occasion-guide-achat-planeur.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/alexander-schleicher-ka6-occasion-guide-achat-planeur.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/alexander-schleicher-ka6-occasion-guide-achat-planeur.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/alexander-schleicher-ka6-occasion-guide-achat-planeur.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Alexander Schleicher Ka6: buying guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Alexander Schleicher Ka6: buying guide", "description": "Used Alexander Schleicher Ka6 buying guide: budget, wood-and-fabric structure inspection, specific maintenance and the vintage glider market in Europe.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/alexander-schleicher-ka6-occasion-guide-achat-planeur.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Alexander Schleicher Ka6", "item": "https://aircraft2sell.eu/en/alexander-schleicher-ka6-occasion-guide-achat-planeur.html"}]}
+</script>
+<script type="application/ld+json">
+{"@type": "FAQPage", "@context": "https://schema.org", "mainEntity": [{"@type": "Question", "name": "Is the Ka6 a good first glider for an owner-pilot?", "acceptedAnswer": {"@type": "Answer", "text": "The Ka6 flies in a gentle, forgiving way, making it an accessible choice for a pilot already qualified on single-seaters who wants to move into private ownership and the flying of a vintage wood-and-fabric glider."}}, {"@type": "Question", "name": "What is the main point to watch when buying a Ka6?", "acceptedAnswer": {"@type": "Answer", "text": "The condition of the wooden structure (spars, ribs, glue joints) and of the fabric covering is the most decisive factor. A specialist inspection by a workshop familiar with wooden gliders is essential before any purchase."}}, {"@type": "Question", "name": "What are the main versions of the Ka6?", "acceptedAnswer": {"@type": "Answer", "text": "The model went through several developments during its production run, notably the Ka6B, Ka6CR and Ka6E versions, which differ in canopy, tail or wing-profile details. Check the exact version and serial number of the aircraft you are considering."}}, {"@type": "Question", "name": "What budget should I plan for a used Ka6?", "acceptedAnswer": {"@type": "Answer", "text": "The Ka6 remains one of the most affordable classic gliders on the used market, with an entry price noticeably below modern composite gliders. The price depends mainly on the condition of the wood, the fabric and the trailer that comes with it."}}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/en/index.html">Home</a><i data-icon="chevron-right"></i><a href="/en/blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Alexander Schleicher Ka6</span></nav>
+    <span class="eyebrow">Model guide</span>
+    <h1>Used Alexander Schleicher Ka6: buying guide</h1>
+    <p>Budget to plan for, wood-and-fabric structure inspection, specific maintenance and an outlook on the vintage glider market to help you buy a used Alexander Schleicher Ka6 with full knowledge of the facts.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">The Ka6: a wood-and-fabric classic of gliding</a></li><li><a href="#versions">Versions and developments of the model</a></li><li><a href="#budget">What budget to plan for at purchase</a></li><li><a href="#inspection">What to check before buying</a></li><li><a href="#pilotage">Flying profile and vintage use</a></li><li><a href="#entretien">Maintenance specific to the wooden structure</a></li><li><a href="#revente">Resale and the vintage glider community</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">The Ka6: a wood-and-fabric classic of gliding</h2>
+<p>The Ka6 is a Standard Class single-seat glider designed by the German manufacturer Alexander Schleicher in the 1950s. Unlike the composite gliders that make up most club fleets today, the Ka6 relies on a traditional wooden structure, covered in fabric over much of the fuselage and lifting surfaces. This construction earned it a lasting reputation for robustness and simplicity, and it remains today a well-regarded reference within the vintage gliding movement in Europe.</p>
+<p>Built in large numbers over several decades, the Ka6 benefits from a large installed fleet, particularly in Germany, France, Belgium and the United Kingdom, which guarantees a steady supply on the used market and an active community of owners and workshops specialised in restoring this type of structure.</p>
+<p>Technically, the Ka6 is characterised by a classically shaped fuselage, a conventional tail and a wing of modest size compared with modern gliders, which makes it easier to handle on the ground and to store. Its relative mechanical simplicity, with no complex retractable gear on most versions, also makes it a less demanding aircraft to maintain than a recent performance glider, provided the wooden structure remains in good condition.</p>
+
+<h2 id="versions">Versions and developments of the model</h2>
+<p>Over its production run, the Ka6 went through several developments, notably the Ka6B, Ka6CR and Ka6E versions, which differ in canopy, tail or wing-profile details depending on the year of production. Some aircraft have also been subject to later modifications through manufacturer bulletins or airworthiness directives, which should be checked precisely in the technical file of the aircraft you are considering.</p>
+<p>Before targeting a specific aircraft, it is worth asking the seller for the exact serial number, the model version and the list of technical bulletins applied, to make sure the aircraft matches the expected configuration and that no applicable airworthiness directive has been left unaddressed.</p>
+
+<h2 id="budget">What budget to plan for at purchase</h2>
+<p>The Ka6 remains one of the most affordable classic gliders on the used market, with an entry price noticeably below modern composite performance gliders. The price depends mainly on the condition of the wooden structure, the quality and age of the last fabric recovering, the equipment fitted and whether a trailer in good condition comes with the aircraft.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Condition of the wooden structure and glue joints</td><td>A transparent technical file and wood with no sign of moisture damage clearly increase value</td></tr>
+<tr><td>Age of the last fabric recovering</td><td>A recently and properly applied fabric covering avoids a major near-term expense</td></tr>
+<tr><td>Airframe hours and flight history</td><td>Well-documented club or vintage use is reassuring to a buyer</td></tr>
+<tr><td>Equipment and trailer included</td><td>A trailer in good condition noticeably increases the overall price</td></tr>
+</tbody></table></div>
+<p>Beyond the purchase price, your budget should include ancillary costs: a pre-purchase inspection by a workshop qualified on wooden structures, registration and transfer fees, insurance suited to a classic glider, and hangar or storage space depending on how you plan to operate the aircraft.</p>
+
+<h2 id="inspection">What to check before buying</h2>
+<p>A pre-purchase inspection by an independent mechanic or workshop specialised in wood-and-fabric structures remains essential before finalising a transaction. For a Ka6, a few points deserve particular attention.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Condition of the spars, ribs and internal glue joints: look for any signs of moisture damage, rot or delamination, sometimes hard to detect without opening inspection panels.</span></li>
+  <li><i data-icon="check"></i><span>Condition and age of the fabric covering, checking for tears, lifting fabric or cracked paint masking an underlying defect.</span></li>
+  <li><i data-icon="check"></i><span>Total airframe hours and history of periodic inspections (ARC), with a complete, transparent logbook.</span></li>
+  <li><i data-icon="check"></i><span>Compliance with manufacturer bulletins and airworthiness directives applicable to the model and serial number concerned.</span></li>
+  <li><i data-icon="check"></i><span>Condition of flight controls, cables, canopy and landing gear, as well as past storage conditions (hangar or trailer).</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Never rely solely on the seller's statements about the overall condition of a wooden structure: a written independent inspection report, ideally carried out by an approved workshop familiar with this type of construction, remains the best protection against a bad surprise after the purchase.</div></div>
+
+<h2 id="pilotage">Flying profile and vintage use</h2>
+<p>The Ka6 flies in a simple, progressive way, with gentle handling qualities that made it, in its time, a widely used club glider for pilot progression. Its glide ratio remains modest compared with modern composite gliders, which makes it today more of a leisure and collector's aircraft than a performance or competition machine.</p>
+<p>Many owners choose the Ka6 for exactly this reason: an affordable, pleasant-to-fly glider that allows them to move into private ownership while taking part in the vintage gliding movement, which remains very active in Europe around rallies and gatherings dedicated to historic wood-and-fabric aircraft.</p>
+<p>This positioning explains the loyalty of a community of enthusiast owners, who readily share restoration tips and experience on specialist forums and at gatherings organised by vintage glider clubs.</p>
+
+<h2 id="entretien">Maintenance specific to the wooden structure</h2>
+<p>Maintaining a Ka6 differs noticeably from maintaining a modern composite glider. The main expense items remain the periodic airworthiness inspection, insurance, storage away from moisture, and, depending on what is found during inspections, partial or full renewal of the fabric covering or repair of the wooden structure.</p>
+<p>Having the aircraft maintained at an approved workshop specialised in wooden gliders helps limit unpleasant surprises and preserve its collector's value. Careful storage, sheltered from humidity swings, noticeably extends the structure's life between two recoverings.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for the complete logbook and the latest periodic inspection reports before making an offer: they give an accurate picture of how seriously the aircraft has been maintained and of the real condition of the wooden structure.</div></div>
+<p>Choosing the right maintenance workshop is particularly important for a wooden glider: not every approved workshop necessarily has the same level of experience with older structures. Favouring a workshop recognised within the vintage community, already experienced with Ka6s or comparable aircraft of the same era, reduces the risk of unsuitable repairs that would reduce the aircraft's value.</p>
+
+<h2 id="revente">Resale and the vintage glider community</h2>
+<p>The Ka6 benefits from an active used market in Europe, supported by a large installed fleet and a community of owners and restorers passionate about historic gliders. A well-maintained aircraft, with a transparent history and a sound structure, generally resells more easily than one whose technical file has grey areas regarding the condition of the wood or fabric.</p>
+<p>Comparing several listings of similar aircraft remains the best way to assess a fair price, both for buying and for preparing a future resale. Price differences between two examples are almost always explained by the condition of the structure, the age of the covering and the documented quality of maintenance.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Alexander Schleicher Ka6</h3>
+            <p>Compare used Alexander Schleicher Ka6 glider listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="/en/search.html?cat=planeur" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="/en/blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="/en/planeur-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Category guide</span><strong>Used glider: the complete buying guide</strong><p>Budget, leading brands, inspection points and regulations for buying a used glider or motor glider.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>The pre-purchase inspection of an aircraft: complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Buyer's guide</span><strong>Aircraft insurance: the complete guide</strong><p>Understand the coverage and insure your aircraft properly, including gliders and motor gliders.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

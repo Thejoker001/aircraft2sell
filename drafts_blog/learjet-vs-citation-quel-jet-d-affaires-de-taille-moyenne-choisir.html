@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Learjet ou Citation : comparatif des jets d'affaires de taille moyenne — cabine, vitesse, rayon d'action, coûts d'exploitation et marché de l'occasion.">
+<meta property="og:title" content="Learjet vs Citation : quel jet d'affaires de taille moyenne choisir | Aircraft2Sell">
+<meta property="og:description" content="Learjet ou Citation : comparatif des jets d'affaires de taille moyenne — cabine, vitesse, rayon d'action, coûts d'exploitation et marché de l'occasion.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/learjet-vs-citation-quel-jet-d-affaires-de-taille-moyenne-choisir.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/learjet-vs-citation-quel-jet-d-affaires-de-taille-moyenne-choisir.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/learjet-vs-citation-quel-jet-d-affaires-de-taille-moyenne-choisir.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/learjet-vs-citation-quel-jet-d-affaires-de-taille-moyenne-choisir.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/learjet-vs-citation-quel-jet-d-affaires-de-taille-moyenne-choisir.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Learjet vs Citation : quel jet d'affaires de taille moyenne choisir | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Learjet vs Citation : quel jet d'affaires de taille moyenne choisir", "description": "Learjet ou Citation : comparatif des jets d'affaires de taille moyenne — cabine, vitesse, rayon d'action, coûts d'exploitation et marché de l'occasion.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/learjet-vs-citation-quel-jet-d-affaires-de-taille-moyenne-choisir.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Learjet vs Citation : quel jet d'affaires de taille moyenne choisir", "item": "https://aircraft2sell.eu/learjet-vs-citation-quel-jet-d-affaires-de-taille-moyenne-choisir.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Learjet vs Citation</span></nav>
+    <span class="eyebrow">Comparatif</span>
+    <h1>Learjet vs Citation : quel jet d'affaires de taille moyenne choisir</h1>
+    <p>Deux familles emblématiques de l'aviation d'affaires s'affrontent sur le segment des jets de taille moyenne. Cabine, vitesse, rayon d'action, coûts d'exploitation et marché de l'occasion : voici comment arbitrer entre un Learjet et un Citation.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Deux philosophies de jet d'affaires de taille moyenne</a></li><li><a href="#learjet">Le Learjet : vitesse et héritage d'un pionnier</a></li><li><a href="#citation">Le Citation : confort de cabine et polyvalence</a></li><li><a href="#performances">Vitesse, rayon d'action et performances comparées</a></li><li><a href="#budget">Budget d'achat et coûts d'exploitation</a></li><li><a href="#occasion">Le marché de l'occasion : disponibilité et points de vigilance</a></li><li><a href="#choix">Quel appareil pour quel profil de mission</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Deux philosophies de jet d'affaires de taille moyenne</h2>
+<p>Dans la catégorie des jets d'affaires de taille moyenne, deux noms reviennent presque systématiquement dans les discussions d'acheteurs : Learjet et Citation. Ces deux familles, toutes deux largement représentées sur le marché de l'occasion, répondent pourtant à des logiques de conception assez différentes. Le Learjet s'est construit une réputation de performance pure, héritée de ses origines de jet rapide et agile, tandis que la gamme Citation a été pensée dès le départ pour offrir un équilibre entre confort de cabine, facilité d'exploitation et large diffusion sur le marché d'affaires.</p>
+<p>Choisir entre les deux revient rarement à départager un « meilleur » appareil dans l'absolu : il s'agit avant tout de faire correspondre les caractéristiques de chaque famille avec le profil de mission envisagé, le budget disponible et les contraintes d'exploitation propres à chaque opérateur.</p>
+<p>Ce comparatif s'adresse aussi bien à un acheteur privé qui envisage sa première acquisition de jet d'affaires qu'à un opérateur professionnel qui cherche à renouveler sa flotte. Dans les deux cas, la méthode reste la même : partir des besoins réels de mission avant de se laisser séduire par la réputation ou l'image de marque d'une famille d'appareils plutôt que d'une autre.</p>
+
+<h2 id="learjet">Le Learjet : vitesse et héritage d'un pionnier</h2>
+<p>La gamme Learjet s'est imposée dès les années 1960 comme une référence de vitesse dans l'aviation d'affaires, avec une cellule fine et des performances de croisière élevées qui restent, encore aujourd'hui, un argument de vente pour de nombreux modèles disponibles d'occasion. Les versions de taille moyenne de la gamme offrent une cabine plus généreuse que les premiers modèles historiques, tout en conservant cet ADN de rapidité qui a fait la réputation de la marque.</p>
+<p>Sur le marché de l'occasion, les acheteurs qui privilégient des temps de trajet courts, notamment sur des missions régulières à moyenne distance, apprécient particulièrement cette orientation vers la performance en croisière, au prix parfois d'un volume cabine plus contraint que certains concurrents directs.</p>
+<p>L'identité visuelle et sonore du Learjet, souvent décrite comme plus « sportive » que celle de ses concurrents, continue également de séduire une partie des acheteurs d'occasion qui recherchent un appareil au caractère marqué, sans pour autant renoncer à une avionique et à un niveau de confort actualisés selon la génération choisie.</p>
+
+<h2 id="citation">Le Citation : confort de cabine et polyvalence</h2>
+<p>La famille Citation couvre un éventail très large de modèles, des jets légers d'entrée de gamme jusqu'aux versions de taille moyenne proches des performances d'un Learjet. Cette diversité se traduit par une offre d'occasion particulièrement riche, avec des générations successives qui ont progressivement amélioré le confort de cabine, l'avionique et l'autonomie.</p>
+<p>Les versions de taille moyenne de la gamme Citation misent sur un compromis reconnu entre volume cabine, facilité de pilotage et coûts d'exploitation maîtrisés, ce qui en fait un choix fréquent pour des opérateurs qui recherchent un appareil polyvalent, aussi bien pour des missions courtes que pour des trajets plus longs avec plusieurs passagers.</p>
+<p>Cette large diffusion a aussi pour conséquence un réseau de formation et de maintenance particulièrement étendu, un atout non négligeable pour un opérateur qui souhaite limiter les délais d'immobilisation de l'appareil en cas d'intervention imprévue, où qu'il se trouve en Europe.</p>
+
+<h2 id="performances">Vitesse, rayon d'action et performances comparées</h2>
+<p>En matière de performances pures, les Learjet de taille moyenne conservent généralement un avantage en vitesse de croisière, ce qui peut représenter un gain de temps réel sur des rotations fréquentes. Les Citation de catégorie équivalente privilégient quant à eux un rayon d'action souvent supérieur et une cabine plus spacieuse, au bénéfice du confort des passagers sur les vols de plusieurs heures.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Learjet (taille moyenne)</th><th>Citation (taille moyenne)</th></tr></thead>
+<tbody>
+<tr><td>Vitesse de croisière</td><td>Généralement supérieure, atout historique de la gamme</td><td>Bonne vitesse, mais souvent légèrement inférieure</td></tr>
+<tr><td>Volume cabine</td><td>Plus contraint sur certaines versions</td><td>Souvent plus généreux à catégorie équivalente</td></tr>
+<tr><td>Rayon d'action</td><td>Variable selon la génération</td><td>Souvent un argument fort de la gamme</td></tr>
+<tr><td>Disponibilité à l'occasion</td><td>Bonne, avec de nombreuses générations sur le marché</td><td>Très large offre, toutes générations confondues</td></tr>
+</tbody></table></div>
+<p>Au-delà des chiffres de catalogue, les performances réelles dépendent fortement de la génération précise du modèle, de son avionique et de son potentiel moteur restant, ce qui impose de comparer des appareils d'âge et d'équipement comparables avant de tirer une conclusion définitive.</p>
+
+<h2 id="budget">Budget d'achat et coûts d'exploitation</h2>
+<p>Le budget d'acquisition d'un jet de taille moyenne, qu'il s'agisse d'un Learjet ou d'un Citation, varie fortement selon l'âge de l'appareil, les heures moteur restantes, l'avionique installée et l'historique d'entretien. À ce niveau de catégorie, les coûts d'exploitation annuels — carburant, maintenance programmée, assurance, stationnement et équipage — représentent souvent un poste de dépense bien plus important sur la durée que le prix d'achat initial.</p>
+<p>Il est courant, pour un premier acheteur dans cette catégorie d'appareil, de sous-estimer le poids de ces coûts récurrents face au prix d'achat affiché sur une annonce. Construire un budget prévisionnel sur plusieurs années d'exploitation, intégrant les échéances de maintenance programmée connues, reste le meilleur moyen d'éviter une mauvaise surprise financière après l'acquisition.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Comparer le coût direct à l'heure de vol, pas seulement le prix catalogue, pour évaluer le budget réel sur plusieurs années d'exploitation.</span></li>
+  <li><i data-icon="check"></i><span>Vérifier la disponibilité et le prix des pièces détachées, qui peut varier sensiblement selon la génération et le réseau de maintenance.</span></li>
+  <li><i data-icon="check"></i><span>Intégrer le coût de la formation et du maintien de compétence de l'équipage sur le type choisi.</span></li>
+  <li><i data-icon="check"></i><span>Anticiper les échéances de grande visite et de révision moteur, qui pèsent lourdement sur la valorisation d'un appareil d'occasion.</span></li>
+</ul>
+<p>Dans les deux familles, un appareil plus ancien avec un faible potentiel moteur restant peut sembler attractif à l'achat, mais implique souvent une dépense de remise à niveau importante à court ou moyen terme.</p>
+
+<h2 id="occasion">Le marché de l'occasion : disponibilité et points de vigilance</h2>
+<p>Learjet comme Citation bénéficient d'une base installée importante, ce qui garantit une offre d'occasion relativement liquide et un réseau de maintenance bien implanté en Europe comme en Amérique du Nord. Cette disponibilité facilite la comparaison entre plusieurs annonces similaires, un passage obligé pour évaluer un juste prix dans cette catégorie d'appareil.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Avant tout engagement, demandez systématiquement le carnet d'entretien complet, l'historique SMOH des moteurs et le certificat de navigabilité en cours de validité, puis faites réaliser une inspection pré-achat par un centre de maintenance agréé spécialisé dans le type.</div></div>
+<p>Les écarts de prix entre deux appareils du même modèle et du même millésime s'expliquent presque toujours par le potentiel moteur restant, la qualité de l'avionique installée et la rigueur du suivi d'entretien documenté dans le carnet.</p>
+<p>Il est également recommandé de vérifier la conformité de l'appareil aux exigences d'exploitation en vigueur dans la zone géographique envisagée, certaines dispositions pouvant varier d'un pays à l'autre pour ce type de jet d'affaires.</p>
+
+<h2 id="choix">Quel appareil pour quel profil de mission</h2>
+<p>Un opérateur qui privilégie la vitesse sur des rotations fréquentes et des missions à moyenne distance trouvera dans un Learjet un argument de performance difficile à négliger. À l'inverse, un acheteur qui recherche davantage de confort cabine, un rayon d'action étendu et une polyvalence d'usage sur des missions variées se tournera plus naturellement vers un Citation.</p>
+<p>Dans les deux cas, la décision finale doit toujours s'appuyer sur une comparaison concrète de plusieurs annonces, une analyse rigoureuse du potentiel moteur restant et une évaluation précise des coûts d'exploitation attendus sur la durée de détention envisagée.</p>
+<p>Enfin, il peut être utile de solliciter l'avis d'un pilote ou d'un gestionnaire de flotte déjà expérimenté sur l'un ou l'autre des deux types : leur retour d'expérience concret, sur l'exploitation quotidienne comme sur la revente, complète utilement les données techniques et budgétaires rassemblées avant la décision finale.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Learjet ou Citation</h3>
+            <p>Comparez les annonces de jets d'affaires de taille moyenne disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="swap"></i></span><span class="eyebrow">Comparatif</span><strong>Turbopropulseur ou jet d'affaires : comment choisir</strong><p>Comparatif chiffré entre turbopropulseur et jet léger selon votre profil de mission.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="prix-moyen-jet-prive-2026.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Marché</span><strong>Prix moyen d'un jet privé en 2026</strong><p>Fourchettes de prix par catégorie de jet et facteurs qui font varier la valeur d'un appareil.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

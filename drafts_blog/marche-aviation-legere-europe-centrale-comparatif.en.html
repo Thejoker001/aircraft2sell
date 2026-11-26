@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Redirection automatique par langue navigateur
+   --------------------------------------------------------------------------
+   Sur une page FR (racine, sans /en/ ni /et/), si le navigateur du visiteur
+   est configuré en anglais ET qu'une version EN de cette page existe, on
+   redirige une seule fois vers /en/<page>. Le choix est mémorisé (localStorage)
+   pour ne plus jamais re-rediriger ensuite, y compris si le visiteur revient
+   volontairement en FR via le sélecteur de langue du footer.
+
+   Ne s'exécute PAS :
+   - sur les pages déjà sous /en/ ou /et/ (pas de boucle)
+   - si un choix de langue a déjà été fait une fois (a2s_lang_choice_made)
+   - si la page n'a pas d'équivalent EN (TRANSLATED_PAGES)
+   - pour les crawlers (voir isLikelyBot ci-dessous)
+
+   CORRECTIF 2026-09-21 : contrairement à l'hypothèse initiale, Googlebot rend
+   la page avec Chrome headless (navigator.language = "en-US" par défaut) et
+   EXÉCUTE ce script — confirmé via Search Console URL Inspection sur la page
+   d'accueil (userCanonical basculait sur /en/index.html malgré une visite de
+   l'URL FR). Impact : le "signal utilisateur" observé par Google pour la
+   page racine pouvait dériver vers la version anglaise. Un filtrage sur
+   navigator.webdriver + une liste d'UA de crawlers connus élimine ce risque
+   sans changer le comportement pour un vrai visiteur humain.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Central European light aviation market 2026: comparing Poland, Czechia, Slovakia and Hungary — prices, supply, taxation and registration.">
+<meta property="og:title" content="The Light Aviation Market in Central Europe: 2026 Comparison | Aircraft2Sell">
+<meta property="og:description" content="Central European light aviation market 2026: comparing Poland, Czechia, Slovakia and Hungary — prices, supply, taxation and registration.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/marche-aviation-legere-europe-centrale-comparatif.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/marche-aviation-legere-europe-centrale-comparatif.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/marche-aviation-legere-europe-centrale-comparatif.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/marche-aviation-legere-europe-centrale-comparatif.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/marche-aviation-legere-europe-centrale-comparatif.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>The Light Aviation Market in Central Europe: 2026 Comparison</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "The Light Aviation Market in Central Europe: 2026 Comparison", "description": "Central European light aviation market 2026: comparing Poland, Czechia, Slovakia and Hungary — prices, supply, taxation and registration.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/marche-aviation-legere-europe-centrale-comparatif.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "The Light Aviation Market in Central Europe: 2026 Comparison", "item": "https://aircraft2sell.eu/en/marche-aviation-legere-europe-centrale-comparatif.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Central Europe</span></nav>
+    <span class="eyebrow">Market</span>
+    <h1>The Light Aviation Market in Central Europe: A Comparison</h1>
+    <p>Poland, Czechia, Slovakia, Hungary: a side-by-side look at supply, prices, taxation and registration procedures for buying a used light aircraft in Central Europe in 2026.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>9 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#marche">A fast-growing market</a></li><li><a href="#pologne">Poland: the region's largest market</a></li><li><a href="#tchequie">Czechia: the cradle of microlights and light aircraft</a></li><li><a href="#slovaquie">Slovakia: a smaller but active market</a></li><li><a href="#hongrie">Hungary: attractive prices and growing supply</a></li><li><a href="#comparatif">Price and tax comparison</a></li><li><a href="#immatriculation">Registration and cross-border procedures</a></li><li><a href="#conseils">Practical tips for buying in Central Europe</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="marche">A fast-growing market</h2>
+<p>Central Europe — Poland, Czechia, Slovakia and Hungary — has become, over the past fifteen years, one of the most dynamic hubs for light aviation and microlights in Europe. A more moderate cost of living, a dense network of local airfields and a long-standing aeronautical industrial tradition (notably in Czechia and Poland) explain this vitality. Several microlight and light two-seater manufacturers are based in the region, a proximity that feeds an abundant used-aircraft market, often more accessible than in Western Europe.</p>
+<p>For a buyer based in Western Europe, these markets represent a real opportunity: well-maintained aircraft, sometimes cheaper than in France or Germany for equivalent engine potential, but with register, language and taxation specifics that need to be anticipated before committing.</p>
+
+<h2 id="pologne">Poland: the region's largest market</h2>
+<p>Poland concentrates the largest supply of used light aircraft and microlights in Central Europe. The country hosts several active manufacturers of two-seaters and ultralight machines, which feeds a substantial secondary market and often competitive prices. Leisure flying is also supported by a very active network of flying clubs, particularly around Warsaw, Kraków and Poznań.</p>
+<p>Polish listings cover the full range: recent two-seat microlights, used touring single-engines such as the Cessna 172 or Piper PA-28, as well as older aircraft at attractive entry prices. Registration falls under the Polish civil aviation authority (Urząd Lotnictwa Cywilnego, ULC), with the <strong>SP-</strong> prefix.</p>
+
+<h2 id="tchequie">Czechia: the cradle of microlights and light aircraft</h2>
+<p>The Czech Republic enjoys a particular reputation in European light aviation: it hosts a high number of well-known microlight and light two-seater manufacturers, whose output is largely exported. This industrial density translates into a very rich domestic used-aircraft market, with recent, well-equipped aircraft.</p>
+<p>The Czech civil aviation authority (Úřad pro civilní letectví, ÚCL) manages registration under the <strong>OK-</strong> prefix. The Czech market is also a classic stopover for buyers from other Central and Western European countries, thanks to the overall quality of the fleet and the dynamism of local maintenance shops.</p>
+
+<h2 id="slovaquie">Slovakia: a smaller but active market</h2>
+<p>Smaller than its Polish and Czech neighbours, the Slovak market nonetheless remains active, supported by a well-established leisure flying culture and strong geographical and cultural proximity to Czechia (many aircraft exchanges between the two countries). Used supply is concentrated on microlights, light two-seaters and a handful of classic touring single-engines.</p>
+<p>Registration falls under the Slovak civil aviation authority (Dopravný úrad), with the <strong>OM-</strong> prefix. The smaller size of the market often means a somewhat longer search to find the exact aircraft sought, offset by less upward pressure on prices.</p>
+
+<h2 id="hongrie">Hungary: attractive prices and growing supply</h2>
+<p>The Hungarian light aviation market has grown markedly in recent years, driven by an expanding sport and leisure flying culture and by operating costs generally lower than in Western Europe. Used supply remains somewhat less abundant than in neighbouring Poland or Czechia, but prices are often very competitive for comparable aircraft.</p>
+<p>Registration is managed by the Hungarian civil aviation authority, under the <strong>HA-</strong> prefix. With an ageing fleet in some segments, the Hungarian market is also seeing a growing supply of modern microlights, in line with regional demand.</p>
+
+<h2 id="comparatif">Price and tax comparison</h2>
+<p>The figures below give an indicative view of prices observed in Central Europe for aircraft comparable to those found elsewhere in the European Union, generally with a slight discount compared with Western Europe for equivalent engine potential.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Aircraft type</th><th>Indicative range (Central Europe)</th></tr></thead>
+<tbody>
+<tr><td>Two-seat microlight</td><td>€10,000 to €45,000</td></tr>
+<tr><td>Light single-engine (Cessna 172, Piper PA-28)</td><td>€40,000 to €100,000</td></tr>
+<tr><td>High-performance single-engine (glass cockpit)</td><td>€120,000 to €250,000</td></tr>
+</tbody>
+</table></div>
+<p>On the tax side, the general EU VAT principles apply in all four countries: a sale between EU resident private individuals is generally VAT-exempt, while a sale by a professional or a company may be subject to it. National VAT rates, however, differ noticeably from one country to another, which can matter for a professional buyer or a leasing company.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always compare prices at equivalent engine potential (hours remaining before TBO, avionics condition) rather than build year alone: the price gap between Central and Western Europe is often explained more by this factor than by the country of sale itself.</div></div>
+
+<h2 id="immatriculation">Registration and cross-border procedures</h2>
+<p>As with any registration transfer within the European Union, buying an aircraft in Poland, Czechia, Slovakia or Hungary for operation in another member state requires deregistration from the register of origin before the new registration. Common EASA rules govern this transfer and make it generally simpler than an import from outside the European Union, although administrative timelines and the responsiveness of local authorities can vary from one country to another.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Certificate of airworthiness and airworthiness review certificate (ARC)</strong> — check these first, including their mutual recognition within EASA.</span></li>
+  <li><i data-icon="check"></i><span><strong>Airframe, engine and propeller logbooks</strong> — often written in the local language: plan for translation or the help of a bilingual contact for the inspection.</span></li>
+  <li><i data-icon="check"></i><span><strong>Bill of sale and proof of deregistration from the register of origin</strong> — essential to start the new registration in your country of operation.</span></li>
+</ul>
+
+<h2 id="conseils">Practical tips for buying in Central Europe</h2>
+<p>Beyond the regulatory aspects, a few practical precautions help secure a cross-border purchase in Central Europe. The language barrier remains the most frequently underestimated point: listings and maintenance logbooks are often written in the local language, and it is recommended to use a mechanic or broker who speaks the seller's language for the pre-purchase inspection and for reviewing the documents.</p>
+<p>Ferrying the aircraft to its destination country must also be budgeted and planned in advance, along with temporary insurance covering the ferry flight. Finally, as with any used purchase in Europe, a pre-purchase inspection by a certified mechanic independent of the seller remains the best protection against unpleasant surprises, whatever the aircraft's country of origin.</p>
+<p>It is also worth checking the local availability of spare parts and approved workshops for the model under consideration: some aircraft types that are very common in Central Europe benefit from a good local maintenance network, while rarer models may require support from a workshop located in a neighbouring country. Asking a local club or regional distributor in advance often helps avoid unpleasant surprises after the purchase.</p>
+<p>Finally, allowing a realistic negotiation margin remains relevant in these markets as elsewhere in Europe: an aircraft that has been for sale for a long time, or whose seller wants to close the deal quickly before a change of register, often leaves more room for negotiation than on a tighter Western European market.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Key takeaway</strong> — Central European markets often offer good value for money, but document due diligence and ferry-flight logistics require a bit more preparation than a local purchase.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Compare listings available across Europe</h3>
+            <p>Browse verified listings of aircraft for sale in Europe on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Buying</span><strong>Certification and registration of an aircraft in Europe</strong><p>Procedures, choosing the country of registration, the file to prepare, timelines and costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="tendances-marche.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Market</span><strong>Light aviation market trends</strong><p>How supply, prices and demand are evolving on the European used-aircraft market.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="acheter-avion-occasion-allemagne.html" class="card"><span class="icon-box"><i data-icon="map-pin"></i></span><span class="eyebrow">Buying</span><strong>Buying a used aircraft in Germany</strong><p>Market, prices, LBA registration, VAT and pitfalls to avoid when buying in Germany.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

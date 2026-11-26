@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Robin DR400 ou Socata TB : comparatif complet des deux classiques français de l'aviation légère, pour choisir selon budget, usage et entretien.">
+<meta property="og:title" content="Robin DR400 vs Socata TB : les deux classiques français comparés | Aircraft2Sell">
+<meta property="og:description" content="Robin DR400 ou Socata TB : comparatif complet des deux classiques français de l'aviation légère, pour choisir selon budget, usage et entretien.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/robin-dr400-vs-socata-tb-les-deux-classiques-francais-compares.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/robin-dr400-vs-socata-tb-les-deux-classiques-francais-compares.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/robin-dr400-vs-socata-tb-les-deux-classiques-francais-compares.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/robin-dr400-vs-socata-tb-les-deux-classiques-francais-compares.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/robin-dr400-vs-socata-tb-les-deux-classiques-francais-compares.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Robin DR400 vs Socata TB : les deux classiques français comparés | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Robin DR400 vs Socata TB : les deux classiques français comparés", "description": "Robin DR400 ou Socata TB : comparatif complet des deux classiques français de l'aviation légère, pour choisir selon budget, usage et entretien.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/robin-dr400-vs-socata-tb-les-deux-classiques-francais-compares.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Robin DR400 vs Socata TB : les deux classiques français comparés", "item": "https://aircraft2sell.eu/robin-dr400-vs-socata-tb-les-deux-classiques-francais-compares.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">DR400 vs Socata TB</span></nav>
+    <span class="eyebrow">Comparatif</span>
+    <h1>Robin DR400 vs Socata TB : les deux classiques français comparés</h1>
+    <p>Bois-toile ou métal, cabine sportive ou cabine confort : comparatif complet du Robin DR400 et du Socata TB pour choisir selon votre budget, votre usage et vos contraintes d'entretien.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Deux avions-écoles français emblématiques</a></li><li><a href="#dr400">Le Robin DR400 : bois-toile et aile basse caractéristique</a></li><li><a href="#tb">Le Socata TB : métal et cabine large</a></li><li><a href="#technique">Comparatif technique et motorisations</a></li><li><a href="#budget">Comparatif budget : achat et entretien</a></li><li><a href="#usage">Quel appareil pour quel usage</a></li><li><a href="#occasion">Acheter l'un ou l'autre d'occasion : points de vigilance</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Deux avions-écoles français emblématiques</h2>
+<p>Le Robin DR400 et le Socata TB (Tampico, Tobago, Trinidad) sont deux des monomoteurs les plus emblématiques de l'aviation légère française, présents en grand nombre dans les clubs et chez les propriétaires privés depuis les années 1970-80. Tous deux ont formé des générations de pilotes en France et restent aujourd'hui des valeurs sûres sur le marché de l'occasion européen, avec un parc important et des pièces détachées encore bien disponibles.</p>
+<p>Si les deux appareils visent une clientèle proche — club, formation, voyage personnel — leur conception diffère profondément : structure bois-toile à aile basse cantilever pour le DR400, structure tout métal à aile basse plus conventionnelle pour le TB. Ce choix de conception influence directement la maniabilité, le confort cabine et les coûts d'entretien à long terme.</p>
+
+<h2 id="dr400">Le Robin DR400 : bois-toile et aile basse caractéristique</h2>
+<p>Le DR400 se distingue par sa structure mixte bois-toile et son aile basse cantilever sans mât ni hauban, héritée des avions Jodel. Cette conception lui donne une maniabilité très appréciée des pilotes, une bonne visibilité en virage et des qualités de vol assez vives, ce qui en fait un excellent avion de formation comme de voyage léger. Les versions se succèdent avec des puissances allant de 120 à 180 chevaux (Lycoming O-235 à O-360), couvrant des usages allant de l'école pure au voyage rapide en passant par le remorquage de planeurs pour les versions dédiées.</p>
+<p>Sur le marché de l'occasion, le DR400 séduit par son prix d'entrée généralement accessible et par la disponibilité d'un réseau d'ateliers français rodés à son entretien. La structure toile nécessite en revanche un suivi régulier de son état et un ré-entoilage périodique, un poste de dépense propre à ce type de construction qu'il faut intégrer dans le budget long terme.</p>
+
+<h2 id="tb">Le Socata TB : métal et cabine large</h2>
+<p>Le Socata TB (devenu la gamme Daher TBM sur sa partie turbopropulseur, mais ici dans sa déclinaison monomoteur à pistons Tampico, Tobago et Trinidad) adopte une structure tout métal rivetée, plus classique, et une cabine sensiblement plus large que celle du DR400, appréciée pour le confort sur les vols de voyage. Les motorisations vont également de 115 à plus de 250 chevaux selon la version, le haut de gamme Trinidad (TB20/TB21) se distinguant par un train rentrant et une hélice à pas variable, contrairement au DR400 qui reste exclusivement à train fixe et, pour l'essentiel du parc, à hélice à pas fixe.</p>
+<p>Cette polyvalence de gamme, du TB9 Tampico d'entrée de gamme au TB20 Trinidad haut de gamme, permet de couvrir un spectre large d'usages et de budgets au sein d'une même famille, tout en conservant une structure métallique dont l'entretien est généralement bien maîtrisé par les ateliers habitués aux avions légers classiques.</p>
+
+<h2 id="technique">Comparatif technique et motorisations</h2>
+<p>Les deux familles couvrent une large plage de puissances et de versions, ce qui complique une comparaison directe modèle à modèle. Le tableau ci-dessous résume les grandes tendances observées sur le marché de l'occasion.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Robin DR400</th><th>Socata TB</th></tr></thead>
+<tbody>
+<tr><td>Structure</td><td>Bois-toile, aile basse cantilever</td><td>Tout métal rivetée</td></tr>
+<tr><td>Puissance moteur</td><td>120 à 180 ch (Lycoming O-235 à O-360)</td><td>115 à plus de 250 ch selon la version</td></tr>
+<tr><td>Train d'atterrissage</td><td>Fixe sur toute la gamme</td><td>Fixe sur les versions de base, rentrant sur le TB20/TB21</td></tr>
+<tr><td>Hélice</td><td>Pas fixe sur la quasi-totalité du parc</td><td>Pas fixe sur les versions de base, pas variable sur le Trinidad</td></tr>
+<tr><td>Cabine</td><td>Plus étroite, maniabilité sportive</td><td>Plus large, orientée confort de voyage</td></tr>
+</tbody></table></div>
+<p>Le choix d'une version précise au sein de chaque famille a souvent plus d'impact sur le budget et l'usage que le choix entre les deux familles elles-mêmes, tant l'écart de puissance et d'équipement peut être important d'un millésime à l'autre.</p>
+
+<h2 id="budget">Comparatif budget : achat et entretien</h2>
+<p>À motorisation comparable, les deux familles se négocient dans des fourchettes de prix assez proches sur le marché de l'occasion, le DR400 étant en moyenne légèrement plus accessible à l'achat sur ses versions de base. L'entretien diffère cependant par nature : le DR400 impose un suivi de la toile et de la structure bois, tandis que le TB demande une vigilance accrue sur la corrosion de la structure métallique, en particulier pour les appareils ayant longtemps stationné près de la mer ou dans des régions humides.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>DR400 : budget d'entrée souvent plus accessible, mais ré-entoilage à anticiper selon l'état de la toile.</span></li>
+  <li><i data-icon="check"></i><span>TB de base (Tampico, Tobago) : entretien métallique classique, vigilance sur la corrosion.</span></li>
+  <li><i data-icon="check"></i><span>TB20/TB21 Trinidad : budget d'achat et d'entretien plus élevé, lié au train rentrant et à l'hélice à pas variable.</span></li>
+  <li><i data-icon="check"></i><span>Révision moteur (TBO) : à provisionner dans les deux cas selon les heures restantes avant échéance constructeur.</span></li>
+</ul>
+<p>Dans les deux familles, l'écart de prix entre deux exemplaires de même version s'explique le plus souvent par le potentiel moteur restant, la qualité de l'entretien documenté et l'avionique installée, bien plus que par la marque elle-même.</p>
+
+<h2 id="usage">Quel appareil pour quel usage</h2>
+<p>Pour un usage club, une formation initiale ou un pilote qui recherche une maniabilité sportive et un budget d'entrée contenu, le DR400 reste un choix naturel, d'autant plus pertinent en France où le réseau d'entretien et la disponibilité des pièces sont particulièrement denses.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>DR400 : école, club, voyage léger et pilotes recherchant une maniabilité vive.</span></li>
+  <li><i data-icon="check"></i><span>TB9/TB10 : alternative métallique au DR400, cabine plus large pour le voyage à deux ou en famille.</span></li>
+  <li><i data-icon="check"></i><span>TB20/TB21 Trinidad : voyage rapide et performant, pour un pilote prêt à assumer le budget d'un train rentrant et d'une hélice à pas variable.</span></li>
+  <li><i data-icon="check"></i><span>Confort cabine recherché sur de longs trajets : avantage généralement au TB sur ce critère.</span></li>
+</ul>
+<p>À l'inverse, un pilote qui privilégie le confort cabine sur de longs trajets en famille, ou qui vise les performances de croisière du haut de gamme TB20, trouvera dans la gamme Socata TB une réponse mieux adaptée, au prix d'un entretien métallique spécifique et, pour le Trinidad, d'une mécanique plus complexe.</p>
+
+<h2 id="occasion">Acheter l'un ou l'autre d'occasion : points de vigilance</h2>
+<p>Sur un DR400, l'inspection pré-achat doit porter une attention particulière à l'état de la toile (tension, décollement, UV), à la structure bois sous le revêtement et à l'historique d'un éventuel ré-entoilage. Sur un TB, la priorité va à la recherche de corrosion sur la structure métallique, en particulier aux points d'assemblage et sous les revêtements intérieurs, ainsi qu'à la cohérence des heures entre carnet de route et carnet moteur.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Pour un TB20/TB21 Trinidad, demandez également le carnet d'hélice à jour et l'historique du train rentrant, deux équipements absents du reste de la gamme TB comme du DR400.</div></div>
+<p>Dans tous les cas, faites réaliser l'inspection par un mécanicien indépendant familier du type exact de l'appareil, et comparez plusieurs annonces de versions et de millésimes similaires avant de vous engager, qu'il s'agisse d'un DR400 ou d'un Socata TB.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre DR400 ou TB</h3>
+            <p>Comparez les annonces de Robin DR400 et Socata TB d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="robin-dr400-occasion.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Robin DR400 d'occasion : guide d'achat</strong><p>Versions, budget, entretien de la toile et points de vigilance pour bien acheter un DR400.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="socata-tb-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Socata TB d'occasion : guide d'achat</strong><p>Tampico, Tobago, Trinidad : budget, versions et points de vigilance à l'achat d'un Socata TB.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261007a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

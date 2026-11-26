@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Touring motor glider or pure glider: a complete comparison to help you choose the right formula when buying, based on budget, range and flying style.">
+<meta property="og:title" content="Touring Motor Glider vs Pure Glider: Which to Buy | Aircraft2Sell">
+<meta property="og:description" content="Touring motor glider or pure glider: a complete comparison to help you choose the right formula when buying, based on budget, range and flying style.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/motoplaneur-vs-planeur-pur-quelle-formule-choisir-a-l-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/motoplaneur-vs-planeur-pur-quelle-formule-choisir-a-l-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/motoplaneur-vs-planeur-pur-quelle-formule-choisir-a-l-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/motoplaneur-vs-planeur-pur-quelle-formule-choisir-a-l-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/motoplaneur-vs-planeur-pur-quelle-formule-choisir-a-l-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Touring Motor Glider vs Pure Glider: Which to Buy | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Touring Motor Glider vs Pure Glider: Which to Buy", "description": "Touring motor glider or pure glider: a complete comparison to help you choose the right formula when buying, based on budget, range and flying style.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/motoplaneur-vs-planeur-pur-quelle-formule-choisir-a-l-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Touring Motor Glider vs Pure Glider: Which to Buy", "item": "https://aircraft2sell.eu/en/motoplaneur-vs-planeur-pur-quelle-formule-choisir-a-l-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Motor Glider vs Pure Glider</span></nav>
+    <span class="eyebrow">Comparison</span>
+    <h1>Touring Motor Glider vs Pure Glider: Which to Buy</h1>
+    <p>Self-launch independence, reliance on a tow or winch, running costs: a full comparison between a touring motor glider and a pure glider to help you pick the right formula for your gliding habits.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Table of contents</div>
+        <ol><li><a href="#presentation">Two different ways of flying without an engine</a></li><li><a href="#pure-glider">The pure glider: zero self-sufficiency, maximum purity</a></li><li><a href="#motor-glider">The touring motor glider: launch and cross-country independence</a></li><li><a href="#budget">Budget comparison: purchase and running costs</a></li><li><a href="#usage">Which aircraft for which flying style</a></li><li><a href="#maintenance">Maintenance and specific checks to make</a></li><li><a href="#resale">Resale: which formula sells better</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Two different ways of flying without an engine</h2>
+<p>Choosing between a pure glider and a touring motor glider is not just a question of extra equipment — it reflects two genuinely different ways of practicing gliding. A pure glider always depends on an outside means of getting airborne: aerotow behind a tug, a winch launch, or occasionally a bungee launch, and once released it is entirely at the mercy of the day's thermal and wave conditions. A touring motor glider, by contrast, carries its own engine, which lets it take off on its own, fly back to a home field if lift dries up, or even cover long distances under power if needed.</p>
+<p>That structural difference shapes everything else that follows: purchase price, running costs, maintenance complexity, training requirements and, ultimately, the kind of flying experience each owner-pilot is actually after. Before buying used, it is worth understanding what each formula really involves in practice, beyond the arguments usually heard around the clubhouse.</p>
+
+<h2 id="pure-glider">The pure glider: zero self-sufficiency, maximum purity</h2>
+<p>The pure glider is mechanically the simplest aircraft of the two: no engine, no fuel tank, no propeller to monitor. That simplicity translates into a lower empty weight, often a better glide ratio than an equivalent motorised model in the same class, and maintenance that concentrates almost entirely on the airframe, flight controls and landing gear.</p>
+<p>In exchange, a pure glider requires collective organisation: you need a tow plane available, a working winch, or a club pilot on hand to launch you, which makes this formula difficult to operate truly independently outside of a properly equipped field with an active club structure. It tends to be the formula of choice for pilots who fly mainly within a club, who are after pure performance for competition or cross-country tasks, and who are not bothered by that launch-logistics dependency.</p>
+
+<h2 id="motor-glider">The touring motor glider: launch and cross-country independence</h2>
+<p>Touring motor gliders come in several configurations: a front-mounted engine with a fixed or retractable propeller, a rear-mounted sustainer engine that retracts into the fuselage, or a fully integrated electric propulsion unit. Each layout carries its own trade-offs in terms of weight, glide performance with the engine stopped, and maintenance complexity, but all of them share the same core goal: giving the pilot an independence that a pure glider simply does not have.</p>
+<p>That independence shows up in two concrete ways. First, the ability to self-launch, without relying on a tow plane or a winch — valuable for an owner-pilot who does not always fly during a club's scheduled activity hours. Second, the ability to power back to the home field after an outlanding looks likely, or to restart and fly on under power from a field far from the departure airfield — a genuine safety and comfort margin, especially for cross-country distance flights or in regions with few suitable landing fields.</p>
+
+<h2 id="budget">Budget comparison: purchase and running costs</h2>
+<p>For comparable performance and category, a touring motor glider is consistently more expensive to buy than an equivalent pure glider, because of the engine, fuel tank, wiring and associated systems. The gap continues at the running-cost stage: fuel or battery charging, periodic engine maintenance, and insurance that generally reflects this added risk.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Pure glider</th><th>Touring motor glider</th></tr></thead>
+<tbody>
+<tr><td>Purchase budget</td><td>Generally more accessible</td><td>Higher for comparable glide ratio</td></tr>
+<tr><td>Getting airborne</td><td>Depends on a tow plane, winch or bungee</td><td>Self-launch capable</td></tr>
+<tr><td>Maintenance</td><td>Focused on airframe and flight controls</td><td>Airframe plus engine to track</td></tr>
+<tr><td>Insurance</td><td>Generally a lower premium</td><td>Generally a higher premium</td></tr>
+<tr><td>Cross-country flexibility</td><td>Depends on a retrieve crew</td><td>Can restart or fly home under power</td></tr>
+</tbody></table></div>
+<p>Beyond the sticker price, buyers choosing a pure glider should also factor in an active club membership: dues and a contribution to tow or winch costs, which add up year after year and can, over time, narrow the overall budget gap with a touring motor glider.</p>
+
+<h2 id="usage">Which aircraft for which flying style</h2>
+<p>The choice should start from the actual flying pattern you expect to have. A pilot who flies mostly within a club, at a field well equipped with tow planes or a winch, with regular and collective activity, will find the pure glider an excellent balance between performance and controlled cost.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Pure glider: ideal for club flying, competition and cross-country tasks at a field with reliable tow or winch launching.</span></li>
+  <li><i data-icon="check"></i><span>Touring motor glider: relevant for a pilot without a club base, a field with no tow plane available, or distance flights where the margin against an outlanding matters.</span></li>
+  <li><i data-icon="check"></i><span>How often you plan to fly outside a club's scheduled hours, when a pure glider can be grounded for lack of logistical support.</span></li>
+  <li><i data-icon="check"></i><span>Budget set aside for annual engine maintenance, often underestimated on a first touring motor glider purchase.</span></li>
+</ul>
+<p>Conversely, a pilot who wants independence from club infrastructure, who plans cross-country distance flights, or who simply wants to be able to fly whenever they choose without coordinating a launch, will find in the touring motor glider an independence argument that justifies the extra purchase and running cost.</p>
+
+<h2 id="maintenance">Maintenance and specific checks to make</h2>
+<p>On both a pure glider and a touring motor glider, the pre-purchase inspection should focus first on the airframe condition: checking for cracks or delamination on composite structures, inspecting the fabric covering on older fabric-skinned types, and reviewing the logbook history of the periodic major inspections required under the aircraft's continuing airworthiness programme.</p>
+<p>For a touring motor glider, add a dedicated check of the powerplant: engine hours since the last overhaul (SMOH), condition of the retraction mechanism on sustainer engines, and compliance of any modifications made to the fuel or electrical system. The logbook should document the airframe and the engine separately, and the certificate of airworthiness (CofA) must be current for the whole aircraft.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Always have the pre-purchase inspection carried out by a mechanic or workshop approved on the type, whether you are buying a pure glider or a touring motor glider, and ask for the complete logbook before committing.</div></div>
+
+<h2 id="resale">Resale: which formula sells better</h2>
+<p>On the used market, both formulas find buyers, but for different profiles. The pure glider mainly attracts buyers already embedded in an active club, while the touring motor glider appeals to a broader audience, including owner-pilots with no fixed club base, which can make resale easier in regions less well served by gliding infrastructure.</p>
+<p>Either way, comparing several listings of comparable models and vintages remains the best way to judge a fair price, whether you are after a pure glider prized for competition or a touring motor glider valued for its independence.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your pure glider or motor glider</h3>
+            <p>Compare listings for used pure gliders and touring motor gliders available across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="planeur-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Category guide</span><strong>Used Glider Buyer's Guide</strong><p>Budget, reference brands, what to check and resale value for a used glider or motor glider.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Maintenance</span><strong>How much does it cost to maintain a light aircraft per year</strong><p>Annual inspection, engine overhaul, hangarage: what to really budget for after the purchase.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

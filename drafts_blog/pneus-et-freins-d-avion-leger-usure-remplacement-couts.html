@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Pneus et freins d'avion léger : usure normale, signes de remplacement, coûts et entretien préventif. Le guide pratique pour propriétaires et acheteurs.">
+<meta property="og:title" content="Pneus et freins d'avion léger : usure, remplacement, coûts | Aircraft2Sell">
+<meta property="og:description" content="Pneus et freins d'avion léger : usure normale, signes de remplacement, coûts et entretien préventif. Le guide pratique pour propriétaires et acheteurs.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/pneus-et-freins-d-avion-leger-usure-remplacement-couts.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/pneus-et-freins-d-avion-leger-usure-remplacement-couts.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/pneus-et-freins-d-avion-leger-usure-remplacement-couts.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/pneus-et-freins-d-avion-leger-usure-remplacement-couts.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/pneus-et-freins-d-avion-leger-usure-remplacement-couts.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Pneus et freins d'avion léger : usure, remplacement, coûts</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Pneus et freins d'avion léger : usure, remplacement, coûts", "description": "Pneus et freins d'avion léger : usure normale, signes de remplacement, coûts et entretien préventif. Le guide pratique pour propriétaires et acheteurs.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/pneus-et-freins-d-avion-leger-usure-remplacement-couts.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Pneus et freins d'avion léger : usure, remplacement, coûts", "item": "https://aircraft2sell.eu/pneus-et-freins-d-avion-leger-usure-remplacement-couts.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Pneus et freins</span></nav>
+    <span class="eyebrow">Entretien</span>
+    <h1>Pneus et freins d'avion léger : usure, remplacement, coûts</h1>
+    <p>Ce sont des pièces d'usure trop souvent sous-estimées : voici comment surveiller l'état des pneus et des freins d'un avion léger, reconnaître les signes de remplacement et budgétiser leur entretien.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>6 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi pneus et freins méritent une attention particulière</a></li><li><a href="#pneus-types">Les pneus d'avion léger : spécificités</a></li><li><a href="#pneus-usure">Usure des pneus : signes et limites</a></li><li><a href="#freins-types">Les freins : technologie et fonctionnement</a></li><li><a href="#freins-usure">Signes d'usure des freins et fréquence de remplacement</a></li><li><a href="#couts">Coûts de remplacement</a></li><li><a href="#entretien">Entretien préventif et bonnes pratiques</a></li><li><a href="#achat">Impact sur l'achat, la revente et l'inspection pré-achat</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi pneus et freins méritent une attention particulière</h2>
+<p>Sur un avion léger, les pneus et les freins ne travaillent que pendant quelques minutes à chaque vol — au roulage, au décollage et surtout à l'atterrissage — mais ils y sont soumis à des contraintes considérables : charge de l'appareil, vitesse de toucher des roues, échauffement rapide lors d'un freinage appuyé. Contrairement à un moteur ou à l'avionique, ce sont des pièces d'usure « mécanique pure », sans compteur d'heures dédié, dont l'état dépend avant tout du nombre d'atterrissages et du style de pilotage.</p>
+<p>Elles sont aussi parmi les postes d'entretien les plus négligés dans les discussions d'achat ou de budget, alors qu'elles conditionnent directement la sécurité au sol : un pneu lisse ou un frein qui tire d'un côté peut transformer un atterrissage normal en sortie de piste.</p>
+
+<h2 id="pneus-types">Les pneus d'avion léger : spécificités</h2>
+<p>Les pneus utilisés sur les monomoteurs légers (Cessna 172, Piper PA-28, Cirrus, Diamond, ULM) sont des pneus à chambre à air ou tubeless selon le modèle de jante, conçus pour un nombre de cycles de décollage/atterrissage plutôt que pour un kilométrage, à l'inverse des pneus automobiles. Ils supportent des charges statiques et dynamiques élevées rapportées à leur taille, avec des pressions de gonflage nettement supérieures à celles d'un pneu de voiture.</p>
+<p>Le train principal, qui absorbe la quasi-totalité du choc à l'atterrissage et du freinage, s'use généralement beaucoup plus vite que le pneu de roulette de nez (ou roulette avant pour les configurations à train classique). Il n'est pas rare qu'un pneu de train principal doive être changé deux à trois fois plus souvent que celui du train avant sur le même appareil.</p>
+
+<h2 id="pneus-usure">Usure des pneus : signes et limites</h2>
+<p>La surveillance visuelle régulière, idéalement à chaque visite prévol et systématiquement lors des visites périodiques, permet de repérer les signes avant qu'un pneu n'atteigne un état dangereux.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Usure de la bande de roulement</strong> — jusqu'à la limite indiquée par le fabricant (souvent une ligne d'usure ou l'apparition du tissu de carcasse).</span></li>
+  <li><i data-icon="check"></i><span><strong>Méplats</strong> — zones plates causées par un freinage prolongé roue bloquée, fréquentes après un freinage d'urgence ou un pneu sous-gonflé.</span></li>
+  <li><i data-icon="check"></i><span><strong>Craquelures et vieillissement du caoutchouc</strong> — même sans usure mécanique, un pneu qui a pris plusieurs années d'exposition au soleil et à l'ozone doit être réévalué.</span></li>
+  <li><i data-icon="check"></i><span><strong>Coupures, hernies ou cordes visibles</strong> — remplacement immédiat obligatoire, le pneu ne doit plus voler.</span></li>
+  <li><i data-icon="check"></i><span><strong>Pression de gonflage</strong> — un sous-gonflage chronique accélère l'usure irrégulière et augmente le risque de déjantage au freinage.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Un pneu usé de façon asymétrique révèle souvent un défaut de parallélisme du train ou un problème de frein qui traîne d'un côté : ne vous contentez pas de changer le pneu sans chercher la cause.</div></div>
+
+<h2 id="freins-types">Les freins : technologie et fonctionnement</h2>
+<p>La grande majorité des avions légers sont équipés de freins à disque hydrauliques, actionnés indépendamment par des palonniers au pied, ce qui permet aussi de diriger l'appareil au sol en combinant freinage différentiel et gouverne de direction. Le système comprend un disque solidaire de la roue, un étrier avec des plaquettes (ou « patins » de frein), et un circuit hydraulique relié aux maîtres-cylindres des palonniers.</p>
+<p>Contrairement à une automobile, il n'existe généralement pas d'assistance au freinage ni d'ABS sur les avions légers : l'efficacité du freinage dépend directement de la pression appliquée par le pilote et de l'état des plaquettes et du disque.</p>
+
+<h2 id="freins-usure">Signes d'usure des freins et fréquence de remplacement</h2>
+<p>L'usure des plaquettes de frein dépend très largement du nombre d'atterrissages et des conditions d'exploitation (piste courte, atterrissages appuyés, usage en école de pilotage avec de nombreux posés-décollés). Un appareil utilisé en club ou en école use ses plaquettes nettement plus vite qu'un appareil de tourisme privé volant peu souvent.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Épaisseur des plaquettes</strong> — à comparer à la limite minimale donnée par le constructeur ; une usure proche de la limite impose un contrôle à chaque vol jusqu'au remplacement.</span></li>
+  <li><i data-icon="check"></i><span><strong>Fuite de liquide hydraulique</strong> — autour de l'étrier ou des raccords, signe de joints à changer sans attendre.</span></li>
+  <li><i data-icon="check"></i><span><strong>Freinage asymétrique ou pédale « molle »</strong> — à faire diagnostiquer immédiatement, un frein inefficace d'un côté peut provoquer une sortie de piste.</span></li>
+  <li><i data-icon="check"></i><span><strong>État du disque</strong> — rayures profondes, déformation ou épaisseur minimale atteinte imposent son remplacement, en général moins fréquent que celui des plaquettes.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Notez systématiquement les remplacements de pneus et de plaquettes dans le carnet de route ou le carnet de maintenance, même si ce n'est pas toujours une obligation stricte : cet historique rassure un futur acheteur et aide à anticiper le prochain remplacement.</div></div>
+
+<h2 id="couts">Coûts de remplacement</h2>
+<p>Les coûts restent modestes comparés aux grands postes de maintenance (moteur, hélice, avionique), mais ils reviennent régulièrement et doivent être intégrés au budget d'exploitation annuel.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Pièce</th><th>Coût indicatif (pièce + pose)</th></tr></thead>
+<tbody>
+<tr><td>Pneu de roulette de nez/avant</td><td>80 à 180 €</td></tr>
+<tr><td>Pneu de train principal</td><td>120 à 300 € par roue</td></tr>
+<tr><td>Chambre à air</td><td>20 à 50 €</td></tr>
+<tr><td>Jeu de plaquettes de frein (par roue)</td><td>60 à 150 €</td></tr>
+<tr><td>Disque de frein (par roue)</td><td>150 à 400 €</td></tr>
+<tr><td>Révision complète d'un étrier de frein</td><td>100 à 250 € par roue, pièces et main d'œuvre comprises</td></tr>
+</tbody>
+</table></div>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Ces fourchettes varient selon le modèle d'appareil, la taille des roues et le taux horaire de l'atelier agréé. Demandez toujours un devis détaillé avant intervention, et vérifiez si les pièces doivent être commandées (délai possible selon la disponibilité).</div></div>
+
+<h2 id="entretien">Entretien préventif et bonnes pratiques</h2>
+<p>Un entretien préventif régulier limite fortement les remplacements imprévus et prolonge la durée de vie des pneus et des freins.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Vérifier la pression des pneus à chaque prévol, idéalement avec un manomètre dédié plutôt qu'à l'œil.</span></li>
+  <li><i data-icon="check"></i><span>Éviter les freinages brusques et prolongés à l'atterrissage ; privilégier un freinage progressif réparti sur la longueur de piste disponible.</span></li>
+  <li><i data-icon="check"></i><span>Inspecter visuellement pneus et étriers à chaque visite périodique prévue par le programme d'entretien de l'appareil.</span></li>
+  <li><i data-icon="check"></i><span>Protéger les pneus d'une exposition prolongée au soleil (hangar ou housses) pour ralentir le vieillissement du caoutchouc.</span></li>
+  <li><i data-icon="check"></i><span>Purger et contrôler le niveau de liquide hydraulique de frein selon les préconisations du constructeur.</span></li>
+</ul>
+
+<h2 id="achat">Impact sur l'achat, la revente et l'inspection pré-achat</h2>
+<p>Pour un acheteur, l'état des pneus et des freins est un indicateur simple mais révélateur du sérieux de l'entretien global de l'appareil : des pneus craquelés ou des plaquettes proches de la limite sur un avion par ailleurs bien présenté doivent inciter à regarder le carnet d'entretien de plus près. À l'inverse, ce ne sont pas des éléments qui doivent bloquer une négociation — leur coût de remise à niveau est faible et facilement chiffrable, contrairement à un défaut moteur ou structurel.</p>
+<p>Pour un vendeur, remplacer des pneus visiblement usés avant la mise en vente est un investissement limité qui améliore nettement la première impression lors des visites, tout comme documenter ces remplacements dans le carnet de maintenance pour rassurer l'acheteur sur la rigueur de l'entretien.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Intégrez systématiquement l'état des pneus et des freins dans la check-list de votre inspection pré-achat, au même titre que la cellule et le moteur : ce poste, souvent oublié, se vérifie en quelques minutes.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion en Europe.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Entretien</span><strong>Le coût d'entretien d'un avion léger</strong><p>Postes de dépense, budget annuel et pièges à éviter pour anticiper l'entretien de votre appareil.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="pieges-achat-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="alert-triangle"></i></span><span class="eyebrow">Guide acheteur</span><strong>Les pièges à éviter lors d'un achat d'avion d'occasion</strong><p>Les erreurs les plus fréquentes et comment les éviter avant de signer.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261007a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>
+</content>

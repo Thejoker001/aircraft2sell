@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Buying a used aircraft in Denmark or Sweden: market, prices, tax, registration and maintenance compared to help you choose the best country.">
+<meta name="keywords" content="used aircraft Denmark, used aircraft Sweden, country comparison aircraft, Trafikstyrelsen registration, Transportstyrelsen registration">
+<meta property="og:title" content="Buying a Used Aircraft in Denmark or Sweden | Aircraft2Sell">
+<meta property="og:description" content="Buying a used aircraft in Denmark or Sweden: market, prices, tax, registration and maintenance compared to help you choose the best country.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/acheter-avion-occasion-danemark-ou-suede.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/acheter-avion-occasion-danemark-ou-suede.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-danemark-ou-suede.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-danemark-ou-suede.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-danemark-ou-suede.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Buying a Used Aircraft in Denmark or Sweden | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Buying a used aircraft in Denmark or Sweden: which country to choose", "description": "Buying a used aircraft in Denmark or Sweden: market, prices, tax, registration and maintenance compared to help you choose the best country.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/acheter-avion-occasion-danemark-ou-suede.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Buying a used aircraft in Denmark or Sweden", "item": "https://aircraft2sell.eu/en/acheter-avion-occasion-danemark-ou-suede.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/en/index.html">Home</a><i data-icon="chevron-right"></i><a href="/en/blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Denmark or Sweden</span></nav>
+    <span class="eyebrow">Country comparison</span>
+    <h1>Buying a used aircraft in Denmark or Sweden: which country to choose</h1>
+    <p>Market, prices, tax, registration and maintenance: a comparison between Denmark and Sweden to help you decide where to look for your used aircraft.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">Two neighbouring Nordic markets, two different moods</a></li><li><a href="#marche">Size and profile of the used market</a></li><li><a href="#prix">Comparing prices</a></li><li><a href="#fiscalite">Tax and purchase-related costs</a></li><li><a href="#immatriculation">Registration: the Trafikstyrelsen versus the Transportstyrelsen</a></li><li><a href="#entretien">Maintenance network and parts availability</a></li><li><a href="#climat">Climate, airfields and flying season</a></li><li><a href="#choix">Which country to favour depending on your profile</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Two neighbouring Nordic markets, two different moods</h2>
+<p>Denmark and Sweden share a border (the Øresund bridge) and a well-established amateur aviation culture, but the two used-aircraft markets have rather different characteristics. Denmark, a compact country with high population density for its size, offers a tight market where listings are often well documented. Sweden, much larger and far less densely populated, has a considerably bigger light aircraft fleet, with supply spread across a large number of airfields, sometimes far apart from each other.</p>
+<p>For a buyer based in southern Scandinavia, widening the search to both countries gives access to complementary supply: a compact and quickly reachable Danish market, and a broader Swedish market where the distances involved in a viewing trip or a ferry flight can be considerably larger.</p>
+
+<h2 id="marche">Size and profile of the used market</h2>
+<p>The Danish market remains modest in volume, in line with the country's size, but is active within a well-structured network of flying clubs. Supply is concentrated on a handful of common models (Cessna 172, Piper PA-28, Diamond DA40), with a notable share of club aircraft rigorously maintained.</p>
+<p>Sweden, for its part, has one of the most active light aviation fleets in Northern Europe, driven by a long tradition of gliding, aerobatics and bush flying on skis or floats. Supply is wider and more varied, including more aircraft suited to rough strips and long domestic distances, alongside classic touring single-engines.</p>
+
+<h2 id="prix">Comparing prices</h2>
+<p>Price levels remain broadly comparable between the two countries for the same model and maintenance condition, with observed differences mostly down to the relative scarcity of certain types in the smaller Danish market. For specific categories such as ski- or float-equipped aircraft, Sweden sometimes commands slightly higher prices due to stronger local demand for these configurations.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Denmark</th><th>Sweden</th></tr></thead>
+<tbody>
+<tr><td>Size of the used-aircraft market</td><td>Modest, compact market</td><td>Larger, sizeable fleet</td></tr>
+<tr><td>Price level for the same model</td><td>Comparable, sometimes tighter on rarer types</td><td>Comparable, possible premium on skis/floats</td></tr>
+<tr><td>Market specialties</td><td>Club aircraft, gliders, microlights</td><td>Bush aircraft, skis/floats, aerobatics</td></tr>
+<tr><td>Language of technical documents</td><td>Danish, usually alongside English</td><td>Swedish, usually alongside English</td></tr>
+</tbody></table></div>
+<p>In both countries, comparing several listings of similar models remains the best way to assess a fair price before committing. For a common model such as a Cessna 172, both markets generally offer similar price levels, which means the choice can mostly come down to geographic proximity and the configuration you are looking for.</p>
+
+<h2 id="fiscalite">Tax and purchase-related costs</h2>
+<p>As with any transaction in Europe, the applicable taxation depends above all on the buyer's status (private individual or professional), the country of tax residence and the country in which the aircraft will be registered after the sale. A sale between private individuals is generally not subject to VAT in either country, while a sale by a professional or a company may be subject to it under the applicable national rules.</p>
+<p>For a cross-border transaction between Denmark and Sweden, it is worth checking any intra-EU VAT formalities applicable between professionals, as well as the administrative fees specific to each destination country. Using a professional experienced in cross-border transactions reduces the risk of procedural errors.</p>
+
+<h2 id="immatriculation">Registration: the Trafikstyrelsen versus the Transportstyrelsen</h2>
+<p>In Denmark, aircraft registration is handled by the <strong>Trafikstyrelsen</strong> (the Danish transport authority), under the <strong>OY-</strong> prefix. In Sweden, it is the <strong>Transportstyrelsen</strong> (the Swedish transport authority) that manages the registration register, under the <strong>SE-</strong> prefix. Both authorities apply common EASA rules for registration transfers between member states, which makes the process considerably simpler than an import from outside the European Union.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Valid certificate of airworthiness and ARC</strong> — a precondition for any flight under the new registration, whichever destination country is chosen.</span></li>
+  <li><i data-icon="check"></i><span><strong>Deregistration from the register of origin</strong> — required before the new registration if the aircraft changes country.</span></li>
+  <li><i data-icon="check"></i><span><strong>Complete technical file</strong> — airframe, engine and propeller logbooks to be submitted to the new authority.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Generally allow 2 to 8 weeks for a registration transfer between Denmark and Sweden depending on how complete the file is, a timeline comparable to that observed for any intra-European transfer.</div></div>
+
+<h2 id="entretien">Maintenance network and parts availability</h2>
+<p>Denmark, with a smaller number of workshops, nonetheless has operators experienced with the models most common locally, often attached to the flying clubs themselves. Sweden has a maintenance network spread over a much larger area, in line with the country's size, with workshops specialised in local configurations such as skis and floats.</p>
+<p>The geographic proximity between the two countries, together with the frequent use of English alongside local technical documentation, often makes it possible to have an aircraft maintained in either country with no major constraint, provided the chosen workshop is properly approved for the type concerned. For a float- or ski-equipped aircraft, a specialised Swedish workshop is often the most relevant choice.</p>
+
+<h2 id="climat">Climate, airfields and flying season</h2>
+<p>Denmark, a flat country of limited size, offers a relatively uniform flying season across the whole territory, with a temperate climate close to that of northern Germany. Sweden, by contrast, shows marked climate differences between the south, where the flying season extends over most of the year, and the north, where winter imposes greater constraints, offset by the practice of ski flying.</p>
+<p>For a buyer considering basing an aircraft in northern Sweden, it is worth anticipating winter equipment (engine pre-heating, suitable tyres or skis) which can represent an additional investment compared with an aircraft based in Denmark or southern Sweden.</p>
+
+<h2 id="choix">Which country to favour depending on your profile</h2>
+<p>For a buyer looking for a classic touring single-engine within a compact, well-documented market, Denmark offers appealing proximity from continental Europe and a flying-club network that is easy to reach. For a buyer interested in an aircraft suited to rough strips, skis or floats, or simply wanting access to a wider market, Sweden deserves particular attention.</p>
+<p>A pilot planning to remain based in Denmark will find a practical benefit in registering their aircraft locally, if only to simplify day-to-day administrative procedures with the Trafikstyrelsen. Conversely, a pilot planning to fly regularly over long domestic distances within Sweden, especially towards the north of the country, will often find more practical advantages in registering with the Transportstyrelsen.</p>
+<p>Overall ownership costs should also factor in ferrying: an aircraft spotted far from your home base will add extra cost and delay before it can first be used, whether it is located in Denmark or Sweden. Sweden's larger internal distances, compared with Denmark, are worth quantifying carefully before settling on a far-flung listing.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — In all cases, a pre-purchase inspection by a qualified independent mechanic remains essential, whether the aircraft is located in Denmark, Sweden or elsewhere in Europe.</div></div>
+<p>Ultimately, widening your search to both markets often provides access to a broader supply and better negotiating opportunities, especially for a buyer based in southern Scandinavia who can reasonably consider an aircraft located on either side of the Øresund strait.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your used aircraft</h3>
+            <p>Browse used aircraft listings available in Denmark, Sweden and across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="/en/search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="/en/blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="/en/acheter-avion-occasion-danemark.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Country guide</span><strong>Buying a used aircraft in Denmark</strong><p>Market, prices, taxation and procedures for buying a used aircraft in Denmark.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/acheter-avion-occasion-suede.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Country guide</span><strong>Buying a used aircraft in Sweden</strong><p>Market, prices, taxation and procedures for buying a used aircraft in Sweden.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>The pre-purchase inspection of an aircraft: complete guide</strong><p>Everything you need to check before buying a used aircraft in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

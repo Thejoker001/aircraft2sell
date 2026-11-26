@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Guide d'achat du Dassault Falcon 50 d'occasion : budget, coûts d'exploitation du trimoteur, inspection pré-achat, entretien et revente sur le marché européen.">
+<meta property="og:title" content="Dassault Falcon 50 d'occasion : guide d'achat | Aircraft2Sell">
+<meta property="og:description" content="Guide d'achat du Dassault Falcon 50 d'occasion : budget, coûts d'exploitation du trimoteur, inspection pré-achat, entretien et revente sur le marché européen.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/dassault-falcon-50-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/dassault-falcon-50-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/dassault-falcon-50-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/dassault-falcon-50-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/dassault-falcon-50-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Dassault Falcon 50 d'occasion : guide d'achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Dassault Falcon 50 d'occasion : guide d'achat", "description": "Guide d'achat du Dassault Falcon 50 d'occasion : budget, coûts d'exploitation du trimoteur, inspection pré-achat, entretien et revente sur le marché européen.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/dassault-falcon-50-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Dassault Falcon 50 d'occasion : guide d'achat", "item": "https://aircraft2sell.eu/dassault-falcon-50-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Dassault Falcon 50</span></nav>
+    <span class="eyebrow">Guide modèle</span>
+    <h1>Dassault Falcon 50 d'occasion : guide d'achat</h1>
+    <p>Budget à prévoir, coûts d'exploitation d'un trimoteur d'affaires, points de vigilance à l'inspection et perspectives de revente pour acheter un Dassault Falcon 50 d'occasion en toute connaissance de cause.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Le Falcon 50, un trimoteur d'affaires au long rayon d'action</a></li><li><a href="#marche">Le marché de l'occasion : millésimes et niveaux de prix</a></li><li><a href="#budget">Quel budget prévoir, achat et exploitation</a></li><li><a href="#inspection">Les points à vérifier avant d'acheter</a></li><li><a href="#moteurs">Trois moteurs : un atout de sécurité, une ligne de coûts à part</a></li><li><a href="#entretien">Entretien, grandes visites et maintien de navigabilité</a></li><li><a href="#exploitation">Exploitation : équipage, hangar et usage privé ou commercial</a></li><li><a href="#revente">Revente et positionnement sur le marché européen</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Le Falcon 50, un trimoteur d'affaires au long rayon d'action</h2>
+<p>Le Dassault Falcon 50 appartient à une génération de jets d'affaires conçus pour relier des distances transcontinentales sans escale, tout en conservant une cabine confortable pour un usage familial ou professionnel. Sa architecture trimoteur, héritée directement du Falcon 20 mais entièrement repensée pour la cellule et l'avionique, lui confère une réputation de robustesse et de polyvalence qui explique sa longévité sur le marché de l'occasion, des décennies après le lancement du programme.</p>
+<p>Ce choix de trois moteurs répond avant tout à un besoin opérationnel : pouvoir desservir des terrains courts ou isolés, parfois en zones montagneuses ou océaniques, avec une marge de sécurité supplémentaire en cas de panne moteur. Ce même choix a toutefois des conséquences directes sur le budget d'exploitation, qu'il faut intégrer dès la phase de recherche d'un appareil à acheter.</p>
+<p>Sur le marché actuel, le Falcon 50 occupe une place particulière : il permet d'accéder à la catégorie des jets d'affaires à long rayon d'action pour un budget d'acquisition souvent plus accessible qu'un modèle plus récent de taille comparable, à condition d'accepter un appareil plus âgé et des coûts d'exploitation à bien anticiper.</p>
+
+<h2 id="marche">Le marché de l'occasion : millésimes et niveaux de prix</h2>
+<p>Le Falcon 50 s'est décliné en plusieurs évolutions au fil de sa carrière, avec des améliorations successives de l'avionique, de la cabine et, pour les versions les plus tardives, des performances moteur. Cette diversité de millésimes crée des écarts de prix importants entre les premiers exemplaires produits et les versions les plus récentes, mieux équipées et généralement dotées d'un historique de maintenance plus complet.</p>
+<p>Avant de cibler une annonce précise, il est utile de comparer plusieurs appareils de générations proches afin de se faire une idée réaliste du niveau de prix pour le potentiel moteur et l'état d'avionique recherchés. Un appareil affiché à un prix sensiblement inférieur à la moyenne du marché mérite une vigilance accrue : potentiel moteur proche de la limite, avionique obsolète ou historique de maintenance incomplet en sont souvent la cause.</p>
+
+<h2 id="budget">Quel budget prévoir, achat et exploitation</h2>
+<p>Le prix d'achat d'un Falcon 50 d'occasion dépend principalement de l'âge de l'appareil, du nombre d'heures cellule et moteur restant, du statut des moteurs par rapport à leur prochaine grande visite, et de la qualité de l'avionique et de la cabine. Mais le prix d'achat n'est que la première ligne d'un budget global : l'exploitation d'un trimoteur de cette catégorie implique des coûts fixes et variables significatifs, bien supérieurs à ceux d'un monomoteur ou d'un bimoteur léger.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Poste de dépense</th><th>Ce qu'il faut anticiper</th></tr></thead>
+<tbody>
+<tr><td>Prix d'acquisition</td><td>Fortement lié au millésime, au potentiel moteur restant et à l'avionique installée</td></tr>
+<tr><td>Carburant</td><td>Trois moteurs à alimenter, à comparer avec un bimoteur équivalent sur le même profil de mission</td></tr>
+<tr><td>Entretien programmé</td><td>Visites périodiques et grandes visites moteur à budgéter sur plusieurs années</td></tr>
+<tr><td>Équipage</td><td>Qualification de type requise pour pilotes et, le cas échéant, mécanicien dédié</td></tr>
+<tr><td>Hangar et stationnement</td><td>Gabarit d'un jet d'affaires de taille intermédiaire à grande, à intégrer dans le choix de la base</td></tr>
+</tbody></table></div>
+<p>Au-delà de ces postes récurrents, il faut prévoir le coût d'une inspection pré-achat indépendante menée par un atelier qualifié sur le type, ainsi qu'une marge de sécurité pour une éventuelle remise à niveau de l'avionique si l'appareil visé n'est pas encore équipé pour répondre aux exigences de navigation et de surveillance du trafic actuelles.</p>
+
+<h2 id="inspection">Les points à vérifier avant d'acheter</h2>
+<p>Comme pour tout jet d'affaires d'occasion, une inspection pré-achat approfondie, réalisée par un atelier de maintenance agréé et expérimenté sur le type, constitue une étape incontournable avant toute signature. Pour un Falcon 50, certains points méritent une attention particulière compte tenu de son architecture trimoteur et de son âge potentiellement avancé.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Carnet d'entretien et dossier technique complets des trois moteurs, avec traçabilité claire des heures écoulées depuis la dernière grande visite de chacun.</span></li>
+  <li><i data-icon="check"></i><span>Historique de corrosion et de réparations structurelles, en particulier sur une cellule déjà âgée ayant pu voler dans des environnements exigeants.</span></li>
+  <li><i data-icon="check"></i><span>État et conformité de l'avionique aux exigences de navigation et de surveillance du trafic en vigueur sur les routes envisagées.</span></li>
+  <li><i data-icon="check"></i><span>État de la cabine, de la pressurisation et des systèmes hydrauliques, dont la remise à niveau peut représenter un budget conséquent.</span></li>
+  <li><i data-icon="check"></i><span>Validité et historique du certificat de navigabilité, ainsi que la cohérence du carnet d'entretien avec les factures de maintenance présentées.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Sur un appareil de cette catégorie, l'inspection pré-achat doit systématiquement inclure un examen détaillé des trois moteurs par un atelier spécialisé : le coût de cette expertise est largement compensé par le risque évité en cas de potentiel moteur surestimé.</div></div>
+
+<h2 id="moteurs">Trois moteurs : un atout de sécurité, une ligne de coûts à part</h2>
+<p>La configuration trimoteur du Falcon 50 est souvent perçue comme un gage de sécurité supplémentaire, notamment pour les missions au-dessus de zones océaniques ou montagneuses où la redondance moteur rassure. Elle implique en contrepartie une ligne de coûts spécifique : trois moteurs à entretenir et à faire réviser selon le programme constructeur, ce qui pèse directement sur le budget d'exploitation comparé à un bimoteur de puissance équivalente.</p>
+<p>Avant d'acheter, il est essentiel de faire établir un bilan précis du statut de chaque moteur par un atelier agréé : heures écoulées depuis la dernière grande visite, respect du programme d'entretien constructeur et estimation du coût de la prochaine intervention majeure. Ce bilan permet de chiffrer avec précision le budget à provisionner sur les premières années de détention de l'appareil.</p>
+
+<h2 id="entretien">Entretien, grandes visites et maintien de navigabilité</h2>
+<p>Le maintien de navigabilité d'un Falcon 50 repose sur un programme d'entretien structuré, combinant des visites périodiques et des grandes visites plus lourdes à intervalles définis par le constructeur. Faire assurer cet entretien par un atelier agréé, expérimenté sur le type et disposant d'un accès fiable aux pièces, est déterminant pour limiter les immobilisations prolongées et préserver la valeur de revente de l'appareil.</p>
+<p>Un carnet d'entretien complet, cohérent et sans zone d'ombre reste l'un des meilleurs indicateurs du sérieux avec lequel un appareil a été exploité. À l'inverse, un historique incomplet ou des réparations mal documentées doivent systématiquement conduire à revoir son offre à la baisse, voire à renoncer à la transaction si le doute persiste après inspection.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez le détail complet du programme d'entretien suivi, y compris les factures des dernières interventions sur chacun des trois moteurs, avant de formuler une offre définitive.</div></div>
+
+<h2 id="exploitation">Exploitation : équipage, hangar et usage privé ou commercial</h2>
+<p>L'exploitation d'un Falcon 50 nécessite un équipage qualifié sur le type, ce qui implique un budget de formation et de maintien de compétences à intégrer dans le plan global, que l'appareil soit piloté par un propriétaire qualifié ou exploité avec un équipage professionnel dédié. Le choix entre un usage strictement privé et une exploitation sous certificat de transporteur, le cas échéant via une société de gestion spécialisée, influence directement la structure des coûts et les obligations réglementaires associées.</p>
+<p>Le gabarit de l'appareil impose également une réflexion sur le choix de la base d'exploitation : disponibilité d'un hangar adapté, accès à un atelier de maintenance qualifié sur le type dans un rayon raisonnable, et compatibilité des infrastructures de l'aérodrome envisagé avec les besoins opérationnels d'un jet d'affaires de cette catégorie.</p>
+
+<h2 id="revente">Revente et positionnement sur le marché européen</h2>
+<p>Le marché européen de l'occasion pour le Falcon 50 reste actif, porté par une base installée significative et une bonne disponibilité des pièces et de la compétence de maintenance pour ce type d'appareil. Un exemplaire bien entretenu, avec un historique transparent sur les trois moteurs et une avionique maintenue à jour, se positionne généralement plus favorablement lors d'une revente qu'un appareil dont le dossier technique laisse planer des doutes.</p>
+<p>Comparer plusieurs annonces de générations proches reste la meilleure approche pour évaluer un prix d'achat réaliste, en tenant compte du potentiel moteur restant comme principal facteur de différenciation entre deux appareils de millésime voisin. Cette même logique de comparaison doit guider la préparation d'une future revente, en valorisant un entretien rigoureux et bien documenté.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre jet d'affaires</h3>
+            <p>Comparez les annonces de jets d'affaires d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide thématique</span><strong>Turbopropulseur ou jet d'affaires : comment choisir</strong><p>Comparatif complet entre turbopropulseur et jet d'affaires pour orienter votre choix d'achat.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="prix-moyen-jet-prive-2026.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide thématique</span><strong>Prix moyen d'un jet privé en 2026</strong><p>Les niveaux de prix actuels par catégorie de jet d'affaires sur le marché de l'occasion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>
+</content>

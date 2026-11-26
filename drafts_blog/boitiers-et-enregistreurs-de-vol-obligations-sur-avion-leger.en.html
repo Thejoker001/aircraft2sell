@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Flight recorders and trackers on light aircraft: emergency locator transmitter (ELT), GPS loggers, connected trackers. What is required, what is recommended.">
+<meta name="keywords" content="ELT emergency locator transmitter, flight data recorder, glider GPS logger, FLARM, satellite tracker aircraft, light aircraft requirements">
+<meta property="og:title" content="Flight Recorders and Trackers: Requirements on Light Aircraft | Aircraft2Sell">
+<meta property="og:description" content="Flight recorders and trackers on light aircraft: emergency locator transmitter (ELT), GPS loggers, connected trackers. What is required, what is recommended.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/boitiers-et-enregistreurs-de-vol-obligations-sur-avion-leger.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/boitiers-et-enregistreurs-de-vol-obligations-sur-avion-leger.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/boitiers-et-enregistreurs-de-vol-obligations-sur-avion-leger.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/boitiers-et-enregistreurs-de-vol-obligations-sur-avion-leger.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/boitiers-et-enregistreurs-de-vol-obligations-sur-avion-leger.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Flight Recorders and Trackers: Requirements on Light Aircraft | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Flight Recorders and Trackers: Requirements on Light Aircraft", "description": "Flight recorders and trackers on light aircraft: emergency locator transmitter (ELT), GPS loggers, connected trackers. What is required, what is recommended.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/boitiers-et-enregistreurs-de-vol-obligations-sur-avion-leger.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Flight Recorders and Trackers: Requirements on Light Aircraft", "item": "https://aircraft2sell.eu/en/boitiers-et-enregistreurs-de-vol-obligations-sur-avion-leger.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/en/index.html">Home</a><i data-icon="chevron-right"></i><a href="/en/blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Flight recorders and trackers</span></nav>
+    <span class="eyebrow">Thematic guide</span>
+    <h1>Flight Recorders and Trackers: Requirements on Light Aircraft</h1>
+    <p>Emergency locator transmitter, regulatory flight recorders, GPS loggers and connected trackers: what is actually required on a light aircraft, and what is left to the operator's choice.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#intro">A topic that confuses many light aircraft owners</a></li><li><a href="#elt">The emergency locator transmitter (ELT): the equipment that is actually required</a></li><li><a href="#fdr-cvr">Regulatory flight recorders (FDR/CVR): why they almost never apply to light aircraft</a></li><li><a href="#loggers">GPS loggers and voluntary flight recorders for gliding and competition</a></li><li><a href="#flarm">Collision-avoidance units and connected trackers (FLARM, ADS-B, satellite trackers)</a></li><li><a href="#maintenance">Maintenance, batteries and periodic checks</a></li><li><a href="#buying">What to check when buying a used aircraft</a></li><li><a href="#conclusion">In summary</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="intro">A topic that confuses many light aircraft owners</h2>
+<p>As soon as "black box" or "flight recorder" comes up, many light aircraft owners wrongly imagine a requirement similar to that of airliners. In practice, the rules applicable to light aviation cover several very different families of equipment: the emergency locator transmitter, required in almost every case; regulatory flight recorders of the FDR or CVR type, which almost never apply to light aircraft; and finally GPS loggers and connected trackers, whose use is most often a voluntary choice driven by sport or personal safety.</p>
+<p>Before buying or selling a light aircraft, it is worth knowing precisely which equipment is actually required by the rules applicable to your aircraft type and country of registration, and which is simply good practice. Since the exact requirements can vary by aircraft category, certification date and country, it is essential to check the detail applicable to your aircraft with the competent civil aviation authority or an approved maintenance organisation before making any decision.</p>
+
+<h2 id="elt">The emergency locator transmitter (ELT): the equipment that is actually required</h2>
+<p>The equipment most universally associated with a regulatory requirement on light aircraft is the emergency locator transmitter, or <strong>ELT</strong>. Its role is simple: to transmit a distress signal in the event of an accident, helping search-and-rescue services locate the aircraft and its occupants. Almost all powered light aircraft intended for cross-country flight or flight over sparsely populated areas must carry one, in one form or another.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Fixed automatic ELT</strong> — the most common type on certified light aircraft, triggered automatically by a severe impact.</span></li>
+  <li><i data-icon="check"></i><span><strong>Portable or survival ELT</strong> — sometimes accepted as a complement or alternative depending on the type of operation and aircraft category.</span></li>
+  <li><i data-icon="check"></i><span><strong>Frequency and approval</strong> — the installed unit must be approved and compliant with the distress frequencies in force in the country of operation.</span></li>
+</ul>
+<p>Exemptions or relaxed requirements exist for certain aircraft categories (motor gliders, some light sport aircraft, strictly local flights close to an airfield), but they depend on precise national rules that should be checked case by case rather than assuming a general exemption.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — The presence and proper function of the emergency locator transmitter are among the routine checks during periodic aircraft inspections; an expired or faulty unit can be enough to ground the aircraft.</div></div>
+
+<h2 id="fdr-cvr">Regulatory flight recorders (FDR/CVR): why they almost never apply to light aircraft</h2>
+<p>Flight data recorders (<strong>FDR</strong>) and cockpit voice recorders (<strong>CVR</strong>) are the true "black boxes" referred to after an airliner accident. These units respond to strict regulatory requirements aimed primarily at public transport aircraft, complex multi-engine aeroplanes, and certain categories of commercial operation above mass or passenger-number thresholds defined by the applicable regulation.</p>
+<p>For the vast majority of single or twin-engine light aircraft used in private flying, clubs or flying schools, this type of recorder is in practice never required. A buyer or seller wondering about this point should therefore clearly distinguish this category of equipment, specific to heavy commercial aviation, from the requirements that actually apply to light aircraft, which centre mainly on the emergency locator transmitter discussed above.</p>
+
+<h2 id="loggers">GPS loggers and voluntary flight recorders for gliding and competition</h2>
+<p>In certain disciplines, particularly gliding and aerobatics, the use of a GPS flight recorder (often called a <strong>logger</strong>) is common, but it is most often a voluntary choice or a requirement specific to a competition rather than a general regulatory obligation applying to all aircraft. These units record the GPS trace of the flight (position, altitude, speed) and are used in particular to validate sporting performance with federations, to claim a record, or to review a flight afterwards for training purposes.</p>
+<p>A used glider or aerobatic aircraft fitted with such a logger is often an asset for a buyer wishing to compete, but the absence of this equipment in no way signals non-compliance of the aircraft: it is optional equipment, whose presence or absence depends on the previous owner's choice rather than a legal requirement.</p>
+
+<h2 id="flarm">Collision-avoidance units and connected trackers (FLARM, ADS-B, satellite trackers)</h2>
+<p>Beyond regulatory equipment and sporting loggers, a third family of units has become widespread in light aviation in recent years: traffic alert and collision-avoidance systems, as well as connected position trackers. <strong>FLARM</strong>, very common on gliders and light aircraft in parts of Europe, warns the pilot of nearby traffic also equipped with the system. <strong>ADS-B</strong> transponders broadcast the aircraft's position to other equipped aircraft and to air traffic services, and their use is increasingly regulated depending on the airspace flown, on top of the baseline equipment already required in many types of airspace.</p>
+<p>Consumer satellite trackers, for their part, allow an aircraft's position to be followed even beyond the reach of conventional ground networks, a useful feature for flying over remote or mountainous terrain. To date, these units remain mostly voluntary choices for the operator rather than general requirements, even though certain airspaces or types of operation may mandate one version or another of these technologies. It is therefore worth checking precisely the requirements applicable to the airspace in which the aircraft will typically operate before assuming an equipment is optional.</p>
+
+<h2 id="maintenance">Maintenance, batteries and periodic checks</h2>
+<p>Whether it is an emergency locator transmitter, a GPS logger or a transponder, each of these units requires specific maintenance and periodic checks. The emergency locator transmitter generally has a battery with a strict expiry date to respect, as well as function tests carried out at regular intervals by an approved workshop. A GPS logger or connected tracker, meanwhile, needs software updates and maintenance of its own power source, often an internal rechargeable or replaceable battery.</p>
+<p>For an owner, keeping an up-to-date inspection schedule for this equipment, alongside that of the airframe, engine and propeller, helps avoid the late discovery of an expired battery or out-of-service unit, often at the least convenient moment, such as before an inspection or a competition flight.</p>
+
+<h2 id="buying">What to check when buying a used aircraft</h2>
+<p>When buying a used aircraft, it is advisable to systematically check the presence, condition and expiry date of the installed emergency locator transmitter, as well as its consistency with the entries in the aircraft's logbook. For an aircraft intended for gliding or competition, it is also worth checking the presence, proper function and compatibility of any installed GPS logger with the requirements of the relevant federations or competitions.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Emergency locator transmitter</strong> — approved model, battery not expired, latest function test recorded.</span></li>
+  <li><i data-icon="check"></i><span><strong>Transponder and surveillance equipment</strong> — compliant with the type required in the airspace where the aircraft will operate.</span></li>
+  <li><i data-icon="check"></i><span><strong>Optional loggers and trackers</strong> — function checked, but their absence does not affect the aircraft's general compliance.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — If in doubt about a precise requirement applicable to a given aircraft type or country, contacting the competent civil aviation authority or an approved maintenance organisation directly remains the only reliable way to clear up the uncertainty, rather than relying on a general rule that may have exceptions.</div></div>
+
+<h2 id="conclusion">In summary</h2>
+<p>On a light aircraft, the equipment that is actually and almost universally required remains the emergency locator transmitter (ELT), while true regulatory flight recorders (FDR/CVR) almost never apply to this category of aircraft. GPS loggers for gliding or competition, as well as collision-avoidance units and connected trackers, are most often a voluntary choice of the operator, driven by safety, sporting performance or operational convenience, rather than a general requirement applying to all aircraft.</p>
+<p>Before buying or selling a light aircraft, taking the time to check precisely which equipment is installed, its condition, its expiry date and its consistency with the logbook remains the best way to avoid any unpleasant surprise, whether it concerns a regulatory requirement to be met or optional equipment that can influence the aircraft's value.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your used aircraft</h3>
+            <p>Compare used aircraft listings available across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="/en/search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To take your buying or selling project further.</p>
+      </div>
+      <a href="/en/blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="/en/inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer guide</span><strong>Pre-purchase inspection of an aircraft: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/documents-obligatoires-vente-avion.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Thematic guide</span><strong>Mandatory documents for selling an aircraft</strong><p>The complete list of documents to gather for buying or selling an aircraft safely.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Thematic guide</span><strong>Registering an aircraft in Europe</strong><p>Understanding registration and transfer procedures between European countries.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

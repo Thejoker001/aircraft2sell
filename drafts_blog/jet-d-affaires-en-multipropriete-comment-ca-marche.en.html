@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) {}
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Business jet shared ownership: fractional ownership, classic co-ownership or jet cards. How each model works, real costs, benefits and pitfalls to avoid.">
+<meta property="og:title" content="Business jet fractional ownership: how it works | Aircraft2Sell">
+<meta property="og:description" content="Business jet shared ownership: fractional ownership, classic co-ownership or jet cards. How each model works, real costs, benefits and pitfalls to avoid.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/jet-d-affaires-en-multipropriete-comment-ca-marche.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/jet-d-affaires-en-multipropriete-comment-ca-marche.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/jet-d-affaires-en-multipropriete-comment-ca-marche.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/jet-d-affaires-en-multipropriete-comment-ca-marche.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/jet-d-affaires-en-multipropriete-comment-ca-marche.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Business jet fractional ownership: how it works | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Business jet fractional ownership: how it works", "description": "Business jet shared ownership: fractional ownership, classic co-ownership or jet cards. How each model works, real costs, benefits and pitfalls to avoid.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/jet-d-affaires-en-multipropriete-comment-ca-marche.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Business jet fractional ownership: how it works", "item": "https://aircraft2sell.eu/en/jet-d-affaires-en-multipropriete-comment-ca-marche.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Jet fractional ownership</span></nav>
+    <span class="eyebrow">Topic guide</span>
+    <h1>Business jet fractional ownership: how it works</h1>
+    <p>Fractional ownership, classic co-ownership or jet cards: the different ways to share a business jet, how each one really works, and what to check before signing.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Table of contents</div>
+        <ol><li><a href="#definition">What business jet fractional ownership actually means</a></li><li><a href="#models">The three main sharing models</a></li><li><a href="#how">How a fractional share works day to day</a></li><li><a href="#costs">The cost structure: share, fixed fees and hourly rates</a></li><li><a href="#benefits">Real benefits compared to full ownership</a></li><li><a href="#limits">Limits and points to watch</a></li><li><a href="#legal">Contract structure and legal framework</a></li><li><a href="#choosing">How to choose a program or co-owners</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">What business jet fractional ownership actually means</h2>
+<p>Fractional ownership of a business jet means holding, alone or with others, a share of an aircraft rather than the whole asset, in exchange for a proportional usage right expressed in flight hours per year. The goal is simple: get the speed, comfort and reach of a private jet without carrying the full purchase cost or the management burden of a whole aircraft.</p>
+<p>This model particularly suits executives and families who fly regularly — typically between 50 and 200 hours a year — without flying enough to justify owning an aircraft outright, which would otherwise sit idle most of the time.</p>
+
+<h2 id="models">The three main sharing models</h2>
+<p>Under the general label of "shared ownership" sit several quite different arrangements, and confusing them before signing a contract can be costly.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Classic co-ownership (informal fractional ownership)</strong> — a small group of buyers, often business partners or friends, jointly buys a used or new aircraft and splits usage and costs under rules set out in a shareholders' agreement.</span></li>
+  <li><i data-icon="check"></i><span><strong>Fractional ownership run by a dedicated program</strong> — a specialized operator owns a fleet, sells shares (often 1/16, 1/8 or 1/4 of an aircraft) that carry a guaranteed annual number of hours, and itself handles operations, maintenance and the supply of an equivalent aircraft anywhere across its network.</span></li>
+  <li><i data-icon="check"></i><span><strong>Jet cards</strong> — not ownership in the strict sense, but a prepaid block of hours usable on a charter fleet. They are often compared to fractional ownership because they deliver the same core benefit — access without management — without any capital investment.</span></li>
+</ul>
+<p>Across these three formats, the level of financial commitment, the contract length and the degree of control over the aircraft vary a great deal. Classic co-ownership means a real title of ownership in the aircraft; operated fractional ownership gives a contractual right over a fleet; a jet card gives no ownership right at all.</p>
+
+<h2 id="how">How a fractional share works day to day</h2>
+<p>In an operated fractional ownership program, the buyer acquires a share of the aircraft — say 1/8 — corresponding to a contractually defined annual volume of flight hours. That share grants access not to "their own" specific aircraft, but to any available aircraft of the same type across the program's fleet, which delivers far higher availability than owning a single aircraft outright.</p>
+<p>Booking is usually done with a short lead time (often ranging from a few hours to 24 hours depending on the contract), and the operator commits to a guaranteed availability rate, sometimes backed by penalties if it cannot supply an aircraft within the promised window. In exchange, the buyer accepts billing rules for hours beyond the included quota, and exit terms for selling back the share at the end of the contract, which typically runs three to five years.</p>
+<p>In a classic co-ownership between private individuals, the mechanics differ: each co-owner books the single physical aircraft according to a shared calendar, which requires more coordination but keeps a direct link to one identified aircraft, with its own logbook and maintenance history.</p>
+
+<h2 id="costs">The cost structure: share, fixed fees and hourly rates</h2>
+<p>Whichever model you choose, the bill for a shared jet always breaks down into three blocks that need to be examined separately before comparing two offers.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Item</th><th>Nature</th><th>What it covers</th></tr></thead>
+<tbody>
+<tr><td>Share acquisition cost</td><td>One-off payment (or staged)</td><td>Proportional share of the aircraft's value, matching the annual hours booked</td></tr>
+<tr><td>Fixed management fees</td><td>Monthly or annual</td><td>Scheduled maintenance, insurance, hangarage, dedicated crew where applicable, administration</td></tr>
+<tr><td>Variable hourly rate</td><td>Per flight hour actually used</td><td>Fuel, airport taxes, wear, in-line crew costs</td></tr>
+</tbody></table></div>
+<p>In a classic co-ownership, these three blocks are split pro rata between owners and can be freely negotiated. In an operated program, they are fixed by contract with the operator, with a periodic review indexed to the fleet's fuel and maintenance costs.</p>
+<p>A point often underestimated: the resale value of a fractional share at the end of the contract depends heavily on market conditions at that time, and some programs apply a known contractual depreciation schedule that should be factored into the initial calculation.</p>
+
+<h2 id="benefits">Real benefits compared to full ownership</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Capital committed in proportion to hours actually used, instead of tying up the full value of an under-utilised aircraft.</span></li>
+  <li><i data-icon="check"></i><span>High availability thanks to access to an entire fleet rather than a single aircraft, useful in case of unplanned maintenance or simultaneous demand peaks.</span></li>
+  <li><i data-icon="check"></i><span>Operational management delegated (maintenance, crew, regulatory compliance) in operated formats, with no need to build or supervise a dedicated operating structure.</span></li>
+  <li><i data-icon="check"></i><span>Geographic flexibility, since some programs let you board an equivalent aircraft from any base in the network.</span></li>
+</ul>
+
+<h2 id="limits">Limits and points to watch</h2>
+<p>Fractional ownership is not a universal solution and carries its own constraints, which need to be weighed before committing for several years.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point to watch</strong> — Variable hourly fees and any overage clauses beyond the included quota can push the real bill well above the headline figure quoted upfront. Always ask for a costed simulation based on your projected annual flight hours before you sign.</div></div>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Multi-year contractual commitment, with early exit terms that are often costly.</span></li>
+  <li><i data-icon="check"></i><span>In a co-ownership between private individuals, disagreements over the usage calendar, maintenance or the decision to sell are a real risk, best mitigated by a precise shareholders' agreement.</span></li>
+  <li><i data-icon="check"></i><span>Less cabin and aircraft customisation than with full ownership.</span></li>
+  <li><i data-icon="check"></i><span>Dependence on the financial strength of the operator in an operated fractional program: check its track record and contractual guarantees.</span></li>
+</ul>
+
+<h2 id="legal">Contract structure and legal framework</h2>
+<p>Holding a share of a business jet almost always goes through a dedicated corporate structure — a civil or commercial company depending on the country — which holds the ownership share and allocates usage rights between partners or with the operator. This structure makes it easier to sell the share to a third party later without renegotiating the whole arrangement.</p>
+<p>Before signing, have a specialist aviation lawyer check: the exact split of hours and any carry-over between years, the exit and resale terms for the share, how liability is allocated in the event of an incident, and the consistency between the aircraft's certificate of airworthiness (CofA) and the operating framework used (private or commercial operation, depending on applicable regulation).</p>
+<p>If the share concerns a used aircraft already in service, also request full access to the logbook and the history of engine hours and remaining potential before the next major overhaul (SMOH), exactly as you would for a standard purchase.</p>
+
+<h2 id="choosing">How to choose a program or co-owners</h2>
+<p>The choice between classic co-ownership, an operated program and jet cards depends above all on your real annual flying volume, your tolerance for coordinating with other parties, and your holding horizon. A low, irregular hours volume points more towards a jet card; a high, stable volume over several years justifies a fractional share or a dedicated co-ownership more.</p>
+<p>Either way, compare several offers on a like-for-like basis (same aircraft type, same hours volume), ask for the management accounts of prior years if the structure already exists, and have the specific aircraft inspected by an independent professional before entering any co-ownership involving an aircraft already in service.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Before entering a co-ownership with private individuals, insist on a written shareholders' agreement covering the usage calendar, funding of unplanned repairs and the exit procedure, even between trusted partners.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to explore available business jets?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with zero commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="copropriete-avion-guide.html" class="card"><span class="icon-box"><i data-icon="users"></i></span><span class="eyebrow">Buyer guide</span><strong>Aircraft Co-Ownership: Cooperative Ownership Options Explained</strong><p>Aircraft co-ownership can cut the cost of an aircraft. How it works, benefits, precautions and the legal structure to know.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="prix-moyen-jet-prive-2026.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Market</span><strong>Average price of a private jet in 2026</strong><p>Very light jets, light jets, midsize and long-range: price ranges and operating costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Buyer guide</span><strong>Turboprop or business jet: how to choose</strong><p>Cost, range, speed and usage comparison to pick the aircraft suited to your activity.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Deductibles and agreed value in aircraft hull insurance: how they work, how they affect your premium, and how to negotiate your policy.">
+<meta property="og:title" content="Aircraft hull insurance: deductibles and agreed value | Aircraft2Sell">
+<meta property="og:description" content="Deductibles and agreed value in aircraft hull insurance: how they work, how they affect your premium, and how to negotiate your policy.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Aircraft hull insurance: deductibles and agreed value | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Aircraft hull insurance: understanding deductibles and agreed value", "description": "Deductibles and agreed value in aircraft hull insurance: how they work, how they affect your premium, and how to negotiate your policy.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Aircraft hull insurance: understanding deductibles and agreed value", "item": "https://aircraft2sell.eu/en/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Deductibles and agreed value</span></nav>
+    <span class="eyebrow">Insurance</span>
+    <h1>Aircraft hull insurance: understanding deductibles and agreed value</h1>
+    <p>Two clauses drive most of your policy cost and your claim payout: the agreed value of the aircraft and the deductible level. Here is how to understand and negotiate both.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#definition">What hull insurance actually covers</a></li><li><a href="#valeur-agreee">Agreed value versus market value</a></li><li><a href="#franchise">How the deductible works</a></li><li><a href="#types-franchise">The different deductible structures you will see</a></li><li><a href="#prime">What drives your premium</a></li><li><a href="#choix-franchise">High deductible or low deductible: how to choose</a></li><li><a href="#declaration">Declared value and reassessing it over the life of the policy</a></li><li><a href="#negocier">How to negotiate your policy with an underwriter</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">What hull insurance actually covers</h2>
+<p>Hull insurance covers physical damage to the aircraft itself — the airframe, engine and equipment — whether the loss happens in flight, while taxiing, on the ramp, or during maintenance. It is a separate coverage from liability insurance, which protects third parties, and it is usually the largest single line item in an owner's total premium once the aircraft's value is significant.</p>
+<p>Unlike car insurance, where the payout depreciates automatically with the vehicle's age, aircraft hull cover is most often written on an agreed value basis, fixed in the policy and renegotiated at each renewal. That difference changes how you should approach both the initial purchase of a policy and every subsequent renewal.</p>
+
+<h2 id="valeur-agreee">Agreed value versus market value</h2>
+<p>Agreed value is a figure set jointly by the owner and the insurer at the time of underwriting, written explicitly into the policy's declarations. If the aircraft is a total loss, that figure is the payout — there is no later argument about what the aircraft was "really" worth on the day of the loss.</p>
+<p>Market (or actual cash) value, by contrast, is assessed at the time of the claim. A policy written on a market-value basis can expose the owner to a lengthy negotiation with the insurer over the exact figure, especially if the used-aircraft market has moved since the policy was written.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Advantage of agreed value</strong> — certainty about the payout in the event of a total loss, with no dispute over current market pricing.</span></li>
+  <li><i data-icon="check"></i><span><strong>Risk with agreed value</strong> — set it too high relative to the real market and you overpay on premium every year; set it too low and the payout will not cover a replacement aircraft.</span></li>
+  <li><i data-icon="check"></i><span><strong>Periodic review is essential</strong> — agreed value should be reassessed at every renewal to track the used-aircraft market, whether it is rising or falling.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Always ask your insurer how the agreed value was arrived at (manufacturer price guide, comparable sales, independent appraisal) and keep that justification on file alongside your policy.</div></div>
+
+<h2 id="franchise">How the deductible works</h2>
+<p>The deductible is the portion of any claim that the owner carries, regardless of the total damage assessed by the adjuster. It applies first: the insurer pays only for the part of the repair cost that exceeds the deductible stated in the policy.</p>
+<p>Along with agreed value, the deductible is one of the two main levers an owner can pull to move the annual premium: the higher the deductible accepted, the lower the premium an underwriter will typically quote, since a larger share of the risk is retained by the owner.</p>
+
+<h2 id="types-franchise">The different deductible structures you will see</h2>
+<p>Hull policies do not always carry a single flat deductible — several structures coexist across the market, and it is worth distinguishing them before comparing two quotes side by side.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Flat deductible</strong> — the same amount applies to every claim, regardless of its nature (ground handling, hard landing, in-flight damage).</span></li>
+  <li><i data-icon="check"></i><span><strong>Deductible that varies by claim type</strong> — some insurers apply a higher deductible to ground and taxi incidents, considered more frequent, and a different one to in-flight events.</span></li>
+  <li><i data-icon="check"></i><span><strong>Deductible that steps down with experience</strong> — some policies reduce the applicable deductible after a claim-free number of hours, or temporarily increase it for a pilot low on time in type.</span></li>
+  <li><i data-icon="check"></i><span><strong>Higher deductible for an unqualified pilot</strong> — an increased deductible can apply if a claim occurs while a pilot does not meet the minimum experience requirements stated in the policy.</span></li>
+</ul>
+<p>Before you sign, ask for a written, exhaustive list of every situation where a deductible different from the base figure could apply: that is usually where the unpleasant surprises hide at claim time.</p>
+
+<h2 id="prime">What drives your premium</h2>
+<p>Beyond agreed value and the chosen deductible, several other factors feed into a hull premium, and it is worth knowing them before any negotiation.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Total flight experience of the declared pilot(s), and experience specifically in the type being insured.</span></li>
+  <li><i data-icon="check"></i><span>Declared use of the aircraft: personal leisure, flight instruction, rental, or commercial operation.</span></li>
+  <li><i data-icon="check"></i><span>Usual tie-down location — hangared versus outside, and the resulting exposure to weather.</span></li>
+  <li><i data-icon="check"></i><span>The aircraft's age and general condition, including maintenance history and hours remaining before a major overhaul.</span></li>
+  <li><i data-icon="check"></i><span>The claims history of the owner, and in some cases of the aircraft itself under prior policies.</span></li>
+</ul>
+
+<h2 id="choix-franchise">High deductible or low deductible: how to choose</h2>
+<p>The right deductible level depends mainly on the owner's ability to absorb a small or medium-sized claim out of pocket without filing it. A high deductible lowers the annual premium but exposes the owner to a larger immediate expense for any incident, even a minor one such as a hard landing or ground handling damage.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Profile</th><th>Low deductible</th><th>High deductible</th></tr></thead>
+<tbody>
+<tr><td>Cash available for an unplanned claim</td><td>Limited</td><td>Comfortable</td></tr>
+<tr><td>Annual premium</td><td>Higher</td><td>Lower</td></tr>
+<tr><td>Aircraft use</td><td>Instruction, rental, intensive use</td><td>Personal leisure, experienced pilot</td></tr>
+<tr><td>Expected claim frequency</td><td>Higher</td><td>Lower</td></tr>
+</tbody></table></div>
+<p>For an aircraft used for instruction or rental, where minor incidents statistically occur more often, a lower deductible is often still preferable despite the higher premium, because it avoids repeatedly funding repairs out of pocket.</p>
+
+<h2 id="declaration">Declared value and reassessing it over the life of the policy</h2>
+<p>The agreed value declared at underwriting is not fixed for as long as you own the aircraft — it should be reviewed at every annual renewal, and especially after a significant change to the aircraft (new avionics, a major engine overhaul, a substantial refurbishment) that increases its real value.</p>
+<p>An agreed value left unchanged while the aircraft receives expensive upgrades leads, in the event of a total loss, to a payout below the real replacement cost. Conversely, failing to revise the value downward as the used-aircraft market softens means paying a premium calculated on an artificially high base.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — Keep every invoice for equipment upgrades or a major engine overhaul: these are the evidence an insurer will ask for to justify raising the agreed value.</div></div>
+
+<h2 id="negocier">How to negotiate your policy with an underwriter</h2>
+<p>Negotiating a hull policy comes down mainly to competition: approaching several brokers specializing in aviation insurance lets you compare not only premiums, but also the deductible levels offered for an equivalent agreed value, which gives a far more honest view of the real cost-to-coverage ratio.</p>
+<p>It also helps to present a complete file from the first contact: an up-to-date maintenance logbook, claims history, and the qualifications and flight hours of the declared pilots. A well-documented file reassures an underwriter about the real risk and makes it easier to secure a more favorable deductible or an adjusted premium.</p>
+<p>Finally, review your policy every year rather than renewing it by default: aviation insurance market conditions shift, and a policy written several years ago may no longer be competitive, whether on the premium level or on the deductible terms that apply.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for a quote broken down line by line (hull, liability, ancillary cover) rather than a single bundled premium, so you can see exactly where to adjust the deductible or the agreed value without giving up coverage you actually need.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="shield"></i></span>
+          <div>
+            <h3>Ready to compare aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Insurance</span><strong>Insuring your aircraft in Europe: the complete guide</strong><p>Liability, hull cover, essential guarantees: how to properly insure your aircraft, helicopter or microlight in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Maintenance</span><strong>The cost of maintaining a light aircraft</strong><p>Annual budget, major overhaul, parts and labour: what to expect to maintain a light aircraft.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

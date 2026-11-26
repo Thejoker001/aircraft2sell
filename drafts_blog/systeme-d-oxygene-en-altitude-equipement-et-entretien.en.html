@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Oxygen systems at altitude: regulations, equipment (cylinder, concentrator, masks/cannulas) and maintenance. The complete guide for light aviation.">
+<meta property="og:title" content="Oxygen Systems at Altitude: Equipment and Maintenance | Aircraft2Sell">
+<meta property="og:description" content="Oxygen systems at altitude: regulations, equipment (cylinder, concentrator, masks/cannulas) and maintenance. The complete guide for light aviation.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/systeme-d-oxygene-en-altitude-equipement-et-entretien.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/systeme-d-oxygene-en-altitude-equipement-et-entretien.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/systeme-d-oxygene-en-altitude-equipement-et-entretien.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/systeme-d-oxygene-en-altitude-equipement-et-entretien.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/systeme-d-oxygene-en-altitude-equipement-et-entretien.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Oxygen Systems at Altitude: Equipment and Maintenance | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Oxygen Systems at Altitude: Equipment and Maintenance", "description": "Oxygen systems at altitude: regulations, equipment (cylinder, concentrator, masks/cannulas) and maintenance. The complete guide for light aviation.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/systeme-d-oxygene-en-altitude-equipement-et-entretien.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Oxygen Systems at Altitude: Equipment and Maintenance", "item": "https://aircraft2sell.eu/en/systeme-d-oxygene-en-altitude-equipement-et-entretien.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Oxygen at altitude</span></nav>
+    <span class="eyebrow">Technical</span>
+    <h1>Oxygen Systems at Altitude: Equipment and Maintenance</h1>
+    <p>Why supplemental oxygen becomes necessary at altitude, which equipment to choose (cylinder, concentrator, masks and cannulas) and how to maintain it properly.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#pourquoi">Why oxygen becomes necessary at altitude</a></li><li><a href="#hypoxie">Understanding hypoxia and its symptoms</a></li><li><a href="#equipements">Equipment: cylinders, concentrators, masks and cannulas</a></li><li><a href="#choisir">Choosing your system based on your flying profile</a></li><li><a href="#entretien">Maintenance and periodic checks</a></li><li><a href="#stockage">Storage and safety of the oxygen cylinder</a></li><li><a href="#achat">What to check when buying an equipped aircraft</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Why oxygen becomes necessary at altitude</h2>
+<p>The higher the altitude, the lower the partial pressure of oxygen in the ambient air, progressively reducing the amount of oxygen available to the body with each breath. For a pilot flying an unpressurised cabin above a certain altitude, this decline translates into a measurable drop in cognitive and physical performance, well before any perceptible shortness of breath. It is precisely this mismatch between actual performance degradation and the absence of a felt warning signal that makes supplemental oxygen essential beyond a certain threshold, whether in a light aircraft, a glider, or a microlight flying over mountainous terrain.</p>
+<p>Mountain flights, long high-altitude cruise legs, or night flights at moderate altitude are the situations most concerned. Even without a strict regulatory requirement applicable to your type of flight, having a functional, properly maintained oxygen system remains a sensible safety measure as soon as your planned cruise altitude drifts well above sea level.</p>
+
+<h2 id="hypoxie">Understanding hypoxia and its symptoms</h2>
+<p>Altitude hypoxia develops progressively: mild euphoria, difficulty concentrating, reduced peripheral vision, slower reaction time, then confusion and impaired judgement if exposure continues without correction. The main trap is that these symptoms are often imperceptible to the person experiencing them — it is usually a passenger or crew member who notices the change in behaviour before the pilot does.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Vision</strong> — reduced visual acuity and colour perception, often the first measurable sign.</span></li>
+  <li><i data-icon="check"></i><span><strong>Judgement</strong> — a sense of overconfidence, decisions less cautious than usual.</span></li>
+  <li><i data-icon="check"></i><span><strong>Coordination</strong> — less precise movements, fine piloting errors that go unnoticed at the time.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — Sensitivity to hypoxia varies widely between individuals and depends on fatigue level, hydration, or recent alcohol or tobacco consumption. Never rely on a tolerance you think you observed on a previous flight.</div></div>
+
+<h2 id="equipements">Equipment: cylinders, concentrators, masks and cannulas</h2>
+<p>Two main families of equipment coexist in the light aviation market: <strong>compressed oxygen cylinder</strong> systems, the most widespread, and <strong>portable oxygen concentrators</strong> (POCs), more recent, which produce enriched oxygen from the ambient air without requiring a refill.</p>
+<h3>Cylinder system</h3>
+<p>Made up of a cylinder (aluminium or lighter composite), a pressure regulator, a flow meter, and a distribution device. It is the simplest and least expensive solution to implement, but it requires refills from an approved supplier and strict monitoring of the available pressure before each relevant flight.</p>
+<h3>Portable oxygen concentrator (POC)</h3>
+<p>Powered electrically (battery or aircraft socket), it removes the refill constraint but introduces electrical endurance management and a different maintenance routine (filters, battery). Its purchase cost is generally higher than a conventional cylinder system.</p>
+<h3>Masks and nasal cannulas</h3>
+<p>The <strong>mask</strong> covers nose and mouth, provides better sealing, and remains the reference above a certain altitude. The <strong>nasal cannula</strong>, lighter and compatible with wearing a radio headset, is suitable at moderate altitudes but becomes less effective as altitude increases, due to mouth breathing reducing the effective intake.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — A portable pulse oximeter (a few tens of euros) lets you check blood oxygen saturation in flight and detect early hypoxia before subjective symptoms appear.</div></div>
+
+<h2 id="choisir">Choosing your system based on your flying profile</h2>
+<p>The choice of system depends above all on the type of flying you do: occasional mountain flights for a leisure pilot, regular high-altitude cruises for the owner of a high-performance single-engine aircraft, or intensive use on a turboprop or business jet that systematically operates at altitude.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Flying profile</th><th>Generally suitable solution</th></tr></thead>
+<tbody>
+<tr><td>Occasional mountain flights, gliding</td><td>Compact cylinder + nasal cannula</td></tr>
+<tr><td>Regular high-altitude cruises (high-performance single-engine)</td><td>Larger-capacity cylinder or portable concentrator + mask</td></tr>
+<tr><td>Turboprop, business jet, systematic altitude operations</td><td>Integrated aircraft system, dedicated masks per seat</td></tr>
+</tbody>
+</table></div>
+<p>For an aircraft with an integrated system (fitted to the airframe rather than portable), always check its compatibility with the number of occupied seats and the actual capacity available for the intended flight duration, not just its presence on the spec sheet.</p>
+
+<h2 id="entretien">Maintenance and periodic checks</h2>
+<p>A poorly maintained oxygen system can prove ineffective, or even dangerous, at the precise moment it becomes useful. Maintenance covers three distinct elements: the cylinder itself, the pressure regulator, and the distribution components (hoses, masks, cannulas).</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Pressure check before each relevant flight</strong> — verify that the remaining pressure covers the planned flight duration with a safety margin.</span></li>
+  <li><i data-icon="check"></i><span><strong>Periodic cylinder requalification</strong> — every compressed oxygen cylinder is subject to a periodic hydraulic test at an approved facility, under the regulations applicable to the cylinder type.</span></li>
+  <li><i data-icon="check"></i><span><strong>Inspection of hoses and fittings</strong> — check for cracking, hardening, or contamination by grease or oil (incompatible with pure oxygen, risk of ignition).</span></li>
+  <li><i data-icon="check"></i><span><strong>Cleaning and replacement of masks/cannulas</strong> — according to usage frequency and manufacturer recommendations, particularly the parts in contact with skin.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — Never use grease, oil or any fat-based lubricant on an oxygen fitting or regulator: contact between pure oxygen and a fatty substance can cause spontaneous ignition. Only lubricants specifically approved for oxygen use are permitted.</div></div>
+
+<h2 id="stockage">Storage and safety of the oxygen cylinder</h2>
+<p>The cylinder must be securely strapped down in the aircraft, protected from impact and heat sources, with its valve closed when not in use. On the ground, it should be stored in a ventilated area, away from any ignition source and flammable materials, in accordance with the supplier's instructions and the rules governing the transport and storage of compressed gases.</p>
+<p>When transporting the cylinder to or from the aircraft, always handle it with the valve protection cap in place, and never let it roll or fall: a sharp impact on a pressurised cylinder can damage the regulator or, in an extreme case, cause a sudden failure of the whole assembly.</p>
+
+<h2 id="achat">What to check when buying an equipped aircraft</h2>
+<p>If the aircraft you are considering is fitted with an integrated oxygen system, include this point in your pre-purchase inspection on the same footing as the airframe or engine. Ask for the cylinders' requalification documentation, the system's maintenance history, and test its actual operation rather than relying on its mere visual presence.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Date of each cylinder's last requalification and the next due date.</span></li>
+  <li><i data-icon="check"></i><span>Visual condition of hoses, fittings and masks (cracking, wear, cleanliness).</span></li>
+  <li><i data-icon="check"></i><span>Actual operation of the regulator and flow meter during a ground test.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — An oxygen system in apparently good condition but never checked for several years represents a compliance cost to anticipate in your negotiation, even if it looks visually fine.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to compare equipped aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Find an inspector <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or operating project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="compass"></i></span><span class="eyebrow">Technical</span><strong>Turboprop or business jet: how to choose</strong><p>Technical and operational comparison between a turboprop and a business jet.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Maintenance</span><strong>How much does it cost to maintain a light aircraft per year</strong><p>A breakdown of the annual maintenance cost items for a light aircraft.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

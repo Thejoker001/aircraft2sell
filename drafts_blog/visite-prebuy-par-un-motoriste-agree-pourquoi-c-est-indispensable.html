@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Pourquoi faire réaliser la visite prébuy d'un avion par un motoriste agréé, et non un mécanicien généraliste, est indispensable avant tout achat d'occasion.">
+<meta property="og:title" content="Visite prébuy par un motoriste agréé : pourquoi c'est indispensable | Aircraft2Sell">
+<meta property="og:description" content="Pourquoi faire réaliser la visite prébuy d'un avion par un motoriste agréé, et non un mécanicien généraliste, est indispensable avant tout achat d'occasion.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/visite-prebuy-par-un-motoriste-agree-pourquoi-c-est-indispensable.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/visite-prebuy-par-un-motoriste-agree-pourquoi-c-est-indispensable.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/visite-prebuy-par-un-motoriste-agree-pourquoi-c-est-indispensable.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/visite-prebuy-par-un-motoriste-agree-pourquoi-c-est-indispensable.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/visite-prebuy-par-un-motoriste-agree-pourquoi-c-est-indispensable.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Visite prébuy par un motoriste agréé : pourquoi c'est indispensable | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Visite prébuy par un motoriste agréé : pourquoi c'est indispensable", "description": "Pourquoi faire réaliser la visite prébuy d'un avion par un motoriste agréé, et non un mécanicien généraliste, est indispensable avant tout achat d'occasion.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/visite-prebuy-par-un-motoriste-agree-pourquoi-c-est-indispensable.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Visite prébuy par un motoriste agréé : pourquoi c'est indispensable", "item": "https://aircraft2sell.eu/visite-prebuy-par-un-motoriste-agree-pourquoi-c-est-indispensable.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Visite prébuy motoriste</span></nav>
+    <span class="eyebrow">Guide thématique</span>
+    <h1>Visite prébuy par un motoriste agréé : pourquoi c'est indispensable</h1>
+    <p>Un mécanicien généraliste peut valider la cellule et les systèmes, mais seul un motoriste agréé sait vraiment lire l'état réel d'un groupe motopropulseur. Voici pourquoi cette expertise spécifique change tout avant un achat.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#definition">Motoriste agréé : de qui parle-t-on exactement</a></li><li><a href="#limites">Les limites d'une inspection pré-achat généraliste</a></li><li><a href="#ce-qu-il-controle">Ce qu'un motoriste agréé contrôle que les autres ne voient pas</a></li><li><a href="#documents">Carnet moteur, SMOH et cohérence documentaire</a></li><li><a href="#cout">Combien coûte une visite prébuy motoriste, et pour quel retour</a></li><li><a href="#deroulement">Comment organiser la visite dans le processus d'achat</a></li><li><a href="#signaux">Signaux d'alerte qui doivent faire renoncer</a></li><li><a href="#conclusion">Une dépense qui protège un investissement bien plus important</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">Motoriste agréé : de qui parle-t-on exactement</h2>
+<p>Un motoriste agréé est un atelier ou un technicien spécifiquement certifié par le fabricant du moteur (ou par l'autorité de navigabilité compétente, dans le cadre Part-145 ou Part-CAO) pour intervenir sur un groupe motopropulseur précis. Cette agrégation n'est pas une formalité administrative : elle suppose une formation continue sur le type de moteur, l'accès aux bulletins techniques constructeur les plus récents et une expérience pratique répétée sur ce modèle précis, que ce soit un moteur à pistons Continental ou Lycoming, ou une turbine plus complexe selon la catégorie d'appareil.</p>
+<p>Un mécanicien généraliste, même compétent et parfaitement habilité à réaliser une inspection pré-achat classique, n'a généralement pas cette profondeur d'expertise sur un modèle de moteur spécifique. Il peut vérifier que le moteur tourne, que les paramètres sont dans les plages attendues et qu'il n'y a pas de fuite évidente — mais il ne dispose pas toujours des mêmes outils de diagnostic avancé ni de la même connaissance fine des défaillances typiques de ce moteur particulier.</p>
+
+<h2 id="limites">Les limites d'une inspection pré-achat généraliste</h2>
+<p>L'inspection pré-achat standard reste indispensable : elle couvre la cellule, les commandes de vol, l'avionique, le train d'atterrissage et procède à un essai moteur basique au sol, parfois complété d'un vol d'essai. Mais le moteur est, de loin, le poste de dépense le plus lourd lors d'une grande visite ou d'un remplacement, et c'est aussi l'élément dont l'état réel est le plus difficile à évaluer sans expertise ciblée.</p>
+<p>Une compression de cylindre dans la norme ne garantit pas l'absence d'usure interne avancée. Un historique de carnet apparemment cohérent peut masquer un remplacement de pièce non déclaré, une réparation effectuée hors d'un atelier agréé, ou une maintenance différée qui n'apparaît pas tant que le défaut ne s'est pas aggravé. C'est précisément ce que l'œil d'un motoriste agréé, habitué à ce modèle de moteur au quotidien, est formé à repérer.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Une inspection pré-achat généraliste « sans anomalie relevée » sur le moteur ne signifie pas que le moteur est en bon état : cela signifie souvent que les vérifications de surface n'ont rien révélé. Pour le moteur, la profondeur de l'analyse change tout.</div></div>
+
+<h2 id="ce-qu-il-controle">Ce qu'un motoriste agréé contrôle que les autres ne voient pas</h2>
+<p>Au-delà des vérifications classiques, un motoriste agréé mobilise des méthodes et des références propres au type de moteur concerné, qu'un généraliste n'applique pas systématiquement de la même façon.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Analyse d'huile et de débris métalliques</strong> — recherche de particules révélatrices d'une usure interne anormale, interprétée à la lumière des seuils spécifiques au modèle.</span></li>
+  <li><i data-icon="check"></i><span><strong>Boroscopie des cylindres et des soupapes</strong> — inspection endoscopique approfondie pour détecter corrosion, piqûres ou dépôts anormaux à l'intérieur du moteur.</span></li>
+  <li><i data-icon="check"></i><span><strong>Lecture fine des compressions</strong> — interprétation des valeurs en fonction des tolérances propres au moteur, pas d'une norme générique.</span></li>
+  <li><i data-icon="check"></i><span><strong>Vérification des bulletins de service et consignes constructeur</strong> — applicabilité précise au numéro de série du moteur, y compris les évolutions récentes.</span></li>
+  <li><i data-icon="check"></i><span><strong>Cohérence des pièces installées</strong> — vérification que les composants montés sont bien d'origine ou homologués pour ce moteur, et non des pièces substituées non conformes.</span></li>
+  <li><i data-icon="check"></i><span><strong>Historique des incidents moteur</strong> — recherche de traces de surchauffe, de choc d'hélice ou d'arrêt moteur en vol qui n'auraient pas été consignés clairement.</span></li>
+</ul>
+
+<h2 id="documents">Carnet moteur, SMOH et cohérence documentaire</h2>
+<p>Le carnet d'entretien du moteur doit retracer, sans rupture, chaque intervention depuis la mise en service. Le motoriste agréé croise systématiquement les heures affichées sur le compteur, les heures moteur déclarées dans le carnet et le nombre d'heures écoulées depuis la dernière grande visite (SMOH, pour « since major overhaul »).</p>
+<p>Une incohérence entre ces trois chiffres — même minime — est un signal qu'il faut absolument faire éclaircir avant toute négociation. De même, un carnet moteur qui ne correspond pas exactement au numéro de série inscrit sur la plaque constructeur du moteur actuellement installé doit immédiatement interrompre le processus d'achat.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Demandez systématiquement le carnet d'entretien complet du moteur, pas seulement un résumé fourni par le vendeur. Un motoriste agréé saura identifier en quelques minutes si des pages manquent ou si la chronologie est incohérente.</div></div>
+
+<h2 id="cout">Combien coûte une visite prébuy motoriste, et pour quel retour</h2>
+<p>Une visite prébuy réalisée spécifiquement par un motoriste agréé représente un coût additionnel par rapport à une inspection pré-achat généraliste classique, notamment lorsqu'elle inclut une boroscopie complète et une analyse d'huile en laboratoire. Ce montant reste pourtant marginal comparé au risque financier encouru : une grande visite moteur anticipée plus tôt que prévu peut représenter une fraction substantielle du prix d'achat de l'appareil lui-même.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Élément</th><th>Inspection généraliste</th><th>Visite prébuy motoriste agréé</th></tr></thead>
+<tbody>
+<tr><td>Diagnostic cellule et systèmes</td><td>Complet</td><td>Non couvert (reste du ressort du mécanicien généraliste)</td></tr>
+<tr><td>Interprétation des compressions</td><td>Vérification de base</td><td>Analyse fine selon tolérances du modèle</td></tr>
+<tr><td>Boroscopie et analyse d'huile</td><td>Rarement incluse</td><td>Pratique courante</td></tr>
+<tr><td>Expertise applicabilité consignes moteur</td><td>Vérification générale</td><td>Lecture spécialisée au numéro de série</td></tr>
+<tr><td>Coût relatif à une grande visite imprévue</td><td>—</td><td>Négligeable en comparaison</td></tr>
+</tbody></table></div>
+<p>Dans la pratique, les deux inspections sont complémentaires : l'inspection pré-achat généraliste reste nécessaire pour l'ensemble de l'aéronef, et la visite prébuy motoriste vient compléter spécifiquement le poste moteur, qui concentre le risque financier le plus élevé.</p>
+
+<h2 id="deroulement">Comment organiser la visite dans le processus d'achat</h2>
+<p>Idéalement, planifiez la visite prébuy motoriste en même temps que l'inspection pré-achat générale, pour limiter le nombre de déplacements de l'appareil et coordonner un seul rendez-vous avec le vendeur. Convenez par écrit, avant la visite, du périmètre exact des contrôles, notamment si une boroscopie ou une dépose partielle de capotage est prévue.</p>
+<p>Choisissez un motoriste réellement agréé pour le modèle de moteur concerné, et non un atelier généraliste qui « fait aussi du moteur ». Vérifiez son agrément auprès du constructeur ou de l'autorité compétente avant de réserver l'intervention, et exigez un rapport écrit détaillé, pas seulement une validation orale.</p>
+
+<h2 id="signaux">Signaux d'alerte qui doivent faire renoncer</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Refus du vendeur de laisser un motoriste indépendant accéder au moteur ou de fournir le carnet complet.</span></li>
+  <li><i data-icon="check"></i><span>Incohérence entre les heures moteur affichées, le carnet et le numéro de série.</span></li>
+  <li><i data-icon="check"></i><span>Analyse d'huile révélant des particules métalliques anormales pour le type de moteur.</span></li>
+  <li><i data-icon="check"></i><span>Boroscopie révélant de la corrosion interne, des piqûres de cylindre ou des dépôts suspects.</span></li>
+  <li><i data-icon="check"></i><span>Historique de maintenance réalisé hors d'un atelier agréé, sans traçabilité des pièces utilisées.</span></li>
+</ul>
+
+<h2 id="conclusion">Une dépense qui protège un investissement bien plus important</h2>
+<p>Le moteur est, structurellement, l'organe le plus coûteux à remettre en état sur un aéronef, et celui dont l'état réel est le plus facilement dissimulé derrière un carnet d'entretien apparemment propre. Faire appel à un motoriste agréé pour la visite prébuy n'est pas une précaution superflue réservée aux appareils les plus chers : c'est un investissement proportionnellement raisonnable face au risque qu'il permet d'écarter.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Ne négociez jamais le prix de l'appareil avant d'avoir le rapport complet du motoriste agréé en main. C'est ce document, bien plus que l'annonce elle-même, qui doit fixer votre marge de négociation finale.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="pieges-achat-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="alert-triangle"></i></span><span class="eyebrow">Guide acheteur</span><strong>7 pièges à éviter à l'achat d'un avion d'occasion</strong><p>Les erreurs les plus fréquentes lors de l'achat d'un avion d'occasion en Europe, et comment les éviter : documentation, prix, inspection, négociation.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Entretien</span><strong>Combien coûte l'entretien d'un avion léger par an</strong><p>Budget annuel réel pour entretenir un avion léger : maintenance, assurance, hangar, carburant. Estimations chiffrées par type d'appareil.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Redirection automatique par langue navigateur
+   --------------------------------------------------------------------------
+   Sur une page FR (racine, sans /en/ ni /et/), si le navigateur du visiteur
+   est configuré en anglais ET qu'une version EN de cette page existe, on
+   redirige une seule fois vers /en/<page>. Le choix est mémorisé (localStorage)
+   pour ne plus jamais re-rediriger ensuite, y compris si le visiteur revient
+   volontairement en FR via le sélecteur de langue du footer.
+
+   Ne s'exécute PAS :
+   - sur les pages déjà sous /en/ ou /et/ (pas de boucle)
+   - si un choix de langue a déjà été fait une fois (a2s_lang_choice_made)
+   - si la page n'a pas d'équivalent EN (TRANSLATED_PAGES)
+   - pour les crawlers (voir isLikelyBot ci-dessous)
+
+   CORRECTIF 2026-09-21 : contrairement à l'hypothèse initiale, Googlebot rend
+   la page avec Chrome headless (navigator.language = "en-US" par défaut) et
+   EXÉCUTE ce script — confirmé via Search Console URL Inspection sur la page
+   d'accueil (userCanonical basculait sur /en/index.html malgré une visite de
+   l'URL FR). Impact : le "signal utilisateur" observé par Google pour la
+   page racine pouvait dériver vers la version anglaise. Un filtrage sur
+   navigator.webdriver + une liste d'UA de crawlers connus élimine ce risque
+   sans changer le comportement pour un vrai visiteur humain.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* Détection best-effort des crawlers : navigator.webdriver est vrai pour
+     Chrome headless (Googlebot, Bingbot, Puppeteer/Playwright...) ; on
+     couvre aussi les UA de crawlers connus au cas où webdriver ne serait pas
+     exposé. Un faux négatif reste sans danger (au pire, ancien comportement) ;
+     un faux positif ne fait que priver un humain de la redirection auto,
+     jamais casser la navigation (le sélecteur de langue manuel reste dispo). */
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  /* Déjà sur une version traduite : ne rien faire. */
+  if (/^\/(en|et)\//.test(path)) return;
+
+  /* Un choix a déjà été fait une fois (redirection automatique OU clic
+     manuel sur le sélecteur de langue) : ne plus jamais re-rediriger. */
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  /* Pages disponibles en anglais (même liste que nav.js/footer.js). */
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  /* Langue du navigateur (première préférence uniquement, en minuscules,
+     code ISO 2 lettres avant le tiret éventuel : "en-US" -> "en"). */
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  /* Marquer le choix comme fait AVANT de rediriger, pour que la page /en/
+     de destination (qui charge aussi ce script) ne redirige pas à son tour
+     ni ne déclenche de nouvelle vérification au retour arrière. */
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+/* Marque tout choix MANUEL de langue (clic sur un lien hreflang du nav/footer)
+   comme définitif, pour ne plus jamais déclencher la redirection automatique
+   ci-dessus — y compris si le visiteur revient volontairement en FR. Délégué
+   sur document pour capter les liens injectés dynamiquement par nav.js/footer.js. */
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Registering an aircraft in Estonia, Latvia or Lithuania: comparing the ES, YL and LY registers, procedures, timelines, costs and taxation in 2026.">
+<meta property="og:title" content="Aircraft Registration in the Baltic States: a Comparison | Aircraft2Sell">
+<meta property="og:description" content="Registering an aircraft in Estonia, Latvia or Lithuania: comparing the ES, YL and LY registers, procedures, timelines, costs and taxation in 2026.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/immatriculation-aeronautique-pays-baltes-comparatif.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/immatriculation-aeronautique-pays-baltes-comparatif.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/immatriculation-aeronautique-pays-baltes-comparatif.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/immatriculation-aeronautique-pays-baltes-comparatif.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/immatriculation-aeronautique-pays-baltes-comparatif.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Aircraft Registration in the Baltic States: a Comparison</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Aircraft Registration in the Baltic States: a Comparison", "description": "Registering an aircraft in Estonia, Latvia or Lithuania: comparing the ES, YL and LY registers, procedures, timelines, costs and taxation in 2026.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/immatriculation-aeronautique-pays-baltes-comparatif.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Aircraft Registration in the Baltic States: a Comparison", "item": "https://aircraft2sell.eu/en/immatriculation-aeronautique-pays-baltes-comparatif.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Baltic States</span></nav>
+    <span class="eyebrow">Country comparison</span>
+    <h1>Aircraft Registration in the Baltic States: a Comparison</h1>
+    <p>Estonia, Latvia, Lithuania: a comparison of the ES, YL and LY registers, procedures, timelines, costs and taxation for registering a used aircraft in the Baltic states.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#apercu">The three Baltic registers at a glance</a></li><li><a href="#estonie">Registering in Estonia (ES- prefix)</a></li><li><a href="#lettonie">Registering in Latvia (YL- prefix)</a></li><li><a href="#lituanie">Registering in Lithuania (LY- prefix)</a></li><li><a href="#comparatif">Comparing timelines and costs</a></li><li><a href="#fiscalite">VAT and taxation across the three countries</a></li><li><a href="#transfert">Transferring from another EU country</a></li><li><a href="#choix">Which register to choose for your profile</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="apercu">The three Baltic registers at a glance</h2>
+<p>Estonia, Latvia and Lithuania share the same European regulatory framework (EASA) while each maintaining its own national register and civil aviation authority. All three markets remain modest in size compared with Germany or France, but they attract a growing number of owners of light aircraft, microlights and experimental aircraft, partly thanks to structural costs that tend to be lower than in Western Europe.</p>
+<p>Each country applies its own registration prefix: <strong>ES-</strong> for Estonia, <strong>YL-</strong> for Latvia and <strong>LY-</strong> for Lithuania. All three authorities process registration applications, airworthiness certificates and ownership transfers on a similar basis, inherited from the same common European regulations, but with administrative practices and timelines that can vary noticeably from one country to another.</p>
+<p>For a buyer based in Western Europe, the idea of registering an aircraft in one of these three countries often remains unfamiliar, for lack of visibility into these markets compared with Germany, France or the United Kingdom. Yet the cultural proximity between the three Baltic states, their shared membership of the Schengen area and the European Union, and the consistency of their regulatory framework with the rest of EASA make them entirely accessible options for an owner based locally or for an aircraft intended to operate in the region.</p>
+
+<h2 id="estonie">Registering in Estonia (ES- prefix)</h2>
+<p>In Estonia, aircraft registration falls under the <strong>Estonian Transport Administration (Transpordiamet)</strong>, the authority that took over the duties of the former Estonian civil aviation administration. Estonia is known in the region for a particularly advanced digital administration, a legacy of its national e-government policy: a large share of administrative procedures, including aeronautical ones, can be initiated through the state's digital portals.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Bill of sale and proof of ownership</strong> — dated, signed, stating the aircraft's serial number.</span></li>
+  <li><i data-icon="check"></i><span><strong>Valid certificate of airworthiness</strong> — or a complete technical file for a first registration.</span></li>
+  <li><i data-icon="check"></i><span><strong>Liability insurance certificate</strong> — required before any flight under the new prefix.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Estonia is also an active country for welcoming experimental and amateur-built aircraft, a segment in which the local administration has built recognised experience within the Baltic region.</div></div>
+
+<h2 id="lettonie">Registering in Latvia (YL- prefix)</h2>
+<p>Latvia entrusts its aviation register to the <strong>Civil Aviation Agency of Latvia</strong>. The file to prepare follows the same logic as in other EASA member states: proof of ownership, a document confirming airworthiness or an equivalent file for a new or experimental aircraft, and proof of insurance. Riga remains the country's main administrative and aeronautical hub, and most procedures related to the register are centralised there.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Ownership file and aircraft history</strong> — examined closely for an aircraft already registered elsewhere.</span></li>
+  <li><i data-icon="check"></i><span><strong>Compliance with applicable EASA requirements</strong> — depending on the aircraft category (certified, ELA1/ELA2, experimental).</span></li>
+  <li><i data-icon="check"></i><span><strong>Proof of currently valid insurance.</strong></span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — The Latvian fleet remains dominated by leisure light aviation and microlights; a foreign buyer should plan ahead for translating certain documents into Latvian or English, depending on the file's requirements.</div></div>
+
+<h2 id="lituanie">Registering in Lithuania (LY- prefix)</h2>
+<p>In Lithuania, the <strong>Civil Aviation Administration of the Republic of Lithuania</strong> manages the national register under the LY- prefix. Lithuania has the most active aviation market of the three Baltic states, driven by a dynamic network of flying clubs and a relatively substantial supply of used light aircraft and microlights for the region. As elsewhere in the European Union, transferring an aircraft already registered in another member state requires prior deregistration from the register of origin.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Deregistration certificate from the previous register</strong> — essential for any aircraft already registered elsewhere in the EU.</span></li>
+  <li><i data-icon="check"></i><span><strong>Up-to-date airframe and engine logbooks</strong> — checked during the review of the file.</span></li>
+  <li><i data-icon="check"></i><span><strong>Currently valid liability insurance certificate.</strong></span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Lithuania is regularly cited as the most dynamic Baltic country for general aviation, with a greater number of airfields and clubs than its two neighbours.</div></div>
+
+<h2 id="comparatif">Comparing timelines and costs</h2>
+<p>In all three countries, processing a complete file that meets EASA requirements generally takes from a few weeks to two or three months, a timeline comparable to that observed elsewhere in the European Union. Differences between Estonia, Latvia and Lithuania are mainly down to local administrative responsiveness and how complete the submitted file is, rather than fundamental regulatory differences, since all three registers apply the same common European rules.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Country</th><th>Authority</th><th>Prefix</th><th>Distinguishing feature</th></tr></thead>
+<tbody>
+<tr><td>Estonia</td><td>Estonian Transport Administration</td><td>ES-</td><td>Largely digitised administrative procedures</td></tr>
+<tr><td>Latvia</td><td>Civil Aviation Agency of Latvia</td><td>YL-</td><td>Administrative processes centralised around Riga</td></tr>
+<tr><td>Lithuania</td><td>Civil Aviation Administration of Lithuania</td><td>LY-</td><td>Most active used-aircraft market of the three Baltic states</td></tr>
+</tbody>
+</table></div>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Whichever country you choose, a complete file submitted from the very first application (ownership, airworthiness, insurance, deregistration from the origin register if needed) remains the most effective way to shorten the overall processing time.</div></div>
+
+<h2 id="fiscalite">VAT and taxation across the three countries</h2>
+<p>As elsewhere in the European Union, a sale between EU resident private individuals is generally not subject to local VAT in the three Baltic states, while a sale carried out by a professional or a company may be subject to it. An aircraft imported from outside the EU remains subject to import VAT, calculated on its customs value and applied at the national rate in force in the country of first release for free circulation.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Situation</th><th>Tax treatment</th></tr></thead>
+<tbody>
+<tr><td>Sale between EU resident private individuals</td><td>Generally VAT-exempt</td></tr>
+<tr><td>Sale by a professional</td><td>VAT potentially applicable</td></tr>
+<tr><td>Import from outside the EU</td><td>Import VAT, national rate in force</td></tr>
+</tbody>
+</table></div>
+<p>Standard VAT rates differ from one Baltic country to another and change periodically: it is recommended to have the applicable rate and precise tax regime confirmed with local counsel before any acquisition, particularly for an aircraft that has already changed country of registration several times.</p>
+
+<h2 id="transfert">Transferring from another EU country</h2>
+<p>Transferring an aircraft already registered in another member state to one of the three Baltic registers follows the standard procedure applicable across the Union: obtaining a deregistration certificate from the register of origin, then submitting the complete file (proof of ownership, airworthiness, insurance) to the new authority. Common EASA rules govern this transfer and make it considerably simpler than an import from outside the European Union.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Request deregistration from the register of origin before submitting the new file, never after.</span></li>
+  <li><i data-icon="check"></i><span>Check the compatibility of the existing certificate of airworthiness with the new register's requirements.</span></li>
+  <li><i data-icon="check"></i><span>Arrange liability insurance under the new prefix before the first flight.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point of caution</strong> — An aircraft cannot legally fly without a valid registration: avoid any gap between deregistration from the previous register and confirmation of the new one.</div></div>
+
+<h2 id="choix">Which register to choose for your profile</h2>
+<p>For a buyer based in or near the Baltic region, the choice of country of registration depends above all on where the aircraft will actually be operated rather than on tax optimisation, since the three regimes remain close on that front. Lithuania offers the largest used-aircraft market and the densest club network; Estonia stands out for the smoothness of its online procedures, an advantage for a file handled remotely; Latvia remains a solid option, particularly for an aircraft based near Riga.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Compare the listings available in all three countries on Aircraft2Sell before deciding: the volume of offers per country gives a concrete indication of how active each national market really is.</div></div>
+<p>In any case, take the time to contact the relevant national authority directly before starting a registration process: the common European regulations do not rule out certain local specifics, particularly regarding the forms to use, the supporting documents required in the national language, or how filing fees are to be paid. A preliminary email often avoids an administrative back-and-forth that would needlessly extend the overall processing time.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your aircraft in the Baltic states</h3>
+            <p>Browse verified listings of aircraft for sale in Estonia, Latvia and Lithuania on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Buying</span><strong>Certification and registration of an aircraft in Europe</strong><p>Procedures, choosing the country of registration, the file to prepare, timelines and costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="tva-fiscalite-achat-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="percent"></i></span><span class="eyebrow">Taxation</span><strong>VAT and Tax on Buying an Aircraft in Europe</strong><p>Understanding VAT, customs duties and the tax regimes applicable depending on the country and buyer profile.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="documents-obligatoires-vente-avion.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Seller's guide</span><strong>Mandatory documents for selling an aircraft in Europe</strong><p>The complete list of documents to gather to legally sell an aircraft in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

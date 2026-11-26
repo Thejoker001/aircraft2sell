@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Train d'atterrissage d'avion : les pannes fréquentes, les signes d'usure à repérer et les points de vigilance avant l'achat d'un appareil d'occasion.">
+<meta name="keywords" content="train d'atterrissage avion, panne train atterrissage, inspection avion occasion, amortisseur avion, frein avion occasion">
+<meta property="og:title" content="Train d'atterrissage : pannes fréquentes à vérifier avant achat | Aircraft2Sell">
+<meta property="og:description" content="Train d'atterrissage d'avion : les pannes fréquentes, les signes d'usure à repérer et les points de vigilance avant l'achat d'un appareil d'occasion.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/train-d-atterrissage-pannes-frequentes-a-verifier-avant-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/train-d-atterrissage-pannes-frequentes-a-verifier-avant-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/train-d-atterrissage-pannes-frequentes-a-verifier-avant-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/train-d-atterrissage-pannes-frequentes-a-verifier-avant-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/train-d-atterrissage-pannes-frequentes-a-verifier-avant-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Train d'atterrissage : pannes fréquentes à vérifier avant achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Train d'atterrissage : pannes fréquentes à vérifier avant achat", "description": "Train d'atterrissage d'avion : les pannes fréquentes, les signes d'usure à repérer et les points de vigilance avant l'achat d'un appareil d'occasion.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/train-d-atterrissage-pannes-frequentes-a-verifier-avant-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Train d'atterrissage : pannes fréquentes à vérifier avant achat", "item": "https://aircraft2sell.eu/train-d-atterrissage-pannes-frequentes-a-verifier-avant-achat.html"}]}
+</script>
+<script type="application/ld+json">
+{"@type": "FAQPage", "@context": "https://schema.org", "mainEntity": [
+{"@type": "Question", "name": "Quelles sont les pannes de train d'atterrissage les plus fréquentes ?", "acceptedAnswer": {"@type": "Answer", "text": "Les plus fréquentes sont la corrosion des jambes et des ferrures, l'usure des amortisseurs (fuite d'huile, perte de pression d'azote), l'usure des freins et des pneus, le jeu excessif dans les articulations et, sur les trains rétractables, des pannes électriques ou hydrauliques du système de rétraction."},
+{"@type": "Question", "name": "Comment savoir si le train d'atterrissage d'un avion d'occasion est en bon état ?", "acceptedAnswer": {"@type": "Answer", "text": "Il faut inspecter visuellement les jambes, amortisseurs, pneus et freins, consulter le carnet de maintenance pour l'historique des interventions sur le train, et faire réaliser un test de rétraction/extension (pour un train rétractable) par un mécanicien agréé lors de l'inspection pré-achat."},
+{"@type": "Question", "name": "Un train d'atterrissage rétractable coûte-t-il plus cher à l'entretien qu'un train fixe ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, en général. Un train rétractable ajoute des composants mécaniques, électriques ou hydrauliques (vérins, câbles, capteurs de position, parfois une pompe hydraulique) qui augmentent le nombre de points de défaillance potentiels et le coût des visites périodiques par rapport à un train fixe."}
+]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Train d'atterrissage</span></nav>
+    <span class="eyebrow">Guide technique</span>
+    <h1>Train d'atterrissage : pannes fréquentes à vérifier avant achat</h1>
+    <p>Le train d'atterrissage encaisse chaque décollage et chaque atterrissage. Voici les pannes les plus courantes et les points à inspecter absolument avant d'acheter un avion d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#role">Le train d'atterrissage, un organe sous forte contrainte</a></li><li><a href="#pannes">Les pannes et usures les plus fréquentes</a></li><li><a href="#fixe-retractable">Train fixe ou rétractable : des risques différents</a></li><li><a href="#inspection">Comment inspecter le train avant achat</a></li><li><a href="#budget">Budget : coûts de remise en état et d'entretien</a></li><li><a href="#reglementation">Réglementation et consignes de navigabilité</a></li><li><a href="#revente">Impact sur la revente</a></li><li><a href="#faq">Questions fréquentes</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="role">Le train d'atterrissage, un organe sous forte contrainte</h2>
+<p>Le train d'atterrissage est l'un des organes les plus sollicités de l'appareil : il absorbe le poids de l'avion à chaque atterrissage, encaisse les chocs liés à un sol irrégulier et supporte l'intégralité des manœuvres au sol, du roulage au freinage. Contrairement au moteur, dont l'état est documenté par un suivi d'heures précis, l'usure du train est souvent moins bien tracée dans les carnets de maintenance, ce qui en fait un point d'attention particulier à l'achat d'un avion d'occasion.</p>
+<p>Un train mal entretenu ne se traduit pas forcément par une panne immédiate : la corrosion et la fatigue des matériaux progressent silencieusement, et un défaut peut rester invisible plusieurs années avant de se manifester brutalement, parfois lors d'un atterrissage un peu dur. C'est pourquoi l'inspection du train mérite une attention au moins équivalente à celle portée au moteur ou à la cellule.</p>
+
+<h2 id="pannes">Les pannes et usures les plus fréquentes</h2>
+<p>Certaines défaillances reviennent très régulièrement sur les appareils d'occasion, qu'il s'agisse d'un monomoteur léger, d'un hélicoptère ou d'un avion plus lourd. Les connaître permet de savoir où porter son attention lors d'une visite ou d'une inspection pré-achat.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Corrosion des jambes et des ferrures</strong> — favorisée par un stockage en extérieur, un environnement côtier ou un lavage insuffisant, elle fragilise les points de fixation structurels.</span></li>
+  <li><i data-icon="check"></i><span><strong>Fuite ou perte de pression des amortisseurs (jambes oléopneumatiques)</strong> — se traduit par un train qui s'affaisse au sol ou un amortissement dur et sec à l'atterrissage.</span></li>
+  <li><i data-icon="check"></i><span><strong>Usure des freins et des disques</strong> — fréquente sur les appareils utilisés en école ou en rotation intensive, à vérifier via l'épaisseur résiduelle des garnitures.</span></li>
+  <li><i data-icon="check"></i><span><strong>Pneus fissurés, méplats ou sous-gonflés</strong> — un signe souvent révélateur d'un entretien courant négligé par le vendeur.</span></li>
+  <li><i data-icon="check"></i><span><strong>Jeu excessif dans les articulations et les silentblocs</strong> — provoque des vibrations et accélère l'usure d'autres composants du train.</span></li>
+  <li><i data-icon="check"></i><span><strong>Défaillance du système de rétraction</strong> (câbles, vérins, moteur électrique, pompe hydraulique) — propre aux trains rétractables, avec un risque de train qui ne sort pas ou ne rentre pas complètement.</span></li>
+  <li><i data-icon="check"></i><span><strong>Capteurs de position défaillants</strong> — faux voyants « train sorti/rentré » qui compliquent le diagnostic en vol comme au sol.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Un atterrissage dur ou une sortie de piste dans l'historique de l'appareil impose de vérifier qu'une inspection structurelle du train et de ses points d'ancrage a bien été réalisée et documentée, même si l'avion semble visuellement en bon état.</div></div>
+
+<h2 id="fixe-retractable">Train fixe ou rétractable : des risques différents</h2>
+<p>Un train fixe est mécaniquement plus simple : moins de pièces, pas de système de rétraction, donc moins de points de défaillance potentiels et un entretien généralement moins coûteux. Les pannes concernent surtout les amortisseurs, les pneus et les freins.</p>
+<p>Un train rétractable ajoute une couche de complexité significative : vérins, câbles, capteurs de position, et parfois une pompe hydraulique ou un moteur électrique dédié. Chaque composant supplémentaire est un point de panne possible, et les visites périodiques liées au système de rétraction représentent un coût d'entretien récurrent non négligeable sur la durée de possession de l'appareil.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Train fixe</th><th>Train rétractable</th></tr></thead>
+<tbody>
+<tr><td>Complexité mécanique</td><td>Faible</td><td>Élevée (vérins, câbles, capteurs)</td></tr>
+<tr><td>Coût d'entretien récurrent</td><td>Plus limité</td><td>Plus élevé</td></tr>
+<tr><td>Risque de panne spécifique</td><td>Amortisseurs, pneus, freins</td><td>Système de rétraction, capteurs de position</td></tr>
+<tr><td>Performance en croisière</td><td>Traînée plus importante</td><td>Traînée réduite, vitesse de croisière supérieure</td></tr>
+</tbody></table></div>
+
+<h2 id="inspection">Comment inspecter le train avant achat</h2>
+<p>L'inspection du train d'atterrissage doit faire partie intégrante de toute inspection pré-achat, et pas seulement d'un simple coup d'œil visuel lors de la visite de l'appareil.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Examen visuel des jambes, ferrures et points de fixation à la recherche de corrosion, fissures ou déformations.</span></li>
+  <li><i data-icon="check"></i><span>Vérification de la pression et de l'absence de fuite sur les amortisseurs oléopneumatiques.</span></li>
+  <li><i data-icon="check"></i><span>Contrôle de l'état et de l'usure des pneus, des freins et des disques.</span></li>
+  <li><i data-icon="check"></i><span>Test de rétraction et d'extension pour un train rétractable, idéalement sur vérin ou en vol d'essai avec un mécanicien agréé à bord.</span></li>
+  <li><i data-icon="check"></i><span>Lecture attentive du carnet de maintenance pour identifier toute intervention passée sur le train, un atterrissage dur signalé, ou une consigne de navigabilité applicable.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez toujours à votre mécanicien indépendant d'inclure explicitement le train d'atterrissage dans le périmètre de l'inspection pré-achat ; ce n'est pas systématique si la demande n'est pas formulée clairement.</div></div>
+
+<h2 id="budget">Budget : coûts de remise en état et d'entretien</h2>
+<p>Le coût d'intervention sur un train d'atterrissage varie fortement selon la nature du défaut. Un remplacement de pneus ou de garnitures de frein reste une dépense d'entretien courant, modeste en comparaison du prix de l'appareil. En revanche, la révision d'une jambe oléopneumatique, le remplacement d'un vérin de rétraction ou une réparation structurelle liée à une corrosion avancée peuvent représenter une dépense significative, parfois comparable à une intervention moteur mineure.</p>
+<p>Avant de vous engager sur un appareil, demandez un devis indicatif à un atelier agréé pour toute anomalie constatée lors de l'inspection : cela permet de chiffrer précisément votre marge de négociation.</p>
+
+<h2 id="reglementation">Réglementation et consignes de navigabilité</h2>
+<p>Comme pour le moteur ou la cellule, le train d'atterrissage peut être concerné par des consignes de navigabilité (CN / AD) spécifiques à certains types d'appareils, imposant des inspections périodiques ou des limites de potentiel sur certaines pièces. Avant l'achat, demandez au vendeur la liste complète des consignes applicables à l'appareil et leur statut de mise en conformité ; en cas de doute, votre mécanicien pourra consulter les bases de données du constructeur et de l'autorité de navigabilité compétente.</p>
+
+<h2 id="revente">Impact sur la revente</h2>
+<p>Un train d'atterrissage bien entretenu, avec un historique documenté et sans incident signalé, est un argument de revente solide : les acheteurs potentiels, ou leurs mécaniciens, y prêtent une attention particulière. À l'inverse, un atterrissage dur non documenté, une corrosion traitée tardivement ou un système de rétraction capricieux peuvent faire chuter sensiblement la valeur perçue de l'appareil, même si le moteur et l'avionique sont impeccables.</p>
+<p>Conserver toutes les factures et rapports d'intervention relatifs au train est donc un investissement direct dans la valeur de revente future de l'appareil.</p>
+
+<h2 id="faq">Questions fréquentes</h2>
+<h3>Quelles sont les pannes de train d'atterrissage les plus fréquentes ?</h3>
+<p>Les plus fréquentes sont la corrosion des jambes et des ferrures, l'usure des amortisseurs (fuite d'huile, perte de pression d'azote), l'usure des freins et des pneus, le jeu excessif dans les articulations et, sur les trains rétractables, des pannes électriques ou hydrauliques du système de rétraction.</p>
+<h3>Comment savoir si le train d'atterrissage d'un avion d'occasion est en bon état ?</h3>
+<p>Il faut inspecter visuellement les jambes, amortisseurs, pneus et freins, consulter le carnet de maintenance pour l'historique des interventions sur le train, et faire réaliser un test de rétraction/extension (pour un train rétractable) par un mécanicien agréé lors de l'inspection pré-achat.</p>
+<h3>Un train d'atterrissage rétractable coûte-t-il plus cher à l'entretien qu'un train fixe ?</h3>
+<p>Oui, en général. Un train rétractable ajoute des composants mécaniques, électriques ou hydrauliques (vérins, câbles, capteurs de position, parfois une pompe hydraulique) qui augmentent le nombre de points de défaillance potentiels et le coût des visites périodiques par rapport à un train fixe.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="pieges-achat-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="alert-triangle"></i></span><span class="eyebrow">Guide acheteur</span><strong>Les pièges à éviter lors de l'achat d'un avion d'occasion</strong><p>Les erreurs les plus courantes et comment les éviter pour un achat serein.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Guide acheteur</span><strong>Le coût d'entretien d'un avion léger</strong><p>Budget annuel réaliste pour l'entretien d'un avion léger : visites, pièces, imprévus.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261007a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

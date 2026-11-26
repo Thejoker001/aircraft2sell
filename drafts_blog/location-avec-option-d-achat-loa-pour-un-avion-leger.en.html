@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Lease-to-own (hire purchase with a purchase option) for a light aircraft: how it works, benefits, contract pitfalls and comparison with a classic lease.">
+<meta property="og:title" content="Lease-to-own financing for a light aircraft | Aircraft2Sell">
+<meta property="og:description" content="Lease-to-own (hire purchase with a purchase option) for a light aircraft: how it works, benefits, contract pitfalls and comparison with a classic lease.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/location-avec-option-d-achat-loa-pour-un-avion-leger.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/location-avec-option-d-achat-loa-pour-un-avion-leger.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/location-avec-option-d-achat-loa-pour-un-avion-leger.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/location-avec-option-d-achat-loa-pour-un-avion-leger.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/location-avec-option-d-achat-loa-pour-un-avion-leger.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Lease-to-own financing for a light aircraft | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Lease-to-own financing for a light aircraft", "description": "Lease-to-own (hire purchase with a purchase option) for a light aircraft: how it works, benefits, contract pitfalls and comparison with a classic lease.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/location-avec-option-d-achat-loa-pour-un-avion-leger.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Lease-to-own financing for a light aircraft", "item": "https://aircraft2sell.eu/en/location-avec-option-d-achat-loa-pour-un-avion-leger.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Lease-to-own light aircraft</span></nav>
+    <span class="eyebrow">Topic guide</span>
+    <h1>Lease-to-own financing for a light aircraft</h1>
+    <p>How lease-to-own financing works for light aircraft: the financial structure, benefits, contract pitfalls and how it compares with other financing options.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#definition">What lease-to-own means for a light aircraft</a></li><li><a href="#fonctionnement">How the contract actually works</a></li><li><a href="#avantages">The benefits of lease-to-own for a buyer</a></li><li><a href="#pieges">Contract pitfalls to watch for</a></li><li><a href="#comparaison">Lease-to-own, a classic loan and a straight lease compared</a></li><li><a href="#qui">Which buyer profile does lease-to-own suit</a></li><li><a href="#lever">Exercising the purchase option, or not, at the end of the contract</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">What lease-to-own means for a light aircraft</h2>
+<p>Lease-to-own (hire purchase with a purchase option, known in France as location avec option d'achat or LOA) is a financing structure already familiar in the car market that is starting to spread to light aircraft acquisition. The principle: a finance company or specialised lessor buys the aircraft and rents it to you for a fixed term in exchange for monthly or quarterly payments. At the end of the contract, you have an option — not an obligation — to buy the aircraft for an amount fixed at signing, known as the residual value.</p>
+<p>This differs from a classic finance lease on one key point: lease-to-own emphasises the freedom of choice at the end of the contract. You can exercise the purchase option, return the aircraft, or in some contracts replace it with another model if the agreement explicitly provides for that.</p>
+
+<h2 id="fonctionnement">How the contract actually works</h2>
+<p>In practice, financing a light aircraft through lease-to-own follows a structure fairly close to what you see in the car market, with a few aviation-specific particularities. An initial down payment is usually required, often higher than for a road vehicle given the unit value of aircraft and the risk perceived by lenders in this niche market.</p>
+<p>The rental payments are calculated based on the aircraft's price, the length of the contract, the applied rate and the residual value fixed in advance. The higher that residual value, the lower the monthly payments, but the larger the amount due if you exercise the option at the end of the contract.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Down payment</strong> — often between 15 and 30% of the aircraft's value depending on the lender and the borrower's profile.</span></li>
+  <li><i data-icon="check"></i><span><strong>Contract length</strong> — generally 3 to 7 years for a light aircraft, adjusted according to the age of the financed aircraft.</span></li>
+  <li><i data-icon="check"></i><span><strong>Residual value</strong> — fixed contractually from the start, it determines the amount of the final purchase option.</span></li>
+  <li><i data-icon="check"></i><span><strong>Maintenance and insurance</strong> — remain the lessee's responsibility throughout the contract, just as for a conventional owner.</span></li>
+</ul>
+
+<h2 id="avantages">The benefits of lease-to-own for a buyer</h2>
+<p>The main appeal of lease-to-own is the flexibility it offers compared to a classic loan-financed purchase. It gives access to an aircraft without immediately tying up the full capital needed to buy it, while keeping the option not to commit permanently to owning the aircraft.</p>
+<p>For a pilot still unsure which type of aircraft will best suit their long-term use, or who wants to try a category of aircraft before committing long term, lease-to-own offers an intermediate solution between simple rental and outright purchase. It can also be attractive to a business that wants to preserve its borrowing capacity for other investments.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Payments made under a lease-to-own agreement generally do not build equity in the aircraft: if you do not exercise the option, you do not recover the value of the payments already made, except in certain specific structures that include a partial buy-back mechanism.</div></div>
+
+<h2 id="pieges">Contract pitfalls to watch for</h2>
+<p>The lease-to-own market for light aircraft remains far less standardised than the car market, which makes a careful reading of the contract essential before signing. Several points deserve particular attention, since they can turn an apparently attractive structure into a costly arrangement.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Penalty clauses for early return or termination before the agreed term.</span></li>
+  <li><i data-icon="check"></i><span>The exact split of responsibility for maintenance, major engine overhaul and replacement of life-limited parts.</span></li>
+  <li><i data-icon="check"></i><span>An annual flight-hour cap beyond which penalties or additional payments may apply.</span></li>
+  <li><i data-icon="check"></i><span>The precise conditions for returning the aircraft at the end of the contract (required technical condition, up-to-date logbook).</span></li>
+  <li><i data-icon="check"></i><span>How the residual value is calculated and whether it can be renegotiated during the contract.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — Always have the contract reviewed by an aviation finance professional or a specialised lawyer before signing: some arrangements marketed as lease-to-own are in fact plain finance leases with no real advantage for the borrower.</div></div>
+
+<h2 id="comparaison">Lease-to-own, a classic loan and a straight lease compared</h2>
+<p>A classic loan makes the buyer the owner of the aircraft from the moment of signing, with the asset potentially pledged as loan security. Lease-to-own, by contrast, keeps legal ownership of the aircraft with the finance company until the purchase option is actually exercised, which has implications for registration and sometimes for the applicable tax treatment.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Classic loan</th><th>Lease-to-own</th><th>Finance lease</th></tr></thead>
+<tbody>
+<tr><td>Ownership during the contract</td><td>Buyer, from signing</td><td>Finance company</td><td>Finance company</td></tr>
+<tr><td>Final commitment</td><td>None, already owner</td><td>Optional, no obligation</td><td>Often a buy-back obligation</td></tr>
+<tr><td>Down payment</td><td>Varies by lender</td><td>Generally required</td><td>Varies by contract</td></tr>
+<tr><td>Flexibility at the end</td><td>None, asset already owned</td><td>High, free choice to exercise or not</td><td>More limited, terms fixed in the contract</td></tr>
+</tbody></table></div>
+<p>The choice between these three structures largely depends on your intended time horizon, your tax situation and your ability or willingness to commit to permanent ownership of the aircraft from the outset.</p>
+
+<h2 id="qui">Which buyer profile does lease-to-own suit</h2>
+<p>Lease-to-own primarily suits buyers who want to keep room to manoeuvre: a pilot transitioning between two categories of aircraft, a business that prefers to spread out its cash flow, or a buyer trying out a model before committing long term. It is less suited to a buyer already certain of their choice and eager to become an owner immediately without a financial intermediary.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>A pilot who wants to try a specific model for several years before deciding on a final purchase.</span></li>
+  <li><i data-icon="check"></i><span>A business or club that prefers to preserve its borrowing capacity for other projects.</span></li>
+  <li><i data-icon="check"></i><span>A buyer who anticipates a change in their needs (moving to a higher-performance aircraft) in the medium term.</span></li>
+</ul>
+
+<h2 id="lever">Exercising the purchase option, or not, at the end of the contract</h2>
+<p>As the deadline approaches, three options are generally available: exercise the purchase option by paying the residual value set out in the contract to become the owner, return the aircraft to the finance company at no extra cost if its technical condition meets the agreed requirements, or in some contracts, trade the aircraft for another model to roll into a new lease-to-own agreement.</p>
+<p>The decision should be based on a comparison between the residual value to be paid and the aircraft's actual market value at that date, as well as your usage needs at that point in time. A well-maintained aircraft with significant remaining engine potential often justifies exercising the option if the residual value stays below market price.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Get the aircraft's market value appraised a few months before the contract's deadline, so you can negotiate the purchase option, or consider returning the aircraft, with full knowledge if the market has moved against you.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Compare financing options</h3>
+            <p>Browse verified listings on Aircraft2Sell to refine your budget before choosing a financing method.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="comment-financer-avion-leger.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Financing</span><strong>How to finance the purchase of a light aircraft in Europe</strong><p>Complete guide to financing options for buying a light aircraft: bank loan, finance lease, leasing, private financing between individuals.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="louer-ou-acheter-avion.html" class="card"><span class="icon-box"><i data-icon="scale"></i></span><span class="eyebrow">Buyer's guide</span><strong>Renting or buying an aircraft: which to choose</strong><p>Renting an aircraft by the hour or becoming an owner: a data-driven comparison based on your annual flight hours to make the right choice.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="copropriete-avion-guide.html" class="card"><span class="icon-box"><i data-icon="users"></i></span><span class="eyebrow">Buyer's guide</span><strong>Aircraft Co-Ownership: Cooperative Ownership Options Explained</strong><p>Aircraft cooperative ownership and co-ownership compared: the ownership options that can significantly reduce the cost of owning an aircraft, benefits, precautions and legal structure to know.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

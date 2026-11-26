@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Beechcraft Sierra et Sundowner d'occasion : guide d'achat complet. Différences techniques, budget, points de vigilance à l'inspection, entretien et revente.">
+<meta name="keywords" content="Beechcraft Sundowner occasion, Beechcraft Sierra occasion, Musketeer occasion, acheter avion quadriplace occasion, Beechcraft C23 C24R">
+<meta property="og:title" content="Beechcraft Sierra et Sundowner d'occasion : guide d'achat | Aircraft2Sell">
+<meta property="og:description" content="Beechcraft Sierra et Sundowner d'occasion : guide d'achat complet. Différences techniques, budget, points de vigilance à l'inspection, entretien et revente.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/beechcraft-sierra-sundowner-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/beechcraft-sierra-sundowner-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/beechcraft-sierra-sundowner-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/beechcraft-sierra-sundowner-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/beechcraft-sierra-sundowner-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Beechcraft Sierra et Sundowner d'occasion : guide d'achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Beechcraft Sierra et Sundowner d'occasion : guide d'achat", "description": "Beechcraft Sierra et Sundowner d'occasion : guide d'achat complet. Différences techniques, budget, points de vigilance à l'inspection, entretien et revente.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/beechcraft-sierra-sundowner-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Beechcraft Sierra et Sundowner d'occasion : guide d'achat", "item": "https://aircraft2sell.eu/beechcraft-sierra-sundowner-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Beechcraft Sierra et Sundowner d'occasion</span></nav>
+    <span class="eyebrow">Guide modèle</span>
+    <h1>Beechcraft Sierra et Sundowner d'occasion : guide d'achat</h1>
+    <p>Différences techniques entre le Sierra à train rentrant et le Sundowner à train fixe, budget à prévoir, points de vigilance à l'inspection et perspectives de revente pour acheter l'un de ces quadriplaces Beechcraft en toute connaissance de cause.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#cousins">Deux cousins de la famille Beechcraft Musketeer</a></li><li><a href="#differences">Sierra ou Sundowner : quelles différences techniques</a></li><li><a href="#budget">Quel budget prévoir à l'achat</a></li><li><a href="#inspection">Les points à vérifier avant d'acheter</a></li><li><a href="#train">Le train rétractable du Sierra : un point d'attention spécifique</a></li><li><a href="#entretien">Entretien et coûts d'exploitation</a></li><li><a href="#revente">Revente et marché de l'occasion</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="cousins">Deux cousins de la famille Beechcraft Musketeer</h2>
+<p>Le Beechcraft Sundowner (modèle C23) et le Beechcraft Sierra (modèle C24R puis A24R) sont deux descendants de la famille Musketeer, lancée par Beechcraft dans les années 1960 et déclinée en plusieurs versions jusqu'au début des années 1980. Tous deux sont des avions quadriplaces bas-aile, construits en aluminium, conçus pour répondre à des usages très proches : formation avancée, voyage familial court et moyen courrier, et pratique régulière en club ou en propriété privée.</p>
+<p>Les deux modèles partagent la même cellule de base et la même philosophie de pilotage, réputée stable et prévisible, ce qui en fait des avions appréciés des pilotes en progression comme des propriétaires recherchant un quadriplace simple à entretenir. Leur point de différenciation principal se situe au niveau du train d'atterrissage et de la motorisation, ce qui change sensiblement le profil d'usage, le budget d'entretien et le prix d'occasion.</p>
+<p>Sur le marché européen, le parc de Sundowner et de Sierra reste nettement plus restreint que celui des Cessna 172 ou Piper PA-28 de la même époque. Cette rareté relative se traduit par un choix d'annonces plus limité et une recherche parfois plus longue, mais aussi par des prix d'occasion souvent plus attractifs pour un niveau d'équipement comparable.</p>
+
+<h2 id="differences">Sierra ou Sundowner : quelles différences techniques</h2>
+<p>Le Sundowner est équipé d'un train d'atterrissage fixe et d'un moteur Lycoming à hélice à pas fixe, ce qui en fait l'option la plus simple mécaniquement de la gamme. Cette simplicité se traduit par un entretien courant plus prévisible et des coûts de fonctionnement généralement inférieurs, au prix d'une vitesse de croisière plus modeste.</p>
+<p>Le Sierra, de son côté, reprend une cellule proche mais ajoute un train d'atterrissage rétractable et un moteur plus puissant associé à une hélice à pas variable. Ce surcroît de complexité mécanique se traduit par une vitesse de croisière plus élevée et de meilleures performances générales, mais aussi par un entretien plus exigeant et des coûts de possession plus élevés, notamment liés à la maintenance du train rétractable.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Sundowner</th><th>Sierra</th></tr></thead>
+<tbody>
+<tr><td>Train d'atterrissage</td><td>Fixe</td><td>Rétractable</td></tr>
+<tr><td>Hélice</td><td>Pas fixe</td><td>Pas variable</td></tr>
+<tr><td>Performances</td><td>Croisière plus modeste</td><td>Croisière plus rapide</td></tr>
+<tr><td>Complexité d'entretien</td><td>Plus simple</td><td>Plus exigeante</td></tr>
+<tr><td>Usage typique</td><td>École, tourisme local</td><td>Voyage, performance</td></tr>
+</tbody></table></div>
+<p>Le choix entre les deux dépend avant tout de l'usage prévu : un Sundowner conviendra très bien à une pratique régulière de proximité ou à une école de pilotage recherchant la simplicité, tandis qu'un Sierra séduira davantage un propriétaire souhaitant voyager plus loin et plus vite, en acceptant la contrepartie d'un entretien un peu plus technique.</p>
+
+<h2 id="budget">Quel budget prévoir à l'achat</h2>
+<p>Le prix d'un Sundowner ou d'un Sierra d'occasion dépend avant tout de l'âge de l'appareil, des heures cellule et moteur accumulées, du potentiel restant avant la prochaine grande visite moteur, de l'état général de la cellule aluminium et du niveau d'équipement avionique. Pour un Sierra, l'état documenté du train rétractable et de l'hélice à pas variable pèse également fortement sur la valeur de revente.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Impact sur le prix</th></tr></thead>
+<tbody>
+<tr><td>Heures moteur restantes</td><td>Un moteur proche de sa limite de révision pèse fortement sur le prix</td></tr>
+<tr><td>État de la cellule aluminium</td><td>Une structure sans trace de corrosion valorise nettement l'appareil</td></tr>
+<tr><td>Avionique installée</td><td>Un équipement à jour facilite la revente et justifie un prix plus élevé</td></tr>
+<tr><td>Train et hélice (Sierra)</td><td>Un historique documenté du train rétractable rassure l'acheteur</td></tr>
+<tr><td>Historique d'entretien</td><td>Un carnet d'entretien complet et une maintenance suivie rassurent l'acheteur</td></tr>
+</tbody></table></div>
+<p>Au-delà du prix d'achat, il faut intégrer dans son budget les frais annexes : inspection pré-achat par un mécanicien indépendant qualifié sur le type, frais d'immatriculation et de transfert, assurance, et éventuellement une remise à niveau de l'avionique si l'appareil le nécessite. Le parc restreint de ces modèles en Europe peut aussi obliger à prévoir un délai supplémentaire pour l'importation de certaines pièces détachées.</p>
+
+<h2 id="inspection">Les points à vérifier avant d'acheter</h2>
+<p>Comme pour tout avion d'occasion, une inspection pré-achat menée par un mécanicien indépendant qualifié sur le type est indispensable avant de finaliser une transaction. Pour un Sundowner ou un Sierra, certains points méritent une attention particulière.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>État de la cellule aluminium : rechercher d'éventuelles traces de corrosion, en particulier dans les zones d'accumulation d'humidité et autour des longerons.</span></li>
+  <li><i data-icon="check"></i><span>Historique complet du moteur : heures écoulées depuis la dernière grande visite (SMOH), respect du programme d'entretien constructeur, traçabilité des pièces changées.</span></li>
+  <li><i data-icon="check"></i><span>Carnet d'entretien et dossier technique complets, sans zone d'ombre sur l'historique de l'appareil ni rupture chronologique.</span></li>
+  <li><i data-icon="check"></i><span>État et mises à jour de l'avionique, ainsi que la conformité aux obligations réglementaires en vigueur.</span></li>
+  <li><i data-icon="check"></i><span>Validité du certificat de navigabilité et des documents associés, à vérifier avec le vendeur avant toute négociation.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Ne jamais se contenter des déclarations du vendeur sur l'état général : un rapport d'inspection indépendant écrit reste la meilleure protection contre une mauvaise surprise après l'achat, en particulier sur un modèle au parc restreint où les pièces détachées peuvent être plus longues à obtenir.</div></div>
+
+<h2 id="train">Le train rétractable du Sierra : un point d'attention spécifique</h2>
+<p>Le train rétractable du Sierra est l'élément qui distingue le plus nettement ce modèle du Sundowner, et c'est aussi le point qui mérite la vérification la plus rigoureuse avant l'achat. Il convient de faire réaliser plusieurs cycles complets de sortie et de rentrée du train en présence d'un mécanicien qualifié, afin de vérifier l'absence de fuite hydraulique, le bon fonctionnement des interrupteurs de sécurité et l'état général des pneus et des jambes de train.</p>
+<p>Comme pour toute mécanique rétractable sur un appareil au parc restreint, la disponibilité de certaines pièces détachées spécifiques au train et à l'hélice à pas variable mérite d'être vérifiée en amont de l'achat, idéalement auprès d'un atelier agréé habitué au type. Un entretien bien documenté de ce système est un argument de poids pour rassurer un futur acheteur lors d'une revente.</p>
+
+<h2 id="entretien">Entretien et coûts d'exploitation</h2>
+<p>Le coût d'exploitation d'un Sundowner reste comparable à celui des autres quadriplaces simples de sa catégorie, avec un entretien courant prévisible grâce à l'absence de train rétractable et d'hélice à pas variable. Le Sierra, plus complexe mécaniquement, implique généralement un budget d'entretien un peu plus élevé, lié notamment à la maintenance périodique du train et de l'hélice.</p>
+<p>Pour les deux modèles, la disponibilité d'un mécanicien compétent sur le type peut être plus limitée en Europe que pour des modèles plus répandus comme le Cessna 172 ou le Piper PA-28, ce qui justifie d'anticiper ce point avant l'achat, notamment en identifiant un atelier agréé à proximité de sa base d'exploitation future.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez systématiquement les trois dernières factures de maintenance avant de faire une offre : elles donnent une image fidèle du sérieux de l'entretien passé et de la disponibilité réelle des pièces pour ce type d'appareil.</div></div>
+
+<h2 id="revente">Revente et marché de l'occasion</h2>
+<p>Le marché de l'occasion du Sundowner et du Sierra reste un marché de niche en Europe, porté par une base de passionnés et de clubs qui apprécient la robustesse et la simplicité de pilotage de ces quadriplaces. Un appareil bien entretenu, avec un carnet d'entretien transparent et une cellule exempte de corrosion, se revend généralement plus facilement et dans de meilleures conditions qu'un appareil dont le dossier technique comporte des zones d'ombre.</p>
+<p>Comparer plusieurs annonces de modèles similaires reste la meilleure façon d'évaluer un juste prix, aussi bien pour acheter que pour préparer une future revente. Les écarts de prix entre deux appareils du même millésime s'expliquent presque toujours par les heures moteur restantes, l'état de la cellule et, pour un Sierra, la qualité documentée de l'entretien du train rétractable.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Beechcraft Sierra ou Sundowner</h3>
+            <p>Comparez les annonces de Beechcraft Sierra et Sundowner d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cessna 172 d'occasion : guide d'achat complet</strong><p>Budget, points de vigilance et entretien pour l'avion d'entraînement le plus produit au monde.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="piper-pa28-cherokee-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Piper PA-28 Cherokee : ce qu'il faut savoir avant d'acheter</strong><p>Les points clés pour bien choisir et budgéter l'achat d'un PA-28 d'occasion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

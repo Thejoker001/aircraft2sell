@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Garantie constructeur sur un avion d'occasion : ce qui est couvert, les exclusions courantes et comment vérifier son transfert au nouvel acquéreur.">
+<meta property="og:title" content="Garantie constructeur sur un avion d'occasion : ce qui est couvert | Aircraft2Sell">
+<meta property="og:description" content="Garantie constructeur sur un avion d'occasion : ce qui est couvert, les exclusions courantes et comment vérifier son transfert au nouvel acquéreur.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/garantie-constructeur-sur-un-avion-d-occasion-ce-qui-est-couvert.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/garantie-constructeur-sur-un-avion-d-occasion-ce-qui-est-couvert.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/garantie-constructeur-sur-un-avion-d-occasion-ce-qui-est-couvert.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/garantie-constructeur-sur-un-avion-d-occasion-ce-qui-est-couvert.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/garantie-constructeur-sur-un-avion-d-occasion-ce-qui-est-couvert.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Garantie constructeur sur un avion d'occasion : ce qui est couvert | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Garantie constructeur sur un avion d'occasion : ce qui est couvert", "description": "Garantie constructeur sur un avion d'occasion : ce qui est couvert, les exclusions courantes et comment vérifier son transfert au nouvel acquéreur.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/garantie-constructeur-sur-un-avion-d-occasion-ce-qui-est-couvert.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Garantie constructeur sur un avion d'occasion : ce qui est couvert", "item": "https://aircraft2sell.eu/garantie-constructeur-sur-un-avion-d-occasion-ce-qui-est-couvert.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Garantie constructeur</span></nav>
+    <span class="eyebrow">Guide thématique</span>
+    <h1>Garantie constructeur sur un avion d'occasion : ce qui est couvert</h1>
+    <p>Pièces, moteur, cellule, avionique : comprendre précisément ce qui reste couvert par une garantie constructeur après la première vente, et comment vérifier son transfert avant d'acheter un avion d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#principe">Comprendre le principe de la garantie constructeur</a></li><li><a href="#couvert">Ce qui est généralement couvert</a></li><li><a href="#exclu">Ce qui est exclu dans la quasi-totalité des cas</a></li><li><a href="#transfert">Le transfert de garantie au deuxième propriétaire</a></li><li><a href="#verifier">Comment vérifier une garantie restante avant l'achat</a></li><li><a href="#garantie-vs-assurance">Garantie constructeur, garantie moteur et assurance : ne pas confondre</a></li><li><a href="#negociation">Garantie restante : un vrai levier de négociation</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="principe">Comprendre le principe de la garantie constructeur</h2>
+<p>Un avion neuf sort d'usine avec une garantie constructeur, au même titre qu'une voiture ou qu'un équipement industriel. Cette garantie couvre les défauts de fabrication ou de matériaux pendant une période définie par le constructeur, généralement exprimée en mois ou en heures de vol selon ce qui survient en premier. Sur le marché de l'occasion, la question centrale n'est pas de savoir si une garantie a existé, mais si elle est encore active et transférable au moment de l'achat.</p>
+<p>Chaque constructeur (Cessna, Cirrus, Diamond, Piper, Beechcraft, ou les motoristes comme Continental et Rotax) fixe ses propres durées et conditions. Il n'existe pas de standard européen unique : la seule source fiable est le contrat de garantie original et ses avenants, pas une estimation générale.</p>
+
+<h2 id="couvert">Ce qui est généralement couvert</h2>
+<p>Les contrats de garantie aéronautique distinguent le plus souvent plusieurs périmètres, chacun avec sa propre durée et ses propres conditions de validité.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Cellule et structure</strong> — défauts de fabrication sur le fuselage, les ailes et les éléments structuraux, sous réserve d'un usage normal de l'appareil.</span></li>
+  <li><i data-icon="check"></i><span><strong>Moteur</strong> — souvent couvert par une garantie distincte du motoriste (Continental, Lycoming, Rotax, Pratt & Whitney selon le modèle), avec ses propres seuils d'heures moteur.</span></li>
+  <li><i data-icon="check"></i><span><strong>Avionique et systèmes électroniques</strong> — généralement garantis par l'équipementier (Garmin, Avidyne...) plutôt que par le constructeur cellule, avec une durée souvent plus courte.</span></li>
+  <li><i data-icon="check"></i><span><strong>Train d'atterrissage et commandes de vol</strong> — défauts de pièces et d'assemblage, hors usure normale.</span></li>
+  <li><i data-icon="check"></i><span><strong>Hélice</strong> — couverte séparément par le fabricant d'hélice, avec sa propre durée.</span></li>
+</ul>
+<p>La règle générale est simple : chaque composant majeur peut avoir son propre garant, sa propre durée et ses propres exclusions. Un avion « encore sous garantie » n'est jamais garanti intégralement sur tous ses systèmes en même temps.</p>
+
+<h2 id="exclu">Ce qui est exclu dans la quasi-totalité des cas</h2>
+<p>Les exclusions sont presque toujours plus larges que la couverture elle-même. Avant de compter sur une garantie restante, il faut vérifier systématiquement les points suivants.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>L'usure normale des pièces consommables (pneus, freins, filtres, bougies) n'est jamais couverte.</span></li>
+  <li><i data-icon="check"></i><span>Les dommages liés à un atterrissage dur, une sortie de piste ou un choc à l'hélice sont exclus, même pendant la période de garantie.</span></li>
+  <li><i data-icon="check"></i><span>Un entretien non conforme au programme constructeur, ou réalisé par un atelier non agréé, peut annuler tout ou partie de la garantie.</span></li>
+  <li><i data-icon="check"></i><span>Les modifications ou équipements ajoutés après livraison (STC tiers, avionique de remplacement) sortent souvent du périmètre initial.</span></li>
+  <li><i data-icon="check"></i><span>Un usage commercial ou de location alors que l'appareil a été vendu pour un usage privé peut annuler la garantie selon les clauses du contrat.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne jamais présumer qu'une garantie « normalement en cours » reste valide : seul le document contractuel, lu en détail, indique les conditions exactes de maintien de la couverture.</div></div>
+
+<h2 id="transfert">Le transfert de garantie au deuxième propriétaire</h2>
+<p>Un avion d'occasion changeant de propriétaire pendant que sa garantie court encore ne bénéficie pas automatiquement d'un transfert identique à celui du premier acquéreur. Plusieurs constructeurs appliquent des règles spécifiques pour les reventes.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Certains contrats prévoient un transfert automatique à l'identique si l'appareil est revendu avant un certain nombre d'heures ou de mois.</span></li>
+  <li><i data-icon="check"></i><span>D'autres exigent une notification formelle au constructeur dans un délai précis après la vente, sous peine de perdre la couverture restante.</span></li>
+  <li><i data-icon="check"></i><span>Certains programmes facturent des frais administratifs de transfert, ou réduisent la durée de couverture transférée par rapport à la durée initiale.</span></li>
+  <li><i data-icon="check"></i><span>Les garanties moteur et hélice, souscrites séparément, suivent parfois des règles de transfert différentes de celle de la cellule.</span></li>
+</ul>
+<p>Il n'existe pas de règle universelle applicable à tous les constructeurs : chaque cas doit être vérifié auprès du constructeur ou du motoriste concerné, jamais supposé par analogie avec un autre modèle.</p>
+
+<h2 id="verifier">Comment vérifier une garantie restante avant l'achat</h2>
+<p>La vérification d'une garantie encore active doit faire partie du processus d'achat au même titre que l'inspection pré-achat technique. Elle repose sur des documents, pas sur la parole du vendeur.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Demandez une copie du certificat de garantie original et de tous les avenants, pas un résumé verbal.</span></li>
+  <li><i data-icon="check"></i><span>Vérifiez la correspondance exacte entre le numéro de série de l'appareil (ou du moteur) et celui mentionné sur le document de garantie.</span></li>
+  <li><i data-icon="check"></i><span>Contactez directement le constructeur ou son distributeur agréé avec le numéro de série pour confirmer le statut réel de la couverture — un document papier peut être obsolète.</span></li>
+  <li><i data-icon="check"></i><span>Croisez les heures moteur affichées au carnet avec le seuil d'heures prévu par la garantie : une garantie « en nombre de mois » peut rester active même si le seuil d'heures a changé de propriétaire.</span></li>
+  <li><i data-icon="check"></i><span>Vérifiez que l'historique d'entretien au carnet de maintenance respecte le programme exigé par le constructeur pour maintenir la garantie valide.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Intégrez la vérification de la garantie constructeur à l'inspection pré-achat confiée à votre mécanicien indépendant : il peut confirmer que l'entretien réalisé jusqu'ici respecte les conditions du contrat.</div></div>
+
+<h2 id="garantie-vs-assurance">Garantie constructeur, garantie moteur et assurance : ne pas confondre</h2>
+<p>Trois dispositifs distincts sont souvent confondus par les acheteurs débutants. La garantie constructeur couvre les défauts de fabrication pendant une période limitée après la production. Une garantie moteur prolongée (souvent proposée en option par le motoriste ou un tiers) couvre des pannes mécaniques au-delà de la garantie d'origine, contre une prime. L'assurance aéronef, elle, couvre les dommages accidentels, le vol ou la responsabilité civile, indépendamment de tout défaut de fabrication.</p>
+<p>Ces trois protections peuvent coexister sur le même appareil sans se recouper : une panne moteur causée par un défaut de fabrication relève de la garantie constructeur ou motoriste, tandis qu'une panne causée par un choc relève de l'assurance, et une usure prématurée hors garantie peut nécessiter une garantie prolongée souscrite séparément.</p>
+
+<h2 id="negociation">Garantie restante : un vrai levier de négociation</h2>
+<p>Un avion d'occasion encore couvert par une garantie constructeur transférable représente une valeur réelle, à condition de pouvoir la documenter et la faire valider par le constructeur avant la signature. Cette garantie restante doit être intégrée dans la négociation du prix, au même titre que l'état général et le potentiel moteur restant.</p>
+<p>À l'inverse, un vendeur qui ne peut produire aucun document de garantie, ou qui reste évasif sur le statut de la couverture, doit être considéré comme si l'appareil n'était plus couvert du tout — la charge de la preuve revient toujours à celui qui affirme que la garantie est encore active.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Assurance</span><strong>Assurer son aéronef en Europe : le guide complet</strong><p>Responsabilité civile, corps de l'appareil, garanties indispensables : comment bien assurer votre avion, hélicoptère ou ULM en Europe.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="documents-obligatoires-vente-avion.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Guide vendeur</span><strong>Les documents obligatoires pour vendre un avion en Europe</strong><p>La liste complète des documents à réunir pour une vente d'avion en toute sécurité juridique.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

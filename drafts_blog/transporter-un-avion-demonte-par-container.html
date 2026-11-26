@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Redirection automatique par langue navigateur
+   --------------------------------------------------------------------------
+   Sur une page FR (racine, sans /en/ ni /et/), si le navigateur du visiteur
+   est configuré en anglais ET qu'une version EN de cette page existe, on
+   redirige une seule fois vers /en/<page>. Le choix est mémorisé (localStorage)
+   pour ne plus jamais re-rediriger ensuite, y compris si le visiteur revient
+   volontairement en FR via le sélecteur de langue du footer.
+
+   Ne s'exécute PAS :
+   - sur les pages déjà sous /en/ ou /et/ (pas de boucle)
+   - si un choix de langue a déjà été fait une fois (a2s_lang_choice_made)
+   - si la page n'a pas d'équivalent EN (TRANSLATED_PAGES)
+   - pour les crawlers (voir isLikelyBot ci-dessous)
+
+   CORRECTIF 2026-09-21 : contrairement à l'hypothèse initiale, Googlebot rend
+   la page avec Chrome headless (navigator.language = "en-US" par défaut) et
+   EXÉCUTE ce script — confirmé via Search Console URL Inspection sur la page
+   d'accueil (userCanonical basculait sur /en/index.html malgré une visite de
+   l'URL FR). Impact : le "signal utilisateur" observé par Google pour la
+   page racine pouvait dériver vers la version anglaise. Un filtrage sur
+   navigator.webdriver + une liste d'UA de crawlers connus élimine ce risque
+   sans changer le comportement pour un vrai visiteur humain.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* Détection best-effort des crawlers : navigator.webdriver est vrai pour
+     Chrome headless (Googlebot, Bingbot, Puppeteer/Playwright...) ; on
+     couvre aussi les UA de crawlers connus au cas où webdriver ne serait pas
+     exposé. Un faux négatif reste sans danger (au pire, ancien comportement) ;
+     un faux positif ne fait que priver un humain de la redirection auto,
+     jamais casser la navigation (le sélecteur de langue manuel reste dispo). */
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  /* Déjà sur une version traduite : ne rien faire. */
+  if (/^\/(en|et)\//.test(path)) return;
+
+  /* Un choix a déjà été fait une fois (redirection automatique OU clic
+     manuel sur le sélecteur de langue) : ne plus jamais re-rediriger. */
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  /* Pages disponibles en anglais (même liste que nav.js/footer.js). */
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  /* Langue du navigateur (première préférence uniquement, en minuscules,
+     code ISO 2 lettres avant le tiret éventuel : "en-US" -> "en"). */
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  /* Marquer le choix comme fait AVANT de rediriger, pour que la page /en/
+     de destination (qui charge aussi ce script) ne redirige pas à son tour
+     ni ne déclenche de nouvelle vérification au retour arrière. */
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+/* Marque tout choix MANUEL de langue (clic sur un lien hreflang du nav/footer)
+   comme définitif, pour ne plus jamais déclencher la redirection automatique
+   ci-dessus — y compris si le visiteur revient volontairement en FR. Délégué
+   sur document pour capter les liens injectés dynamiquement par nav.js/footer.js. */
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Démonter, préparer et transporter un avion par container maritime ou routier : étapes, coûts, documents et précautions avant le remontage.">
+<meta property="og:title" content="Transporter un avion démonté par container | Aircraft2Sell">
+<meta property="og:description" content="Démonter, préparer et transporter un avion par container maritime ou routier : étapes, coûts, documents et précautions avant le remontage.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/transporter-un-avion-demonte-par-container.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/transporter-un-avion-demonte-par-container.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/transporter-un-avion-demonte-par-container.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/transporter-un-avion-demonte-par-container.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/transporter-un-avion-demonte-par-container.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Transporter un avion démonté par container | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Transporter un avion démonté par container", "description": "Démonter, préparer et transporter un avion par container maritime ou routier : étapes, coûts, documents et précautions avant le remontage.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/transporter-un-avion-demonte-par-container.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Transporter un avion démonté par container", "item": "https://aircraft2sell.eu/transporter-un-avion-demonte-par-container.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Transport par container</span></nav>
+    <span class="eyebrow">Guide logistique</span>
+    <h1>Transporter un avion démonté par container</h1>
+    <p>Démontage, préparation, chargement et transport d'un avion par container maritime ou routier : étapes, coûts, documents et précautions avant le remontage.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi transporter un avion par container</a></li><li><a href="#demontage">Le démontage : quels éléments et par qui</a></li><li><a href="#choix">Choisir le bon type de container</a></li><li><a href="#emballage">Emballage et protection des pièces</a></li><li><a href="#documents">Documents et formalités douanières</a></li><li><a href="#cout">Combien coûte ce type de transport</a></li><li><a href="#remontage">Le remontage et la remise en service</a></li><li><a href="#erreurs">Erreurs fréquentes à éviter</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi transporter un avion par container</h2>
+<p>Le transport par container, maritime ou routier, est souvent la solution la plus économique pour déplacer un avion léger sur une longue distance, en particulier entre continents ou vers des régions mal desservies par un convoyage en vol. Il évite aussi les contraintes d'un vol de convoyage (qualification du pilote sur le type, autorisations de survol, assurance spécifique) lorsque l'appareil n'est pas en état de voler ou que l'acheteur préfère ne pas prendre ce risque.</p>
+<p>Cette solution convient particulièrement aux avions légers à ailes démontables, aux ULM et à certains monomoteurs dont la cellule se prête à un démontage partiel sans intervention majeure sur la structure.</p>
+
+<h2 id="demontage">Le démontage : quels éléments et par qui</h2>
+<p>Le démontage doit être confié à un mécanicien agréé, idéalement celui qui a réalisé l'inspection pré-achat ou un atelier habitué à ce type d'opération. Un démontage mal exécuté peut endommager des éléments structuraux ou compliquer sérieusement le remontage à destination.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Ailes</strong> — démontage au niveau des points de fixation prévus par le constructeur, jamais en découpant ou en forçant une attache non conçue pour être démontée.</span></li>
+  <li><i data-icon="check"></i><span><strong>Empennage et gouvernes</strong> — repérage et photographie de chaque connexion avant débranchement (câbles de commande, tringles, connecteurs électriques).</span></li>
+  <li><i data-icon="check"></i><span><strong>Hélice</strong> — démontage séparé et protection spécifique, c'est une pièce fragile et coûteuse à réparer.</span></li>
+  <li><i data-icon="check"></i><span><strong>Train d'atterrissage</strong> — selon le gabarit du container, un démontage partiel peut être nécessaire pour respecter la hauteur disponible.</span></li>
+  <li><i data-icon="check"></i><span><strong>Documentation</strong> — chaque pièce démontée doit être consignée dans le carnet d'entretien avec la date et l'identité du mécanicien intervenant.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Toute intervention sur la cellule doit être enregistrée dans le carnet d'entretien de l'appareil. Un démontage non documenté complique la remise en service et peut être questionné lors d'une future revente.</div></div>
+
+<h2 id="choix">Choisir le bon type de container</h2>
+<p>Le choix du container dépend de l'envergure de l'avion démonté, de son poids et du budget disponible.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Container standard 20 ou 40 pieds</strong> — suffisant pour la plupart des avions légers monomoteurs une fois les ailes démontées, à condition de vérifier précisément les dimensions intérieures disponibles.</span></li>
+  <li><i data-icon="check"></i><span><strong>Container open-top ou flat-rack</strong> — utile lorsque la hauteur ou la largeur du fuselage dépasse les dimensions d'un container fermé standard.</span></li>
+  <li><i data-icon="check"></i><span><strong>Caisse sur mesure</strong> — pour les appareils aux dimensions atypiques, une entreprise spécialisée en emballage industriel peut construire une caisse ajustée, à transporter ensuite comme fret conventionnel ou en container flat-rack.</span></li>
+</ul>
+<p>Demandez systématiquement un plan de calage détaillé à l'entreprise de transport avant le chargement : il doit préciser comment la cellule, les ailes et les pièces détachées seront arrimées pour résister aux mouvements du transport maritime ou routier.</p>
+
+<h2 id="emballage">Emballage et protection des pièces</h2>
+<p>L'emballage est l'étape qui détermine si l'avion arrive intact ou endommagé, bien plus que le mode de transport lui-même.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Protection de chaque surface sensible (bords d'attaque, verrière, pales d'hélice) par housses rembourrées ou mousse spécifique, jamais un simple film plastique.</span></li>
+  <li><i data-icon="check"></i><span>Calage rigide de la cellule sur un berceau ou une structure de support empêchant tout mouvement pendant le transport, pas seulement des sangles.</span></li>
+  <li><i data-icon="check"></i><span>Protection anticorrosion renforcée pour un transport maritime : l'humidité saline est le principal risque sur ce trajet, même en container fermé.</span></li>
+  <li><i data-icon="check"></i><span>Étiquetage et numérotation de chaque caisse ou colis séparé, avec une liste de colisage détaillée remise au destinataire avant le départ.</span></li>
+  <li><i data-icon="check"></i><span>Photographies datées de l'état de chaque pièce avant fermeture du container, indispensables en cas de litige avec le transporteur ou l'assurance.</span></li>
+</ul>
+
+<h2 id="documents">Documents et formalités douanières</h2>
+<p>Un transport international par container implique des formalités douanières qui s'ajoutent aux documents habituels de l'appareil.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Facture commerciale ou acte de vente mentionnant la valeur déclarée de l'appareil, utilisée pour le calcul des droits de douane et de la TVA à l'arrivée.</span></li>
+  <li><i data-icon="check"></i><span>Document de transport (connaissement maritime ou lettre de transport routier/CMR) établi par le transporteur.</span></li>
+  <li><i data-icon="check"></i><span>Certificat de navigabilité et carnet d'entretien de l'appareil, qui doivent voyager avec le dossier administratif, pas forcément dans le container lui-même.</span></li>
+  <li><i data-icon="check"></i><span>Déclaration d'exportation et d'importation, dont les modalités précises varient fortement selon les pays concernés — à vérifier auprès d'un transitaire ou de l'autorité douanière compétente avant tout engagement.</span></li>
+</ul>
+<p>Pour un transport intracommunautaire, voir aussi notre <a href="importer-avion-usa-europe.html">guide de l'importation d'un avion depuis les États-Unis</a>, qui détaille les formalités douanières et la TVA applicables lors d'une entrée sur le territoire européen.</p>
+
+<h2 id="cout">Combien coûte ce type de transport</h2>
+<p>Le coût d'un transport par container varie fortement selon la distance, le type de container, le mode (maritime ou routier) et les frais annexes (démontage, emballage, douane, assurance transport). Demandez systématiquement un devis détaillé poste par poste à plusieurs transitaires spécialisés en matériel aéronautique plutôt qu'un transporteur généraliste, et faites-vous confirmer par écrit ce que le devis inclut ou non (manutention au départ et à l'arrivée, assurance ad valorem, frais de douane).</p>
+<p>Gardez à l'esprit que le poste démontage/remontage par un mécanicien agréé pèse souvent aussi lourd dans le budget total que le fret lui-même, surtout pour un trajet intercontinental court en distance mais long en coût de manutention portuaire. Comparer plusieurs devis complets, et pas seulement le prix du container, évite les mauvaises surprises une fois l'appareil déjà démonté et sans solution de repli.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Souscrivez une assurance transport spécifique couvrant la valeur déclarée de l'appareil pour toute la durée du trajet, du démontage jusqu'au remontage. L'assurance habituelle de l'aéronef ne couvre généralement pas ce risque pendant le transport.</div></div>
+
+<h2 id="remontage">Le remontage et la remise en service</h2>
+<p>Le remontage doit être réalisé par un mécanicien agréé, qui procède ensuite aux vérifications nécessaires avant toute remise en service : contrôle des fixations, des commandes de vol, des connexions électriques, et un essai moteur au sol avant un premier vol de contrôle. Comparez systématiquement les photographies prises avant le démontage à l'état des pièces à l'arrivée.</p>
+<p>Le remontage et sa documentation complète dans le carnet d'entretien sont une condition préalable à la remise en service de l'appareil, au même titre qu'une révision ou qu'une grande visite après une intervention majeure.</p>
+
+<h2 id="erreurs">Erreurs fréquentes à éviter</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Confier le démontage ou le remontage à une entreprise de transport sans qualification aéronautique, par souci d'économie.</span></li>
+  <li><i data-icon="check"></i><span>Négliger l'emballage anticorrosion pour un trajet maritime, même sur un parcours apparemment court.</span></li>
+  <li><i data-icon="check"></i><span>Oublier de faire assurer spécifiquement le transport, en supposant que l'assurance habituelle de l'appareil suffit.</span></li>
+  <li><i data-icon="check"></i><span>Ne pas documenter l'état des pièces avant le démontage, rendant toute réclamation ultérieure difficile à justifier.</span></li>
+</ul>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="importer-avion-usa-europe.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Guide acheteur</span><strong>Importer un avion des États-Unis vers l'Europe</strong><p>Certification EASA, transport transatlantique, douanes et TVA à l'importation.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="documents-obligatoires-vente-avion.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Guide acheteur</span><strong>Les documents obligatoires pour la vente d'un avion</strong><p>La liste complète des documents à réunir pour sécuriser une vente ou un achat d'aéronef en Europe.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="The light aviation market in the Balkans: a regional overview (Croatia, Greece, Serbia, Bulgaria, Romania...), prices, registration and buying pitfalls.">
+<meta property="og:title" content="The light aviation market in the Balkans: an overview | Aircraft2Sell">
+<meta property="og:description" content="The light aviation market in the Balkans: a regional overview (Croatia, Greece, Serbia, Bulgaria, Romania...), prices, registration and buying pitfalls.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/marche-aviation-legere-balkans.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/marche-aviation-legere-balkans.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/marche-aviation-legere-balkans.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/marche-aviation-legere-balkans.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/marche-aviation-legere-balkans.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>The light aviation market in the Balkans: an overview | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "The light aviation market in the Balkans: an overview", "description": "The light aviation market in the Balkans: a regional overview (Croatia, Greece, Serbia, Bulgaria, Romania...), prices, registration and buying pitfalls.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/marche-aviation-legere-balkans.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "The light aviation market in the Balkans: an overview", "item": "https://aircraft2sell.eu/en/marche-aviation-legere-balkans.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Balkans</span></nav>
+    <span class="eyebrow">Regional market</span>
+    <h1>The light aviation market in the Balkans: an overview</h1>
+    <p>Croatia, Greece, Serbia, Bulgaria, Romania, Slovenia: an overview of the light aviation market in the Balkans — prices, registration, taxation and points of caution for a cross-border purchase.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#panorama">A diverse regional market</a></li><li><a href="#pays-ue">Croatia, Greece, Bulgaria, Romania, Slovenia: the EU members</a></li><li><a href="#pays-hors-ue">Serbia, Bosnia, North Macedonia, Montenegro, Albania: outside the EU</a></li><li><a href="#prix">Price levels observed in the region</a></li><li><a href="#immatriculation">Registration and cross-border transfer</a></li><li><a href="#fiscalite">Taxation and VAT depending on the country's status</a></li><li><a href="#inspection">Pre-purchase inspection and documents to gather</a></li><li><a href="#pieges">Pitfalls of a cross-border purchase in the region</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="panorama">A diverse regional market</h2>
+<p>The Balkan region brings together countries with very different regulatory and economic situations: some have been members of the European Union for several years (Croatia, Greece, Bulgaria, Romania, Slovenia), while others remain outside the EU with bilateral agreements or their own national rules (Serbia, Bosnia and Herzegovina, North Macedonia, Montenegro, Albania, Kosovo). This diversity is directly reflected in the used light aviation market, with fleets, price levels and administrative procedures that vary noticeably from one country to another.</p>
+<p>The common thread remains a smaller fleet of light aircraft and microlights than in Western Europe, with a supply of touring single-engine aircraft (Cessna 172, Piper PA-28, Zlin, Socata) that is on average often older, as well as particularly developed gliding and microlight activity in some countries such as Serbia or Romania, a legacy of a long regional aeronautical tradition.</p>
+
+<h2 id="pays-ue">Croatia, Greece, Bulgaria, Romania, Slovenia: the EU members</h2>
+<p>For these countries, EU membership and the common EASA regulatory framework considerably simplify a cross-border purchase: airworthiness rules, pilot licensing and registration transfer between member states are harmonised, making it noticeably easier to acquire an aircraft registered in another EU country than importing one from a third country.</p>
+<p>Croatia and Greece also benefit from an active network of flying clubs linked to coastal and island air tourism, while Romania and Bulgaria retain an older fleet, partly inherited from the popular aviation of the communist era, now gradually being renewed with used Western models.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Always check with the competent civil aviation authority of each EU member country for exact procedures: even though harmonised at European level, certain local formalities (timelines, additional documents) remain specific to each national administration.</div></div>
+
+<h2 id="pays-hors-ue">Serbia, Bosnia, North Macedonia, Montenegro, Albania: outside the EU</h2>
+<p>For Balkan countries that are not EU members, a purchase or import involves procedures closer to those of a standard non-EU import: checking airworthiness status with the national authority, deregistration from the register of origin, then new registration under the rules specific to the destination country, which can differ noticeably from EASA standards.</p>
+<p>Serbia has a notable aeronautical tradition, with a fleet of light aircraft and gliders partly inherited from the former Yugoslavia, while the markets of Bosnia and Herzegovina, North Macedonia, Montenegro and Albania remain smaller, with a limited used supply often concentrated around a few main airfields.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point of caution</strong> — Before any purchase in a non-EU country in the region, have a local professional confirm the compatibility between the existing certificate of airworthiness and the national authority's requirements: mutual recognition procedures are not automatic outside the EASA framework.</div></div>
+
+<h2 id="prix">Price levels observed in the region</h2>
+<p>Prices in the Balkans are generally lower than those seen in Western Europe for a comparable aircraft, particularly for older light single-engine aircraft, which can be an opportunity for a buyer prepared to invest in an upgrade. Aircraft well equipped with recent avionics, however, remain sought after and trade at levels close to the European average.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Aircraft type</th><th>Indicative price range in the region</th></tr></thead>
+<tbody>
+<tr><td>Used microlight or glider</td><td>€8,000 to €45,000</td></tr>
+<tr><td>Older light single-engine (Zlin, early Cessna 172 generations)</td><td>€25,000 to €70,000</td></tr>
+<tr><td>Recent or well-equipped light single-engine</td><td>€70,000 to €150,000</td></tr>
+<tr><td>Light twin-engine</td><td>€120,000 to €300,000</td></tr>
+</tbody></table></div>
+<p>As everywhere in Europe, the price difference between two comparable aircraft is almost always explained by remaining engine potential, airframe condition and the quality of the avionics fitted, far more than by build year alone.</p>
+
+<h2 id="immatriculation">Registration and cross-border transfer</h2>
+<p>For a purchase within the European Union, the registration transfer follows the same principles as any intra-EU transfer: deregistration from the register of origin, then new registration with the destination country's authority, upon presentation of the bill of sale, the certificate of airworthiness and the insurance certificate.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Valid certificate of airworthiness</strong> — check the expiry date before signing; it determines the first flight under your name.</span></li>
+  <li><i data-icon="check"></i><span><strong>Bill of sale</strong> — dated, signed, stating the aircraft's serial number.</span></li>
+  <li><i data-icon="check"></i><span><strong>Liability insurance certificate</strong> — required before any use under the new registration.</span></li>
+</ul>
+<p>For a purchase in a non-EU country in the region, allow for longer timelines and reinforced checks on regulatory equivalences, particularly if the aircraft is to be subsequently operated in an EASA member country.</p>
+
+<h2 id="fiscalite">Taxation and VAT depending on the country's status</h2>
+<p>The tax situation varies depending on whether the country is an EU member or not. Within the EU, a sale between private individuals generally remains VAT-exempt, while a sale by a professional may be subject to it under national rules. For a purchase or resale involving a non-EU country in the region, customs duties and import VAT may apply when crossing the Union's customs border.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Have your tax situation confirmed before acquisition by an aviation law professional, particularly if the aircraft has already changed country of registration several times within the region.</div></div>
+
+<h2 id="inspection">Pre-purchase inspection and documents to gather</h2>
+<p>Regardless of the country, a pre-purchase inspection by a certified mechanic independent of the seller remains the best protection against unpleasant surprises. For an older aircraft, common in some countries of the region, particular attention should be paid to the complete history and the consistency of the logbook.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Complete logbook since first registration, with no chronological gaps.</span></li>
+  <li><i data-icon="check"></i><span>History of engine hours (SMOH) and declared major interventions.</span></li>
+  <li><i data-icon="check"></i><span>Compliance of the avionics with the requirements of the country where the aircraft will ultimately be operated.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Never finalise a purchase without having seen the original logbooks: for an older aircraft from the region, this is often the only reliable way to reconstruct a history sometimes fragmented by several changes of owner or country.</div></div>
+
+<h2 id="pieges">Pitfalls of a cross-border purchase in the region</h2>
+<p>The most common mistakes when buying in the Balkans involve not fully understanding the exact status of the country (EU or not), underestimating registration transfer timelines outside the EASA framework, and failing to verify the actual deregistration from the register of origin before any new registration. Neglecting to have technical documents written in the local language translated and authenticated is also a frequent source of delay.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Compare several listings from the region on Aircraft2Sell before committing, and always use a local professional to confirm the consistency between the listing and the regulations of the country of registration.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your aircraft in the Balkans</h3>
+            <p>Browse listings of light aircraft and microlights for sale in the region on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="acheter-avion-occasion-grece.html" class="card"><span class="icon-box"><i data-icon="map-pin"></i></span><span class="eyebrow">Buying</span><strong>Buying a used aircraft in Greece</strong><p>Market, prices, registration and taxation for buying a used light aircraft in Greece.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="acheter-avion-occasion-croatie.html" class="card"><span class="icon-box"><i data-icon="map-pin"></i></span><span class="eyebrow">Buying</span><strong>Buying a used aircraft in Croatia</strong><p>Market, prices, registration and taxation for buying a used light aircraft in Croatia.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Buying</span><strong>Certification and registration of an aircraft in Europe</strong><p>Procedures, choosing the country of registration, the file to prepare, timelines and costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

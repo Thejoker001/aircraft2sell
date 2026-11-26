@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Acheter un avion d'occasion en Lettonie ou en Estonie : marché, immatriculation, TVA, inspection pré-achat et comparatif pour choisir le bon pays balte.">
+<meta property="og:title" content="Acheter un avion d'occasion en Lettonie ou en Estonie : quel pays choisir | Aircraft2Sell">
+<meta property="og:description" content="Acheter un avion d'occasion en Lettonie ou en Estonie : marché, immatriculation, TVA, inspection pré-achat et comparatif pour choisir le bon pays balte.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/acheter-avion-occasion-lettonie-ou-estonie.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/acheter-avion-occasion-lettonie-ou-estonie.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-lettonie-ou-estonie.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-lettonie-ou-estonie.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-lettonie-ou-estonie.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Acheter un avion d'occasion en Lettonie ou en Estonie : quel pays choisir | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Acheter un avion d'occasion en Lettonie ou en Estonie : quel pays choisir", "description": "Acheter un avion d'occasion en Lettonie ou en Estonie : marché, immatriculation, TVA, inspection pré-achat et comparatif pour choisir le bon pays balte.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/acheter-avion-occasion-lettonie-ou-estonie.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Acheter un avion d'occasion en Lettonie ou en Estonie : quel pays choisir", "item": "https://aircraft2sell.eu/acheter-avion-occasion-lettonie-ou-estonie.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Lettonie ou Estonie</span></nav>
+    <span class="eyebrow">Achat</span>
+    <h1>Acheter un avion d'occasion en Lettonie ou en Estonie : quel pays choisir</h1>
+    <p>Marché, immatriculation, TVA, inspection pré-achat et pièges à éviter : comparatif complet entre la Lettonie et l'Estonie pour acheter un avion léger d'occasion dans la région balte.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi comparer la Lettonie et l'Estonie</a></li><li><a href="#marche-lettonie">Le marché letton de l'occasion</a></li><li><a href="#marche-estonie">Le marché estonien de l'occasion</a></li><li><a href="#immatriculation">Immatriculation : CAA en Lettonie, Transpordiamet en Estonie</a></li><li><a href="#tva">TVA et fiscalité</a></li><li><a href="#inspection">Inspection pré-achat et documents</a></li><li><a href="#verdict">Tableau comparatif et verdict</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi comparer la Lettonie et l'Estonie</h2>
+<p>La Lettonie et l'Estonie sont deux petits marchés d'aviation légère de la région balte, membres de l'Union européenne et de l'espace Schengen, qui appliquent les mêmes règles communes EASA pour la certification et l'immatriculation des aéronefs. Pour un acheteur qui envisage d'acquérir un avion d'occasion dans la zone balte, les deux pays présentent des points communs forts, mais aussi des différences pratiques qui méritent d'être comparées avant de se décider.</p>
+<p>Ce comparatif s'adresse aussi bien à un acheteur déjà basé localement qu'à un acheteur d'un autre pays européen qui envisage d'immatriculer son appareil en Lettonie ou en Estonie pour des raisons de coût ou de simplicité administrative. Les deux pays partagent une frontière, une histoire aéronautique proche héritée de la période soviétique puis de la reconstruction d'une aviation civile indépendante, et une taille de parc d'aéronefs légers relativement comparable à l'échelle européenne.</p>
+<p>Pour autant, un acheteur pressé de conclure ne doit pas supposer que les deux marchés se comportent de façon identique au quotidien : la disponibilité d'un mécanicien agréé sur un type précis, la rapidité de traitement d'un dossier d'immatriculation ou encore la facilité à trouver un atelier habitué à un modèle rare peuvent varier sensiblement d'un pays à l'autre, parfois plus qu'entre deux pays d'Europe de l'Ouest pourtant plus éloignés géographiquement.</p>
+
+<h2 id="marche-lettonie">Le marché letton de l'occasion</h2>
+<p>Le marché letton de l'aviation légère reste modeste en volume comparé aux grands marchés d'Europe de l'Ouest, mais actif autour de quelques aérodromes principaux et d'une communauté de pilotes propriétaires et d'aéroclubs. L'offre d'occasion se compose surtout de monomoteurs légers classiques (Cessna, Piper) et d'une proportion significative d'ULM et d'appareils expérimentaux, un segment particulièrement dynamique dans le pays.</p>
+<p>Les annonces locales sont moins nombreuses que dans les grands pays européens, ce qui peut limiter le choix pour un acheteur recherchant un modèle précis, mais ouvre aussi des opportunités de négociation sur des appareils restés plus longtemps sur le marché.</p>
+
+<h2 id="marche-estonie">Le marché estonien de l'occasion</h2>
+<p>L'Estonie partage une dynamique assez similaire à celle de la Lettonie, avec un marché de taille comparable centré sur quelques aérodromes bien équipés et une forte tradition d'aviation légère et de vol à voile. Le pays bénéficie d'une réputation de simplicité administrative, portée notamment par la dématérialisation poussée de nombreuses démarches publiques, ce qui profite aussi au secteur aéronautique.</p>
+<p>Comme en Lettonie, l'offre d'occasion reste limitée en volume, mais la proximité géographique et culturelle avec la Finlande et la Scandinavie facilite parfois l'accès à des annonces transfrontalières pour un acheteur prêt à élargir sa recherche à la région nordique-baltique.</p>
+
+<h2 id="immatriculation">Immatriculation : CAA en Lettonie, Transpordiamet en Estonie</h2>
+<p>En Lettonie, l'immatriculation des aéronefs relève de la <strong>Civil Aviation Agency of Latvia (CAA)</strong>, l'autorité de l'aviation civile du pays, sous préfixe <strong>YL-</strong>. En Estonie, cette mission est assurée par le <strong>Transpordiamet</strong> (l'Agence des transports estonienne, qui a repris les compétences de l'ancienne autorité de l'aviation civile estonienne), sous préfixe <strong>ES-</strong>. Dans les deux cas, le transfert d'immatriculation pour un appareil déjà basé dans l'Union européenne suit le schéma commun EASA : radiation dans le registre d'origine, puis constitution d'un dossier auprès de l'autorité du pays de destination.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Certificat de navigabilité et certificat de révision en cours de validité</strong> — indispensables avant toute nouvelle immatriculation, dans les deux pays.</span></li>
+  <li><i data-icon="check"></i><span><strong>Acte de vente et preuve de radiation du registre précédent</strong> — exigés pour tout appareil importé d'un autre État.</span></li>
+  <li><i data-icon="check"></i><span><strong>Attestation d'assurance responsabilité civile</strong> — requise avant la première utilisation sous la nouvelle immatriculation.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Les deux autorités traitent les dossiers dans des délais globalement comparables à ceux observés ailleurs en Europe pour un transfert intra-UE ; le délai réel dépend surtout de la complétude du dossier transmis par le vendeur et l'acheteur.</div></div>
+
+<h2 id="tva">TVA et fiscalité</h2>
+<p>La Lettonie et l'Estonie appliquent, comme tout État membre de l'Union européenne, le régime commun de TVA : une vente entre particuliers n'est généralement pas soumise à la TVA nationale, tandis qu'une vente réalisée par un professionnel ou une société peut y être assujettie, et un appareil importé depuis un pays hors UE reste soumis à la TVA à l'importation calculée sur sa valeur en douane. Les deux pays sont membres de la zone euro, ce qui simplifie les transactions en supprimant le risque de change pour un acheteur originaire d'un autre pays de la zone euro.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Faites toujours valider votre situation fiscale par un professionnel avant l'acquisition, en particulier si l'appareil a déjà changé plusieurs fois de pays d'immatriculation au sein de l'Union européenne.</div></div>
+
+<h2 id="inspection">Inspection pré-achat et documents</h2>
+<p>Dans les deux pays, une inspection pré-achat par un mécanicien agréé indépendant du vendeur reste la meilleure protection contre les mauvaises surprises, portant sur l'état de la cellule, la cohérence du carnet d'entretien et la conformité de l'avionique aux exigences européennes en vigueur. Le nombre d'ateliers de maintenance agréés étant plus limité qu'en Europe de l'Ouest, il peut être nécessaire d'anticiper les délais pour obtenir un rendez-vous, voire de faire venir un inspecteur depuis un pays voisin pour un appareil de type peu courant localement.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Carnets de cellule, moteur et hélice à jour, sans rupture chronologique.</span></li>
+  <li><i data-icon="check"></i><span>Historique des factures de maintenance des dernières années, en particulier pour un appareil ayant déjà changé de pays d'immatriculation.</span></li>
+  <li><i data-icon="check"></i><span>Disponibilité locale des pièces détachées pour le modèle concerné, un point à anticiper pour les appareils moins courants dans la région balte.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne finalisez jamais un achat sans avoir vu les carnets originaux et fait vérifier leur cohérence par un professionnel, quel que soit le pays d'immatriculation de l'appareil.</div></div>
+
+<h2 id="verdict">Tableau comparatif et verdict</h2>
+<p>Au-delà des formalités, le choix entre la Lettonie et l'Estonie dépend surtout du type d'appareil recherché, de la localisation géographique souhaitée et de la densité de l'offre disponible au moment de l'achat, plutôt que d'un avantage structurel marqué d'un pays sur l'autre.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Lettonie</th><th>Estonie</th></tr></thead>
+<tbody>
+<tr><td>Autorité de l'aviation civile</td><td>Civil Aviation Agency of Latvia (CAA)</td><td>Transpordiamet</td></tr>
+<tr><td>Préfixe d'immatriculation</td><td>YL-</td><td>ES-</td></tr>
+<tr><td>Type d'offre dominante</td><td>Monomoteurs légers, ULM, expérimentaux</td><td>Monomoteurs légers, planeurs, aviation de loisir</td></tr>
+<tr><td>Fiscalité</td><td>Régime TVA commun UE, zone euro</td><td>Régime TVA commun UE, zone euro</td></tr>
+<tr><td>Démarches administratives</td><td>Comparables à la moyenne européenne</td><td>Fortement dématérialisées</td></tr>
+</tbody></table></div>
+<p>En pratique, l'un et l'autre pays offrent un cadre réglementaire équivalent pour un achat d'avion d'occasion : le critère décisif reste la disponibilité de l'appareil recherché plutôt que la nationalité du registre. Comparer les annonces disponibles dans les deux pays, sans se limiter à un seul, reste la meilleure stratégie pour trouver le bon appareil au bon prix dans la région balte.</p>
+<p>Si vous recherchez un ULM ou un appareil expérimental, la Lettonie offre généralement un choix légèrement plus large. Si la simplicité des démarches administratives et la proximité avec la Scandinavie comptent davantage dans votre décision, l'Estonie peut présenter un léger avantage pratique. Dans les deux cas, prévoyez un budget de transport ou de convoyage de l'appareil jusqu'à votre base d'exploitation, un poste parfois sous-estimé par les acheteurs internationaux pour un achat dans cette région.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre avion dans la région balte</h3>
+            <p>Consultez les annonces vérifiées d'avions à vendre en Europe sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Achat</span><strong>Certification et immatriculation d'un aéronef en Europe</strong><p>Démarches, choix du pays d'immatriculation, dossier à constituer, délais et coûts.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="tva-fiscalite-achat-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="receipt"></i></span><span class="eyebrow">Fiscalité</span><strong>TVA et fiscalité à l'achat d'un aéronef en Europe</strong><p>Comprendre le régime de TVA applicable selon le pays et le statut du vendeur.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="acheter-avion-occasion-pologne.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Achat</span><strong>Acheter un avion d'occasion en Pologne : guide complet</strong><p>Marché, immatriculation, fiscalité et pièges à éviter pour acheter en Pologne.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Cessna 206 Stationair d'occasion : guide d'achat de ce monomoteur utilitaire. Versions, budget, points de vigilance à l'inspection, réglementation et revente.">
+<meta property="og:title" content="Cessna 206 Stationair d'occasion : guide d'achat | Aircraft2Sell">
+<meta property="og:description" content="Cessna 206 Stationair d'occasion : guide d'achat de ce monomoteur utilitaire. Versions, budget, points de vigilance à l'inspection, réglementation et revente.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/cessna-206-stationair-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/cessna-206-stationair-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/cessna-206-stationair-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/cessna-206-stationair-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/cessna-206-stationair-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Cessna 206 Stationair d'occasion : guide d'achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Cessna 206 Stationair d'occasion : guide d'achat", "description": "Cessna 206 Stationair d'occasion : guide d'achat de ce monomoteur utilitaire. Versions, budget, points de vigilance à l'inspection, réglementation et revente.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/cessna-206-stationair-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Cessna 206 Stationair d'occasion : guide d'achat", "item": "https://aircraft2sell.eu/cessna-206-stationair-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Cessna 206 Stationair</span></nav>
+    <span class="eyebrow">Guide modèle</span>
+    <h1>Cessna 206 Stationair d'occasion : guide d'achat</h1>
+    <p>Versions et dérivés, budget à prévoir, points de vigilance à l'inspection, réglementation spécifique et marché de la revente pour acheter un Cessna 206 Stationair d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Un monomoteur utilitaire taillé pour la polyvalence</a></li><li><a href="#versions">Les versions et dérivés à connaître</a></li><li><a href="#budget">Quel budget prévoir à l'achat</a></li><li><a href="#inspection">Les points à vérifier avant d'acheter</a></li><li><a href="#reglementation">Réglementation et usages spécifiques</a></li><li><a href="#entretien">Entretien et coûts d'exploitation</a></li><li><a href="#revente">Revente et marché de l'occasion</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Un monomoteur utilitaire taillé pour la polyvalence</h2>
+<p>Le Cessna 206 Stationair est un monomoteur à train fixe produit depuis les années 1960, conçu dès l'origine pour transporter du monde et du volume plutôt que pour la seule performance de croisière. Avec six places, une vaste soute accessible par de grandes portes cargo et une cellule robuste, il occupe depuis des décennies une place particulière sur le marché : celle de l'avion « qui travaille », apprécié aussi bien par les écoles de parachutisme, les opérateurs de brousse, les exploitants d'hydravions que par les particuliers cherchant un appareil familial capable d'emporter beaucoup de bagages sur des terrains sommaires.</p>
+<p>Sur le marché de l'occasion, cette polyvalence se traduit par une grande variété d'exemplaires : certains ont eu une vie exclusivement privée et soignée, d'autres ont été exploités intensivement en usage commercial ou en conditions difficiles (pistes non revêtues, flotteurs, largage de parachutistes). Comprendre le passé opérationnel d'un exemplaire précis est donc l'une des premières étapes avant toute visite.</p>
+
+<h2 id="versions">Les versions et dérivés à connaître</h2>
+<p>Le 206 a connu plusieurs évolutions au fil de sa production, avec des conséquences directes sur le prix et l'usage possible de l'appareil.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Versions normalement aspirées et versions turbocompressées (Turbo Stationair), ces dernières offrant de meilleures performances en altitude mais un moteur plus sollicité et généralement plus coûteux à l'entretien.</span></li>
+  <li><i data-icon="check"></i><span>Configuration cargo avec grande porte latérale, très recherchée pour le largage de parachutistes, le transport de matériel ou les missions utilitaires.</span></li>
+  <li><i data-icon="check"></i><span>Versions hydravion sur flotteurs, populaires en Scandinavie et dans les zones lacustres, qui demandent une qualification spécifique et une vigilance accrue sur la corrosion.</span></li>
+  <li><i data-icon="check"></i><span>Conversions turbine (type Soloy ou Supervan sur des cellules proches), moins courantes en Europe mais présentes sur le marché, qui changent radicalement le profil de maintenance et de valeur de l'appareil.</span></li>
+</ul>
+<p>Avant de comparer des annonces, il est donc essentiel de bien identifier la version exacte, les modifications STC installées (porte cargo, flotteurs, kit STOL, avionique) et leur documentation associée, car deux « Cessna 206 » peuvent avoir des profils d'usage et de valeur très différents.</p>
+
+<h2 id="budget">Quel budget prévoir à l'achat</h2>
+<p>Le prix d'un 206 d'occasion varie fortement selon l'année de construction, les heures cellule et moteur, la présence de modifications STC (porte cargo, flotteurs, turbocompresseur, kit STOL) et la qualité de l'avionique. Les exemplaires les plus anciens et les moins équipés se négocient à un niveau d'entrée relativement accessible pour un six places, tandis que les versions récentes, turbocompressées, équipées de flotteurs ou d'une avionique numérique à jour peuvent représenter un investissement nettement plus important.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Impact sur le prix</th></tr></thead>
+<tbody>
+<tr><td>Version (normalement aspirée ou turbo)</td><td>Le Turbo Stationair se négocie généralement plus cher à âge et heures équivalents</td></tr>
+<tr><td>Modifications STC (porte cargo, flotteurs, kit STOL)</td><td>Valorisent l'appareil si bien documentées, mais exigent une vérification de conformité</td></tr>
+<tr><td>Potentiel moteur restant</td><td>Un moteur proche de sa limite de révision pèse fortement sur le prix</td></tr>
+<tr><td>Historique d'exploitation</td><td>Un usage privé soigné est généralement valorisé par rapport à un usage commercial intensif</td></tr>
+</tbody></table></div>
+<p>Au-delà du prix d'achat, prévoyez le budget d'une inspection pré-achat approfondie, les frais d'immatriculation et de transfert, l'assurance — potentiellement plus élevée pour un usage hydravion ou largage de parachutistes — et une éventuelle remise à niveau de l'avionique ou de l'intérieur.</p>
+
+<h2 id="inspection">Les points à vérifier avant d'acheter</h2>
+<p>Au-delà des vérifications standards applicables à tout avion d'occasion, quelques points méritent une attention particulière sur un 206, compte tenu de son usage fréquent en conditions exigeantes.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Corrosion de la cellule, en particulier pour les exemplaires ayant opéré sur flotteurs ou en environnement humide/salin : examinez attentivement le plancher, les longerons et les fixations de train.</span></li>
+  <li><i data-icon="check"></i><span>État des charnières et de la structure de la grande porte cargo, zone de contrainte mécanique importante sur les exemplaires utilitaires ou de largage.</span></li>
+  <li><i data-icon="check"></i><span>Historique complet du moteur : heures écoulées depuis la dernière révision (SMOH), respect du programme d'entretien constructeur, traçabilité des pièces changées.</span></li>
+  <li><i data-icon="check"></i><span>Conformité et documentation des modifications STC installées (flotteurs, kit STOL, porte cargo, turbocompresseur) : chaque modification doit être tracée dans le dossier technique.</span></li>
+  <li><i data-icon="check"></i><span>État du plancher de soute et des points d'ancrage, souvent marqués par un usage fréquent de chargement/déchargement de matériel.</span></li>
+  <li><i data-icon="check"></i><span>Carnet de route et dossier technique complets, sans zone d'ombre sur l'historique de l'appareil, en particulier si celui-ci a connu un usage commercial intensif à l'étranger.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Une inspection pré-achat menée par un mécanicien indépendant habitué au type, incluant un contrôle spécifique de la corrosion et des modifications STC, reste la meilleure protection contre une mauvaise surprise après l'achat.</div></div>
+
+<h2 id="reglementation">Réglementation et usages spécifiques</h2>
+<p>Certains usages du 206 impliquent des contraintes réglementaires particulières qu'il convient d'anticiper avant l'achat. Une version sur flotteurs nécessite une qualification hydravion spécifique pour le pilote et une attention accrue à la navigabilité de l'installation de flottaison. Un exemplaire configuré pour le largage de parachutistes peut avoir fait l'objet de modifications et d'un suivi d'entretien particuliers, qu'il convient de vérifier avec l'autorité d'immatriculation et le dossier technique. De manière générale, toute modification STC doit être correctement documentée et rattachée au certificat de navigabilité de l'appareil ; en cas de doute sur la conformité d'une installation, un complément de vérification auprès d'un atelier agréé est recommandé avant de s'engager.</p>
+
+<h2 id="entretien">Entretien et coûts d'exploitation</h2>
+<p>Le coût d'exploitation d'un 206 reste globalement comparable à celui des autres monomoteurs à pistons de forte capacité, avec quelques postes spécifiques liés à son usage utilitaire : usure accrue de la structure en cas de chargement fréquent, entretien supplémentaire pour les flotteurs ou la porte cargo, et une consommation de carburant plus élevée pour les versions turbocompressées.</p>
+<p>Faire entretenir l'appareil dans un atelier agréé habitué au type permet de limiter les mauvaises surprises et de préserver sa valeur de revente, en particulier pour les modifications STC dont la documentation doit rester irréprochable. Un suivi rigoureux de l'entretien est un argument de poids lors d'une revente future, surtout pour un appareil ayant eu un usage commercial.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez systématiquement les factures de maintenance récentes ainsi que la documentation complète des modifications STC avant de faire une offre : elles donnent une image fidèle du sérieux de l'entretien et de la conformité de l'appareil.</div></div>
+
+<h2 id="revente">Revente et marché de l'occasion</h2>
+<p>Le 206 bénéficie d'un marché de l'occasion actif en Europe et à l'international, porté par la demande constante des opérateurs utilitaires, des écoles de parachutisme et des amateurs d'hydravion, en plus des acheteurs particuliers. Un appareil bien entretenu, avec un dossier technique transparent, des modifications STC bien documentées et une absence de corrosion, se revend généralement plus facilement et dans de meilleures conditions qu'un exemplaire dont l'historique comporte des zones d'ombre.</p>
+<p>Comparer plusieurs annonces de configurations comparables (version normalement aspirée ou turbo, présence de flotteurs ou de porte cargo, heures et potentiel moteur restant) reste la meilleure façon d'évaluer un juste prix, aussi bien pour acheter que pour préparer une future revente.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Cessna 206</h3>
+            <p>Comparez les annonces de Cessna 206 Stationair d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cessna 172 d'occasion : guide d'achat complet</strong><p>Budget, points de vigilance et entretien pour l'avion d'entraînement le plus produit au monde.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="piper-pa28-cherokee-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Piper PA-28 Cherokee : ce qu'il faut savoir avant d'acheter</strong><p>Les points clés pour bien choisir et budgéter l'achat d'un PA-28 d'occasion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261007a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

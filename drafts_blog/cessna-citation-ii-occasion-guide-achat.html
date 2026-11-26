@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Cessna Citation II d'occasion : guide d'achat complet — budget, points de vigilance à l'inspection, entretien, coûts d'exploitation et revente sur le marché européen.">
+<meta property="og:title" content="Cessna Citation II d'occasion : guide d'achat | Aircraft2Sell">
+<meta property="og:description" content="Cessna Citation II d'occasion : guide d'achat complet — budget, points de vigilance à l'inspection, entretien, coûts d'exploitation et revente sur le marché européen.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/cessna-citation-ii-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/cessna-citation-ii-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/cessna-citation-ii-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/cessna-citation-ii-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/cessna-citation-ii-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Cessna Citation II d'occasion : guide d'achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Cessna Citation II d'occasion : guide d'achat", "description": "Cessna Citation II d'occasion : guide d'achat complet — budget, points de vigilance à l'inspection, entretien, coûts d'exploitation et revente sur le marché européen.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/cessna-citation-ii-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Cessna Citation II d'occasion : guide d'achat", "item": "https://aircraft2sell.eu/cessna-citation-ii-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Cessna Citation II d'occasion</span></nav>
+    <span class="eyebrow">Guide modèle</span>
+    <h1>Cessna Citation II d'occasion : guide d'achat</h1>
+    <p>Budget à prévoir, points de vigilance à l'inspection, entretien courant et perspectives de revente pour acheter un Cessna Citation II d'occasion en toute connaissance de cause.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi le Citation II reste un jet d'entrée de gamme recherché</a></li><li><a href="#budget">Quel budget prévoir à l'achat</a></li><li><a href="#inspection">Les points à vérifier avant d'acheter</a></li><li><a href="#moteur">Moteurs, SMOH et coût de la grande visite</a></li><li><a href="#exploitation">Coûts d'exploitation et équipage</a></li><li><a href="#reglementation">Navigabilité, certification et obligations réglementaires</a></li><li><a href="#financement">Financer et détenir un Citation II</a></li><li><a href="#revente">Revente et marché de l'occasion</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi le Citation II reste un jet d'entrée de gamme recherché</h2>
+<p>Le Cessna Citation II est l'un des jets d'affaires biturbines les plus répandus sur le marché de l'occasion. Conçu comme une évolution agrandie du Citation I, il a été produit en grand nombre à partir de la fin des années 1970, ce qui en fait aujourd'hui l'une des portes d'entrée les plus accessibles vers la propriété d'un jet d'affaires pour un particulier ou une petite structure professionnelle.</p>
+<p>Sa cabine permet d'accueillir confortablement plusieurs passagers sur des missions régionales et continentales, avec une consommation et des coûts fixes nettement inférieurs à ceux des jets de catégorie supérieure. Le nombre important d'exemplaires en circulation garantit une offre de pièces détachées abondante et un réseau d'ateliers de maintenance expérimentés sur le type, deux atouts qui comptent lourdement dans la décision d'achat d'un jet déjà âgé.</p>
+<p>Sur le marché de l'occasion, les appareils disponibles couvrent plusieurs décennies de production et des niveaux d'avionique très variables, de la planche de bord analogique d'origine à des rétrofits numériques complets. Cette diversité impose de bien cerner son usage prévu avant de cibler un budget et un millésime.</p>
+
+<h2 id="budget">Quel budget prévoir à l'achat</h2>
+<p>Le prix d'un Citation II d'occasion dépend avant tout de l'âge de la cellule, des heures totales cellule et moteur, du potentiel moteur restant avant la prochaine révision, du statut de l'avionique et de l'état de la cabine. Un appareil ancien avec un potentiel moteur réduit et une avionique d'origine se négocie à un niveau d'entrée nettement plus accessible qu'un exemplaire récent, bien équipé et doté d'un rétrofit avionique moderne.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Impact sur le prix</th></tr></thead>
+<tbody>
+<tr><td>Potentiel moteur restant (heures avant la prochaine grande visite)</td><td>Facteur déterminant : un moteur proche de sa limite pèse fortement sur la valeur</td></tr>
+<tr><td>Avionique installée</td><td>Un rétrofit numérique récent et conforme aux obligations en vigueur valorise sensiblement l'appareil</td></tr>
+<tr><td>État et équipement de la cabine</td><td>Une cabine rafraîchie et bien entretenue facilite la revente</td></tr>
+<tr><td>Historique d'entretien et carnet de route</td><td>Un carnet complet, sans rupture, et une maintenance suivie en atelier agréé rassurent l'acheteur</td></tr>
+</tbody></table></div>
+<p>Au-delà du prix d'acquisition, le budget doit intégrer les frais annexes : inspection pré-achat approfondie par un atelier qualifié sur le type, frais d'immatriculation et de transfert, assurance, et, le cas échéant, une mise à niveau de l'avionique pour répondre aux exigences actuelles de navigation et de surveillance du trafic. Ces postes peuvent représenter une part significative du budget total, en particulier sur un appareil à l'avionique ancienne.</p>
+
+<h2 id="inspection">Les points à vérifier avant d'acheter</h2>
+<p>Pour un jet d'affaires comme le Citation II, une inspection pré-achat menée par un atelier de maintenance agréé, indépendant du vendeur et expérimenté sur le type, est incontournable avant toute signature. Plusieurs points demandent une attention particulière, au-delà de ce qui est vérifié sur un avion léger à pistons.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Carnet moteur et cellule complets, sans rupture chronologique, avec traçabilité de chaque intervention et des pièces changées.</span></li>
+  <li><i data-icon="check"></i><span>Heures moteur écoulées et potentiel restant avant la prochaine grande visite, point le plus déterminant dans la négociation du prix.</span></li>
+  <li><i data-icon="check"></i><span>Historique des inspections structurelles programmées par le constructeur, et respect des bulletins de service applicables.</span></li>
+  <li><i data-icon="check"></i><span>État et conformité de l'avionique aux exigences actuelles de navigation et de surveillance du trafic en vigueur dans l'espace aérien visé.</span></li>
+  <li><i data-icon="check"></i><span>État général de la cabine, de la pressurisation et des systèmes annexes (climatisation, dégivrage), coûteux à remettre en état s'ils sont négligés.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Sur un jet d'affaires, le coût d'une inspection pré-achat approfondie reste sans commune mesure avec celui d'une mauvaise surprise découverte après la signature : ne jamais faire l'impasse sur ce passage par un atelier agréé indépendant du vendeur.</div></div>
+
+<h2 id="moteur">Moteurs, SMOH et coût de la grande visite</h2>
+<p>Le Citation II est équipé de deux turbofans. Le statut moteur, exprimé en SMOH (heures écoulées depuis la dernière révision majeure), est l'élément central de toute négociation : un appareil proposé à un prix attractif mais dont les moteurs approchent de leur limite de révision peut en réalité représenter un investissement bien plus lourd qu'un exemplaire affiché plus cher mais disposant d'un potentiel moteur important.</p>
+<p>La grande visite moteur constitue le poste de dépense le plus lourd dans la vie d'un jet d'affaires de cette catégorie. Il est essentiel de demander au vendeur le détail exact du SMOH de chaque moteur, ainsi que les éventuels programmes de couverture moteur (contrats horaires), qui permettent de lisser ce coût mais qui ont aussi un impact sur le prix de vente de l'appareil et doivent être transférés ou renégociés avec le nouveau propriétaire.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Ne jamais se contenter d'un SMOH déclaré sans le faire recouper avec les carnets moteur originaux : c'est le seul document qui fait foi sur l'historique réel de l'appareil.</div></div>
+
+<h2 id="exploitation">Coûts d'exploitation et équipage</h2>
+<p>L'exploitation d'un Citation II implique des coûts fixes et variables sensiblement supérieurs à ceux d'un avion léger à pistons : assurance, stationnement en hangar, visites d'entretien programmées, carburant et, pour la plupart des opérateurs privés, le recours à un ou deux pilotes qualifiés sur le type. Selon la réglementation applicable et la configuration de l'appareil, une qualification de type spécifique peut être exigée pour le commandant de bord.</p>
+<p>Un entretien réalisé dans un atelier agréé habitué au type et un suivi rigoureux et documenté des interventions permettent de limiter les coûts imprévus et de préserver la valeur de revente de l'appareil. Les contrats de maintenance par abonnement (souscrits auprès du motoriste ou d'ateliers spécialisés) sont une option à étudier pour lisser les dépenses d'entretien dans le temps.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez systématiquement les trois dernières factures d'entretien complètes ainsi que le détail des contrats de couverture moteur en cours avant de faire une offre : ils donnent une image fidèle du coût réel de possession de l'appareil.</div></div>
+
+<h2 id="reglementation">Navigabilité, certification et obligations réglementaires</h2>
+<p>Comme tout aéronef, un Citation II d'occasion doit disposer d'un certificat de navigabilité (CofA) en cours de validité et d'un carnet d'entretien tenu à jour conformément aux exigences de l'autorité de surveillance compétente. Un transfert d'immatriculation entre pays européens suit les règles communes applicables à tout aéronef, avec une radiation préalable dans le registre d'origine si l'appareil change de pays d'immatriculation.</p>
+<p>Sur un jet d'affaires, la conformité de l'avionique aux exigences de navigation et de surveillance du trafic applicables dans l'espace aérien visé mérite une vérification particulière, car une mise à niveau peut représenter un investissement conséquent si l'appareil n'est pas déjà équipé. Il est recommandé de faire valider ces points par un professionnel avant de s'engager, les exigences précises pouvant varier selon l'autorité de surveillance et évoluer dans le temps.</p>
+
+<h2 id="financement">Financer et détenir un Citation II</h2>
+<p>L'acquisition d'un jet d'affaires comme le Citation II se finance rarement de la même façon qu'un avion léger : prêt bancaire dédié à l'aviation, crédit-bail, ou copropriété entre plusieurs utilisateurs sont les options les plus courantes pour répartir le coût d'achat et d'exploitation. Le choix dépend avant tout de l'intensité d'utilisation prévue : un appareil peu utilisé dans l'année gagne souvent à être détenu en copropriété, tandis qu'un usage professionnel intensif justifie davantage une détention en pleine propriété ou via une structure dédiée.</p>
+<p>Quelle que soit la structure de détention retenue, il reste indispensable de budgéter séparément le prix d'achat et les coûts d'exploitation annuels, qui pour un jet d'affaires représentent une part substantielle du coût total de possession sur la durée.</p>
+
+<h2 id="revente">Revente et marché de l'occasion</h2>
+<p>Le Citation II bénéficie d'un marché de l'occasion actif, porté par une flotte installée importante et une bonne disponibilité des pièces, ce qui facilite généralement la revente par rapport à des jets produits en plus petite série. Un appareil bien entretenu, avec un historique transparent, un potentiel moteur confortable et une avionique à jour, se revend plus facilement et dans de meilleures conditions qu'un exemplaire dont le dossier technique comporte des zones d'ombre.</p>
+<p>Comparer plusieurs annonces de Citation II de millésime et de statut moteur comparables reste la meilleure façon d'évaluer un juste prix, aussi bien pour acheter que pour préparer une future revente. Les écarts de prix entre deux appareils proches en âge s'expliquent presque toujours par le potentiel moteur restant et le niveau de l'avionique installée.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Cessna Citation II</h3>
+            <p>Comparez les annonces de jets d'affaires d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Jets d'affaires</span><strong>Turbopropulseur ou jet privé : comment choisir</strong><p>Comparatif des deux familles d'aéronefs pour choisir la motorisation adaptée à votre usage.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="financer-jet-affaires-leasing-credit-bail-copropriete.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Financement</span><strong>Financer un jet d'affaires : leasing, crédit-bail et copropriété</strong><p>Les options de financement et de détention adaptées à l'acquisition d'un jet d'affaires.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

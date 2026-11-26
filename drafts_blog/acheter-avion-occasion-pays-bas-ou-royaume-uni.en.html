@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Buying a used aircraft in the Netherlands or the UK: market, prices, post-Brexit tax, registration and maintenance compared to help you choose where to buy.">
+<meta property="og:title" content="Buying a Used Aircraft in the Netherlands or the UK | Aircraft2Sell">
+<meta property="og:description" content="Buying a used aircraft in the Netherlands or the UK: market, prices, post-Brexit tax, registration and maintenance compared to help you choose where to buy.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/acheter-avion-occasion-pays-bas-ou-royaume-uni.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/acheter-avion-occasion-pays-bas-ou-royaume-uni.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-pays-bas-ou-royaume-uni.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-pays-bas-ou-royaume-uni.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-pays-bas-ou-royaume-uni.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Buying a Used Aircraft in the Netherlands or the UK | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Buying a Used Aircraft in the Netherlands or the UK: Which Country to Choose", "description": "Buying a used aircraft in the Netherlands or the UK: market, prices, post-Brexit tax, registration and maintenance compared to help you choose where to buy.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/acheter-avion-occasion-pays-bas-ou-royaume-uni.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Buying a Used Aircraft in the Netherlands or the UK", "item": "https://aircraft2sell.eu/en/acheter-avion-occasion-pays-bas-ou-royaume-uni.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Netherlands or the UK</span></nav>
+    <span class="eyebrow">Country comparison</span>
+    <h1>Buying a Used Aircraft in the Netherlands or the UK: Which Country to Choose</h1>
+    <p>Market, prices, post-Brexit tax, registration and maintenance: a comparison between the Netherlands and the UK to help you decide where to look for your used aircraft.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">Two European markets, now under different regulatory frameworks</a></li><li><a href="#marche">Market size and dynamism of the used-aircraft trade</a></li><li><a href="#prix">Price comparison</a></li><li><a href="#fiscalite">Tax and VAT: the impact of Brexit</a></li><li><a href="#immatriculation">Registration and administrative steps</a></li><li><a href="#entretien">Maintenance network and parts availability</a></li><li><a href="#choix">Which country to prioritise depending on your profile</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Two European markets, now under different regulatory frameworks</h2>
+<p>The Netherlands and the UK are both active light aviation markets, but subject to very different constraints. The Netherlands has to work with a small territory and airspace that is heavily congested by commercial traffic around Schiphol and by numerous military zones. The UK, for its part, benefits from a particularly dense network of private airfields and one of the most developed general aviation traditions in Europe, but it no longer falls under the EASA system since Brexit, which concretely changes how you go about buying an aircraft between the two countries.</p>
+<p>For a buyer weighing up both markets in parallel, it's essential to factor in this difference in regulatory framework right from the start of the search, beyond simply comparing prices or available supply.</p>
+
+<h2 id="marche">Market size and dynamism of the used-aircraft trade</h2>
+<p>The Dutch used-aircraft market remains modest in size, concentrated around airfields such as Lelystad Airport, Teuge, Hilversum or Seppe (Breda International). The number of listings available at any given time is naturally limited, which leads many Dutch buyers to widen their search to neighbouring markets, particularly Germany and Belgium.</p>
+<p>The UK, by contrast, has one of the most active light aviation fleets in Europe, supported by a dense network of private airfields and flying clubs affiliated to organisations such as the Light Aircraft Association (LAA) or the Royal Aero Club. The used-aircraft supply there is rich in classic touring single-engine types (Cessna 172, Piper PA-28) as well as amateur-built aircraft, a category particularly well developed across the Channel under LAA oversight, giving a noticeably wider choice than in the Netherlands for comparing similar aircraft.</p>
+
+<h2 id="prix">Price comparison</h2>
+<p>Price levels for the same model and a comparable maintenance condition remain broadly similar between the two countries, Western Europe forming a relatively homogeneous price area for light aviation. The gap observed on a given listing has more to do with local supply and demand at a given time, and with the quality of the technical file, than with any structural difference between the two markets.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Netherlands</th><th>United Kingdom</th></tr></thead>
+<tbody>
+<tr><td>Size of the used-aircraft market</td><td>Modest, limited supply</td><td>Large, abundant and varied supply</td></tr>
+<tr><td>Price level for the same model</td><td>Comparable, sometimes a slight premium on a locally rare model</td><td>Comparable, negotiation made easier by a larger supply</td></tr>
+<tr><td>Amateur-built aircraft</td><td>Not a widely developed category</td><td>Very well developed category, overseen by the LAA</td></tr>
+<tr><td>Listing currency</td><td>Euro</td><td>Pound sterling (exchange rate to watch)</td></tr>
+</tbody></table></div>
+<p>In both cases, comparing several listings of similar models before committing remains the best way to assess a fair price, especially on the Dutch side where the number of comparable listings at a given time can be limited. For a transaction in the UK, you should also factor the pound-to-euro exchange rate into your budget, as it can meaningfully move the final cost for a eurozone buyer.</p>
+
+<h2 id="fiscalite">Tax and VAT: the impact of Brexit</h2>
+<p>Applicable taxation depends on the buyer's status (private individual or professional) and on the country where the aircraft will be registered after the transaction. In the Netherlands, a sale between EU-resident private individuals involving an aircraft already in free circulation within the EU generally does not trigger new VAT (BTW). In the UK, a sale between private individuals is also generally not subject to UK VAT (standard rate of 20%), but the situation changes substantially for an aircraft that needs to be imported from the EU into the UK, or vice versa, since Brexit.</p>
+<p>An aircraft imported from the EU into the UK is now treated as an import from outside the EU and can trigger import VAT calculated on its customs value, barring a specific situation to be validated beforehand. In the other direction, an aircraft bought in the UK and intended to be based in the Netherlands can likewise be subject to customs formalities on entry into the EU. It is advisable to have your tax position confirmed before the purchase, particularly for any cross-border transaction between the two countries.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point to watch</strong> — Always check the aircraft's customs status (VAT already paid in the EU or the UK) before signing: an unclear tax position can generate an unexpected import cost, regardless of the direction of the transaction.</div></div>
+
+<h2 id="immatriculation">Registration and administrative steps</h2>
+<p>An aircraft based in the Netherlands falls under the <strong>Inspectie Leefomgeving en Transport (ILT)</strong>, registered with the <strong>PH-</strong> prefix, within the common EASA framework. An aircraft based in the UK now falls exclusively under the <strong>UK Civil Aviation Authority (CAA)</strong>, registered with the <strong>G-</strong> prefix, with its own regulatory framework (UK Part-M, UK Part-21), separate from EASA's since Brexit.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>An EASA-certified aircraft is no longer automatically recognised by the UK CAA: mutual recognition arrangements make the most common transfers easier, but each file is still assessed case by case.</span></li>
+  <li><i data-icon="check"></i><span>For a transfer into the UK, allow generally 4 to 10 weeks depending on how complete the file submitted to the CAA is.</span></li>
+  <li><i data-icon="check"></i><span>For a transfer into the Netherlands, timelines remain comparable to those seen for any re-registration between EASA member states.</span></li>
+  <li><i data-icon="check"></i><span>In all cases, check the consistency between the logbook, the technical file and the actual condition of the aircraft before any registration change.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — A transfer between two EASA member states remains overall simpler than one involving the post-Brexit UK, which adds an extra administrative and customs step to plan for before committing.</div></div>
+
+<h2 id="entretien">Maintenance network and parts availability</h2>
+<p>The UK has a particularly well-developed network of maintenance workshops, partly thanks to the vitality of LAA-supervised amateur building, which has encouraged many independent specialists to set up. The Netherlands also offers a network of competent workshops, especially around the airfields concentrating leisure and training activity, but for rarer models it can be worth checking in advance the availability of parts, including from neighbouring German or Belgian workshops.</p>
+<p>Since Brexit, sourcing parts between the UK and the EU can be subject to additional customs formalities, a point to plan for if a Dutch owner intends to have their aircraft maintained in the UK, or vice versa.</p>
+<p>The language barrier remains minor in both countries, English being the common working language in Dutch and British workshops alike, which makes communication easier during a cross-border transaction or maintenance follow-up.</p>
+
+<h2 id="choix">Which country to prioritise depending on your profile</h2>
+<p>For a buyer looking above all for a wide choice of similar aircraft to compare, the UK generally offers a larger volume of listings, particularly for amateur-built aircraft. For a buyer based in the Netherlands, or one who wants to avoid post-Brexit customs formalities, searching within the EU is often administratively simpler, at the cost of a more limited local supply.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — In all cases, a pre-purchase inspection by a qualified independent mechanic remains essential, whether the aircraft is located in the Netherlands, the UK or elsewhere in Europe.</div></div>
+<p>Ultimately, the choice between the two countries mainly comes down to your tolerance for post-Brexit paperwork and how much weight you give to the size of the available supply. Comparing listings from both markets widens your options, but it's best to plan ahead for the specific formalities of a cross-border transaction involving the UK.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your used aircraft</h3>
+            <p>Compare used aircraft listings available in the Netherlands, the UK and across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="acheter-avion-occasion-pays-bas.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Country guide</span><strong>Buying a used aircraft in the Netherlands</strong><p>Market, prices, tax and procedures for buying a used aircraft in the Netherlands.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="acheter-avion-occasion-royaume-uni-brexit.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Country guide</span><strong>Buying a used aircraft in the UK: the post-Brexit market</strong><p>Market, prices, CAA registration, VAT and importing from the EU after Brexit.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

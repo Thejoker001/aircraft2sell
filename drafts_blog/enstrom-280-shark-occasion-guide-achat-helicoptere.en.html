@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Buying a used Enstrom 280 Shark: budget, pre-purchase inspection checklist, maintenance and resale outlook for this piston-powered light helicopter.">
+<meta property="og:title" content="Used Enstrom 280 Shark: Buyer's Guide | Aircraft2Sell">
+<meta property="og:description" content="Buying a used Enstrom 280 Shark: budget, pre-purchase inspection checklist, maintenance and resale outlook for this piston-powered light helicopter.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/enstrom-280-shark-occasion-guide-achat-helicoptere.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/enstrom-280-shark-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/enstrom-280-shark-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/enstrom-280-shark-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/enstrom-280-shark-occasion-guide-achat-helicoptere.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Enstrom 280 Shark: Buyer's Guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Enstrom 280 Shark: Buyer's Guide", "description": "Buying a used Enstrom 280 Shark: budget, pre-purchase inspection checklist, maintenance and resale outlook for this piston-powered light helicopter.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/enstrom-280-shark-occasion-guide-achat-helicoptere.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Enstrom 280 Shark: Buyer's Guide", "item": "https://aircraft2sell.eu/en/enstrom-280-shark-occasion-guide-achat-helicoptere.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/en/index.html">Home</a><i data-icon="chevron-right"></i><a href="/en/blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used Enstrom 280 Shark</span></nav>
+    <span class="eyebrow">Model guide</span>
+    <h1>Used Enstrom 280 Shark: Buyer's Guide</h1>
+    <p>Budget to plan, pre-purchase inspection checklist, routine maintenance and resale outlook for buying a used Enstrom 280 Shark with full knowledge of the facts.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published 24 November 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#why">Why buy an Enstrom 280 Shark</a></li><li><a href="#versions">Versions of the 280 Shark and their specifics</a></li><li><a href="#budget">What budget to plan for</a></li><li><a href="#inspection">What to check before buying</a></li><li><a href="#maintenance">Maintenance and engine overhaul</a></li><li><a href="#regulation">Regulation and operation in Europe</a></li><li><a href="#resale">Resale and the used market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="why">Why buy an Enstrom 280 Shark</h2>
+<p>The Enstrom 280 Shark is a piston-powered light helicopter, instantly recognizable by its streamlined fuselage and three-bladed main rotor, originally designed as a more affordable alternative to the mainstream single-engine light helicopters. Built in smaller numbers than the Robinson R22 or R44, it remains a niche choice on the European used market, valued for its mechanical robustness, a cabin that's relatively roomy for the category, and flight handling that many owner-pilots describe as stable and predictable.</p>
+<p>On the used market, the 280 Shark mainly appeals to buyers already familiar with light helicopters, who are willing to accept a smaller installed fleet (and therefore sometimes slower parts availability than on the most widespread models) in exchange for a distinctive feel and a purchase price that's often lower than its best-known competitors.</p>
+
+<h2 id="versions">Versions of the 280 Shark and their specifics</h2>
+<p>The Enstrom F-28/280 family went through several evolutions over the decades, with differences in engine, payload and cabin trim depending on the year of manufacture. The 280 Shark stands out in particular for its aerodynamic fairing and a more refined cabin finish than the earlier F-28 models, which were aimed more squarely at flight training.</p>
+<p>For a buyer, the real point is less about memorizing every marketing designation and more about checking, for the specific airframe you're looking at, the exact version, the history of any modifications applied (some manufacturer airworthiness directives or service bulletins may apply depending on serial number), and whether the equipment listed in the ad actually matches what's on board.</p>
+
+<h2 id="budget">What budget to plan for</h2>
+<p>The price of a used Enstrom 280 Shark depends mainly on the age of the airframe, accumulated airframe and engine hours, remaining time before the next major engine overhaul, and the general condition of the avionics and cabin. Because this model is less widely available than the most common light helicopters, price gaps between two seemingly similar airframes can be wider than on a more liquid market, which makes comparing several listings before committing all the more worthwhile.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Price impact</th></tr></thead>
+<tbody>
+<tr><td>Engine hours remaining before overhaul</td><td>An engine close to its limit weighs heavily on resale value</td></tr>
+<tr><td>Usage history (private, training)</td><td>Training use generally accumulates far more hours and cycles</td></tr>
+<tr><td>Airframe and rotor condition</td><td>Limited parts availability justifies extra scrutiny</td></tr>
+<tr><td>Logbook and traceability</td><td>A complete, well-documented record reassures the buyer</td></tr>
+</tbody></table></div>
+<p>Beyond the advertised purchase price, budget for an independent pre-purchase inspection by a mechanic familiar with the type, registration and transfer fees, insurance, and, if needed, an avionics refresh.</p>
+
+<h2 id="inspection">What to check before buying</h2>
+<p>As with any used helicopter, an independent pre-purchase inspection carried out by a mechanic familiar with the type is essential before closing a deal. For the Enstrom 280 Shark, the smaller specialized maintenance network in Europe calls for extra care.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Full engine history: hours since the last overhaul, compliance with the manufacturer's maintenance program, traceability of replaced parts.</span></li>
+  <li><i data-icon="check"></i><span>Condition of the main rotor blades and rotor head, life-limited components whose replacement is a significant expense.</span></li>
+  <li><i data-icon="check"></i><span>Signs of corrosion on the airframe and structure, especially for aircraft that operated near the coast.</span></li>
+  <li><i data-icon="check"></i><span>Actual availability of spare parts for the specific airframe, confirmed with an Enstrom-approved shop before buying.</span></li>
+  <li><i data-icon="check"></i><span>Complete logbook, engine logbook and technical records, with no gaps in the aircraft's history.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Before making an offer, contact an Enstrom-specialized shop to confirm the availability of critical parts (rotor, transmission) for the specific airframe: this is often the deciding factor for a model that's less widespread than its rivals.</div></div>
+
+<h2 id="maintenance">Maintenance and engine overhaul</h2>
+<p>Light helicopters require a more demanding maintenance schedule than a comparable airplane, with closely spaced periodic inspections and life-limited components (blades, rotor head, transmission parts) that must be replaced after a set number of hours or a calendar period defined by the manufacturer, regardless of apparent condition.</p>
+<p>The major engine overhaul remains the heaviest maintenance item to plan for: its cost and timing should be clearly documented in the technical file before any purchase. For the Enstrom, it's worth identifying the nearest approved shop capable of performing this work in advance, since the network is less dense than for the most widespread helicopters.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for the last three maintenance invoices before making an offer: they give an accurate picture of how well the previous owner maintained the aircraft and the technical support they were able to access.</div></div>
+
+<h2 id="regulation">Regulation and operation in Europe</h2>
+<p>Like any light helicopter operated in Europe, the 280 Shark is subject to applicable continuing airworthiness requirements (Certificate of Airworthiness (CofA), approved maintenance program, any applicable airworthiness directives) under the oversight of the registration authority of the country where the aircraft is based. Before buying, it's advisable to check that no outstanding airworthiness directive applies to the specific airframe and that its maintenance file is up to date.</p>
+<p>A helicopter pilot license, and where applicable a type rating or model-specific familiarization, is required to operate the aircraft; checking early with an instructor or an Enstrom-approved shop helps anticipate this often-overlooked aspect for first-time buyers.</p>
+
+<h2 id="resale">Resale and the used market</h2>
+<p>The resale market for the Enstrom 280 Shark in Europe is narrower than for the most widespread light helicopters, which can lengthen the time it takes to sell but also reduces competition for a buyer specifically looking for this model. A well-maintained aircraft with a transparent history and recently checked critical parts generally resells more easily than one with gaps in its technical file.</p>
+<p>Comparing several listings of comparable models, including other piston-powered light helicopters, remains the best way to gauge a fair price, whether you're buying now or planning a future resale.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your next helicopter</h3>
+            <p>Compare used helicopter listings available across Europe on Aircraft2Sell, zero commission.</p>
+          </div>
+        </div>
+        <a href="/en/search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To take your buying or selling project further.</p>
+      </div>
+      <a href="/en/blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="/en/robinson-r44-occasion-guide-achat-helicoptere.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Robinson R44: Buyer's Guide</strong><p>Budget, inspection checklist and maintenance for Europe's most common light helicopter.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/robinson-r66-occasion-guide-achat-helicoptere.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Robinson R66: Buyer's Guide</strong><p>Key points for choosing and budgeting a used turbine R66.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/helicoptere-occasion-guide-achat-particulier.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buying</span><strong>Used Helicopter: Buyer's Guide for Private Owners</strong><p>Key benchmarks for a confident first helicopter purchase.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {{
+  'use strict';
+  try {{
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try {{ sessionStorage.setItem('a2s_auth_token', at); }} catch (e) {{}}
+    if (rt) {{ try {{ localStorage.setItem('a2s_refresh_token', rt); }} catch (e) {{}} }}
+    try {{ localStorage.setItem('a2s_logged_in', 'true'); }} catch (e) {{}}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {{
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) {{ try {{ localStorage.setItem('a2s_user_email', p.email); }} catch (e) {{}} }}
+      if (p && p.user_metadata && p.user_metadata.full_name) {{
+        try {{ localStorage.setItem('a2s_user_name', p.user_metadata.full_name); }} catch (e) {{}}
+      }}
+    }} catch (e) {{}}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try {{ history.replaceState(null, '', location.pathname + location.search); }}
+    catch (e2) {{ try {{ location.hash = ''; }} catch (e3) {{}} }}
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {{
+      dest = 'reset-password.html';
+    }} else if (red) {{
+      try {{
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      }} catch (e4) {{}}
+    }}
+
+    setTimeout(function () {{ window.location.href = dest; }}, 120);
+  }} catch (e) {{ /* ne jamais bloquer la page sur une erreur de parsing */ }}
+}})();
+</script>
+<script>
+(function () {{
+  'use strict';
+  function isLikelyBot() {{
+    try {{
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    }} catch (e) {{ return false; }}
+  }}
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {{
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  }} catch (e) {{ return; }}
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try {{ localStorage.setItem('a2s_lang_choice_made', '1'); }} catch (e) {{}}
+
+  location.replace('/en/' + page + location.search + location.hash);
+}})();
+
+document.addEventListener('click', function (e) {{
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) {{ try {{ localStorage.setItem('a2s_lang_choice_made', '1'); }} catch (err) {{}} }}
+}});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used Tecnam P2008 buying guide: budget, Rotax engine, inspection points to watch and the resale market in Europe.">
+<meta property="og:title" content="Used Tecnam P2008: microlight buying guide | Aircraft2Sell">
+<meta property="og:description" content="Used Tecnam P2008 buying guide: budget, Rotax engine, inspection points to watch and the resale market in Europe.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/tecnam-p2008-occasion-guide-achat-ulm.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/tecnam-p2008-occasion-guide-achat-ulm.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/tecnam-p2008-occasion-guide-achat-ulm.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/tecnam-p2008-occasion-guide-achat-ulm.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/tecnam-p2008-occasion-guide-achat-ulm.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Tecnam P2008: microlight buying guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Tecnam P2008: microlight buying guide", "description": "Used Tecnam P2008 buying guide: budget, Rotax engine, inspection points to watch and the resale market in Europe.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/tecnam-p2008-occasion-guide-achat-ulm.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Tecnam P2008: microlight buying guide", "item": "https://aircraft2sell.eu/en/tecnam-p2008-occasion-guide-achat-ulm.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used Tecnam P2008</span></nav>
+    <span class="eyebrow">Microlight guide</span>
+    <h1>Used Tecnam P2008: buying guide</h1>
+    <p>Budget to plan for, Rotax engine, inspection points to watch and resale outlook to help you buy a used Tecnam P2008 with full knowledge of the facts.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#pourquoi">Why the Tecnam P2008 appeals to microlight pilots</a></li><li><a href="#budget">What budget to plan for at purchase</a></li><li><a href="#motorisation">Rotax engine and engine hours (SMOH)</a></li><li><a href="#structure">Composite fuselage and aluminium wing</a></li><li><a href="#inspection">What to check before buying</a></li><li><a href="#entretien">Maintenance and the logbook</a></li><li><a href="#reglementation">Registration and microlight regulations</a></li><li><a href="#revente">Resale and the used market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Why the Tecnam P2008 appeals to microlight pilots</h2>
+<p>The Tecnam P2008 is one of the most widely flown three-axis microlights in Europe, built by the Italian manufacturer Tecnam and sold, depending on the market, as a microlight or in a certified version. Its airframe pairs a composite fuselage with an aluminium wing, a combination that gives it a reputation for toughness while keeping weight down. The cabin is roomier than most in its class, and the overall comfort makes it a common pick for flight schools as well as private owners who want a modern aircraft that is cheap to run and pleasant to fly day to day.</p>
+<p>On the used market, the P2008 benefits from good spare parts availability and a network of mechanics familiar with the type, particularly in Europe where Tecnam has a strong commercial presence. That popularity translates into a comparatively stable resale value next to less common microlights, which many buyers also find reassuring.</p>
+<p>The P2008 is also valued for its versatility: it suits both ab-initio training and light touring, with modest fuel burn and overall running costs that stay well controlled for the class.</p>
+
+<h2 id="budget">What budget to plan for at purchase</h2>
+<p>The price of a used P2008 varies widely depending on the year of manufacture, airframe and engine hours, the avionics fit (classic analogue panel or a modern EFIS screen) and the overall quality of maintenance. The oldest examples, with reduced engine potential and basic avionics, trade at a far more accessible entry level than recent aircraft with a full digital cockpit and immaculate maintenance records.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Year and airframe hours</td><td>A recent, lightly flown aircraft trades noticeably higher</td></tr>
+<tr><td>Remaining engine hours before overhaul</td><td>An engine close to its limit weighs heavily on resale value</td></tr>
+<tr><td>Installed avionics</td><td>An up-to-date EFIS cockpit adds significant value over an analogue panel</td></tr>
+<tr><td>Maintenance logbook and history</td><td>A complete, well-documented record reassures buyers and eases resale</td></tr>
+</tbody></table></div>
+<p>On top of the purchase price, budget for the usual ancillary costs: a pre-purchase inspection by an independent mechanic qualified on the type, microlight registration fees, insurance, and possibly an avionics or cabin interior refresh if the aircraft needs one.</p>
+
+<h2 id="motorisation">Rotax engine and engine hours (SMOH)</h2>
+<p>The P2008 is overwhelmingly fitted with an engine from the Rotax 912 family, a powerplant widely used across light and microlight aviation and valued for its reliability and the good availability of parts in Europe. As with any engine of this type, the number of hours elapsed since the last major overhaul (SMOH) is one of the indicators buyers watch most closely: the more potential remaining before the next overhaul, the more value the aircraft retains.</p>
+<p>It is essential to check that the maintenance intervals set by the engine manufacturer have been strictly observed, and that any components subject to a calendar limit — not just an hourly one — have been replaced on schedule, regardless of the actual flight hours flown.</p>
+<p>An engine that has sat idle for long periods without proper preservation can show signs of internal corrosion even with low hours on the clock: hours alone are never enough to judge an engine's real condition.</p>
+
+<h2 id="structure">Composite fuselage and aluminium wing: what to watch</h2>
+<p>The P2008's hybrid structure, combining a composite fuselage with a metal wing, calls for a careful inspection of both material families. On the composite side, look for impacts, gelcoat cracks or poorly executed repairs, particularly on the engine cowling and fairings, the areas most exposed to knocks during ground handling.</p>
+<p>On the aluminium wing, check for corrosion, excessive play in the flight controls and impact marks around the spars, along with proper operation of the flaps and control surfaces through their full range of travel. An aircraft left outside for long periods without a hangar generally shows more wear on both material families than a hangared example.</p>
+
+<h2 id="inspection">What to check before buying</h2>
+<p>As with any used aircraft, a pre-purchase inspection by an independent mechanic qualified on the type is essential before finalising a transaction. For a P2008, a few points deserve particular attention.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Complete logbook and technical file, with no grey areas in the aircraft's history.</span></li>
+  <li><i data-icon="check"></i><span>Detailed engine history: hours since the last overhaul, compliance with the Rotax maintenance program, traceability of replaced parts.</span></li>
+  <li><i data-icon="check"></i><span>Condition of the composite structure and the aluminium wing, checking for corrosion, cracks or previous repairs.</span></li>
+  <li><i data-icon="check"></i><span>Operation of the onboard avionics and compliance of fitted equipment with current requirements.</span></li>
+  <li><i data-icon="check"></i><span>A full test flight with a pilot qualified on the type, including a check of engine performance across different power settings.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Never rely solely on the seller's statements about overall condition: an independent pre-purchase inspection by a mechanic qualified on the type remains the best protection before committing.</div></div>
+
+<h2 id="entretien">Maintenance and the logbook</h2>
+<p>The operating cost of the P2008 stays moderate for its class, helped by the relative simplicity of its Rotax engine and the good availability of parts. The main expense items are the periodic maintenance required by the manufacturer's program, insurance, parking and, further down the line, the engine overhaul once its hourly potential is reached.</p>
+<p>A logbook kept rigorously, at a shop familiar with the type, is one of the strongest arguments for reassuring a future buyer. Asking for the most recent maintenance invoices before making an offer lets you check that the declared hours match the work actually carried out.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for the last three maintenance invoices before making an offer: they give an accurate picture of how seriously the aircraft has been maintained.</div></div>
+
+<h2 id="reglementation">Registration and microlight regulations in Europe</h2>
+<p>Microlights fall, depending on the European country, under their own national rules, distinct from the certification that applies to conventional aircraft. Registration procedures, training requirements and the limits of the category vary from one country to another, which can affect the steps required for a cross-border purchase or a change of country of operation.</p>
+<p>Before buying a P2008 in a country other than the one where you plan to fly it, it is advisable to check with the relevant national microlight authority or federation on the procedures for transferring registration and on whether the pilot's licence will be recognised.</p>
+
+<h2 id="revente">Resale and the used market</h2>
+<p>The P2008 benefits from an active used market in Europe, supported by Tecnam's strong reputation and a large installed fleet, particularly among flight schools. A well-maintained aircraft, with a transparent history and up-to-date avionics, generally resells more easily and on better terms than one whose technical file has grey areas.</p>
+<p>Comparing several listings of similar aircraft remains the best way to assess a fair price, both for buying and for preparing a future resale. Price differences between two aircraft of the same model year are most often explained by remaining engine potential and the level of avionics fitted.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Tecnam P2008</h3>
+            <p>Compare used Tecnam P2008 listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="ulm-ou-avion-leger-debuter.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Buyer's guide</span><strong>Microlight or light aircraft: which path to start flying</strong><p>A comparison of both routes to help you choose the option best suited to your flying project.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="licence-pilote-prive-cout.html" class="card"><span class="icon-box"><i data-icon="award"></i></span><span class="eyebrow">Pilot guide</span><strong>Private pilot licence (PPL): cost and duration</strong><p>Budget and training time to earn a pilot licence before buying an aircraft.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

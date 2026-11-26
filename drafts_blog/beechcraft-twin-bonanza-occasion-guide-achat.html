@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Guide d'achat du Beechcraft Twin Bonanza d'occasion : budget, points de vigilance sur ce bimoteur vintage, entretien bimoteur et marché de la revente.">
+<meta property="og:title" content="Beechcraft Twin Bonanza d'occasion : guide d'achat | Aircraft2Sell">
+<meta property="og:description" content="Guide d'achat du Beechcraft Twin Bonanza d'occasion : budget, points de vigilance sur ce bimoteur vintage, entretien bimoteur et marché de la revente.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/beechcraft-twin-bonanza-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/beechcraft-twin-bonanza-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/beechcraft-twin-bonanza-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/beechcraft-twin-bonanza-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/beechcraft-twin-bonanza-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Beechcraft Twin Bonanza d'occasion : guide d'achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Beechcraft Twin Bonanza d'occasion : guide d'achat", "description": "Guide d'achat du Beechcraft Twin Bonanza d'occasion : budget, points de vigilance sur ce bimoteur vintage, entretien bimoteur et marché de la revente.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/beechcraft-twin-bonanza-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Beechcraft Twin Bonanza d'occasion : guide d'achat", "item": "https://aircraft2sell.eu/beechcraft-twin-bonanza-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Beechcraft Twin Bonanza d'occasion</span></nav>
+    <span class="eyebrow">Guide modèle</span>
+    <h1>Beechcraft Twin Bonanza d'occasion : guide d'achat</h1>
+    <p>Budget à prévoir, points de vigilance sur ce bimoteur vintage, entretien spécifique à un appareil ancien et perspectives de revente pour acheter un Beechcraft Twin Bonanza d'occasion en connaissance de cause.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Un bimoteur vintage pas comme les autres</a></li><li><a href="#budget">Quel budget prévoir à l'achat</a></li><li><a href="#inspection">Les points à vérifier avant d'acheter</a></li><li><a href="#moteurs">Moteurs jumeaux et pièces : l'enjeu de la rareté</a></li><li><a href="#entretien">Entretien et coûts d'exploitation</a></li><li><a href="#pilotage">Formation et habilitation bimoteur</a></li><li><a href="#revente">Revente et marché de l'occasion</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Un bimoteur vintage pas comme les autres</h2>
+<p>Le Beechcraft Twin Bonanza occupe une place particulière dans l'histoire de l'aviation légère d'après-guerre. Dérivé du monomoteur Bonanza mais profondément redessiné, cet appareil bimoteur à hélices a été conçu dans les années 1950 pour un usage à la fois militaire léger et civil haut de gamme, avant d'ouvrir la voie à des évolutions ultérieures de la gamme Beechcraft. Sur le marché de l'occasion aujourd'hui, il appartient clairement à la catégorie des avions de collection et d'appareils de niche : peu d'exemplaires subsistent, et chacun a un vécu bien particulier.</p>
+<p>Acheter un Twin Bonanza d'occasion n'a donc rien d'un achat standard de bimoteur léger moderne. C'est un projet qui demande une vraie connaissance du type, une tolérance à la recherche de pièces parfois longue, et un budget d'entretien qui doit être envisagé sur la durée plutôt que comparé à celui d'un appareil de série encore produit. En contrepartie, l'acheteur acquiert un appareil rare, chargé d'histoire, qui attire l'attention dans tous les meetings aériens et qui conserve une forte valeur patrimoniale lorsqu'il est bien entretenu.</p>
+
+<h2 id="budget">Quel budget prévoir à l'achat</h2>
+<p>Le prix d'un Twin Bonanza d'occasion varie fortement selon l'état général de la cellule, l'historique de restauration, le statut des deux moteurs et la qualité de la documentation technique conservée au fil des décennies. Un exemplaire récemment restauré avec un dossier complet se négocie à un niveau sensiblement plus élevé qu'un appareil qui a besoin de travaux de remise en état avant de pouvoir revoler régulièrement.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Impact sur le prix</th></tr></thead>
+<tbody>
+<tr><td>État et historique de restauration</td><td>Un appareil récemment restauré avec factures à l'appui se négocie nettement plus cher</td></tr>
+<tr><td>Statut des deux moteurs</td><td>Un double potentiel moteur élevé ou récemment révisé pèse fortement sur le prix</td></tr>
+<tr><td>Complétude du dossier technique</td><td>Un carnet d'entretien continu depuis l'origine est rare et très valorisé sur ce type</td></tr>
+<tr><td>Disponibilité constatée des pièces</td><td>Un appareil pour lequel le vendeur peut démontrer un approvisionnement en pièces fiable inspire davantage confiance</td></tr>
+</tbody></table></div>
+<p>Au-delà du prix d'achat, prévoyez un budget conséquent pour l'inspection pré-achat spécialisée, le transport ou le convoyage si l'appareil est éloigné, et une réserve financière pour les premiers travaux de remise à niveau qu'un avion de cet âge nécessite presque toujours, même lorsqu'il semble en bon état au premier abord.</p>
+
+<h2 id="inspection">Les points à vérifier avant d'acheter</h2>
+<p>Sur un appareil vintage comme le Twin Bonanza, l'inspection pré-achat doit impérativement être menée par un mécanicien indépendant qui connaît spécifiquement ce type ou, à défaut, des bimoteurs Beechcraft anciens comparables. Une inspection générique sur un avion moderne ne suffit pas à détecter les faiblesses propres à un appareil de cet âge.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Corrosion de la structure : rechercher systématiquement les traces de corrosion interne, en particulier dans les zones difficilement accessibles, typiques d'un appareil ayant traversé plusieurs décennies et plusieurs climats.</span></li>
+  <li><i data-icon="check"></i><span>Historique complet du carnet d'entretien : continuité documentaire depuis la construction, périodes de stockage prolongé, remises en état successives et leur traçabilité.</span></li>
+  <li><i data-icon="check"></i><span>Statut des deux moteurs : heures écoulées depuis la dernière grande visite, cohérence entre les deux moteurs, conformité au programme constructeur malgré l'ancienneté du type.</span></li>
+  <li><i data-icon="check"></i><span>État du câblage électrique et des systèmes hydrauliques, souvent le point faible des appareils de cette génération s'ils n'ont pas été modernisés.</span></li>
+  <li><i data-icon="check"></i><span>Validité et conditions associées au certificat de navigabilité, en particulier si l'appareil a connu des périodes d'immobilisation prolongée entre deux propriétaires.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Sur un avion de collection, l'avis d'un spécialiste du type compte souvent plus que le nombre d'heures total : deux appareils au même potentiel moteur peuvent avoir un état réel très différent selon la rigueur de leur entretien passé.</div></div>
+
+<h2 id="moteurs">Moteurs jumeaux et pièces : l'enjeu de la rareté</h2>
+<p>La principale contrainte d'un Twin Bonanza d'occasion tient à la disponibilité des pièces, notamment pour les deux moteurs et certains éléments spécifiques à la cellule. Contrairement à un bimoteur léger encore en production ou largement répandu, les pièces d'origine se trouvent le plus souvent via un réseau restreint de spécialistes, de clubs d'appareils vintage ou de fournisseurs de pièces recertifiées.</p>
+<p>Avant d'acheter, il est recommandé de se rapprocher d'associations de propriétaires de Beechcraft anciens pour évaluer la réalité de l'approvisionnement en pièces pour le moteur restant jusqu'à sa grande visite, ainsi que les délais moyens constatés par d'autres propriétaires du même type. Cette information pèse souvent davantage sur la décision d'achat que le prix affiché de l'appareil.</p>
+
+<h2 id="entretien">Entretien et coûts d'exploitation</h2>
+<p>L'entretien d'un bimoteur vintage comme le Twin Bonanza coûte structurellement plus cher que celui d'un monomoteur léger, en raison du doublement de certains postes (deux moteurs, deux hélices) et de la nécessité fréquente de faire appel à des ateliers spécialisés dans les appareils anciens, moins nombreux que les ateliers généralistes.</p>
+<p>Les postes de dépense principaux restent la visite annuelle obligatoire adaptée à un appareil de collection, l'assurance (souvent plus élevée sur ce type de bimoteur ancien), le stationnement sous abri recommandé pour préserver la cellule, et la provision pour grande visite moteur, à anticiper très en amont compte tenu des délais d'approvisionnement.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Avant l'achat, demandez au vendeur le nom de l'atelier qui a suivi l'appareil ces dernières années : un atelier reconnu spécialiste du type est un gage de sérieux bien plus fiable qu'un simple relevé d'heures.</div></div>
+
+<h2 id="pilotage">Formation et habilitation bimoteur</h2>
+<p>Piloter un Twin Bonanza suppose de détenir la qualification multimoteur appropriée et de suivre une formation spécifique au type, idéalement dispensée par un instructeur ayant l'expérience de ce modèle ou d'un bimoteur Beechcraft comparable de la même époque. Les procédures de panne moteur, les vitesses caractéristiques et le comportement en vol diffèrent sensiblement de ceux d'un bimoteur léger moderne.</p>
+<p>Prévoyez ce temps de formation complémentaire dans votre budget et votre calendrier d'acquisition : un lâcher sur type réalisé avec un instructeur expérimenté sur ce modèle réduit considérablement la courbe d'apprentissage et les risques liés à la prise en main d'un appareil aux caractéristiques particulières.</p>
+
+<h2 id="revente">Revente et marché de l'occasion</h2>
+<p>Le marché de la revente d'un Twin Bonanza reste un marché de niche, porté avant tout par des passionnés d'aviation vintage et des collectionneurs plutôt que par une demande de masse. Le nombre d'acheteurs potentiels est restreint, mais ceux qui recherchent spécifiquement ce type sont souvent prêts à payer une prime pour un appareil impeccablement restauré et documenté.</p>
+<p>Un historique transparent, des photos de la restauration conservées et un carnet d'entretien exemplaire constituent les meilleurs arguments de revente sur ce marché particulier. À l'inverse, un appareil au dossier incomplet ou ayant connu de longues périodes d'inactivité se négociera nettement en dessous de la fourchette haute, même avec un potentiel moteur apparemment correct.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Beechcraft Twin Bonanza</h3>
+            <p>Comparez les annonces de bimoteurs vintage Beechcraft d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="beechcraft-bonanza-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Beechcraft Bonanza d'occasion : guide d'achat</strong><p>Le monomoteur dont est dérivé le Twin Bonanza : budget, points de vigilance et entretien.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="tool"></i></span><span class="eyebrow">Guide acheteur</span><strong>Coût d'entretien d'un avion léger : ce qu'il faut savoir</strong><p>Les postes de dépense à anticiper pour entretenir un avion léger, de la visite annuelle à la grande visite moteur.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

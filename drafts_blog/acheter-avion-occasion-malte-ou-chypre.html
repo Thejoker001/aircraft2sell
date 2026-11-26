@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Acheter un avion d'occasion à Malte ou à Chypre : immatriculation, TVA, coûts d'exploitation et marché. Comparatif complet pour choisir le bon pays.">
+<meta property="og:title" content="Acheter un avion d'occasion en Malte ou à Chypre : quel pays choisir | Aircraft2Sell">
+<meta property="og:description" content="Acheter un avion d'occasion à Malte ou à Chypre : immatriculation, TVA, coûts d'exploitation et marché. Comparatif complet pour choisir le bon pays.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/acheter-avion-occasion-malte-ou-chypre.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/acheter-avion-occasion-malte-ou-chypre.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-malte-ou-chypre.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-malte-ou-chypre.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-malte-ou-chypre.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Acheter un avion d'occasion en Malte ou à Chypre : quel pays choisir | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Acheter un avion d'occasion en Malte ou à Chypre : quel pays choisir", "description": "Acheter un avion d'occasion à Malte ou à Chypre : immatriculation, TVA, coûts d'exploitation et marché. Comparatif complet pour choisir le bon pays.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/acheter-avion-occasion-malte-ou-chypre.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Acheter un avion d'occasion en Malte ou à Chypre : quel pays choisir", "item": "https://aircraft2sell.eu/acheter-avion-occasion-malte-ou-chypre.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Malte ou Chypre</span></nav>
+    <span class="eyebrow">Comparatif pays</span>
+    <h1>Acheter un avion d'occasion en Malte ou à Chypre : quel pays choisir</h1>
+    <p>Immatriculation, fiscalité, coûts d'exploitation et profondeur de marché : comparatif entre Malte et Chypre pour choisir le bon pays où acheter et immatriculer son avion d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#contexte">Malte et Chypre : deux hubs aéronautiques méditerranéens</a></li><li><a href="#marche">Le marché de l'occasion dans les deux pays</a></li><li><a href="#immatriculation">Immatriculation : comparatif des procédures</a></li><li><a href="#fiscalite">TVA et fiscalité à l'achat</a></li><li><a href="#exploitation">Coûts d'exploitation et structures d'exploitation</a></li><li><a href="#inspection">Inspection pré-achat et documents à vérifier</a></li><li><a href="#choix">Comment choisir entre Malte et Chypre</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="contexte">Malte et Chypre : deux hubs aéronautiques méditerranéens</h2>
+<p>Malte et Chypre partagent plusieurs atouts qui en ont fait, chacun à sa manière, des places reconnues pour l'immatriculation et l'exploitation d'aéronefs en Méditerranée : appartenance à l'Union européenne, régulateurs de l'aviation civile actifs et habitués aux dossiers internationaux, et un tissu de sociétés de gestion aéronautique, de cabinets juridiques spécialisés et de courtiers rodés aux transactions transfrontalières. Pour un acheteur d'avion d'occasion qui envisage d'immatriculer son appareil dans l'un de ces deux pays, le choix dépend moins d'une différence fondamentale de cadre réglementaire européen commun que de nuances pratiques : rapidité des démarches, écosystème de prestataires disponibles localement, et structuration fiscale envisagée.</p>
+<p>Les deux pays sont membres de l'Union européenne et appliquent donc le cadre commun de l'EASA pour la navigabilité, ce qui simplifie grandement la comparaison par rapport à un pays tiers hors UE. Les différences à étudier se situent davantage au niveau administratif, fiscal et de la disponibilité des services d'accompagnement.</p>
+
+<h2 id="marche">Le marché de l'occasion dans les deux pays</h2>
+<p>Ni Malte ni Chypre ne disposent d'un marché domestique de l'avion léger d'occasion comparable à celui de grands pays continentaux comme la France ou l'Allemagne : la taille réduite du territoire et le nombre limité d'aérodromes expliquent une offre locale d'annonces plus restreinte. En revanche, les deux pays sont des places d'immatriculation recherchées pour des appareils achetés ailleurs en Europe ou importés, notamment pour des jets d'affaires et des turbopropulseurs exploités par des sociétés de gestion locales.</p>
+<p>Dans la pratique, un acheteur cible rarement un avion physiquement basé à Malte ou à Chypre : il achète un appareil où qu'il se trouve en Europe, puis choisit son pays d'immatriculation en fonction des critères administratifs et fiscaux détaillés plus bas. Cette logique est particulièrement fréquente pour les jets d'affaires et les turbopropulseurs, où la structuration de la détention compte souvent autant que la localisation physique de l'appareil.</p>
+
+<h2 id="immatriculation">Immatriculation : comparatif des procédures</h2>
+<p>À Malte, l'immatriculation des aéronefs relève de la <strong>Transport Malta – Civil Aviation Directorate</strong>, sous préfixe <strong>9H-</strong>. Le registre maltais s'est particulièrement développé pour les jets d'affaires et les aéronefs détenus via des structures de société, avec des procédures bien rodées pour les dossiers internationaux et un accompagnement courant par des cabinets spécialisés basés sur l'île.</p>
+<p>À Chypre, l'immatriculation relève du <strong>Department of Civil Aviation</strong> chypriote, sous préfixe <strong>5B-</strong>. Le registre chypriote est également utilisé pour des aéronefs privés et d'affaires détenus par des structures internationales, avec un cadre administratif comparable à celui de Malte.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Certificat de navigabilité et dossier technique</strong> — à faire vérifier en amont, les exigences documentaires sont proches dans les deux pays du fait du cadre EASA commun.</span></li>
+  <li><i data-icon="check"></i><span><strong>Structure de détention</strong> — société locale, trust ou détention directe : la structure retenue influence le choix du registre et doit être étudiée avec un conseil spécialisé avant de choisir.</span></li>
+  <li><i data-icon="check"></i><span><strong>Radiation du registre d'origine</strong> — indispensable avant toute nouvelle immatriculation pour un appareil déjà immatriculé ailleurs, quel que soit le pays de destination.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Les deux registres s'adressent couramment à une clientèle internationale et appliquent les règles communes EASA pour la navigabilité. Le choix entre les deux dépend surtout de la structure juridique de détention envisagée et de la disponibilité de conseils spécialisés pour le type d'appareil concerné : il est recommandé de demander un devis de délai précis aux deux administrations plutôt que de se fier à une durée générique.</div></div>
+
+<h2 id="fiscalite">TVA et fiscalité à l'achat</h2>
+<p>Malte et Chypre appliquent toutes deux le régime commun de TVA de l'Union européenne pour les transactions aéronautiques, avec des règles qui dépendent du statut de l'acheteur (particulier ou société), de l'usage prévu de l'appareil et du lieu de livraison. Les deux pays ont développé une expertise reconnue dans la structuration fiscale des opérations d'aviation d'affaires, ce qui explique en partie leur attractivité pour ce type de clientèle.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Situation</th><th>Traitement fiscal</th></tr></thead>
+<tbody>
+<tr><td>Vente entre particuliers résidents UE</td><td>Généralement hors TVA</td></tr>
+<tr><td>Vente par un professionnel ou via une structure société</td><td>TVA potentiellement applicable, selon le montage retenu</td></tr>
+<tr><td>Import hors UE</td><td>TVA à l'importation, à valider au cas par cas avec un conseil fiscal</td></tr>
+</tbody>
+</table></div>
+<p>Les règles précises de calcul et les éventuels régimes particuliers évoluent régulièrement et dépendent fortement du montage retenu : il est indispensable de faire valider sa situation fiscale par un conseil spécialisé en fiscalité aéronautique dans le pays concerné avant toute acquisition, plutôt que de se fier à des généralités.</p>
+
+<h2 id="exploitation">Coûts d'exploitation et structures d'exploitation</h2>
+<p>Dans les deux pays, l'exploitation d'un aéronef privé ou d'affaires passe fréquemment par une société de gestion aéronautique locale, qui prend en charge la conformité réglementaire, la maintenance, l'équipage et, le cas échéant, la mise en charter de l'appareil. Cet écosystème de prestataires est un critère de choix aussi important que la fiscalité ou l'immatriculation elle-même : la disponibilité de gestionnaires expérimentés sur le type d'appareil envisagé peut faire basculer la décision d'un côté ou de l'autre.</p>
+<p>Les coûts de stationnement, d'assurance et de personnel restent globalement alignés sur les standards méditerranéens et dépendent surtout de l'aérodrome de base choisi plutôt que du pays d'immatriculation en tant que tel, puisque l'appareil n'est pas nécessairement basé dans son pays d'immatriculation.</p>
+
+<h2 id="inspection">Inspection pré-achat et documents à vérifier</h2>
+<p>Quel que soit le pays d'immatriculation finalement retenu, une inspection pré-achat menée par un mécanicien ou un atelier indépendant du vendeur, qualifié sur le type, reste la meilleure protection avant de finaliser une transaction. Elle porte sur l'état de la cellule, la cohérence du carnet moteur, l'historique de maintenance complet et la conformité de l'avionique aux exigences européennes en vigueur.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Carnets de cellule, moteur et hélice (ou carnet moteur pour un jet) à jour, sans rupture chronologique.</span></li>
+  <li><i data-icon="check"></i><span>Historique des factures de maintenance des dernières années, en particulier sur le statut moteur restant.</span></li>
+  <li><i data-icon="check"></i><span>Cohérence entre la structure de détention envisagée et le pays d'immatriculation choisi, validée par un conseil juridique avant signature.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne finalisez jamais un achat sans avoir vu les carnets originaux et fait vérifier leur cohérence par un professionnel indépendant, et sans avoir confirmé par écrit le délai réel d'immatriculation applicable à votre dossier auprès de l'administration retenue.</div></div>
+
+<h2 id="choix">Comment choisir entre Malte et Chypre</h2>
+<p>Dans la pratique, le choix entre Malte et Chypre pour immatriculer un avion d'occasion dépend rarement d'un seul critère : il résulte d'un arbitrage entre la structure de détention envisagée, la disponibilité d'un écosystème de conseils (fiscal, juridique, gestion aéronautique) habitué au type d'appareil concerné, et parfois des relations d'affaires déjà établies par l'acheteur ou son conseiller dans l'un ou l'autre pays.</p>
+<p>Pour un acheteur sans préférence préalable, la démarche la plus sûre consiste à solliciter en parallèle un conseil spécialisé dans chacun des deux pays, à comparer les devis de délai et de coût pour son dossier précis, et à vérifier la disponibilité de gestionnaires expérimentés sur le type d'appareil envisagé avant d'arrêter sa décision.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre prochain avion</h3>
+            <p>Comparez les annonces d'avions d'occasion disponibles en Europe sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Achat</span><strong>Certification et immatriculation d'un aéronef en Europe</strong><p>Démarches, choix du pays d'immatriculation, dossier à constituer, délais et coûts.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="tva-fiscalite-achat-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Fiscalité</span><strong>TVA et fiscalité à l'achat d'un aéronef en Europe</strong><p>Comprendre les règles de TVA applicables selon le statut de l'acheteur et le pays de livraison.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion en Europe.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

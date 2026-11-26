@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Franchise et valeur agréée en assurance corps de l'appareil : comment elles fonctionnent, comment elles influencent la prime et comment négocier votre contrat.">
+<meta property="og:title" content="Assurance corps de l'appareil : franchise et valeur agréée | Aircraft2Sell">
+<meta property="og:description" content="Franchise et valeur agréée en assurance corps de l'appareil : comment elles fonctionnent, comment elles influencent la prime et comment négocier votre contrat.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Assurance corps de l'appareil : franchise et valeur agréée | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Assurance corps de l'appareil : comprendre franchise et valeur agréée", "description": "Franchise et valeur agréée en assurance corps de l'appareil : comment elles fonctionnent, comment elles influencent la prime et comment négocier votre contrat.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Assurance corps de l'appareil : comprendre franchise et valeur agréée", "item": "https://aircraft2sell.eu/assurance-corps-de-l-appareil-franchise-et-valeur-agreee.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Franchise et valeur agréée</span></nav>
+    <span class="eyebrow">Assurance</span>
+    <h1>Assurance corps de l'appareil : comprendre franchise et valeur agréée</h1>
+    <p>Deux clauses déterminent l'essentiel de votre contrat et de votre indemnisation en cas de sinistre : la valeur agréée de l'appareil et le niveau de franchise. Voici comment les comprendre et les négocier.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#definition">Qu'est-ce que l'assurance corps de l'appareil</a></li><li><a href="#valeur-agreee">Valeur agréée ou valeur vénale</a></li><li><a href="#franchise">La franchise : principe et fonctionnement</a></li><li><a href="#types-franchise">Les différents types de franchises rencontrées</a></li><li><a href="#prime">Les facteurs qui influencent la prime</a></li><li><a href="#choix-franchise">Franchise haute ou franchise basse : comment choisir</a></li><li><a href="#declaration">Déclaration de valeur et revalorisation en cours de contrat</a></li><li><a href="#negocier">Comment négocier son contrat avec son assureur</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">Qu'est-ce que l'assurance corps de l'appareil</h2>
+<p>L'assurance corps de l'appareil (hull insurance) couvre les dommages matériels subis par l'avion, l'hélicoptère ou l'ULM lui-même, que le sinistre survienne en vol, au roulage, au sol ou pendant une opération de maintenance. Elle se distingue de la responsabilité civile, qui couvre les dommages causés aux tiers, et constitue généralement le poste de prime le plus élevé du contrat global dès lors que la valeur de l'appareil est significative.</p>
+<p>Contrairement à l'assurance automobile, où la valeur indemnisée se déprécie automatiquement avec l'âge du véhicule, l'assurance aéronautique repose le plus souvent sur une logique de valeur agréée, fixée au contrat et renégociée périodiquement. Cette particularité change radicalement la façon d'aborder la souscription et le renouvellement annuel.</p>
+
+<h2 id="valeur-agreee">Valeur agréée ou valeur vénale</h2>
+<p>La valeur agréée est un montant fixé d'un commun accord entre l'assuré et l'assureur au moment de la souscription, et inscrit explicitement dans les conditions particulières du contrat. En cas de perte totale, c'est ce montant qui sert de base d'indemnisation, sans discussion ultérieure sur la valeur de marché réelle de l'appareil au jour du sinistre.</p>
+<p>La valeur vénale, à l'inverse, correspond à la valeur de marché estimée au moment du sinistre. Un contrat basé sur la valeur vénale expose le propriétaire à une négociation potentiellement longue avec l'assureur sur le montant exact, notamment si le marché d'occasion a évolué depuis la souscription.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Avantage de la valeur agréée</strong> — certitude sur le montant perçu en cas de perte totale, pas de contestation sur la cote du marché.</span></li>
+  <li><i data-icon="check"></i><span><strong>Risque de la valeur agréée</strong> — si elle est fixée trop haut par rapport au marché réel, la prime annuelle est inutilement élevée ; si elle est fixée trop bas, l'indemnisation ne couvre pas le remplacement.</span></li>
+  <li><i data-icon="check"></i><span><strong>Révision périodique indispensable</strong> — la valeur agréée doit être réévaluée à chaque renouvellement pour suivre l'évolution du marché de l'occasion, à la hausse comme à la baisse.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Demandez systématiquement à votre assureur sur quelle base la valeur agréée a été fixée (barème constructeur, comparables de marché, expertise indépendante) et conservez cette justification avec votre dossier d'assurance.</div></div>
+
+<h2 id="franchise">La franchise : principe et fonctionnement</h2>
+<p>La franchise est la part du sinistre qui reste systématiquement à la charge de l'assuré, quel que soit le montant des dommages constatés par l'expert. Elle s'applique généralement en priorité : l'assureur règle les travaux de réparation uniquement pour la partie du coût qui dépasse le montant de la franchise contractuelle.</p>
+<p>Le niveau de franchise constitue, avec la valeur agréée, l'un des deux leviers principaux par lesquels l'assuré peut faire varier le montant de sa prime annuelle : plus la franchise acceptée est élevée, plus la prime proposée par l'assureur tend à diminuer, puisqu'une partie plus importante du risque reste supportée par le propriétaire.</p>
+
+<h2 id="types-franchise">Les différents types de franchises rencontrées</h2>
+<p>Les contrats corps de l'appareil ne proposent pas toujours une franchise unique et fixe : plusieurs mécanismes coexistent sur le marché, et il est important de les distinguer avant de comparer deux devis.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Franchise fixe</strong> — un montant identique s'applique à chaque sinistre, quelle que soit sa nature (roulage, atterrissage, dommage en vol).</span></li>
+  <li><i data-icon="check"></i><span><strong>Franchise modulée par type de sinistre</strong> — certains assureurs appliquent une franchise plus élevée pour les incidents au sol ou au roulage, considérés comme plus fréquents, et une franchise différente pour les événements en vol.</span></li>
+  <li><i data-icon="check"></i><span><strong>Franchise dégressive avec l'expérience du pilote</strong> — certains contrats réduisent la franchise applicable après un certain nombre d'heures sans sinistre, ou l'augmentent temporairement pour un pilote peu expérimenté sur le type.</span></li>
+  <li><i data-icon="check"></i><span><strong>Franchise spécifique en cas de pilote non qualifié sur le type</strong> — une franchise majorée peut s'appliquer si le sinistre survient alors qu'un pilote ne remplit pas les conditions d'expérience minimales fixées au contrat.</span></li>
+</ul>
+<p>Avant de signer, demandez une liste écrite et exhaustive de toutes les situations où une franchise différente de la franchise de base pourrait s'appliquer : c'est souvent dans ces clauses annexes que se cachent les mauvaises surprises au moment du sinistre.</p>
+
+<h2 id="prime">Les facteurs qui influencent la prime</h2>
+<p>Au-delà de la valeur agréée et de la franchise choisie, plusieurs éléments entrent dans le calcul de la prime d'assurance corps de l'appareil, et il est utile de les connaître avant toute négociation.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>L'expérience totale du ou des pilotes déclarés, ainsi que leur expérience spécifique sur le type d'appareil assuré.</span></li>
+  <li><i data-icon="check"></i><span>L'usage déclaré de l'appareil : loisir personnel, instruction, location, usage commercial.</span></li>
+  <li><i data-icon="check"></i><span>Le lieu de stationnement habituel (hangar fermé ou aire extérieure) et l'exposition aux intempéries.</span></li>
+  <li><i data-icon="check"></i><span>L'âge et l'état général de l'appareil, incluant l'historique de maintenance et les heures restant avant grande visite.</span></li>
+  <li><i data-icon="check"></i><span>Le sinistre historique du propriétaire et, dans certains cas, de l'appareil lui-même sur les contrats précédents.</span></li>
+</ul>
+
+<h2 id="choix-franchise">Franchise haute ou franchise basse : comment choisir</h2>
+<p>Le choix du niveau de franchise dépend avant tout de la capacité financière du propriétaire à absorber un sinistre de faible ou moyenne gravité sans recourir à l'assurance. Une franchise élevée réduit la prime annuelle mais expose à une dépense immédiate plus importante en cas d'incident, même mineur comme un atterrissage dur ou un dommage de roulage.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Profil</th><th>Franchise basse</th><th>Franchise élevée</th></tr></thead>
+<tbody>
+<tr><td>Budget disponible pour un sinistre imprévu</td><td>Limité</td><td>Confortable</td></tr>
+<tr><td>Prime annuelle</td><td>Plus élevée</td><td>Réduite</td></tr>
+<tr><td>Usage de l'appareil</td><td>Instruction, location, usage intensif</td><td>Loisir personnel, pilote expérimenté</td></tr>
+<tr><td>Fréquence de sinistre attendue</td><td>Plus élevée</td><td>Plus faible</td></tr>
+</tbody></table></div>
+<p>Pour un appareil utilisé en instruction ou en location, où la fréquence des incidents mineurs est statistiquement plus élevée, une franchise basse reste souvent préférable malgré la prime plus importante, car elle évite d'avoir à financer soi-même des réparations récurrentes.</p>
+
+<h2 id="declaration">Déclaration de valeur et revalorisation en cours de contrat</h2>
+<p>La valeur agréée déclarée à la souscription n'est pas figée pour toute la durée de possession de l'appareil : elle doit faire l'objet d'une révision à chaque renouvellement annuel, en particulier après une modification significative de l'appareil (nouvel équipement avionique, grande visite moteur, remise en état majeure) qui en augmente la valeur réelle.</p>
+<p>Une valeur agréée restée inchangée alors que l'appareil a reçu des équipements coûteux conduit, en cas de perte totale, à une indemnisation inférieure au coût de remplacement réel. À l'inverse, ne pas réviser la valeur à la baisse quand le marché de l'occasion se tasse revient à payer une prime calculée sur une base artificiellement haute.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Conservez les factures de tout équipement ou de toute grande visite moteur : elles constituent la preuve nécessaire pour justifier une revalorisation de la valeur agréée auprès de l'assureur.</div></div>
+
+<h2 id="negocier">Comment négocier son contrat avec son assureur</h2>
+<p>La négociation d'un contrat corps de l'appareil se joue avant tout sur la mise en concurrence : solliciter plusieurs courtiers spécialisés en assurance aéronautique permet de comparer non seulement les primes, mais aussi les niveaux de franchise proposés pour une valeur agréée équivalente, ce qui donne une vision beaucoup plus juste du rapport coût-couverture réel.</p>
+<p>Il est également utile de présenter un dossier complet dès le premier contact : carnet de maintenance à jour, historique de sinistres, qualifications et heures de vol des pilotes déclarés. Un dossier bien documenté rassure l'assureur sur le risque réel et facilite l'obtention d'une franchise plus favorable ou d'une prime ajustée.</p>
+<p>Enfin, revoyez votre contrat chaque année plutôt que de le renouveler par défaut : les conditions du marché de l'assurance aéronautique évoluent, et un contrat signé il y a plusieurs années peut ne plus être compétitif, que ce soit sur le niveau de prime ou sur les modalités de la franchise applicable.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez toujours un devis détaillé poste par poste (corps de l'appareil, responsabilité civile, garanties annexes) plutôt qu'une prime globale, pour identifier précisément où jouer sur la franchise ou la valeur agréée sans sacrifier une garantie essentielle.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="shield"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Assurance</span><strong>Assurer son aéronef en Europe : le guide complet</strong><p>Responsabilité civile, corps de l'appareil, garanties indispensables : comment bien assurer votre avion, hélicoptère ou ULM en Europe.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Entretien</span><strong>Le coût d'entretien d'un avion léger</strong><p>Budget annuel, grande visite, pièces et main d'œuvre : ce qu'il faut prévoir pour entretenir un avion léger.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

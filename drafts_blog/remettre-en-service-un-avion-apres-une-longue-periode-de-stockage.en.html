@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="How to return an aircraft to service after long-term storage: airframe and engine inspection, system checks, ground and test flight, paperwork.">
+<meta property="og:title" content="Returning an aircraft to service after long-term storage | Aircraft2Sell">
+<meta property="og:description" content="How to return an aircraft to service after long-term storage: airframe and engine inspection, system checks, ground and test flight, paperwork.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/remettre-en-service-un-avion-apres-une-longue-periode-de-stockage.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/remettre-en-service-un-avion-apres-une-longue-periode-de-stockage.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/remettre-en-service-un-avion-apres-une-longue-periode-de-stockage.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/remettre-en-service-un-avion-apres-une-longue-periode-de-stockage.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/remettre-en-service-un-avion-apres-une-longue-periode-de-stockage.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Returning an aircraft to service after long-term storage | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Returning an aircraft to service after a long period of storage", "description": "How to return an aircraft to service after long-term storage: airframe and engine inspection, system checks, ground and test flight, paperwork.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/remettre-en-service-un-avion-apres-une-longue-periode-de-stockage.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Returning an aircraft to service after a long period of storage", "item": "https://aircraft2sell.eu/en/remettre-en-service-un-avion-apres-une-longue-periode-de-stockage.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Return to service after storage</span></nav>
+    <span class="eyebrow">Technical guide</span>
+    <h1>Returning an aircraft to service after a long period of storage</h1>
+    <p>An aircraft left parked for months or years never simply flies again without a full return-to-service procedure. Here are the essential steps, from airframe inspection to the first check flight.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#pourquoi">Why extended storage degrades an aircraft</a></li><li><a href="#documents">Checking the paperwork before opening the hangar</a></li><li><a href="#cellule">Inspecting the airframe and systems</a></li><li><a href="#moteur">The engine: the most sensitive point</a></li><li><a href="#fluides">Fluids, tires, battery and avionics</a></li><li><a href="#essais">Ground runs before the first flight</a></li><li><a href="#vol-controle">The check flight</a></li><li><a href="#cout">How much a return to service costs</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Why extended storage degrades an aircraft</h2>
+<p>An aircraft is designed to fly regularly. Extended inactivity — bought and then parked while awaiting resale, an estate settlement, a dispute, an unrepaired fault, or simply because the owner has run out of time — exposes it to damage that has nothing to do with normal wear in flight.</p>
+<p>Ambient humidity promotes internal corrosion of the engine and airframe, even inside a closed hangar. Rubber seals and hoses harden and lose their sealing properties once there is no mechanical movement to keep them flexible. Tires flat-spot where they rest on a fixed contact point. The battery discharges and can sulfate irreversibly. Rodents and insects settle into cavities, air intakes, and sometimes wiring conduits. The longer the storage period, the more these issues compound, and the more thorough the return-to-service work needs to be rather than a token check.</p>
+
+<h2 id="documents">Checking the paperwork before opening the hangar</h2>
+<p>Before any technical work, take stock of the aircraft's administrative status. An aircraft stored for a long time has almost always let several deadlines slip.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Certificate of airworthiness (CofA)</strong> — check its validity and that of the associated airworthiness review certificate; both may have expired during storage.</span></li>
+  <li><i data-icon="check"></i><span><strong>Flight logbook and engine logbook</strong> — note the date and hours of the last flight, the starting point for every return-to-service calculation.</span></li>
+  <li><i data-icon="check"></i><span><strong>Airworthiness directives (AD)</strong> — re-read the full list: new directives may have been published during the aircraft's downtime and apply even to an aircraft that hasn't flown.</span></li>
+  <li><i data-icon="check"></i><span><strong>Manufacturer service bulletins</strong> — some specifically address extended storage (preservation procedures, maximum intervals, actions required on return to service).</span></li>
+  <li><i data-icon="check"></i><span><strong>Insurance</strong> — a policy suspended during storage must be reinstated before any flight, including a local test flight.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Key point</strong> — Calendar time matters as much as flight hours. An engine with few hours but several years of inactivity may require maintenance actions comparable to a major overhaul, depending on the manufacturer's recommendations.</div></div>
+
+<h2 id="cellule">Inspecting the airframe and systems</h2>
+<p>The airframe must be inspected as a whole before any return to service, not just the usual points of a periodic check.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>External structure and skin: corrosion, telltale paint blisters, signs of water ingress.</span></li>
+  <li><i data-icon="check"></i><span>Flight controls: play, stiff spots, slack cables, pulleys seized from prolonged lack of movement.</span></li>
+  <li><i data-icon="check"></i><span>Landing gear: flat-spotted shock absorbers, hardened seals, corrosion on gear legs.</span></li>
+  <li><i data-icon="check"></i><span>Checking for nests or signs of animals in static ports, pitot tubes, and wing or tail cavities.</span></li>
+  <li><i data-icon="check"></i><span>Fuel and hydraulic hoses and lines: dry-rot cracking, fitting seal integrity.</span></li>
+</ul>
+<h3>Electrical system</h3>
+<p>Wiring harnesses left unpowered for a long time can suffer connector oxidation. Before powering the aircraft back up, a visual check of accessible connections and a progressive test (ground, then circuit by circuit) limits the risk of a short circuit or damage to costly avionics equipment.</p>
+
+<h2 id="moteur">The engine: the most sensitive point</h2>
+<p>The engine is the component most exposed to long-term storage damage, because internal corrosion of the cylinders and bearings progresses without any visible outward sign.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Borescope inspection of the cylinders before any attempt to start the engine, to detect corrosion pitting on the walls and valves.</span></li>
+  <li><i data-icon="check"></i><span>Compression check once the engine turns freely by hand with no abnormal binding.</span></li>
+  <li><i data-icon="check"></i><span>Draining and analysis of the existing oil, followed by a systematic replacement before restart — old oil has lost its protective properties and may contain telltale metal particles.</span></li>
+  <li><i data-icon="check"></i><span>Checking the filters (oil, fuel) and the air filter, often colonized by insects or dust during inactivity.</span></li>
+  <li><i data-icon="check"></i><span>Checking the ignition system: magnetos, spark plugs, high-tension wiring.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — Never start an engine that has sat idle for several months without first turning it over by hand and performing a borescope inspection. Starting an internally corroded engine directly can cause immediate seizure or failure.</div></div>
+<p>Always check the engine manufacturer's recommendations for return-to-service procedures after extended storage: each manufacturer (Continental, Lycoming, Rotax...) publishes its own thresholds and actions depending on downtime, which can differ significantly from one model to another.</p>
+
+<h2 id="fluides">Fluids, tires, battery and avionics</h2>
+<p>Beyond the engine, several peripheral components systematically need attention after long-term storage.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Battery</strong> — almost always needs replacing after several years of inactivity; recharging does not restore a sulfated battery.</span></li>
+  <li><i data-icon="check"></i><span><strong>Tires</strong> — check pressure, the absence of cracks, and permanent flat-spotting before any taxiing.</span></li>
+  <li><i data-icon="check"></i><span><strong>Hydraulic fluid and brakes</strong> — check the fluid level, seal integrity, and the absence of corrosion on the pistons.</span></li>
+  <li><i data-icon="check"></i><span><strong>Avionics</strong> — progressive power-up, testing each piece of equipment (radios, transponder, GPS), and checking databases (charts, procedures) that may have expired during the layup.</span></li>
+  <li><i data-icon="check"></i><span><strong>Fuel</strong> — complete draining of the old fuel, which degrades chemically after a few months, before any fresh fill.</span></li>
+</ul>
+
+<h2 id="essais">Ground runs before the first flight</h2>
+<p>Once inspections and replacements are complete, a series of ground tests validates each system before a flight can be considered.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Full engine ground run: a progressive climb in RPM, monitoring temperatures and pressures, checking for abnormal vibration.</span></li>
+  <li><i data-icon="check"></i><span>Functional test of every flight control through its full range of travel.</span></li>
+  <li><i data-icon="check"></i><span>Testing the brakes, the landing gear (if retractable) and the flaps.</span></li>
+  <li><i data-icon="check"></i><span>Checking for leaks once the fuel and hydraulic systems are back under pressure.</span></li>
+</ul>
+<p>These ground tests must be documented and signed off by an approved mechanic before any flight, consistent with the aircraft's maintenance programme.</p>
+
+<h2 id="vol-controle">The check flight</h2>
+<p>The first flight after a long return-to-service process is not an ordinary flight. It needs to be prepared and flown differently.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>An experienced pilot on the type, ideally the one who oversaw the return-to-service work or an instructor used to this kind of flight.</span></li>
+  <li><i data-icon="check"></i><span>Flown in the immediate vicinity of the airfield, avoiding any marginal weather, with a clear contingency plan should anything go wrong.</span></li>
+  <li><i data-icon="check"></i><span>Close monitoring of engine parameters (temperatures, pressures) throughout the flight, returning immediately at the slightest doubt.</span></li>
+  <li><i data-icon="check"></i><span>A written debrief after the flight, recorded in the logbook, documenting anything to monitor on subsequent flights.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — If the aircraft needs to be ferried to a workshop or a new owner before its full return to service is complete, the question of a special flight permit (ferry permit) may arise: the procedure and conditions depend entirely on the relevant civil aviation authority.</div></div>
+
+<h2 id="cout">How much a return to service costs</h2>
+<p>The cost of returning an aircraft to service after extended storage varies enormously depending on how long it sat idle, the type of aircraft, and the condition found during the first inspections. The costliest items are usually the battery, tires, the oil and filter change, and above all any repairs revealed by the engine borescope inspection or the airframe check. A generous budget should be anticipated before buying or taking over an aircraft that has sat idle for a long time — it is a genuine negotiating point with the seller.</p>
+<p>Always request a detailed quote before committing to the work, and have the critical inspections (borescope, structural check) carried out by an independent approved workshop, particularly if the aircraft is changing ownership at the same time.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to compare aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft: technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Maintenance</span><strong>How much does it cost to maintain a light aircraft per year</strong><p>Real annual budget to maintain a light aircraft: maintenance, insurance, hangar, fuel. Detailed cost estimates by aircraft type.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Insurance</span><strong>Aircraft Insurance Quote & Light Aircraft Insurance Guide</strong><p>Get an aircraft insurance quote with confidence: liability and hull cover for your aircraft, helicopter or microlight across Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

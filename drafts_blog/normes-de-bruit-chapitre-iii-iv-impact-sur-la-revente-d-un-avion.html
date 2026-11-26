@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Normes de bruit Chapitre III/IV : ce qu'elles signifient pour un avion léger et leur impact réel sur la revente d'un appareil d'occasion en Europe.">
+<meta property="og:title" content="Normes de bruit Chapitre III/IV : impact sur la revente d'un avion | Aircraft2Sell">
+<meta property="og:description" content="Normes de bruit Chapitre III/IV : ce qu'elles signifient pour un avion léger et leur impact réel sur la revente d'un appareil d'occasion en Europe.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/normes-de-bruit-chapitre-iii-iv-impact-sur-la-revente-d-un-avion.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/normes-de-bruit-chapitre-iii-iv-impact-sur-la-revente-d-un-avion.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/normes-de-bruit-chapitre-iii-iv-impact-sur-la-revente-d-un-avion.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/normes-de-bruit-chapitre-iii-iv-impact-sur-la-revente-d-un-avion.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/normes-de-bruit-chapitre-iii-iv-impact-sur-la-revente-d-un-avion.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Normes de bruit Chapitre III/IV : impact sur la revente d'un avion | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Normes de bruit Chapitre III/IV : impact sur la revente d'un avion", "description": "Normes de bruit Chapitre III/IV : ce qu'elles signifient pour un avion léger et leur impact réel sur la revente d'un appareil d'occasion en Europe.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/normes-de-bruit-chapitre-iii-iv-impact-sur-la-revente-d-un-avion.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Normes de bruit Chapitre III/IV : impact sur la revente d'un avion", "item": "https://aircraft2sell.eu/normes-de-bruit-chapitre-iii-iv-impact-sur-la-revente-d-un-avion.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Normes de bruit et revente</span></nav>
+    <span class="eyebrow">Guide thématique</span>
+    <h1>Normes de bruit Chapitre III/IV : impact sur la revente d'un avion</h1>
+    <p>Ce que signifient les catégories de bruit Chapitre III et Chapitre IV pour un avion léger, et comment elles pèsent réellement sur sa valeur et sa facilité de revente en Europe.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol>
+          <li><a href="#comprendre">Comprendre les catégories de bruit Chapitre III et Chapitre IV</a></li>
+          <li><a href="#qui-concerne">Quels avions légers sont réellement concernés</a></li>
+          <li><a href="#ou-verifier">Où trouver la catégorie de bruit certifiée d'un appareil</a></li>
+          <li><a href="#impact-revente">L'impact concret sur la valeur de revente</a></li>
+          <li><a href="#restrictions">Restrictions d'exploitation et accès aux aérodromes</a></li>
+          <li><a href="#vendeur">Ce que doit anticiper un vendeur</a></li>
+          <li><a href="#acheteur">Ce que doit vérifier un acheteur</a></li>
+          <li><a href="#tendance">Une tendance de fond, pas un couperet brutal</a></li>
+        </ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="comprendre">Comprendre les catégories de bruit Chapitre III et Chapitre IV</h2>
+<p>Les catégories de bruit "Chapitre" proviennent de l'annexe 16 de la Convention relative à l'aviation civile internationale (OACI), qui fixe les exigences de certification acoustique des aéronefs. Chaque nouvelle génération de chapitre (II, III, IV...) impose aux avionneurs des limites de bruit certifié plus strictes que la précédente, mesurées lors d'essais encadrés et consignées dans le certificat de type de l'appareil.</p>
+<p>Pour l'aviation légère, l'essentiel à retenir est qualitatif : le Chapitre III correspond à une génération de certification plus ancienne, encore très répandue sur le parc d'avions légers en circulation, tandis que le Chapitre IV regroupe des appareils certifiés selon des exigences acoustiques plus récentes et plus exigeantes. Les seuils en décibels précis varient selon la masse maximale au décollage et le nombre de moteurs de l'appareil ; ils sont fixés par l'annexe 16 de l'OACI et ne doivent jamais être déduits approximativement — ils figurent sur la fiche de certification acoustique officielle de chaque type d'appareil.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Point clé</strong> — Ne confondez jamais "bruyant à l'oreille" et "classé Chapitre III". La catégorie de bruit est une donnée de certification officielle, indépendante de la perception subjective au sol ; elle est propre au type d'appareil (et parfois à sa motorisation/hélice précise), pas à un exemplaire individuel.</div></div>
+
+<h2 id="qui-concerne">Quels avions légers sont réellement concernés</h2>
+<p>La grande majorité des monomoteurs à pistons classiques (Cessna 172, Piper Cherokee, Socata TB, Robin DR400, Beechcraft Bonanza de génération ancienne, etc.) relèvent historiquement d'une certification acoustique de type Chapitre III ou d'exemptions spécifiques à l'aviation légère non commerciale selon leur date de certification. Les appareils plus récents, les évolutions motorisées (hélices à pas variable optimisées, capots retravaillés) ou certains modèles neufs visent des performances acoustiques alignées sur les exigences les plus récentes.</p>
+<p>Les hélicoptères, ULM et planeurs disposent de leurs propres référentiels acoustiques, distincts du système Chapitre III/IV qui s'applique historiquement surtout aux avions à voilure fixe plus lourds que la frange ultra-légère. Un avion léger classique reste cependant concerné dès lors qu'il relève du champ d'application de la certification acoustique de type.</p>
+
+<h2 id="ou-verifier">Où trouver la catégorie de bruit certifiée d'un appareil</h2>
+<p>La catégorie de bruit d'un type d'appareil figure dans sa fiche de certification acoustique, publiée par l'autorité qui a délivré le certificat de type (EASA pour les appareils certifiés en Europe, FAA pour les appareils d'origine américaine). Ces fiches ("Noise Certification" ou fiches de bruit) sont consultables publiquement sur les sites officiels des autorités compétentes et doivent être demandées, en cas de doute, directement au constructeur ou à l'autorité de certification plutôt que déduites d'une rumeur de marché.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Demander la fiche de certification acoustique exacte du type et de la version d'appareil concernée.</span></li>
+  <li><i data-icon="check"></i><span>Vérifier si une modification approuvée (hélice, capot moteur, échappement) a pu faire évoluer la catégorie par rapport à la version d'origine.</span></li>
+  <li><i data-icon="check"></i><span>Ne jamais se fier uniquement à l'année de fabrication : deux exemplaires du même modèle peuvent différer selon leur configuration certifiée.</span></li>
+</ul>
+
+<h2 id="impact-revente">L'impact concret sur la valeur de revente</h2>
+<p>La catégorie de bruit d'un avion n'est, à elle seule, presque jamais le facteur déterminant du prix de revente d'un monomoteur léger classique : l'état de la cellule, les heures moteur, le statut de la grande visite (SMOH) et l'avionique embarquée pèsent généralement beaucoup plus lourd dans la négociation. Son impact réel est indirect et progressif, et passe principalement par deux canaux.</p>
+<p>D'une part, un appareil pénalisé par des restrictions d'exploitation locales liées au bruit (voir plus bas) voit son bassin d'acheteurs potentiels rétréci : un acquéreur basé sur un terrain sensible au bruit évitera d'emblée un appareil mal classé, ce qui réduit la demande sans nécessairement faire baisser le prix affiché — le délai de vente s'allonge avant que la baisse de prix ne devienne visible. D'autre part, sur le segment des avions destinés à un usage intensif en école ou en club, proches d'habitations, la catégorie de bruit peut devenir un critère de sélection explicite dès l'annonce, ce qui influence la liquidité de l'appareil plus que son prix affiché.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — L'effet dominant observé sur le marché n'est généralement pas "prix plus bas" mais "délai de vente plus long" pour les appareils les moins favorisés sur le plan acoustique, en particulier lorsqu'ils sont basés près d'un aérodrome urbain ou périurbain soumis à des restrictions.</div></div>
+
+<h2 id="restrictions">Restrictions d'exploitation et accès aux aérodromes</h2>
+<p>Certains aérodromes, en particulier les terrains urbains ou périurbains soumis à des plaintes de riverains, appliquent des restrictions d'usage liées au bruit : créneaux horaires limités, interdiction de certains types d'exercices (tours de piste répétés), voire restrictions ciblant spécifiquement les appareils les moins favorisés sur le plan acoustique. Ces règles sont fixées localement, aérodrome par aérodrome, et évoluent dans le temps — elles doivent systématiquement être vérifiées auprès de l'exploitant ou de l'autorité aéroportuaire concernée, jamais supposées à partir d'un cas général.</p>
+<p>Un avion basé sur un terrain qui durcit ses règles de bruit peut voir son usage pratique contraint même sans aucune interdiction formelle de vol : moins de créneaux disponibles, davantage de contraintes pour l'école de pilotage qui l'exploite. C'est souvent ce facteur local, plus que la réglementation internationale elle-même, qui finit par influencer la décision de revente.</p>
+
+<h2 id="vendeur">Ce que doit anticiper un vendeur</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Joindre la fiche de certification acoustique du type d'appareil au dossier de vente, pour couper court à toute question ou rumeur de l'acheteur.</span></li>
+  <li><i data-icon="check"></i><span>Mentionner explicitement dans l'annonce si une modification approuvée a amélioré la performance acoustique par rapport à la version d'origine.</span></li>
+  <li><i data-icon="check"></i><span>Anticiper un délai de vente potentiellement plus long si l'appareil est basé sur un terrain soumis à des restrictions de bruit, et en tenir compte dans la stratégie de prix et de ciblage des acheteurs.</span></li>
+  <li><i data-icon="check"></i><span>Élargir la zone géographique de diffusion de l'annonce si le marché local est contraint, pour toucher des acheteurs basés sur des terrains moins sensibles.</span></li>
+</ul>
+
+<h2 id="acheteur">Ce que doit vérifier un acheteur</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Demander la fiche de certification acoustique avant de s'engager, en particulier si l'appareil est destiné à être basé sur un terrain urbain ou périurbain.</span></li>
+  <li><i data-icon="check"></i><span>Vérifier les règles de bruit en vigueur sur l'aérodrome de destination auprès de l'exploitant, jamais supposer qu'elles sont identiques à celles du terrain de départ.</span></li>
+  <li><i data-icon="check"></i><span>Intégrer ce critère dans la négociation du prix s'il restreint concrètement l'usage envisagé (école de pilotage proche d'habitations, créneaux horaires serrés).</span></li>
+  <li><i data-icon="check"></i><span>Garder à l'esprit que ce critère pèse surtout sur la revente future, pas uniquement sur l'achat présent : un appareil difficile à exploiter sera aussi plus difficile à revendre.</span></li>
+</ul>
+
+<h2 id="tendance">Une tendance de fond, pas un couperet brutal</h2>
+<p>Le durcissement progressif des exigences acoustiques et environnementales dans l'aviation légère est une tendance de fond largement documentée par les autorités et les constructeurs, mais elle ne se traduit pas, à ce jour, par une interdiction généralisée des appareils plus anciens sur le marché européen de l'occasion. L'essentiel est de considérer la catégorie de bruit comme un facteur parmi d'autres dans l'évaluation d'un appareil, à mettre en regard de son état technique, de son usage prévu et du terrain où il sera basé — et de toujours vérifier les règles exactes en vigueur auprès de l'autorité compétente plutôt que de se fier à une idée générale du marché.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Avant toute inspection pré-achat, demandez systématiquement la fiche de certification acoustique en même temps que les documents de navigabilité : c'est un élément de dossier simple à vérifier et qui évite les mauvaises surprises au moment de la revente future.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="delai-vente-avion.html" class="card"><span class="icon-box"><i data-icon="clock"></i></span><span class="eyebrow">Vendre</span><strong>Combien de temps pour vendre un avion en Europe</strong><p>Facteurs qui influencent le délai de vente et conseils pour vendre plus vite.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="estimer-valeur-revente-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Vendre</span><strong>Comment estimer la valeur de revente d'un avion d'occasion</strong><p>Comparables, état cellule et moteur, potentiel restant, avionique, historique d'entretien.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="tva-fiscalite-achat-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Fiscalité</span><strong>TVA et fiscalité sur l'achat d'un aéronef en Europe</strong><p>Comprendre la fiscalité applicable à l'achat d'un aéronef en Europe, entre particuliers, en société ou à l'importation.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

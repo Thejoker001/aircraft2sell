@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="AERO Friedrichshafen air show: what to expect, how to plan your visit, and how to use it to move forward with a light aircraft purchase in Europe.">
+<meta name="keywords" content="AERO Friedrichshafen show, light aviation show Europe, visit AERO Friedrichshafen, buying aircraft at an air show">
+<meta property="og:title" content="AERO Friedrichshafen Air Show: the Visitor and Buyer's Guide | Aircraft2Sell">
+<meta property="og:description" content="AERO Friedrichshafen air show: what to expect, how to plan your visit, and how to use it to move forward with a light aircraft purchase in Europe.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/salon-aero-friedrichshafen-le-guide-du-visiteur-et-de-l-acheteur.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/salon-aero-friedrichshafen-le-guide-du-visiteur-et-de-l-acheteur.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/salon-aero-friedrichshafen-le-guide-du-visiteur-et-de-l-acheteur.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/salon-aero-friedrichshafen-le-guide-du-visiteur-et-de-l-acheteur.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/salon-aero-friedrichshafen-le-guide-du-visiteur-et-de-l-acheteur.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>AERO Friedrichshafen Air Show: the Visitor and Buyer's Guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "AERO Friedrichshafen Air Show: the Visitor and Buyer's Guide", "description": "AERO Friedrichshafen air show: what to expect, how to plan your visit, and how to use it to move forward with a light aircraft purchase in Europe.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/salon-aero-friedrichshafen-le-guide-du-visiteur-et-de-l-acheteur.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "AERO Friedrichshafen Air Show: the Visitor and Buyer's Guide", "item": "https://aircraft2sell.eu/en/salon-aero-friedrichshafen-le-guide-du-visiteur-et-de-l-acheteur.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">AERO Friedrichshafen air show</span></nav>
+    <span class="eyebrow">Themed guide</span>
+    <h1>AERO Friedrichshafen Air Show: the Visitor and Buyer's Guide</h1>
+    <p>What you'll find at the AERO Friedrichshafen show, how to plan your visit, and how to use it to make real progress on a light aircraft purchase in Europe.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>6 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#quest-ce-que">What AERO Friedrichshafen actually is</a></li><li><a href="#pourquoi">Why it's worth attending as a buyer or visitor</a></li><li><a href="#quand-ou">When and where it takes place</a></li><li><a href="#preparer">Planning your visit: tickets, travel, lodging</a></li><li><a href="#voir">What you can actually see on site</a></li><li><a href="#rencontrer">Meeting sellers, brokers and clubs</a></li><li><a href="#apres">After the show: turning a visit into a successful purchase</a></li><li><a href="#conseils">Practical tips for an effective visit</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+
+<h2 id="quest-ce-que">What AERO Friedrichshafen actually is</h2>
+<p>AERO Friedrichshafen is one of Europe's largest trade shows dedicated to general and light aviation. Held every spring on the shores of Lake Constance in southern Germany, it brings together hundreds of exhibitors over several days: certified aircraft manufacturers, microlight and ultralight builders, gliding schools, engine makers, experimental and kit-aircraft companies, avionics and equipment suppliers, insurers and brokers. The show mixes an outdoor static display with themed indoor halls (light aircraft, microlights, gliders, helicopters, drones, equipment) and a full programme of technical talks.</p>
+<p>Unlike a purely trade-focused show aimed only at manufacturers, AERO Friedrichshafen stays very accessible to private pilots and prospective owners, not just industry professionals. That is exactly what makes it a reference event for anyone in Europe planning to buy a light aircraft, whether a certified type, a microlight, a glider or an experimental build.</p>
+
+<h2 id="pourquoi">Why it's worth attending as a buyer or visitor</h2>
+<p>For a buyer, the main value is being able to compare, in one place over a few days, models you would otherwise have to track down separately, sometimes hundreds of kilometres apart. You can sit in a cockpit, compare the ergonomics of two competing manufacturers, ask technical questions directly to an engineer or a test pilot, and get current information on delivery lead times, options and list prices — details that are often hard to pin down by phone or email.</p>
+<p>The show also lets you meet the whole buying chain in one trip: manufacturers, national distributors, finance providers, specialist insurers, and sometimes brokers who display used aircraft on their stand. For a visitor who simply loves aviation, it's also a chance to see new technology — avionics, electric or hybrid propulsion, composite structures — before it reaches the wider market.</p>
+
+<h2 id="quand-ou">When and where it takes place</h2>
+<p>AERO Friedrichshafen is traditionally held in spring at the Messe Friedrichshafen exhibition centre, on Lake Constance in southern Germany. The town is easy to reach by air (the local airport serves flights from several European capitals), by train from major German and Swiss stations, or by road from Switzerland, Austria and the rest of Germany, right at the meeting point of all three countries.</p>
+<p>Exact dates change every year and should never be assumed: always check the official show website before booking travel, since the dates can shift by several weeks from one edition to the next. The same caution applies to opening hours, which sometimes differ by day (some days are reserved for trade visitors only).</p>
+
+<h2 id="preparer">Planning your visit: tickets, travel, lodging</h2>
+<p>Entry tickets are booked online in advance, usually at a discount versus buying on-site, with multi-day passes for visitors planning to return over several days. If you have a specific goal — meeting a particular manufacturer, attending a technical talk, seeing one specific model — study the hall map and the exhibitor list the organiser publishes beforehand. The show is large, and an unplanned visit wastes a lot of valuable time.</p>
+<p>Accommodation in and around Friedrichshafen needs to be booked well ahead: the town is small relative to the crowds the show attracts, and hotels near the venue sell out months in advance. Options also exist on the Swiss or Austrian side of the lake, roughly half an hour's drive away, often at more reasonable rates.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Book tickets and lodging several months ahead, especially for a multi-day stay.</span></li>
+  <li><i data-icon="check"></i><span>Build a list of exhibitors to meet from the official hall map, by building and time slot.</span></li>
+  <li><i data-icon="check"></i><span>Pack for the weather: part of the display is outdoors regardless of conditions.</span></li>
+  <li><i data-icon="check"></i><span>Bring your paperwork (pilot licence, financing plan) if you intend to have concrete discussions with a manufacturer.</span></li>
+</ul>
+
+<h2 id="voir">What you can actually see on site</h2>
+<p>The show covers almost the entire light-aviation spectrum: certified single- and twin-engine aircraft, microlights and ultralights of every category, gliders and motor gliders, light helicopters, plus a growing and historically strong presence of experimental and amateur-built kit aircraft. Add to that avionics and equipment suppliers, hull and parachute manufacturers, engine makers, flight schools and training organisations.</p>
+<p>For a prospective used-aircraft buyer, the show is still worth the trip even though most of what's on display is new: it's where you get a feel for the value gap between generations of the same model, understand how avionics upgrades move the resale value of an aircraft a few years old, and sometimes talk to distributors who take used aircraft in part-exchange.</p>
+<h3>The experimental and kit-built segment at Friedrichshafen</h3>
+<p>A full hall is typically dedicated to experimental and amateur-built kit aircraft, a segment where the show is a genuine reference point in continental Europe. You'll find both classic metal structures and composite airframes, often with stands staffed by the kit's actual designers rather than a reseller — a real advantage if you're considering a homebuilding project rather than buying a finished used aircraft.</p>
+
+<h2 id="rencontrer">Meeting sellers, brokers and clubs</h2>
+<p>Beyond the manufacturers, AERO Friedrichshafen gathers numerous aviation brokers, owner associations and national clubs running stands to inform visitors, and sometimes to present aircraft for sale. It's a rare chance to ask face to face the questions you might hesitate to put in writing: exclusive or open mandate, how the broker is paid, and the actual scope of their search or sales service.</p>
+<p>Take time to note down contact details and ask for written documentation — spec sheet, price list, warranty terms — rather than relying only on what was said amid the noise and bustle of the show floor. A serious commitment — a reservation, a deposit, a search mandate — should never be signed in the rush of a show stand.</p>
+
+<h2 id="apres">After the show: turning a visit into a successful purchase</h2>
+<p>Back home, sort your notes and compare models, quoted prices and delivery lead times with a clear head. If the show confirmed your interest in a particular model and you're now leaning toward a used aircraft rather than new, the usual rules of buying a used aircraft apply in full: demand a complete, consistent logbook, check the engine hours and the time remaining before the next major overhaul (often expressed as SMOH — hours since major overhaul), and confirm the certificate of airworthiness is valid before any serious negotiation.</p>
+<p>The show is only one step in your project: a useful stop to sharpen your criteria, compare options and make contacts, but it never replaces an independent pre-purchase inspection once you've identified a specific aircraft. Use the show's energy and contacts to speed up your search, not to rush a buying decision.</p>
+
+<h2 id="conseils">Practical tips for an effective visit</h2>
+<p>A show of this size is rarely covered properly in a single day if you're serious about it. It's better to target two or three priority halls on day one, leave time for the technical talks that interest you, then dedicate a second day to follow-up meetings with exhibitors you've already identified. Leave some unscheduled time too: the best conversations with a manufacturer or broker often come from an informal chat rather than a timed appointment.</p>
+<p>Finally, remember that the very friendly atmosphere of the show — on-site meals, flying demonstrations, meeting fellow enthusiasts — should never override the usual discipline of an aircraft purchase. Take notes, ask for written quotes, and let the show's enthusiasm settle before you sign anything.</p>
+
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to compare aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="planeur-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Gliders</span><strong>Used Glider Buyer's Guide</strong><p>Budget, reference brands, pre-purchase inspection checks and resale outlook for buying a used glider or motor glider.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="avion-experimental-kit-occasion-guide.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Experimental</span><strong>Used experimental / kit-built aircraft: a buying guide</strong><p>Budget by kit type, legal status in Europe, inspection checkpoints, maintenance and resale.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="choisir-courtier-aviation-questions.html" class="card"><span class="icon-box"><i data-icon="users"></i></span><span class="eyebrow">Brokers</span><strong>Choosing an aviation broker: the right questions to ask</strong><p>Exclusive or open mandate, how brokers are paid, and the real scope of their mission: what to verify before committing.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

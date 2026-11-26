@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Magnetos on a piston aircraft engine: how they work, maintenance, service life and wear signs to check before buying a used aircraft.">
+<meta name="keywords" content="aircraft magneto, piston engine ignition, magneto maintenance, magneto service life, magneto failure">
+<meta property="og:title" content="Magnetos and Ignition on Piston Engines: Maintenance and Service Life | Aircraft2Sell">
+<meta property="og:description" content="Magnetos on a piston aircraft engine: how they work, maintenance, service life and wear signs to check before buying a used aircraft.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/magnetos-et-allumage-moteur-a-pistons-entretien-et-duree-de-vie.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/magnetos-et-allumage-moteur-a-pistons-entretien-et-duree-de-vie.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/magnetos-et-allumage-moteur-a-pistons-entretien-et-duree-de-vie.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/magnetos-et-allumage-moteur-a-pistons-entretien-et-duree-de-vie.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/magnetos-et-allumage-moteur-a-pistons-entretien-et-duree-de-vie.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Magnetos and Ignition on Piston Engines: Maintenance and Service Life | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Magnetos and ignition on piston engines: maintenance and service life", "description": "Magnetos on a piston aircraft engine: how they work, maintenance, service life and wear signs to check before buying a used aircraft.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/magnetos-et-allumage-moteur-a-pistons-entretien-et-duree-de-vie.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Magnetos and ignition on piston engines: maintenance and service life", "item": "https://aircraft2sell.eu/en/magnetos-et-allumage-moteur-a-pistons-entretien-et-duree-de-vie.html"}]}
+</script>
+<script type="application/ld+json">
+{"@type": "FAQPage", "@context": "https://schema.org", "mainEntity": [
+{"@type": "Question", "name": "How long does an aircraft magneto last before overhaul?", "acceptedAnswer": {"@type": "Answer", "text": "The time before overhaul for a magneto depends on the manufacturer and the exact model fitted to the engine: it is generally measured in hundreds of hours, but the precise figure should always be checked against the manufacturer's documentation for the specific part number on the aircraft, rather than relying on a generic value."}},
+{"@type": "Question", "name": "Why does a piston engine have two magnetos?", "acceptedAnswer": {"@type": "Answer", "text": "The dual-magneto setup is a redundancy measure: each cylinder has two spark plugs fed by two independent ignition circuits. If one magneto fails, the other keeps the engine firing, which generally allows the flight to continue to a landing, with a loss of power and rougher engine running that should be monitored closely."}},
+{"@type": "Question", "name": "How do you check magneto condition when buying a used aircraft?", "acceptedAnswer": {"@type": "Answer", "text": "Check the engine logbook for the date and hours of the last overhaul or magneto replacement, request a run-up with an RPM drop check on each ignition circuit, and have a full pre-purchase inspection carried out by a certified mechanic independent of the seller."}}
+]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Magnetos and ignition</span></nav>
+    <span class="eyebrow">Technical guide</span>
+    <h1>Magnetos and Ignition on Piston Engines: Maintenance and Service Life</h1>
+    <p>Understand the role of magnetos on a piston engine, their specific maintenance needs, service life and the wear signs to check before buying a used aircraft.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#role">The magneto's role in piston engine ignition</a></li><li><a href="#redondance">Why two magnetos per engine</a></li><li><a href="#entretien">Routine maintenance: what gets checked at each visit</a></li><li><a href="#duree">Service life and overhaul intervals</a></li><li><a href="#signes">Wear and failure signs to watch for</a></li><li><a href="#occasion">What to check when buying a used aircraft</a></li><li><a href="#budget">Maintenance and replacement budget</a></li><li><a href="#faq">Frequently asked questions</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="role">The magneto's role in piston engine ignition</h2>
+<p>On the vast majority of piston engines fitted to light aircraft, ignition is not provided by a battery and coil as on an ordinary car, but by magnetos: electrical generators driven mechanically by the engine, which produce the high voltage needed to fire the spark plugs on their own. This principle offers a major advantage for aviation: ignition keeps working even if the aircraft's entire electrical system fails, since the magneto does not rely on the battery to operate.</p>
+<p>Each magneto feeds a series of spark plugs distributed across the different cylinders, in a precise firing order synchronised with engine rotation. This self-contained, rugged design, proven over decades, explains why the magneto still holds a central place in light aviation, despite the gradual introduction of electronic ignition systems on some newer engines.</p>
+
+<h2 id="redondance">Why two magnetos per engine</h2>
+<p>Almost all piston engines certified for aviation are fitted with two independent magnetos, each feeding a different spark plug on every cylinder. This redundancy is a fundamental safety measure: if one ignition circuit fails, the other keeps combustion going, which in most cases allows the flight to continue to a landing, at the cost of a power loss and rougher engine running.</p>
+<p>This dual architecture is also what enables the magneto check carried out routinely during the run-up before every flight: by switching off each circuit in turn, the pilot verifies that both magnetos are working correctly and that the observed RPM drop stays within the limits set out in the flight manual.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — An abnormally large or uneven RPM drop during the run-up check is a warning sign that should never be ignored: it must be diagnosed by a mechanic before flight.</div></div>
+
+<h2 id="entretien">Routine maintenance: what gets checked at each visit</h2>
+<p>Magneto maintenance is part of the engine's scheduled maintenance programme, with specific checks carried out at planned inspections.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Ignition timing: a precise setting, to be checked and adjusted as needed per the manufacturer's specifications.</span></li>
+  <li><i data-icon="check"></i><span>Condition of internal contact points (breaker points) on models fitted with them, along with the associated capacitors.</span></li>
+  <li><i data-icon="check"></i><span>Electrical insulation and condition of the ignition harness connecting the magneto to each spark plug.</span></li>
+  <li><i data-icon="check"></i><span>Condition of the spark plugs themselves, whose wear and fouling are closely tied to proper ignition performance.</span></li>
+  <li><i data-icon="check"></i><span>Compliance with service bulletins and manufacturer directives applicable to the specific magneto model fitted.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point of caution</strong> — Magnetos are subject to recurring airworthiness directives from several manufacturers. Always check with your mechanic that every directive applicable to the exact model fitted to the aircraft has been complied with.</div></div>
+
+<h2 id="duree">Service life and overhaul intervals</h2>
+<p>A magneto's service life before overhaul depends on the manufacturer and the exact part number installed: there is no universal figure that applies to all magnetos, and you should always refer to the relevant manufacturer's documentation rather than a generic number picked up on a forum.</p>
+<p>As with other engine components, a calendar limit can apply in addition to a flight-hour limit, particularly for internal inspections mandated by some manufacturers at a fixed interval regardless of the aircraft's activity. A lightly flown but older aircraft may therefore need magneto work before it has even accumulated many hours.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — For private, non-commercial use, manufacturer-published intervals remain recommendations that should be followed closely, but whether they are mandatory also depends on any airworthiness directives applicable to the specific model. Always check the exact status of the aircraft with your mechanic.</div></div>
+
+<h2 id="signes">Wear and failure signs to watch for</h2>
+<p>Several signs, observed on the ground or in flight, help anticipate a failure before it becomes a real problem.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Abnormally high or uneven RPM drop during the magneto check in the run-up.</span></li>
+  <li><i data-icon="check"></i><span>Rough running (stumbling, misfiring) at low RPM, which can point to an ignition issue on one or more cylinders.</span></li>
+  <li><i data-icon="check"></i><span>Starting difficulties, particularly when cold, sometimes linked to incorrect timing or worn contact points.</span></li>
+  <li><i data-icon="check"></i><span>Signs of overheating, cracking or visible arcing found during inspections, on the magneto housing or the ignition harness.</span></li>
+  <li><i data-icon="check"></i><span>Approaching the calendar deadline or the manufacturer's recommended hour interval, which should be anticipated to avoid an unplanned grounding.</span></li>
+</ul>
+
+<h2 id="occasion">What to check when buying a used aircraft</h2>
+<p>When buying an aircraft fitted with a piston engine, magneto history deserves specific attention, often overlooked in favour of simply tracking engine hours (SMOH), even though magnetos are a separate component with their own maintenance calendar.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Date and hours of the last overhaul or replacement of each magneto, recorded in the engine logbook.</span></li>
+  <li><i data-icon="check"></i><span>Compliance with airworthiness directives and service bulletins applicable to the exact part numbers installed.</span></li>
+  <li><i data-icon="check"></i><span>Consistency between the magnetos' calendar age and the declared flight hours, to spot a component close to its deadline despite a low hour count.</span></li>
+  <li><i data-icon="check"></i><span>Result of the run-up check during the pre-purchase inspection, with a precise RPM drop check on each circuit.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Always have the magnetos checked during the pre-purchase inspection by a certified mechanic independent of the seller: an apparently minor component can represent a significant repair cost if it is close to its overhaul deadline.</div></div>
+
+<h2 id="budget">Maintenance and replacement budget</h2>
+<p>The cost of a magneto overhaul varies by exact model and manufacturer, and should be budgeted as a separate maintenance line item, distinct from the engine's general overhaul. Replacing the ignition harness and spark plugs, which happens more frequently, represents a routine maintenance cost to factor into the aircraft's annual budget.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Item</th><th>Specific point</th></tr></thead>
+<tbody>
+<tr><td>Magneto overhaul</td><td>Hour interval and/or calendar limit depends on manufacturer and exact model</td></tr>
+<tr><td>Periodic internal inspection</td><td>Mandated by some manufacturers at a fixed interval, regardless of hours</td></tr>
+<tr><td>Ignition harness and spark plugs</td><td>Replaced more often, separate from the magneto overhaul itself</td></tr>
+<tr><td>Qualified workshop</td><td>Training or approval on the specific magneto model is recommended</td></tr>
+</tbody></table></div>
+<p>As with any critical engine component, anticipating the overhaul deadline helps avoid an emergency grounding of the aircraft and spreads the maintenance budget more evenly across the year.</p>
+
+<h2 id="faq">Frequently asked questions</h2>
+<h3>How long does an aircraft magneto last before overhaul?</h3>
+<p>The time before overhaul for a magneto depends on the manufacturer and the exact model fitted to the engine: it is generally measured in hundreds of hours, but the precise figure should always be checked against the manufacturer's documentation for the specific part number on the aircraft, rather than relying on a generic value.</p>
+<h3>Why does a piston engine have two magnetos?</h3>
+<p>The dual-magneto setup is a redundancy measure: each cylinder has two spark plugs fed by two independent ignition circuits. If one magneto fails, the other keeps the engine firing, which generally allows the flight to continue to a landing, with a loss of power and rougher engine running that should be monitored closely.</p>
+<h3>How do you check magneto condition when buying a used aircraft?</h3>
+<p>Check the engine logbook for the date and hours of the last overhaul or magneto replacement, request a run-up with an RPM drop check on each ignition circuit, and have a full pre-purchase inspection carried out by a certified mechanic independent of the seller.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to compare aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Find an inspector <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>The pre-purchase inspection of an aircraft: complete guide</strong><p>Everything you need to check before buying a used aircraft, including engine history.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="pieges-achat-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="alert-triangle"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pitfalls to avoid when buying a used aircraft</strong><p>The most common mistakes, including misreading engine history.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Maintenance</span><strong>The cost of maintaining a light aircraft</strong><p>Overview of recurring expense items, including engine overhaul.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

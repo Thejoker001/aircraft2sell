@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used Airbus H130 (EC130) buying guide: a low-noise single-turbine helicopter. Typical uses, inspection points, budget and resale outlook.">
+<meta property="og:title" content="Used Airbus H130 (EC130): helicopter buying guide | Aircraft2Sell">
+<meta property="og:description" content="Used Airbus H130 (EC130) buying guide: a low-noise single-turbine helicopter. Typical uses, inspection points, budget and resale outlook.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/airbus-h130-occasion-guide-achat-helicoptere.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/airbus-h130-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/airbus-h130-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/airbus-h130-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/airbus-h130-occasion-guide-achat-helicoptere.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Airbus H130 (EC130): helicopter buying guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Airbus H130 (EC130): helicopter buying guide", "description": "Used Airbus H130 (EC130) buying guide: a low-noise single-turbine helicopter. Typical uses, inspection points, budget and resale outlook.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/airbus-h130-occasion-guide-achat-helicoptere.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Airbus H130 (EC130): buying guide", "item": "https://aircraft2sell.eu/en/airbus-h130-occasion-guide-achat-helicoptere.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Airbus H130</span></nav>
+    <span class="eyebrow">Buying</span>
+    <h1>Used Airbus H130 (EC130): helicopter buying guide</h1>
+    <p>Typical uses, price range, inspection points to watch and resale outlook to help you buy a used Airbus H130 (formerly Eurocopter EC130) with full knowledge of the facts.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">The Airbus H130, a single-turbine built for comfort and quiet</a></li><li><a href="#usages">Typical uses: tourism, VIP and aerial work</a></li><li><a href="#inspection">Inspection points to watch</a></li><li><a href="#entretien">Maintenance and engine overhaul</a></li><li><a href="#budget">Price range and operating budget</a></li><li><a href="#revente">Market and resale</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">The Airbus H130, a single-turbine built for comfort and quiet</h2>
+<p>The Airbus H130 (previously sold by Eurocopter as the EC130, notably in the B4 and later T2 versions) is a light single-turbine helicopter derived from the Ecureuil (AS350) family. It carries over the family's general ruggedness while standing out with a wider cabin and a shrouded Fenestron tail rotor, which removes exposed tail rotor blades and significantly reduces perceived noise on the ground. This feature has made it one of the go-to aircraft for sightseeing flights and missions over noise-sensitive areas.</p>
+<p>On the used market, the H130 sits in the same general category as the H125, but is more geared towards comfortable passenger transport than demanding aerial work missions at high altitude or with heavy payloads. A buyer deciding between the two models should first clarify the aircraft's intended use.</p>
+
+<h2 id="usages">Typical uses: tourism, VIP and aerial work</h2>
+<p>The usage profile of a used H130 varies significantly depending on its prior history, which directly affects its condition and value. The main uses found on the market are:</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Sightseeing and scenic flights: comfortable cabin, good passenger visibility and reduced noise levels, a major asset for flights over busy sites or urban areas.</span></li>
+  <li><i data-icon="check"></i><span>VIP and business transport: high-end interior fitting for a few passengers, often with reinforced soundproofing.</span></li>
+  <li><i data-icon="check"></i><span>Surveillance and public safety missions: the aircraft's quietness is valued for certain missions over populated areas.</span></li>
+  <li><i data-icon="check"></i><span>Advanced training and transition to turbine aircraft, to a lesser extent, for pilots qualifying after flying piston helicopters.</span></li>
+</ul>
+<p>The same model can therefore have had a very different operational life from one example to another: an aircraft used for sightseeing with many take-off and landing cycles does not have the same wear profile as one that served in VIP transport with fewer cycles but more cruise hours. The operating history is therefore one of the first things to ask for before any viewing.</p>
+
+<h2 id="inspection">Inspection points to watch</h2>
+<p>Beyond the standard checks that apply to any used helicopter (complete logbook, compliance with airworthiness directives, general airframe condition), a few points deserve particular attention on an H130.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Precise usage history (tourism, VIP, surveillance) and consistency with declared flight hours and the logbook.</span></li>
+  <li><i data-icon="check"></i><span>Condition and remaining potential of the main blades, rotor head and transmission components, life-limited parts whose replacement represents a significant expense.</span></li>
+  <li><i data-icon="check"></i><span>Condition of the shrouded (Fenestron) tail rotor and its associated components, a feature specific to this architecture compared with the H125.</span></li>
+  <li><i data-icon="check"></i><span>Time remaining before the next turbine overhaul and consistency with the engine logbook and maintenance invoices.</span></li>
+  <li><i data-icon="check"></i><span>Signs of corrosion or accelerated wear, particularly for aircraft that have operated near the coast or in demanding environmental conditions.</span></li>
+  <li><i data-icon="check"></i><span>History of any incidents (hard landing, transmission damage, engine FOD) recorded in the logbook or with the registration authority.</span></li>
+  <li><i data-icon="check"></i><span>Compliance of the cabin configuration (VIP, sightseeing, seat count) with the buyer's intended use and with the Certificate of Airworthiness.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — A pre-purchase inspection by an approved Airbus Helicopters shop is strongly recommended before any firm offer, in particular to check the condition of the transmission, rotor head, Fenestron and the complete turbine file, three costly items if potential has been exceeded.</div></div>
+
+<h2 id="entretien">Maintenance and engine overhaul</h2>
+<p>Like any turbine helicopter, the H130 requires a demanding periodic maintenance schedule, with life-limited components (blades, rotor head, certain transmission parts) that must be replaced after a number of hours or a calendar period set by the manufacturer, regardless of their apparent condition.</p>
+<p>The turbine overhaul is the heaviest maintenance item to plan for: its cost and due date must be clearly documented in the aircraft's technical file before any purchase, since an example close to this deadline logically trades at a discount reflecting the cost of the upcoming overhaul. Also check the availability of an approved maintenance shop near the planned operating base, an important criterion for an aircraft used frequently in commercial rotation.</p>
+
+<h2 id="budget">Price range and operating budget</h2>
+<p>Like the H125, the H130 sits in a price segment well above light piston helicopters: on the European used market, prices generally range from a few hundred thousand euros for the oldest, most used examples, up to several million euros for recent, low-potential models with high-end VIP fittings. This order of magnitude places the aircraft in a budget category comparable to turboprops and small business jets covered elsewhere on Aircraft2Sell (see our guide on the average price of a private jet), rather than light single-engine piston helicopters.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Item</th><th>What to plan for</th></tr></thead>
+<tbody>
+<tr><td>Used purchase price</td><td>Highly variable depending on year, hours, cabin configuration and usage history — from a few hundred thousand euros to several million euros</td></tr>
+<tr><td>Fuel</td><td>Turbine, noticeably higher consumption than an equivalent light piston helicopter</td></tr>
+<tr><td>Insurance (liability + hull)</td><td>Varies with pilot experience, declared use (commercial or private) and insured value of the aircraft</td></tr>
+<tr><td>Periodic inspection</td><td>Demanding schedule, typical of a heavily used commercial aircraft</td></tr>
+<tr><td>Life-limited components (blades, rotor head)</td><td>Scheduled replacement independent of apparent condition, an item to provision for in advance</td></tr>
+<tr><td>Turbine overhaul</td><td>The heaviest item, to be planned based on hours remaining before the manufacturer's deadline</td></tr>
+<tr><td>Hangar / shelter</td><td>Recommended to limit environmental wear and preserve resale value</td></tr>
+</tbody></table></div>
+<p>Before any negotiation, compare several listings of comparable configurations (year, hours, cabin fitting, prior use) to place the asking price against the real market, rather than relying on a single isolated reference.</p>
+
+<h2 id="revente">Market and resale</h2>
+<p>The H130 benefits from an active resale market, driven by steady demand from sightseeing and VIP transport operators, who value its quietness. Resale is generally made easier by a complete, transparent maintenance file, a clearly documented usage history, and life-limited components recently replaced or with a comfortable margin before their deadline.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always keep maintenance invoices and inspection reports: they are a strong argument at resale time, particularly for the turbine, the Fenestron and the life-limited components.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your next helicopter</h3>
+            <p>Compare used helicopter listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="robinson-r66-occasion-guide-achat-helicoptere.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buying</span><strong>Used Robinson R66: light turbine, what you need to know</strong><p>The light turbine explained, purchase and operating budget, inspection points and resale market.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="helicoptere-occasion-guide-achat-particulier.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buying</span><strong>Used helicopter: buying guide for private owners</strong><p>The key benchmarks for approaching the purchase of a first helicopter with confidence.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="prix-moyen-jet-prive-2026.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Market</span><strong>Average private jet price in 2026</strong><p>Price ranges, operating costs and factors that affect the value of a used business jet.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

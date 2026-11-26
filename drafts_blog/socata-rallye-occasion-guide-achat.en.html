@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used Socata Rallye buying guide: budget, inspection points to watch, maintenance and typical use for this French short-field single-engine aircraft.">
+<meta property="og:title" content="Used Socata Rallye: buying guide | Aircraft2Sell">
+<meta property="og:description" content="Used Socata Rallye buying guide: budget, inspection points to watch, maintenance and typical use for this French short-field single-engine aircraft.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/socata-rallye-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/socata-rallye-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/socata-rallye-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/socata-rallye-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/socata-rallye-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Socata Rallye: buying guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Socata Rallye: buying guide | Aircraft2Sell", "description": "Used Socata Rallye buying guide: budget, inspection points to watch, maintenance and typical use for this French short-field single-engine aircraft.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/socata-rallye-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Socata Rallye: buying guide", "item": "https://aircraft2sell.eu/en/socata-rallye-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides & Advice</a><i data-icon="chevron-right"></i><span aria-current="page">Used Socata Rallye</span></nav>
+    <span class="eyebrow">Model guide</span>
+    <h1>Used Socata Rallye: buying guide</h1>
+    <p>Budget to plan for, inspection points to watch, routine maintenance and the best-suited missions for a used Socata Rallye, so you can buy with full knowledge of the facts.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#why">Why the Rallye still appeals to owner-pilots</a></li><li><a href="#versions">The main Rallye versions and how they differ</a></li><li><a href="#budget">What budget to plan for at purchase</a></li><li><a href="#inspection">What to check before buying</a></li><li><a href="#wing">The Fowler slotted flaps and the Rallye's STOL manners</a></li><li><a href="#maintenance">Maintenance and operating costs</a></li><li><a href="#usage">What the Rallye is best suited for</a></li><li><a href="#resale">Resale and the used market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="why">Why the Rallye still appeals to owner-pilots</h2>
+<p>The Socata Rallye, originally developed by Morane-Saulnier and later produced under the Socata brand, remains one of the most common French single-engine aircraft in flying clubs and among private owners across Europe. Designed from the outset for remarkable short takeoff and landing manners, the Rallye spent decades as a go-to platform for private pilot training and leisure flying off rough or grass strips.</p>
+<p>A cabin that's roomy for its category, good visibility in flight, and a flying reputation for being forgiving and predictable keep the Rallye in demand on the used market — both among first-time aircraft owners and among experienced pilots drawn to its STOL capabilities.</p>
+
+<h2 id="versions">The main Rallye versions and how they differ</h2>
+<p>The Rallye went through several generations and engine options during its production run, with different horsepower and useful-load figures depending on the version. Early series carry modest-power engines, while later versions received more powerful engines, improving takeoff performance and available payload.</p>
+<p>That range of versions translates into meaningful price gaps on the used market: an early, lower-powered example trades noticeably below a more recent, more powerful version that's well equipped and comes with a carefully documented maintenance history.</p>
+<p>Some aircraft also carry approved modifications fitted by specialist shops, such as engine conversions or cabin refits, which adds a layer of complexity when assessing a specific example. Before making an offer, it's worth having the exact technical sheet of the aircraft (version, serial number, original or modified engine) confirmed by the seller or an approved shop, so you compare genuinely equivalent aircraft.</p>
+
+<h2 id="budget">What budget to plan for at purchase</h2>
+<p>The price of a used Rallye mainly depends on the age of the aircraft, the version and installed engine power, total airframe and engine hours, and the engine's status relative to its next overhaul. The oldest, lowest-powered examples remain among the most accessible single-engine aircraft on the European used market, which partly explains their lasting popularity in flying clubs.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Version and engine power</td><td>More powerful versions trade higher</td></tr>
+<tr><td>Remaining engine potential</td><td>An engine close to its overhaul limit weighs on price</td></tr>
+<tr><td>Maintenance history</td><td>A complete logbook and consistent approved-shop maintenance reassure buyers</td></tr>
+<tr><td>Avionics fitted</td><td>Upgraded avionics noticeably increase value</td></tr>
+</tbody></table></div>
+<p>Beyond the purchase price, budget for a pre-purchase inspection by an independent mechanic, registration and transfer fees, insurance, and possibly an avionics or interior refresh if the aircraft needs one.</p>
+
+<h2 id="inspection">What to check before buying</h2>
+<p>As with any used aircraft, a pre-purchase inspection by an independent mechanic qualified on the type is essential before finalising a deal. For a Rallye, a few points deserve particular attention, largely tied to its frequent use in flying clubs and off rough strips.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Condition of the airframe and landing gear, which take a heavy toll on aircraft used intensively for training or STOL flying.</span></li>
+  <li><i data-icon="check"></i><span>Complete engine history: hours since the last overhaul, compliance with the manufacturer's maintenance program, traceability of replaced parts.</span></li>
+  <li><i data-icon="check"></i><span>Operation and wear of the flaps and slotted wing, which define the Rallye's characteristic STOL behaviour.</span></li>
+  <li><i data-icon="check"></i><span>Condition of the avionics and compliance with current regulatory requirements (transponder, traffic-monitoring systems).</span></li>
+  <li><i data-icon="check"></i><span>Complete logbook and technical file, with no grey areas, particularly if the aircraft spent time on rental or club fleets.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — A club Rallye has often logged a very high number of takeoff-and-landing cycles: pay particular attention to the landing gear and to the structure around the wing attachment points.</div></div>
+
+<h2 id="wing">The Fowler slotted flaps and the Rallye's STOL manners</h2>
+<p>One of the Rallye's defining technical features is its wing, fitted with Fowler-type slotted flaps and, on some versions, fixed leading-edge slats, giving it remarkable short takeoff and landing manners for an aircraft in its class. This behaviour makes it a popular choice for operating off short or poorly prepared strips.</p>
+<p>This specific wing design calls for a careful inspection: check that the flap system operates smoothly across its full range, that there is no excessive play in the mechanisms, and that the wing skin is in good general condition, especially around the hinges and the most heavily loaded attachment points.</p>
+
+<h2 id="maintenance">Maintenance and operating costs</h2>
+<p>Running a Rallye remains comparatively affordable next to other single-engine aircraft of similar power, which partly explains its lasting popularity in flying clubs. The main expense items remain the mandatory annual inspection, insurance, parking and, in the longer term, engine overhaul once the hourly potential is reached.</p>
+<p>Parts availability stays reasonable for an aircraft of this age, thanks to a still-active European fleet and a network of mechanics familiar with the type, particularly in France where it saw heavy use. Having the aircraft maintained at an approved shop familiar with the Rallye helps limit unpleasant surprises and preserve resale value.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for the last three maintenance invoices before making an offer: they give an accurate picture of how seriously the aircraft has been maintained, especially one that may have passed through several owners or clubs.</div></div>
+
+<h2 id="usage">What the Rallye is best suited for</h2>
+<p>The Rallye suits personal leisure flying, private pilot training and operations off short or grass strips particularly well, thanks to its STOL qualities. Its roomy cabin for the category also makes it a good choice for family flights over moderate distances.</p>
+<p>Pilots looking for a single-engine aircraft that's affordable to buy and to maintain, capable of operating off rough strips without sacrificing cabin comfort, will find the Rallye an attractive compromise. It is, however, less suited to fast long-distance travel missions, where faster aircraft with more modern avionics will usually be preferred.</p>
+<p>The Rallye's reputation for ruggedness and its accessible entry cost also make it a frequently offered co-ownership aircraft, which can be an interesting way to reduce individual acquisition and running costs.</p>
+
+<h2 id="resale">Resale and the used market</h2>
+<p>The Rallye benefits from an active used market in Europe, supported by a large installed fleet, particularly in France, and by reasonable parts availability for an aircraft of this age. A well-maintained aircraft, with a transparent history and sound airframe, generally resells more easily than one whose technical file has grey areas.</p>
+<p>Comparing several listings of similar versions and engines remains the best way to assess a fair price, both for buying and for preparing a future resale. Price differences between two aircraft of the same model year are most often explained by remaining engine potential, version, and the quality of documented maintenance.</p>
+<p>It's also worth keeping an eye on long-term parts availability, as certain references become scarcer as the fleet ages. Owners who plan ahead — for instance by keeping a reasonable stock of common wear parts or identifying a trusted shop in advance — significantly reduce the risk of their aircraft being grounded for an extended period.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Socata Rallye</h3>
+            <p>Compare used Socata Rallye listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="piper-pa28-cherokee-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Piper PA-28 Cherokee: what you need to know before buying</strong><p>The key points for choosing and budgeting a used PA-28 purchase.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Cessna 172: the complete buying guide</strong><p>Budget, points to watch and maintenance for the most-produced training aircraft in the world.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

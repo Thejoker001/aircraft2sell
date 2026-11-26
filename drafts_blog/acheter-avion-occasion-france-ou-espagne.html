@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Acheter un avion d'occasion en France ou en Espagne : comparatif des marchés, prix, immatriculation DGAC/AESA, fiscalité, climat et coûts d'exploitation en 2026.">
+<meta property="og:title" content="Acheter un avion d'occasion en France ou en Espagne : quel pays choisir | Aircraft2Sell">
+<meta property="og:description" content="Acheter un avion d'occasion en France ou en Espagne : comparatif des marchés, prix, immatriculation DGAC/AESA, fiscalité, climat et coûts d'exploitation en 2026.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/acheter-avion-occasion-france-ou-espagne.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/acheter-avion-occasion-france-ou-espagne.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-france-ou-espagne.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-france-ou-espagne.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-france-ou-espagne.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Acheter un avion d'occasion en France ou en Espagne : quel pays choisir</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Acheter un avion d'occasion en France ou en Espagne : quel pays choisir", "description": "Acheter un avion d'occasion en France ou en Espagne : comparatif des marchés, prix, immatriculation DGAC/AESA, fiscalité, climat et coûts d'exploitation en 2026.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/acheter-avion-occasion-france-ou-espagne.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Acheter un avion d'occasion en France ou en Espagne", "item": "https://aircraft2sell.eu/acheter-avion-occasion-france-ou-espagne.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">France ou Espagne</span></nav>
+    <span class="eyebrow">Comparatif pays</span>
+    <h1>Acheter un avion d'occasion en France ou en Espagne : quel pays choisir ?</h1>
+    <p>Marché, prix, immatriculation DGAC ou AESA, fiscalité, climat et coûts d'exploitation : comparatif complet pour choisir entre la France et l'Espagne pour votre prochain achat d'avion léger d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#marche">Deux marchés actifs, deux dynamiques différentes</a></li><li><a href="#prix">Prix comparés par type d'appareil</a></li><li><a href="#immatriculation">Immatriculation : DGAC contre AESA</a></li><li><a href="#fiscalite">TVA et fiscalité comparées</a></li><li><a href="#climat">Climat et conditions d'exploitation</a></li><li><a href="#cout-vie">Coût de possession : hangar, carburant, entretien</a></li><li><a href="#verdict">Quel pays choisir selon votre profil</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="marche">Deux marchés actifs, deux dynamiques différentes</h2>
+<p>La France et l'Espagne comptent parmi les marchés d'aviation légère les plus actifs d'Europe du Sud, mais avec des profils sensiblement différents. La France bénéficie d'un maillage très dense d'aérodromes et d'une tradition d'aéroclubs parmi les plus développées du continent, ce qui se traduit par un volume d'annonces important et une offre très variée, des ULM aux bimoteurs légers, en passant par les classiques du tourisme (Cessna 172, Robin, Piper PA-28).</p>
+<p>L'Espagne, de son côté, propose un marché plus resserré mais porté par un climat favorable au vol toute l'année et par une activité importante autour des écoles de pilotage, notamment dans le sud du pays. L'offre y est un peu moins dense qu'en France, mais les appareils basés en Espagne affichent souvent un historique d'utilisation intensif lié à la formation, un point à vérifier attentivement lors de l'achat.</p>
+
+<h2 id="prix">Prix comparés par type d'appareil</h2>
+<p>Les fourchettes de prix restent globalement comparables entre les deux pays pour un appareil de type et d'état équivalents, le marché européen de l'occasion fonctionnant largement par vases communicants. Quelques nuances existent néanmoins : en France, la densité de l'offre permet parfois de trouver des opportunités légèrement mieux négociées sur les modèles les plus courants, tandis qu'en Espagne, les appareils à fort usage école peuvent afficher une décote liée à des heures de vol plus élevées, compensée par un entretien généralement rigoureux imposé par l'activité de formation.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Type d'appareil</th><th>France</th><th>Espagne</th></tr></thead>
+<tbody>
+<tr><td>ULM</td><td>15 000 à 60 000 €</td><td>15 000 à 55 000 €</td></tr>
+<tr><td>Monomoteur léger (Cessna 172, PA-28)</td><td>50 000 à 120 000 €</td><td>45 000 à 110 000 €</td></tr>
+<tr><td>Monomoteur haute performance (SR22, DA40)</td><td>150 000 à 300 000 € et plus</td><td>150 000 à 290 000 € et plus</td></tr>
+<tr><td>Bimoteur léger</td><td>200 000 à 400 000 €</td><td>190 000 à 390 000 €</td></tr>
+</tbody>
+</table></div>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Dans les deux pays, le prix dépend avant tout de l'historique moteur (heures restantes avant TBO), de l'état de la cellule et de l'avionique, bien plus que de l'année de construction seule ou du pays d'origine de l'annonce.</div></div>
+
+<h2 id="immatriculation">Immatriculation : DGAC contre AESA</h2>
+<p>En France, l'immatriculation d'un aéronef relève de la <strong>Direction générale de l'Aviation civile (DGAC)</strong>, sous préfixe <strong>F-</strong>. En Espagne, l'autorité compétente est l'<strong>Agencia Estatal de Seguridad Aérea (AESA)</strong>, qui délivre les immatriculations sous préfixe <strong>EC-</strong>. Dans les deux cas, un achat entre particuliers déjà immatriculés dans le pays se traduit par une simple mise à jour du titulaire, tandis qu'un appareil importé d'un autre pays nécessite une radiation préalable dans le registre d'origine.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Certificat de navigabilité et ARC en cours de validité</strong> — à vérifier avant même de signer, dans les deux pays.</span></li>
+  <li><i data-icon="check"></i><span><strong>Acte de vente (bill of sale)</strong> — daté, signé par les deux parties, mentionnant le numéro de série.</span></li>
+  <li><i data-icon="check"></i><span><strong>Attestation d'assurance responsabilité civile</strong> — exigée avant la première utilisation sous la nouvelle immatriculation, en France comme en Espagne.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Les règles communes de l'EASA encadrent le transfert entre États membres de l'Union européenne, ce qui simplifie les démarches entre la France et l'Espagne. Comptez généralement de 2 à 8 semaines selon la complétude du dossier, dans un sens comme dans l'autre.</div></div>
+
+<h2 id="fiscalite">TVA et fiscalité comparées</h2>
+<p>Dans les deux pays, une vente entre particuliers n'est en principe pas soumise à la TVA. Une vente réalisée par un professionnel ou une société peut en revanche y être soumise, et un appareil importé depuis un pays hors Union européenne reste redevable de la TVA à l'importation, calculée sur sa valeur en douane et appliquée au taux national du pays d'importation.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Situation</th><th>France</th><th>Espagne</th></tr></thead>
+<tbody>
+<tr><td>Vente entre particuliers résidents UE</td><td>Généralement hors TVA</td><td>Généralement hors TVA</td></tr>
+<tr><td>Vente par un professionnel</td><td>TVA potentiellement applicable</td><td>TVA potentiellement applicable (IVA)</td></tr>
+<tr><td>Import hors UE</td><td>TVA à l'importation, taux national</td><td>TVA à l'importation, taux national (IVA)</td></tr>
+</tbody>
+</table></div>
+<p>Au-delà de la TVA, il est recommandé de se renseigner sur la fiscalité locale propre à la détention d'un aéronef (taxes annuelles, redevances aéroportuaires) qui peuvent varier sensiblement d'une région à l'autre dans chacun des deux pays, notamment entre un aérodrome rural français et un aéroport espagnol plus fréquenté.</p>
+
+<h2 id="climat">Climat et conditions d'exploitation</h2>
+<p>Le climat est souvent l'argument le plus avancé en faveur de l'Espagne : un nombre de jours volables nettement supérieur sur une grande partie du territoire, en particulier dans le sud et sur les îles, permet une utilisation plus régulière de l'appareil tout au long de l'année et réduit les périodes d'immobilisation liées à la météo. La France offre une diversité climatique plus marquée selon les régions, avec un nord plus souvent soumis à des conditions hivernales limitantes, contre un sud et un pourtour méditerranéen aux conditions proches de celles observées en Espagne.</p>
+<p>Ce facteur climatique a aussi une incidence indirecte sur l'état de l'appareil : une exposition prolongée au soleil et à la chaleur (fréquente en Espagne hors hangar) peut accélérer le vieillissement de certains équipements intérieurs et de la peinture, tandis que l'humidité plus présente dans certaines régions françaises peut favoriser la corrosion sur un appareil mal entretenu ou stocké en extérieur. Dans les deux cas, un stationnement sous hangar reste la meilleure protection, quel que soit le pays.</p>
+
+<h2 id="cout-vie">Coût de possession : hangar, carburant, entretien</h2>
+<p>Les coûts de possession restent globalement du même ordre de grandeur entre les deux pays, avec des écarts qui dépendent surtout de l'aérodrome choisi plutôt que du pays dans son ensemble. Un hangar en région parisienne ou sur la Côte d'Azur française peut par exemple coûter sensiblement plus cher qu'un emplacement comparable sur un aérodrome espagnol moins central, et inversement, certains aéroports espagnols très demandés (Majorque, Costa del Sol) pratiquent des tarifs proches, voire supérieurs, à ceux des grandes plateformes françaises.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Carburant : prix globalement comparables, avec des écarts ponctuels selon l'aérodrome et sa proximité avec un grand aéroport commercial.</span></li>
+  <li><i data-icon="check"></i><span>Hangar ou abri : forte variation selon la région et la proximité d'un pôle urbain ou touristique, dans les deux pays.</span></li>
+  <li><i data-icon="check"></i><span>Entretien : réseau d'ateliers agréés dense dans les deux pays pour les modèles courants, avec une disponibilité parfois plus restreinte pour des appareils moins répandus.</span></li>
+  <li><i data-icon="check"></i><span>Assurance : tarifs généralement proches, variables surtout selon le profil du pilote, l'usage déclaré et la valeur assurée.</span></li>
+</ul>
+
+<h2 id="verdict">Quel pays choisir selon votre profil</h2>
+<p>Il n'existe pas de réponse universelle : le choix entre la France et l'Espagne dépend avant tout du profil d'utilisation envisagé. Un acheteur qui privilégie la densité de l'offre, la proximité d'un réseau d'aéroclubs très développé et un large choix de modèles aura intérêt à regarder en priorité le marché français. Un acheteur qui recherche avant tout une utilisation régulière toute l'année, portée par un climat favorable, pourra trouver en Espagne des conditions d'exploitation plus souples, en particulier dans le sud du pays.</p>
+<p>Dans les deux cas, l'inspection pré-achat par un mécanicien indépendant reste l'étape incontournable, quel que soit le pays d'immatriculation ou de résidence de l'appareil, de même que la vérification rigoureuse du carnet d'entretien et de l'historique d'exploitation avant toute signature.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Comparez des annonces françaises et espagnoles pour des appareils de type et d'état équivalents : cela donne souvent la vision la plus juste du marché réel, au-delà des idées reçues sur l'un ou l'autre pays.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre avion en France ou en Espagne</h3>
+            <p>Consultez les annonces vérifiées d'avions à vendre en France et en Espagne sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="acheter-avion-occasion-france.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Achat</span><strong>Acheter un avion d'occasion en France</strong><p>Marché, prix, immatriculation DGAC et pièges à éviter : le guide complet pour acheter en France.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="acheter-avion-occasion-espagne.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Achat</span><strong>Acheter un avion d'occasion en Espagne</strong><p>Marché, prix, immatriculation AESA et pièges à éviter : le guide complet pour acheter en Espagne.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="avion-neuf-ou-occasion-comparatif.html" class="card"><span class="icon-box"><i data-icon="scale"></i></span><span class="eyebrow">Comparatif</span><strong>Avion neuf ou d'occasion : lequel choisir ?</strong><p>Avantages, inconvénients et budget comparé entre un appareil neuf et un appareil d'occasion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261007a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

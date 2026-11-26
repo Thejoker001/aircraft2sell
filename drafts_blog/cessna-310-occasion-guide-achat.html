@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Guide d'achat du Cessna 310 d'occasion : budget, points de vigilance à l'inspection, entretien bimoteur et revente sur le marché européen.">
+<meta property="og:title" content="Cessna 310 d'occasion : guide d'achat bimoteur | Aircraft2Sell">
+<meta property="og:description" content="Guide d'achat du Cessna 310 d'occasion : budget, points de vigilance à l'inspection, entretien bimoteur et revente sur le marché européen.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/cessna-310-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/cessna-310-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/cessna-310-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/cessna-310-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/cessna-310-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Cessna 310 d'occasion : guide d'achat bimoteur | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Cessna 310 d'occasion : guide d'achat bimoteur", "description": "Guide d'achat du Cessna 310 d'occasion : budget, points de vigilance à l'inspection, entretien bimoteur et revente sur le marché européen.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/cessna-310-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Cessna 310 d'occasion : guide d'achat bimoteur", "item": "https://aircraft2sell.eu/cessna-310-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Cessna 310 d'occasion</span></nav>
+    <span class="eyebrow">Guide modèle</span>
+    <h1>Cessna 310 d'occasion : guide d'achat bimoteur</h1>
+    <p>Budget à prévoir, points de vigilance à l'inspection, entretien bimoteur et perspectives de revente pour acheter un Cessna 310 d'occasion en toute connaissance de cause.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Un bimoteur de voyage historique, toujours actif sur le marché</a></li><li><a href="#budget">Quel budget prévoir à l'achat</a></li><li><a href="#inspection">Les points à vérifier avant d'acheter</a></li><li><a href="#moteurs">Moteurs, carburant et spécificités du bimoteur</a></li><li><a href="#entretien">Entretien et coûts d'exploitation</a></li><li><a href="#usage">Pour quel usage le Cessna 310 reste pertinent</a></li><li><a href="#revente">Revente et marché de l'occasion</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Un bimoteur de voyage historique, toujours actif sur le marché</h2>
+<p>Le Cessna 310 a été produit pendant plus de vingt ans et reste l'un des bimoteurs pistons légers les plus répandus sur le marché de l'occasion en Europe comme aux États-Unis. Conçu à l'origine pour le voyage rapide et l'usage d'affaires, il a séduit plusieurs générations de pilotes propriétaires grâce à sa vitesse de croisière élevée pour sa catégorie et sa capacité à transporter confortablement quatre à six occupants selon la version.</p>
+<p>Sur le marché de l'occasion, le Cessna 310 se décline en de nombreuses versions successives, avec des évolutions de motorisation, de capacité en carburant et d'avionique. Cette diversité de millésimes explique une fourchette de prix large, ce qui impose de bien cibler son budget et ses attentes avant de se lancer dans une recherche d'appareil.</p>
+
+<h2 id="budget">Quel budget prévoir à l'achat</h2>
+<p>Le prix d'un Cessna 310 d'occasion dépend avant tout de l'âge et de la version de l'appareil, du nombre d'heures total cellule, du statut des deux moteurs (potentiel restant avant la grande visite) et du niveau d'équipement avionique. Les exemplaires les plus anciens, avec un potentiel moteur réduit sur l'un ou l'autre groupe motopropulseur, se négocient à un niveau d'entrée nettement plus accessible que les versions tardives bien équipées et à jour sur le plan avionique.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Impact sur le prix</th></tr></thead>
+<tbody>
+<tr><td>Âge et version de l'appareil</td><td>Les versions tardives et bien équipées se négocient nettement plus cher</td></tr>
+<tr><td>Potentiel moteur restant (SMOH)</td><td>Un moteur proche de la grande visite pèse fortement sur le prix de revente, et ce pour chacun des deux groupes</td></tr>
+<tr><td>Avionique installée</td><td>Un cockpit mis à jour et conforme aux obligations récentes valorise sensiblement l'appareil</td></tr>
+<tr><td>Historique d'entretien</td><td>Un carnet d'entretien complet et une maintenance suivie en atelier agréé rassurent l'acheteur</td></tr>
+</tbody></table></div>
+<p>Au-delà du prix d'achat, il faut intégrer dans son budget les frais annexes : inspection pré-achat par un mécanicien indépendant familier du type, frais d'immatriculation et de transfert, assurance généralement plus élevée que pour un monomoteur équivalent, et éventuellement une remise à niveau de l'avionique si l'appareil le nécessite.</p>
+
+<h2 id="inspection">Les points à vérifier avant d'acheter</h2>
+<p>Comme pour tout avion d'occasion, une inspection pré-achat menée par un mécanicien indépendant qualifié sur le type est indispensable avant de finaliser une transaction. Pour un Cessna 310, certains points méritent une attention particulière du fait de sa configuration bimoteur et de son âge souvent avancé.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Historique complet des deux moteurs : heures écoulées depuis la dernière grande visite sur chaque groupe, respect du programme d'entretien constructeur, traçabilité des pièces changées.</span></li>
+  <li><i data-icon="check"></i><span>État de la structure métallique : recherche de corrosion, en particulier autour des réservoirs de bout d'aile et des zones exposées à l'humidité.</span></li>
+  <li><i data-icon="check"></i><span>Cohérence des heures de vol entre les deux moteurs, qui doivent avoir été exploités et entretenus de façon équilibrée.</span></li>
+  <li><i data-icon="check"></i><span>État et mises à jour de l'avionique, ainsi que la conformité aux obligations réglementaires en vigueur (transpondeur, surveillance du trafic).</span></li>
+  <li><i data-icon="check"></i><span>Carnet d'entretien et dossier technique complets, sans zone d'ombre sur l'historique de l'appareil et son certificat de navigabilité.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Ne jamais se contenter des déclarations du vendeur sur l'état général : un rapport d'inspection indépendant écrit, incluant une vérification approfondie des deux moteurs, reste la meilleure protection contre une mauvaise surprise après l'achat.</div></div>
+
+<h2 id="moteurs">Moteurs, carburant et spécificités du bimoteur</h2>
+<p>Le Cessna 310 est équipé de deux moteurs à pistons dont les caractéristiques exactes varient selon la version et le millésime. La gestion d'un bimoteur implique une vigilance accrue par rapport à un monomoteur : chaque moteur doit faire l'objet d'un suivi distinct, et un déséquilibre marqué entre les heures ou l'état des deux groupes motopropulseurs peut annoncer des dépenses importantes à court ou moyen terme.</p>
+<p>La consommation de carburant d'un bimoteur reste logiquement supérieure à celle d'un monomoteur équivalent, un paramètre à intégrer dans le calcul du coût réel à l'heure de vol, aux côtés de l'entretien, de l'assurance et du stationnement.</p>
+
+<h2 id="entretien">Entretien et coûts d'exploitation</h2>
+<p>Le coût d'exploitation d'un Cessna 310 est structurellement plus élevé que celui d'un monomoteur comparable, puisque chaque intervention de routine, chaque remplacement d'hélice et chaque révision moteur se calculent désormais pour deux ensembles complets. Les postes de dépense principaux restent la visite annuelle obligatoire, l'assurance, le stationnement et, à plus long terme, la grande visite de chaque moteur une fois le potentiel horaire atteint.</p>
+<p>Faire entretenir l'appareil dans un atelier agréé habitué au type permet de limiter les mauvaises surprises et de préserver sa valeur de revente. Un suivi rigoureux et documenté de l'entretien, pour chacun des deux moteurs, est un argument de poids lors d'une revente future.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez systématiquement les dernières factures de maintenance des deux moteurs avant de faire une offre : elles donnent une image fidèle du sérieux de l'entretien passé.</div></div>
+
+<h2 id="usage">Pour quel usage le Cessna 310 reste pertinent</h2>
+<p>Le Cessna 310 convient particulièrement aux pilotes propriétaires qui recherchent un bimoteur de voyage rapide pour des trajets réguliers sur de moyennes et longues distances, avec une capacité d'emport supérieure à celle d'un monomoteur classique. Sa redondance motrice constitue également un argument de sécurité pour les vols au-dessus de reliefs, de mer ou de zones peu praticables en cas de panne.</p>
+<p>En revanche, un pilote qui recherche avant tout un coût d'exploitation minimal, ou qui débute dans la propriété d'un aéronef, se tournera plus naturellement vers un monomoteur, le surcoût d'entretien d'un bimoteur de cet âge n'étant justifié que par un usage régulier et une véritable valorisation de sa redondance motrice.</p>
+
+<h2 id="revente">Revente et marché de l'occasion</h2>
+<p>Le Cessna 310 bénéficie d'un marché de l'occasion actif, porté par un parc installé important et une bonne disponibilité des pièces, notamment aux États-Unis. Un appareil bien entretenu, avec un historique transparent sur ses deux moteurs et une avionique à jour, se revend généralement plus facilement et dans de meilleures conditions qu'un appareil dont le dossier technique comporte des zones d'ombre.</p>
+<p>Comparer plusieurs annonces de versions et de millésimes similaires reste la meilleure façon d'évaluer un juste prix, aussi bien pour acheter que pour préparer une future revente. Les écarts de prix entre deux appareils du même millésime s'expliquent presque toujours par le potentiel moteur restant sur chaque groupe et la qualité de l'équipement avionique.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Cessna 310</h3>
+            <p>Comparez les annonces de Cessna 310 d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="diamond-da40-da42-comparatif.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Comparatif</span><strong>Diamond DA40 vs DA42 : lequel choisir</strong><p>Monomoteur ou bimoteur composite : comparatif complet selon budget, usage et coûts d'exploitation.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cessna 172 d'occasion : guide d'achat complet</strong><p>Budget, points de vigilance et entretien pour l'avion d'entraînement le plus produit au monde.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261007a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

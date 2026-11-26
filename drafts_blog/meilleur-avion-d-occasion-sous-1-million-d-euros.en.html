@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Best used aircraft under 1 million euros: high-end turboprops and entry-to-midsize business jets compared on budget, cabin and use.">
+<meta property="og:title" content="Best used aircraft under 1 million euros | Aircraft2Sell">
+<meta property="og:description" content="Best used aircraft under 1 million euros: high-end turboprops and entry-to-midsize business jets compared on budget, cabin and use.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/meilleur-avion-d-occasion-sous-1-million-d-euros.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/meilleur-avion-d-occasion-sous-1-million-d-euros.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/meilleur-avion-d-occasion-sous-1-million-d-euros.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/meilleur-avion-d-occasion-sous-1-million-d-euros.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/meilleur-avion-d-occasion-sous-1-million-d-euros.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Best used aircraft under 1 million euros | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Best used aircraft under 1 million euros", "description": "Best used aircraft under 1 million euros: high-end turboprops and entry-to-midsize business jets compared on budget, cabin and use.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/meilleur-avion-d-occasion-sous-1-million-d-euros.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Best used aircraft under 1 million euros", "item": "https://aircraft2sell.eu/en/meilleur-avion-d-occasion-sous-1-million-d-euros.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Best aircraft under €1M</span></nav>
+    <span class="eyebrow">Budget comparison</span>
+    <h1>Best used aircraft under 1 million euros</h1>
+    <p>A budget that opens the door to premium turboprops and the first used business jets: a comparison to help you choose based on mission, cabin and operating budget.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#budget">A budget that changes category</a></li><li><a href="#turboprop">High-end single-engine turboprops: Pilatus PC-12 and TBM 850/900</a></li><li><a href="#kingair">Midsize twin turboprops: King Air 200, 350 and Conquest</a></li><li><a href="#jets">Used business jets under 1 million euros</a></li><li><a href="#table">Budget and use comparison table</a></li><li><a href="#operating">Operating costs: the real gap between categories</a></li><li><a href="#inspection">Inspection points to watch for these categories</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="budget">A budget that changes category</h2>
+<p>Below 500,000 euros, the used market remains dominated by the oldest turboprops and by a handful of business jets at the very end of their service life. Beyond that, up to 1 million euros, the nature of the offering changes markedly: this budget opens access to more recent, better-equipped single-engine and twin turboprops with generally more comfortable remaining engine potential, as well as a genuine first selection of used light business jets — typically older generations but properly maintained rather than examples at the end of their useful life.</p>
+<p>At this price point, a buyer has a real choice between performance, cabin comfort and operating cost. A premium turboprop often offers more margin on remaining engine potential than an entry-level jet negotiated at the same budget, while a jet brings a cruise speed and altitude that no turboprop can match. The choice therefore depends above all on the actual intended mission: frequent short-to-medium-range trips, or longer flights where cruise speed becomes decisive.</p>
+<p>This comparison covers different categories from those discussed for a budget under 500,000 euros: it focuses on more recent or better-equipped models within the same aircraft families, as well as business jet categories that only become genuinely accessible from this budget upward.</p>
+
+<h2 id="turboprop">High-end single-engine turboprops: Pilatus PC-12 and TBM 850/900</h2>
+<p>The Pilatus PC-12, in its older but well-maintained generations, is frequently negotiated within this budget range. Its spacious cabin, operational versatility — passenger transport, cargo use, mixed missions — and the well-known ruggedness of its turbine make it a safe bet on the used market for demanding family or professional use, with a payload capacity few single-engine turboprops can match.</p>
+<p>More recent generations of the Daher (ex-Socata) TBM, notably the TBM 850 and TBM 900, bring noticeably higher cruise speed than the PC-12 and an equally comfortable pressurised cabin, in a more compact and faster single-engine package. At a comparable budget, these more recent versions generally show more comfortable remaining engine potential than the earliest TBM 700 generations, which tend to trade below a 500,000-euro budget.</p>
+<p>In both cases, remaining engine hours before the major overhaul remain the decisive negotiating factor, even more so than the build year shown on the listing's data sheet.</p>
+
+<h2 id="kingair">Midsize twin turboprops: King Air 200, 350 and Conquest</h2>
+<p>For a buyer who prioritises engine redundancy and payload over raw speed, the Beechcraft King Air 200 and 350, more recent and generally better equipped than the earliest C90 generations available at a tighter budget, naturally fit within this range. Their worldwide maintenance network, proven ruggedness over decades of operation and versatility make them a reassuring choice for regular professional operation or intensive family use.</p>
+<p>The Cessna Conquest, a less common but capable twin turboprop on the European market, is an alternative worth watching for a buyer seeking more cruise speed than a comparable-generation King Air, in exchange for a narrower parts and maintenance network that should be checked before committing.</p>
+
+<h2 id="jets">Used business jets under 1 million euros</h2>
+<p>Under 1 million euros, the used business jet market opens up considerably compared to the 500,000-euro budget, where only a handful of very high-hour examples appeared marginally. At this level, entry-level light jets such as certain generations of the Cessna Citation I, Citation II or the earliest CJ1s, or older Learjet 35 family jets, become accessible in properly maintained configurations, without necessarily showing maintenance records close to their limit.</p>
+<p>Older business twins, such as certain Beechjet 400A or early Hawker 400XP examples, can also appear in this price range depending on flight hours and proximity to major maintenance milestones. These jets offer cruise speed and altitude well beyond any turboprop, in exchange for higher operating costs and the need for a more specialised maintenance network.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — A jet listed under 1 million euros almost always implies an older aircraft with reduced remaining engine potential compared to new: always have the complete maintenance file analysed by a type specialist before making an offer on a listing.</div></div>
+
+<h2 id="table">Budget and use comparison table</h2>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Category</th><th>Examples</th><th>Best suited for</th></tr></thead>
+<tbody>
+<tr><td>Premium single-engine turboprop</td><td>Pilatus PC-12, Daher TBM 850/900</td><td>Family or professional use, comfortable pressurised cabin</td></tr>
+<tr><td>Twin turboprop</td><td>Beechcraft King Air 200/350, Cessna Conquest</td><td>Engine redundancy, payload, professional missions</td></tr>
+<tr><td>Entry-level light business jet</td><td>Cessna Citation I/II/CJ1, Learjet 35</td><td>Cruise speed and altitude, medium-to-long trips</td></tr>
+<tr><td>Older business twin jet</td><td>Beechjet 400A, early Hawker 400XP</td><td>Near-modern jet performance, higher operating budget</td></tr>
+</tbody></table></div>
+<p>This table is indicative only: market prices vary considerably according to year, avionics fit, maintenance history and remaining engine hours, which often weigh more heavily on the final price than the model itself.</p>
+
+<h2 id="operating">Operating costs: the real gap between categories</h2>
+<p>At this budget level, the purchase price is only part of the real financial commitment. The operating costs of a turboprop or jet — fuel, insurance, hangarage, scheduled maintenance and the reserve for the major overhaul — represent a noticeably larger annual commitment than for a piston single-engine, and the gap widens further between a turboprop and a jet, mainly due to fuel burn and maintenance costs specific to jet engines.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Always set aside a reserve for the upcoming engine overhaul, based on remaining hours to the milestone.</span></li>
+  <li><i data-icon="check"></i><span>Compare insurance premiums, which rise significantly between a turboprop and a jet at the same purchase budget.</span></li>
+  <li><i data-icon="check"></i><span>Check the availability of an approved maintenance network for the exact type under consideration, especially for less common models in Europe.</span></li>
+  <li><i data-icon="check"></i><span>Evaluate hangarage and parking costs, generally higher for a jet than for a turboprop in the same category.</span></li>
+  <li><i data-icon="check"></i><span>Factor in the cost of a professional pilot if your personal qualification does not cover the aircraft type, especially for a jet.</span></li>
+</ul>
+
+<h2 id="inspection">Inspection points to watch for these categories</h2>
+<p>The pre-purchase inspection of a premium turboprop or a used jet should be entrusted to an approved mechanic specialised in the exact type, not to a generalist used to piston aircraft. Particular attention should be paid to the complete logbook, the consistency of declared engine hours, the status of the certificate of airworthiness (CofA), and the history of airworthiness directives applicable to the turbine or engine concerned.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always request an engine trend monitoring report when one exists, in addition to the standard logbook: it can detect a performance drift before it turns into a costly failure.</div></div>
+<p>Comparing several listings of similar models, with comparable engine hours and years, remains the best way to assess whether a price listed under 1 million euros reflects a genuine opportunity or an aircraft whose refurbishment cost would quickly erase the apparent saving on purchase.</p>
+<p>Financing this type of aircraft also deserves close attention: specialised aviation finance providers tend to weigh the consistency between price, age and remaining engine potential more heavily than the headline purchase value alone. At resale, a complete maintenance record and a recent overhaul are often the single most decisive selling argument, even more so than for a simple piston single-engine.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Compare used turboprops and jets under 1 million euros</h3>
+            <p>Browse verified listings on Aircraft2Sell to compare aircraft available within this budget.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Buyer's guide</span><strong>Turboprop or business jet: how to choose</strong><p>A comparison of costs, range, speed and use case to choose the aircraft suited to your operation.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="prix-moyen-jet-prive-2026.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Market trends</span><strong>Average price of a private jet in 2026: what you need to know</strong><p>Very light jets, light jets, midsize and long-range. Price ranges, operating costs and factors that affect value.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="financer-jet-affaires-leasing-credit-bail-copropriete.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Financing a business jet: leasing, lease-purchase or fractional ownership</strong><p>The different financing options to acquire a jet or turboprop without tying up all your capital.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

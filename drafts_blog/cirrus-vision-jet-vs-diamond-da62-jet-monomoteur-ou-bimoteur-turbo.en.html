@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Email confirmation handler (Supabase Auth links)
+   --------------------------------------------------------------------------
+   When a user clicks the confirmation link sent by email, Supabase redirects
+   to the site with a hash containing the tokens:
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Without this script, nothing read that hash: the email was confirmed in
+   the database but the user never got a session — they had to log in
+   manually (or stayed stuck if they didn't understand why).
+
+   This script must load WITHOUT defer, early in <head>, to create the
+   session BEFORE page scripts (pseudo-gate, login guard, etc.) redirect
+   and lose the hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Cirrus Vision Jet or Diamond DA62: a complete comparison between the personal single-engine jet and the turbocharged composite twin, by budget, mission and operating cost.">
+<meta property="og:title" content="Cirrus Vision Jet vs Diamond DA62: jet or turbo twin | Aircraft2Sell">
+<meta property="og:description" content="Cirrus Vision Jet or Diamond DA62: a complete comparison between the personal single-engine jet and the turbocharged composite twin, by budget, mission and operating cost.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/cirrus-vision-jet-vs-diamond-da62-jet-monomoteur-ou-bimoteur-turbo.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/cirrus-vision-jet-vs-diamond-da62-jet-monomoteur-ou-bimoteur-turbo.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/cirrus-vision-jet-vs-diamond-da62-jet-monomoteur-ou-bimoteur-turbo.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/cirrus-vision-jet-vs-diamond-da62-jet-monomoteur-ou-bimoteur-turbo.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/cirrus-vision-jet-vs-diamond-da62-jet-monomoteur-ou-bimoteur-turbo.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Cirrus Vision Jet vs Diamond DA62: jet or turbo twin | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Cirrus Vision Jet vs Diamond DA62: single-engine jet or turbo twin", "description": "Cirrus Vision Jet or Diamond DA62: a complete comparison between the personal single-engine jet and the turbocharged composite twin, by budget, mission and operating cost.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/cirrus-vision-jet-vs-diamond-da62-jet-monomoteur-ou-bimoteur-turbo.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Cirrus Vision Jet vs Diamond DA62", "item": "https://aircraft2sell.eu/en/cirrus-vision-jet-vs-diamond-da62-jet-monomoteur-ou-bimoteur-turbo.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Cirrus Vision Jet vs Diamond DA62</span></nav>
+    <span class="eyebrow">Model comparison</span>
+    <h1>Cirrus Vision Jet vs Diamond DA62: single-engine jet or turbo twin</h1>
+    <p>Personal jet or highly efficient turbocharged composite twin: comparing the Cirrus Vision Jet (SF50) and the Diamond DA62 to help you choose based on budget, mission and your tolerance for operational risk.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">Two very different answers to the same ambition</a></li><li><a href="#visionjet">The Cirrus Vision Jet: personal business aviation made simple</a></li><li><a href="#da62">The Diamond DA62: an efficient, versatile turbo twin</a></li><li><a href="#budget">Budget comparison: purchase and operation</a></li><li><a href="#performances">Performance and flight mission</a></li><li><a href="#qualification">Qualification, training and transition</a></li><li><a href="#occasion">Buying either one used: points to watch</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Two very different answers to the same ambition</h2>
+<p>The Cirrus Vision Jet and the Diamond DA62 both answer the same desire: travelling further, faster and more comfortably than a conventional piston single, without stepping into traditional crewed business aviation. But their design philosophies are radically different. The Vision Jet is a single-engine personal jet, designed to be flown by an owner-pilot trained specifically on type. The DA62 is a twin powered by turbocharged diesel engines, part of the same composite family as the DA40 and DA42, which relies on the redundancy of two engines and remarkable fuel efficiency rather than the raw speed of a jet engine.</p>
+<p>Comparing the two really means weighing two approaches to high-end private aviation: the speed and prestige of a true jet on one side, and the operational efficiency and versatility of a modern twin on the other. The choice depends above all on available budget, the typical mission envisaged, and the level of commitment a buyer is ready to make in terms of training and type qualification.</p>
+
+<h2 id="visionjet">The Cirrus Vision Jet: personal business aviation made simple</h2>
+<p>The Vision Jet, designated SF50 by Cirrus, was designed as the first personal jet conceived from the outset for an owner-pilot rather than a professional crew. It carries over codes familiar to Cirrus SR22 pilots: a fully digital cockpit, simplified ergonomics, and above all the integrated emergency parachute system inherited from the piston lineup — a feature unique among private jets.</p>
+<p>Its single-engine layout, mounted above the fuselage, reduces maintenance complexity compared with a classic twin-engine jet, but also means accepting the lack of engine redundancy inherent to single-engine jets — a design choice the manufacturer embraces, putting forward the parachute as the ultimate safety net in the event of a serious engine failure.</p>
+<p>On the used market, the Vision Jet remains a relatively recent aircraft whose fleet continues to grow. Buyers find in it access to the speed and cruise altitude of a true jet, with a flying approach and avionics designed to stay accessible to an owner-pilot rather than an airline-style crew.</p>
+
+<h2 id="da62">The Diamond DA62: an efficient, versatile turbo twin</h2>
+<p>The DA62 extends the DA42's philosophy with a larger airframe, more power and greater payload. Its all-composite structure, its two efficient turbocharged diesel engines and its latest-generation integrated avionics make it a particularly popular aircraft among owners seeking versatility: family transport, professional missions, long-distance flights over mountains or sea.</p>
+<p>The redundancy of two engines remains the DA62's central safety argument, complemented by fuel consumption that is markedly lower than a jet's thanks to its diesel engines. That efficiency translates directly into generous range and operating costs per flight hour that are noticeably more moderate than a jet's, even though the DA62 is naturally still more expensive to operate than a conventional piston single.</p>
+<p>Unlike the Vision Jet, the DA62 doesn't require an aircraft-specific type qualification for a pilot already holding the ratings appropriate for a twin, which simplifies access to ownership for an experienced pilot coming from a piston single or twin.</p>
+
+<h2 id="budget">Budget comparison: purchase and operation</h2>
+<p>The budget gap between the two aircraft is the first decision criterion. The Vision Jet, as a jet, sits in a markedly higher price bracket than the DA62, both to buy and to operate: jet fuel, maintenance of systems specific to the jet engine, and generally higher insurance premiums given the single-engine nature of the aircraft and its performance category.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Cirrus Vision Jet (single-engine jet)</th><th>Diamond DA62 (turbo twin)</th></tr></thead>
+<tbody>
+<tr><td>Acquisition budget</td><td>Markedly higher</td><td>More accessible, though still high for a twin</td></tr>
+<tr><td>Fuel</td><td>Jet fuel, high hourly consumption</td><td>Diesel, markedly more efficient</td></tr>
+<tr><td>Engine maintenance</td><td>A single jet engine</td><td>Two turbocharged diesel engines to maintain</td></tr>
+<tr><td>Insurance</td><td>Generally higher</td><td>Generally more moderate for the category</td></tr>
+<tr><td>Engine redundancy</td><td>None, integrated emergency parachute</td><td>Redundancy in the event of an engine failure</td></tr>
+</tbody></table></div>
+<p>Beyond the list price, you should think in terms of real cost per flight hour: a jet remains structurally more expensive to fly than an efficient piston/turbo twin, due to the price of jet fuel and the complexity of onboard systems.</p>
+
+<h2 id="performances">Performance and flight mission</h2>
+<p>The Vision Jet stands out with cruise speed and operating altitude markedly higher than the DA62's, letting it cover long distances in reduced time and more easily fly above low-level weather. This is a decisive argument for owners who regularly make long trips and value time saved above any other criterion.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Vision Jet: ideal for fast long-haul trips, flying above weather, and a use close to personal business aviation.</span></li>
+  <li><i data-icon="check"></i><span>DA62: relevant for a versatile family and professional mission, with an excellent balance between range and operating cost.</span></li>
+  <li><i data-icon="check"></i><span>Need for engine redundancy for regular flights over sea, mountains or areas difficult to reach.</span></li>
+  <li><i data-icon="check"></i><span>Intended frequency of use: a jet is mainly justified economically with intensive use.</span></li>
+</ul>
+<p>The DA62, for its part, bets on overall mission efficiency rather than raw speed: generous range, comfortable payload and controlled operating costs make it a highly versatile transport tool, suited to a wide variety of missions without the constraints and cost of a jet.</p>
+
+<h2 id="qualification">Qualification, training and transition</h2>
+<p>Transitioning to the Vision Jet requires aircraft-specific training and type qualification, delivered by approved training organisations, with a programme noticeably more demanding than for a piston single. This training path must be anticipated and budgeted for as early as the purchase project, on the same footing as the aircraft itself, and represents a significant investment of time and money for a pilot coming from light aviation.</p>
+<p>The DA62, as a piston/turbo-diesel twin, stays within the classic multi-engine rating framework already familiar to private pilots, making the transition more accessible for a pilot already qualified on a light twin. Additional type-specific transition training with an instructor familiar with the model is nonetheless recommended, especially for the integrated avionics and model-specific procedures.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Before any purchase project for either aircraft, check precisely with an approved training organisation about the required qualification programme and its actual duration, which can change over time.</div></div>
+
+<h2 id="occasion">Buying either one used: points to watch</h2>
+<p>For a used Vision Jet, the jet engine's maintenance history, strict compliance with the manufacturer's maintenance programme, and the condition of the emergency parachute system (with its replacement deadlines) are major points to watch, as with any modern jet. The integrated avionics and its software updates also deserve careful checking.</p>
+<p>For a used DA62, the composite structure requires the same rigour as on the DA40 or DA42: looking for impacts, delamination or undocumented previous repairs. The history of each engine and each propeller must be checked separately, along with the consistency of flight hours between the two powerplants.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Always have the pre-purchase inspection carried out by a mechanic or maintenance centre approved for the type concerned, and ask for the complete logbook and maintenance invoices before committing.</div></div>
+<p>In all cases, comparing several listings of similar models and model years remains the best way to assess a fair price, whether for a single-engine jet or a turbo twin.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Cirrus Vision Jet or Diamond DA62</h3>
+            <p>Compare used Cirrus Vision Jet and Diamond DA62 listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Theme guide</span><strong>Turboprop or business jet: how to choose</strong><p>Budget, performance and use to help decide between a turboprop and a business jet.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="diamond-da40-da42-comparatif.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model comparison</span><strong>Diamond DA40 vs DA42: which one to choose</strong><p>Single-engine or composite twin: a complete comparison between the DA40 and the DA42.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="prix-moyen-jet-prive-2026.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Market</span><strong>Average price of a private jet in 2026</strong><p>The price ranges observed on the business jet and private jet market.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Acheter un avion d'occasion en Suisse ou en Italie : comparatif marché, prix, fiscalité, immatriculation et entretien pour choisir le meilleur pays.">
+<meta name="keywords" content="acheter avion occasion Suisse, acheter avion occasion Italie, comparatif Suisse Italie aviation, immatriculation HB, immatriculation I-">
+<meta property="og:title" content="Acheter un avion d'occasion en Suisse ou en Italie | Aircraft2Sell">
+<meta property="og:description" content="Acheter un avion d'occasion en Suisse ou en Italie : comparatif marché, prix, fiscalité, immatriculation et entretien pour choisir le meilleur pays.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/acheter-avion-occasion-suisse-ou-italie.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/acheter-avion-occasion-suisse-ou-italie.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-suisse-ou-italie.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-suisse-ou-italie.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-suisse-ou-italie.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Acheter un avion d'occasion en Suisse ou en Italie | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Acheter un avion d'occasion en Suisse ou en Italie : quel pays choisir", "description": "Acheter un avion d'occasion en Suisse ou en Italie : comparatif marché, prix, fiscalité, immatriculation et entretien pour choisir le meilleur pays.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/acheter-avion-occasion-suisse-ou-italie.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Suisse ou Italie", "item": "https://aircraft2sell.eu/acheter-avion-occasion-suisse-ou-italie.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="/index.html">Accueil</a><i data-icon="chevron-right"></i><a href="/blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Suisse ou Italie</span></nav>
+    <span class="eyebrow">Comparatif pays</span>
+    <h1>Acheter un avion d'occasion en Suisse ou en Italie : quel pays choisir</h1>
+    <p>Marché, prix, fiscalité, immatriculation et entretien : comparatif entre la Suisse et l'Italie pour vous aider à choisir où chercher votre avion d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Deux marchés alpins voisins, deux cadres très différents</a></li><li><a href="#marche">Taille et dynamisme du marché de l'occasion</a></li><li><a href="#prix">Comparatif des prix pratiqués</a></li><li><a href="#fiscalite">Fiscalité et frais liés à l'achat</a></li><li><a href="#immatriculation">Immatriculation et démarches administratives</a></li><li><a href="#entretien">Réseau d'entretien et disponibilité des pièces</a></li><li><a href="#choix">Quel pays privilégier selon votre profil</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Deux marchés alpins voisins, deux cadres très différents</h2>
+<p>La Suisse et l'Italie partagent une frontière commune et une partie de leur relief alpin, mais leurs marchés de l'aviation légère reposent sur des cadres très différents. La Suisse, hors Union européenne mais intégrée à l'espace aérien européen via des accords bilatéraux avec l'Union européenne et l'EASA, bénéficie d'un pouvoir d'achat élevé, d'un parc d'avions particulièrement bien entretenu et d'infrastructures aéronautiques de grande qualité, notamment en montagne. L'Italie, membre de l'Union européenne, dispose d'un marché plus large en volume, concentré essentiellement dans le nord du pays, avec une offre variée allant des avions légers classiques aux ULM.</p>
+<p>Un acheteur basé en Suisse peut tout à fait trouver un avion intéressant en Italie, et inversement, à condition de bien comprendre les spécificités administratives et douanières de chaque pays avant de se lancer dans une transaction transfrontalière, la Suisse n'étant pas membre de l'Union européenne.</p>
+
+<h2 id="marche">Taille et dynamisme du marché de l'occasion</h2>
+<p>Le marché suisse de l'occasion est relativement restreint en volume, à l'image de la taille du pays, mais il se caractérise par un niveau d'entretien généralement très soigné et par une offre orientée vers des appareils de tourisme et de montagne bien équipés. La densité d'aérodromes et d'altiports en Suisse en fait également un marché actif pour les avions adaptés au vol en montagne.</p>
+<p>Le marché italien de l'occasion est plus large en volume absolu, en particulier dans le nord du pays (Lombardie, Vénétie, Piémont) où se concentre l'essentiel de l'aviation générale italienne. L'offre y est souvent un peu plus tournée vers les ULM et les avions légers de construction amateur ou certifiée récente, avec une appétence notable pour les appareils économiques à exploiter.</p>
+
+<h2 id="prix">Comparatif des prix pratiqués</h2>
+<p>Les niveaux de prix entre les deux marchés diffèrent sensiblement : le marché suisse affiche généralement des prix plus élevés pour un modèle comparable, en cohérence avec le coût de la vie et le niveau d'entretien moyen souvent très soigné des appareils suisses. Le marché italien offre en général des prix d'entrée plus accessibles pour des modèles équivalents, tout en nécessitant une vigilance accrue sur l'historique d'entretien de chaque exemplaire, les niveaux de suivi pouvant être plus variables d'un appareil à l'autre.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Suisse</th><th>Italie</th></tr></thead>
+<tbody>
+<tr><td>Taille du marché de l'occasion</td><td>Restreinte, offre ciblée</td><td>Plus large, surtout dans le nord du pays</td></tr>
+<tr><td>Niveau de prix pour un même modèle</td><td>Généralement plus élevé</td><td>Généralement plus accessible</td></tr>
+<tr><td>Segment le plus représenté</td><td>Avions de tourisme et de montagne bien équipés</td><td>ULM, avions légers récents, constructions amateur</td></tr>
+<tr><td>Langue des documents techniques</td><td>Allemand, français, italien selon la région, souvent anglais</td><td>Italien, parfois anglais</td></tr>
+</tbody></table></div>
+<p>Dans les deux cas, comparer plusieurs annonces de modèles similaires reste la meilleure façon d'évaluer un juste prix avant de s'engager, quel que soit le pays où se trouve l'appareil convoité.</p>
+<p>La saisonnalité joue également un rôle : le marché italien connaît souvent un pic d'annonces en fin de saison de vol, tandis que le marché suisse, plus homogène sur l'année grâce à la pratique du vol en montagne qui s'étend sur plusieurs saisons, varie un peu moins fortement d'un mois à l'autre. Élargir sa recherche aux deux pays permet donc souvent d'accéder à un choix plus large et plus stable tout au long de l'année.</p>
+
+<h2 id="fiscalite">Fiscalité et frais liés à l'achat</h2>
+<p>La Suisse n'étant pas membre de l'Union européenne, une transaction entre la Suisse et l'Italie constitue une opération d'importation ou d'exportation au sens douanier, et non un simple échange intracommunautaire comme ce serait le cas entre deux pays membres de l'UE. Cela implique de se renseigner précisément sur les formalités douanières applicables, ainsi que sur la TVA suisse ou italienne selon le pays de destination de l'appareil et le statut de l'acheteur (particulier ou professionnel).</p>
+<p>Faire appel à un professionnel habitué aux transactions transfrontalières impliquant la Suisse (courtier, avocat spécialisé en droit aérien) permet d'éviter les erreurs de procédure qui peuvent coûter cher, notamment en matière de TVA, de documentation douanière et de formalités spécifiques liées au statut particulier de la Suisse vis-à-vis de l'Union européenne.</p>
+
+<h2 id="immatriculation">Immatriculation et démarches administratives</h2>
+<p>En Suisse, l'immatriculation des aéronefs civils relève de l'<strong>OFAC</strong> (Office fédéral de l'aviation civile), sous préfixe <strong>HB-</strong>. En Italie, c'est l'<strong>ENAC</strong> (Ente Nazionale per l'Aviazione Civile) qui tient le registre national, sous préfixe <strong>I-</strong>. Un avion acheté dans l'un des deux pays peut être immatriculé dans l'autre, selon le choix de l'acheteur : il n'est pas obligatoire de conserver l'immatriculation du pays d'achat. Ce changement implique cependant des démarches spécifiques auprès de l'autorité de destination, avec notamment la transmission du dossier technique complet, la vérification de la conformité du certificat de navigabilité et, le cas échéant, une inspection de conformité.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Vérifier la cohérence entre le carnet d'entretien, le dossier technique et l'état réel de l'appareil avant tout changement d'immatriculation.</span></li>
+  <li><i data-icon="check"></i><span>Anticiper les délais administratifs, qui peuvent varier sensiblement entre l'OFAC et l'ENAC selon la charge de travail du moment.</span></li>
+  <li><i data-icon="check"></i><span>Se renseigner sur les formalités douanières spécifiques liées au statut de la Suisse hors Union européenne.</span></li>
+  <li><i data-icon="check"></i><span>Prévoir les frais de convoyage de l'appareil si une inspection ou une remise en conformité est nécessaire avant le transfert.</span></li>
+</ul>
+
+<h2 id="entretien">Réseau d'entretien et disponibilité des pièces</h2>
+<p>La Suisse dispose d'un réseau d'ateliers de maintenance agréés réputés pour leur rigueur, en particulier sur les appareils de tourisme et les avions adaptés au vol en montagne, avec un niveau de prestation généralement haut de gamme. L'Italie possède également un réseau d'ateliers compétents, concentré principalement dans le nord du pays, mais qui peut s'avérer plus clairsemé dans certaines régions du centre et du sud pour des modèles moins courants.</p>
+<p>Pour des modèles plus rares ou des moteurs spécifiques, il peut être utile de vérifier en amont la disponibilité des pièces et la proximité d'un atelier spécialisé avant de finaliser l'achat, indépendamment du pays d'origine de l'appareil. La distance entre les deux pays reste modeste depuis le sud de la Suisse (Tessin) et le nord de l'Italie, ce qui facilite les convoyages pour entretien d'un pays à l'autre si nécessaire.</p>
+<p>La barrière linguistique joue un rôle particulier ici : le Tessin, région italophone de la Suisse, facilite les échanges avec les ateliers italiens du nord du pays, tandis qu'un acheteur venant d'une autre région suisse privilégiera souvent un atelier germanophone ou francophone. Dans les deux cas, la documentation technique en anglais reste généralement acceptée par les ateliers agréés des deux pays.</p>
+
+<h2 id="choix">Quel pays privilégier selon votre profil</h2>
+<p>Pour un acheteur recherchant un appareil de tourisme ou de vol en montagne au niveau d'entretien irréprochable et prêt à payer le prix correspondant, le marché suisse reste souvent le plus rassurant. Pour un acheteur davantage sensible au budget et prêt à élargir sa recherche afin de trouver un appareil au meilleur prix, moyennant une vigilance accrue sur l'historique d'entretien, le marché italien, plus large, offre un choix plus étendu.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Dans tous les cas, une inspection pré-achat par un mécanicien indépendant qualifié reste indispensable, qu'il s'agisse d'un appareil situé en Suisse, en Italie ou ailleurs en Europe.</div></div>
+<p>Le climat peut également orienter le choix selon l'usage envisagé : un acheteur recherchant principalement un avion de voyage pour voler toute l'année dans des conditions clémentes se tournera volontiers vers le marché italien, en particulier dans le sud du pays, tandis qu'un acheteur privilégiant le vol en montagne et un niveau d'entretien très soigné restera souvent fidèle au marché suisse. Ces deux approches ne s'excluent pas : rien n'empêche de rechercher un appareil en Italie tout en prévoyant de le faire entretenir en Suisse, ou inversement, dès lors que les distances de convoyage restent raisonnables.</p>
+<p>Au final, le pays d'achat importe moins que la qualité réelle de l'appareil et de son suivi d'entretien, même si le statut de la Suisse hors Union européenne ajoute une couche de formalités à anticiper. Comparer les annonces des deux marchés élargit vos possibilités et vous donne une meilleure base de négociation, qu'il s'agisse du prix ou des conditions de la transaction.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre avion d'occasion</h3>
+            <p>Comparez les annonces d'avions d'occasion disponibles en Suisse, en Italie et partout en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="/search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="/blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="/acheter-avion-occasion-suisse.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide pays</span><strong>Acheter un avion d'occasion en Suisse</strong><p>Marché, prix, fiscalité et démarches pour acheter un avion d'occasion en Suisse.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="/acheter-avion-occasion-italie.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide pays</span><strong>Acheter un avion d'occasion en Italie</strong><p>Marché, prix, fiscalité et démarches pour acheter un avion d'occasion en Italie.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="/inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

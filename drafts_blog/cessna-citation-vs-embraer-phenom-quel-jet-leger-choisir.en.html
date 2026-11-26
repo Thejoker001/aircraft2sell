@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Cessna Citation or Embraer Phenom: complete comparison of used light jets to help you choose based on budget, cabin, performance and operating costs.">
+<meta name="keywords" content="used Cessna Citation, used Embraer Phenom, light jet comparison, Citation CJ, Phenom 300, buying a business jet">
+<meta property="og:title" content="Cessna Citation vs Embraer Phenom: which light jet to choose | Aircraft2Sell">
+<meta property="og:description" content="Cessna Citation or Embraer Phenom: complete comparison of used light jets to help you choose based on budget, cabin, performance and operating costs.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/cessna-citation-vs-embraer-phenom-quel-jet-leger-choisir.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/cessna-citation-vs-embraer-phenom-quel-jet-leger-choisir.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/cessna-citation-vs-embraer-phenom-quel-jet-leger-choisir.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/cessna-citation-vs-embraer-phenom-quel-jet-leger-choisir.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/cessna-citation-vs-embraer-phenom-quel-jet-leger-choisir.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Cessna Citation vs Embraer Phenom: which light jet to choose | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Cessna Citation vs Embraer Phenom: which light jet to choose", "description": "Cessna Citation or Embraer Phenom: complete comparison of used light jets to help you choose based on budget, cabin, performance and operating costs.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/cessna-citation-vs-embraer-phenom-quel-jet-leger-choisir.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Cessna Citation vs Embraer Phenom: which light jet to choose", "item": "https://aircraft2sell.eu/en/cessna-citation-vs-embraer-phenom-quel-jet-leger-choisir.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Citation vs Phenom</span></nav>
+    <span class="eyebrow">Comparison</span>
+    <h1>Cessna Citation vs Embraer Phenom: which light jet to choose</h1>
+    <p>Two families dominate the used light jet market in Europe. Cabin, performance, budget and operating cost comparison to help you choose between a Citation and a Phenom.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Table of contents</div>
+        <ol><li><a href="#presentation">Two families that dominate the light jet market</a></li><li><a href="#citation">The Cessna Citation family: a very broad used offering</a></li><li><a href="#phenom">The Embraer Phenom family: next-generation cabin and comfort</a></li><li><a href="#budget">Budget comparison: purchase and operation</a></li><li><a href="#cabine">Cabin, mission and performance</a></li><li><a href="#occasion">Buying either one used: points to watch</a></li><li><a href="#choisir">Which jet for which buyer profile</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Two families that dominate the light jet market</h2>
+<p>The Cessna Citation and the Embraer Phenom are, between them, the two most prevalent light jet families on the used market in Europe. On one side, Cessna has produced a considerable number of Citations since the 1970s, across versions ranging from very light jets to light jets, creating an extremely broad used inventory in terms of age, avionics and budget. On the other side, Embraer launched the Phenom in the mid-2000s with a decidedly modern approach: a wider cabin, avionics integrated from the design stage, and ergonomics built as much for the owner-pilot as for the professional operator.</p>
+<p>Choosing between these two families is rarely a case of comparing two strictly equivalent aircraft: you first need to identify which Citation or Phenom generation actually fits your budget and mission, before comparing the two manufacturers on comparable terms.</p>
+
+<h2 id="citation">The Cessna Citation family: a very broad used offering</h2>
+<p>The Citation range covers a very wide spectrum, from the Citation Mustang and CJ1, designed as accessible very light jets for an owner-pilot, up to the CJ3, CJ4, XLS and Citation Excel, which are closer to a classic crewed business jet. This depth of range is one of the main strengths of the used Citation market: there is almost always a version suited to a given budget, backed by an exceptionally mature Part-145 maintenance network and spare parts supply after several decades of production.</p>
+<p>On the used market, buyers value parts availability, the large number of shops familiar with the type, and the relative predictability of maintenance costs, supported by a very well documented fleet history. The oldest versions trade at a markedly more accessible entry price, while recent, well-equipped generations represent an investment comparable to a Phenom.</p>
+
+<h2 id="phenom">The Embraer Phenom family: next-generation cabin and comfort</h2>
+<p>The Phenom 100 and Phenom 300 were designed by Embraer drawing on its experience as a regional airliner manufacturer, with a cabin generally regarded as wider and more comfortable than comparable older-generation Citations. Avionics integrated from the factory, often a modern Garmin suite, and ergonomics built for single-pilot operation make it a particularly popular choice among owner-pilots who fly their own jet.</p>
+<p>The Phenom 300 has become one of the best-selling light jets in the world over the past decade, which today guarantees a growing used supply, strong value retention and good availability of technical support through authorized Embraer service centers. The smaller, more accessible Phenom 100 remains the entry point into the range, broadly comparable in positioning to a Citation Mustang or CJ1.</p>
+
+<h2 id="budget">Budget comparison: purchase and operation</h2>
+<p>Acquisition budget depends above all on the specific generation and version chosen rather than on the manufacturer alone. An older Citation Mustang and an older Phenom 100 sell within comparable price ranges, just as a recent Citation CJ3 and a recent Phenom 300 remain close to one another in price at comparable equipment and engine status.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Cessna Citation</th><th>Embraer Phenom</th></tr></thead>
+<tbody>
+<tr><td>Depth of used range</td><td>Very broad, from very light jet to light jet</td><td>Narrower, concentrated on the Phenom 100 and 300</td></tr>
+<tr><td>Parts and shop availability</td><td>Very extensive Part-145 network after decades of production</td><td>Growing Embraer network, well established on recent generations</td></tr>
+<tr><td>Cabin at comparable size class</td><td>Varies by version and age</td><td>Generally regarded as wider and more comfortable</td></tr>
+<tr><td>Value retention</td><td>Good for well-maintained recent versions</td><td>Historically very strong, especially on the Phenom 300</td></tr>
+<tr><td>Operating cost per flight hour</td><td>Varies significantly with version and engine age</td><td>Generally competitive, modern avionics as standard</td></tr>
+</tbody></table></div>
+<p>Beyond the sticker price, always factor in the real cost per flight hour, which depends on engine status (whether or not it is covered by an hourly maintenance program such as MSP or similar), expected usage frequency, and fixed costs for hangarage, insurance and crew if the aircraft is not flown by its owner.</p>
+
+<h2 id="cabine">Cabin, mission and performance</h2>
+<p>The choice between Citation and Phenom depends heavily on the intended mission. For short to medium trips across Europe, with occasional to regular but not intensive use, the entry versions of both families (Mustang, CJ1 on the Citation side, Phenom 100 on the Embraer side) offer a very good balance of accessibility and practicality.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Citation CJ3/CJ4 or Phenom 300: suited to longer missions and regular professional use, with a cabin that allows you to stand.</span></li>
+  <li><i data-icon="check"></i><span>Citation Mustang/CJ1 or Phenom 100: suited to an owner-pilot flying short to medium trips, with a more accessible entry budget.</span></li>
+  <li><i data-icon="check"></i><span>Cabin volume and baggage capacity: compare precisely between versions, as differences between successive generations of the same model can be significant.</span></li>
+  <li><i data-icon="check"></i><span>Single-pilot operation capability, which drives crew costs over time.</span></li>
+</ul>
+<p>For longer missions or intensive professional use, the top versions of both families (Citation XLS, Excel on the Cessna side; the Phenom 300 at the top of the Embraer range) compete more with midsize jets than with simple very light jets, which justifies a markedly higher acquisition and operating budget.</p>
+
+<h2 id="occasion">Buying either one used: points to watch</h2>
+<p>Whether it's a Citation or a Phenom, buying a used jet requires a rigorous pre-purchase inspection carried out at a Part-145 authorized maintenance center familiar with the type. Key checks cover airframe hours and cycles, engine history and any coverage by an hourly maintenance program, RVSM and ADS-B Out compliance, and the history of major structural checks.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Always request the complete technical records and have the document review carried out by an independent authorized center before committing: for a jet, this step is standard market practice, not an option.</div></div>
+<p>On a Citation, the age of certain versions calls for a careful check of the history of modifications and airworthiness directives applied over the decades. On a Phenom, being more recent, attention should focus more on the coverage of the engine and avionics maintenance programs still in force, which can represent a significant value argument at resale.</p>
+
+<h2 id="choisir">Which jet for which buyer profile</h2>
+<p>A buyer who prioritizes an accessible entry budget, a very wide choice of versions and an exceptionally extensive maintenance network built up over decades of production will find a particularly rich used market in the Citation family. A buyer who is primarily looking for a modern cabin, recent integrated avionics and strong value retention, especially for single-pilot operation, will more naturally turn toward the Phenom family.</p>
+<p>In all cases, comparing several listings of similar versions and model years within each family remains the best way to assess a fair price and spot a well-maintained aircraft, whether it's a Citation or a Phenom.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Citation or Phenom</h3>
+            <p>Compare used Cessna Citation and Embraer Phenom listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="jets-affaires.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Category</span><strong>Business jets for sale</strong><p>All used business jet listings available in Europe on Aircraft2Sell.</p><span class="btn-link">View listings <i data-icon="arrow-right"></i></span></a>
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="scale"></i></span><span class="eyebrow">Comparison guide</span><strong>Turboprop or business jet: how to choose</strong><p>Budget, performance and use case comparison to help you choose between a turboprop and a light jet.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="financer-jet-affaires-leasing-credit-bail-copropriete.html" class="card"><span class="icon-box"><i data-icon="coins"></i></span><span class="eyebrow">Financing guide</span><strong>Financing a business jet: leasing, hire-purchase, fractional ownership</strong><p>The different options for financing the purchase of a used business jet.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Quel avion d'occasion acheter avec un budget de 50 000 euros ? Comparatif des catégories, modèles types et critères pour faire le meilleur choix.">
+<meta property="og:title" content="Meilleur avion d'occasion sous 50 000 euros | Aircraft2Sell">
+<meta property="og:description" content="Quel avion d'occasion acheter avec un budget de 50 000 euros ? Comparatif des catégories, modèles types et critères pour faire le meilleur choix.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/meilleur-avion-d-occasion-sous-50-000-euros.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/meilleur-avion-d-occasion-sous-50-000-euros.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/meilleur-avion-d-occasion-sous-50-000-euros.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/meilleur-avion-d-occasion-sous-50-000-euros.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/meilleur-avion-d-occasion-sous-50-000-euros.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Meilleur avion d'occasion sous 50 000 euros | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Meilleur avion d'occasion sous 50 000 euros", "description": "Quel avion d'occasion acheter avec un budget de 50 000 euros ? Comparatif des catégories, modèles types et critères pour faire le meilleur choix.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/meilleur-avion-d-occasion-sous-50-000-euros.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Meilleur avion d'occasion sous 50 000 euros", "item": "https://aircraft2sell.eu/meilleur-avion-d-occasion-sous-50-000-euros.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Meilleur avion sous 50 000 €</span></nav>
+    <span class="eyebrow">Comparatif</span>
+    <h1>Meilleur avion d'occasion sous 50 000 euros</h1>
+    <p>Avec un budget de 50 000 euros, plusieurs catégories d'avions d'occasion restent accessibles. Comparatif pour identifier le meilleur choix selon votre usage.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#budget">Ce que 50 000 euros permettent réellement d'acheter</a></li><li><a href="#ulm">Les ULM et avions légers de construction simple</a></li><li><a href="#monomoteurs">Les monomoteurs classiques type Cessna ou Piper</a></li><li><a href="#planeurs">Planeurs et motorplaneurs d'occasion</a></li><li><a href="#criteres">Les critères qui comptent plus que le prix affiché</a></li><li><a href="#comparatif">Tableau comparatif par catégorie</a></li><li><a href="#conseil">Comment faire le meilleur choix selon votre usage</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="budget">Ce que 50 000 euros permettent réellement d'acheter</h2>
+<p>Un budget de 50 000 euros place l'acheteur dans une zone particulière du marché de l'avion d'occasion : trop restreint pour viser un monomoteur à train rentrant récent ou un bimoteur, mais largement suffisant pour accéder à une large gamme d'avions légers de voyage, d'avions d'entraînement très répandus ou d'ULM haut de gamme. L'essentiel est de bien comprendre que, dans cette tranche de prix, l'âge et les heures moteur restantes pèsent souvent plus lourd dans la décision que le modèle lui-même.</p>
+<p>À budget identique, deux appareils du même modèle peuvent afficher un écart de prix important selon leur potentiel moteur restant avant la prochaine grande visite, leur avionique (analogique ou avec instruments électroniques), et leur historique d'entretien. Comparer plusieurs annonces du même modèle et du même millésime reste indispensable avant d'arrêter un choix.</p>
+<p>Il faut aussi garder à l'esprit que le prix affiché dans une annonce ne reflète qu'une partie du coût réel d'acquisition. Les frais de convoyage jusqu'à votre aérodrome de rattachement, l'éventuelle remise aux normes de l'avionique, ou encore la régularisation d'un carnet d'entretien incomplet peuvent représenter plusieurs milliers d'euros supplémentaires. Un budget de 50 000 euros doit donc être envisagé comme une enveloppe globale, et non comme le seul prix de vente négocié avec le propriétaire actuel.</p>
+
+<h2 id="ulm">Les ULM et avions légers de construction simple</h2>
+<p>Pour un usage essentiellement loisir, les ULM multiaxes modernes et certains avions légers de construction simple offrent un excellent rapport entre coût d'acquisition et coût d'exploitation. Leur consommation de carburant réduite et leurs frais d'entretien généralement plus légers en font une option particulièrement intéressante pour un budget de 50 000 euros, surtout si l'appareil est récent ou bien équipé.</p>
+<p>La contrepartie est une capacité d'emport plus limitée et, selon le modèle, une autonomie moindre que celle d'un avion certifié classique. Cette catégorie convient bien à un usage de proximité, de balade ou de formation initiale, mais moins à un usage régulier de voyage sur de longues distances avec plusieurs passagers.</p>
+
+<h2 id="monomoteurs">Les monomoteurs classiques type Cessna ou Piper</h2>
+<p>Les monomoteurs à train fixe largement diffusés sur le marché européen, de type Cessna 172 ou équivalents d'autres constructeurs, restent accessibles sous les 50 000 euros pour des exemplaires plus anciens, avec un potentiel moteur variable selon les annonces. Ce sont des appareils robustes, bien connus des mécaniciens, pour lesquels les pièces détachées et la documentation technique sont largement disponibles — un critère important pour maîtriser le coût d'entretien dans la durée.</p>
+<p>Dans cette tranche de budget, il faut généralement accepter un appareil plus ancien, une avionique analogique ou partiellement modernisée, et un potentiel moteur réduit avant la prochaine grande visite. Le coût de cette grande visite doit être anticipé dès l'achat et intégré dans le budget global, car il peut représenter une somme significative par rapport au prix d'acquisition de l'appareil.</p>
+<p>Ces appareils bénéficient en outre d'une communauté de propriétaires et de clubs très active en Europe, ce qui facilite la recherche de retours d'expérience sur un exemplaire précis, l'identification d'un mécanicien compétent pour le type, et in fine la revente le jour venu. Cette liquidité relative du marché est un atout non négligeable lorsqu'on investit dans une catégorie d'appareil pour la première fois.</p>
+
+<h2 id="planeurs">Planeurs et motorplaneurs d'occasion</h2>
+<p>Pour un profil d'acheteur davantage tourné vers le vol à voile ou le vol de performance, les planeurs et motorplaneurs d'occasion offrent un accès à des appareils récents et bien équipés pour un budget de 50 000 euros, un montant qui permettrait rarement d'accéder à un avion à moteur équivalent en termes de finesse et de technologie embarquée.</p>
+<p>Cette catégorie suppose toutefois un usage et une pratique différents d'un avion à moteur classique : licence adaptée, dépendance à un remorqueur ou à un treuil pour la mise en l'air (sauf motorplaneur autonome), et un usage davantage orienté vers le loisir sportif que vers le déplacement point à point.</p>
+
+<h2 id="criteres">Les critères qui comptent plus que le prix affiché</h2>
+<p>À budget comparable, plusieurs critères doivent primer sur le prix affiché dans l'annonce pour identifier le meilleur choix réel.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Heures moteur restantes avant la prochaine grande visite, rapportées au coût estimé de cette intervention.</span></li>
+  <li><i data-icon="check"></i><span>Cohérence entre le carnet d'entretien, le carnet de route et les heures affichées.</span></li>
+  <li><i data-icon="check"></i><span>Disponibilité des pièces détachées et de la documentation technique pour le modèle concerné.</span></li>
+  <li><i data-icon="check"></i><span>Coût d'assurance et de stationnement dans votre région, qui varie fortement selon la catégorie d'appareil.</span></li>
+  <li><i data-icon="check"></i><span>Présence ou absence de dommages antérieurs réparés, à vérifier lors de l'inspection pré-achat.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Un appareil affiché nettement sous le prix du marché pour son modèle et son potentiel moteur mérite une inspection pré-achat particulièrement approfondie avant tout engagement.</div></div>
+
+<h2 id="comparatif">Tableau comparatif par catégorie</h2>
+<p>Ce tableau résume les grands équilibres entre catégories accessibles sous 50 000 euros, à affiner ensuite selon les annonces réellement disponibles.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Catégorie</th><th>Points forts</th><th>Limites à ce budget</th></tr></thead>
+<tbody>
+<tr><td>ULM / avion léger simple</td><td>Coût d'exploitation réduit, entretien plus simple</td><td>Capacité d'emport et autonomie plus limitées</td></tr>
+<tr><td>Monomoteur certifié (Cessna, Piper...)</td><td>Robustesse, pièces et mécaniciens largement disponibles</td><td>Appareil souvent plus ancien, potentiel moteur réduit</td></tr>
+<tr><td>Planeur / motorplaneur</td><td>Technologie et finitions récentes accessibles au budget</td><td>Usage et licence différents d'un avion à moteur classique</td></tr>
+</tbody></table></div>
+
+<h2 id="conseil">Comment faire le meilleur choix selon votre usage</h2>
+<p>Le « meilleur » avion sous 50 000 euros n'existe pas dans l'absolu : il dépend entièrement de l'usage prévu. Pour des vols de découverte ou de loisir local, un ULM récent bien équipé représente souvent le choix le plus rationnel. Pour un usage régulier avec passagers et des trajets de moyenne distance, un monomoteur certifié malgré un potentiel moteur réduit reste généralement préférable, à condition d'anticiper le budget de la grande visite à venir.</p>
+<p>Dans tous les cas, comparer plusieurs annonces du même modèle, faire réaliser une inspection pré-achat indépendante et vérifier la cohérence complète du carnet d'entretien restent les meilleures garanties pour transformer un budget de 50 000 euros en un achat réellement satisfaisant, plutôt qu'en une source de dépenses imprévues.</p>
+<p>Enfin, ne négligez pas le facteur temps : un budget serré impose souvent de patienter plusieurs semaines, voire plusieurs mois, pour trouver l'annonce qui correspond réellement à vos critères sans compromis excessif sur l'état de l'appareil. Se fixer une liste de priorités claires (catégorie, usage principal, zone géographique, potentiel moteur minimal acceptable) avant de commencer ses recherches permet d'éviter les décisions prises dans l'urgence, souvent moins satisfaisantes sur la durée.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Réservez toujours une marge de 10 à 15 % du budget total pour les frais annexes (inspection, mise en conformité, équipement complémentaire) avant de fixer votre prix d'achat maximum.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre avion sous 50 000 euros</h3>
+            <p>Comparez les annonces d'avions d'occasion disponibles en Europe sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cessna 172 d'occasion : guide d'achat complet</strong><p>Budget, points de vigilance et entretien pour l'avion d'entraînement le plus produit au monde.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="comment-financer-avion-leger.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Financement</span><strong>Comment financer l'achat d'un avion léger en Europe</strong><p>Guide complet sur les options de financement pour l'achat d'un avion léger : prêt bancaire, crédit-bail, leasing, financement entre particuliers.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

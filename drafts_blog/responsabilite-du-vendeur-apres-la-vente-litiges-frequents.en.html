@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Redirection automatique par langue navigateur
+   --------------------------------------------------------------------------
+   Sur une page FR (racine, sans /en/ ni /et/), si le navigateur du visiteur
+   est configuré en anglais ET qu'une version EN de cette page existe, on
+   redirige une seule fois vers /en/<page>. Le choix est mémorisé (localStorage)
+   pour ne plus jamais re-rediriger ensuite, y compris si le visiteur revient
+   volontairement en FR via le sélecteur de langue du footer.
+
+   Ne s'exécute PAS :
+   - sur les pages déjà sous /en/ ou /et/ (pas de boucle)
+   - si un choix de langue a déjà été fait une fois (a2s_lang_choice_made)
+   - si la page n'a pas d'équivalent EN (TRANSLATED_PAGES)
+   - pour les crawlers (voir isLikelyBot ci-dessous)
+
+   CORRECTIF 2026-09-21 : contrairement à l'hypothèse initiale, Googlebot rend
+   la page avec Chrome headless (navigator.language = "en-US" par défaut) et
+   EXÉCUTE ce script — confirmé via Search Console URL Inspection sur la page
+   d'accueil (userCanonical basculait sur /en/index.html malgré une visite de
+   l'URL FR). Impact : le "signal utilisateur" observé par Google pour la
+   page racine pouvait dériver vers la version anglaise. Un filtrage sur
+   navigator.webdriver + une liste d'UA de crawlers connus élimine ce risque
+   sans changer le comportement pour un vrai visiteur humain.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* Détection best-effort des crawlers : navigator.webdriver est vrai pour
+     Chrome headless (Googlebot, Bingbot, Puppeteer/Playwright...) ; on
+     couvre aussi les UA de crawlers connus au cas où webdriver ne serait pas
+     exposé. Un faux négatif reste sans danger (au pire, ancien comportement) ;
+     un faux positif ne fait que priver un humain de la redirection auto,
+     jamais casser la navigation (le sélecteur de langue manuel reste dispo). */
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  /* Déjà sur une version traduite : ne rien faire. */
+  if (/^\/(en|et)\//.test(path)) return;
+
+  /* Un choix a déjà été fait une fois (redirection automatique OU clic
+     manuel sur le sélecteur de langue) : ne plus jamais re-rediriger. */
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  /* Pages disponibles en anglais (même liste que nav.js/footer.js). */
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  /* Langue du navigateur (première préférence uniquement, en minuscules,
+     code ISO 2 lettres avant le tiret éventuel : "en-US" -> "en"). */
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  /* Marquer le choix comme fait AVANT de rediriger, pour que la page /en/
+     de destination (qui charge aussi ce script) ne redirige pas à son tour
+     ni ne déclenche de nouvelle vérification au retour arrière. */
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+/* Marque tout choix MANUEL de langue (clic sur un lien hreflang du nav/footer)
+   comme définitif, pour ne plus jamais déclencher la redirection automatique
+   ci-dessus — y compris si le visiteur revient volontairement en FR. Délégué
+   sur document pour capter les liens injectés dynamiquement par nav.js/footer.js. */
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Seller liability after the sale of a used aircraft: hidden defects, common disputes and how buyers and sellers can protect themselves.">
+<meta property="og:title" content="Seller Liability After the Sale: Common Disputes | Aircraft2Sell">
+<meta property="og:description" content="Seller liability after the sale of a used aircraft: hidden defects, common disputes and how buyers and sellers can protect themselves.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/responsabilite-du-vendeur-apres-la-vente-litiges-frequents.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/responsabilite-du-vendeur-apres-la-vente-litiges-frequents.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/responsabilite-du-vendeur-apres-la-vente-litiges-frequents.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/responsabilite-du-vendeur-apres-la-vente-litiges-frequents.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/responsabilite-du-vendeur-apres-la-vente-litiges-frequents.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Seller Liability After the Sale: Common Disputes | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Seller Liability After the Sale: Common Disputes", "description": "Seller liability after the sale of a used aircraft: hidden defects, common disputes and how buyers and sellers can protect themselves.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/responsabilite-du-vendeur-apres-la-vente-litiges-frequents.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Seller Liability After the Sale: Common Disputes", "item": "https://aircraft2sell.eu/en/responsabilite-du-vendeur-apres-la-vente-litiges-frequents.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Seller liability</span></nav>
+    <span class="eyebrow">Seller's guide</span>
+    <h1>Seller Liability After the Sale: Common Disputes</h1>
+    <p>Hidden defects, undisclosed issues, disputes over the aircraft's real condition: what keeps a seller liable after the sale of a used aircraft, and how to protect against it.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#principe">The principle of seller liability</a></li><li><a href="#vice-cache">The hidden-defect warranty</a></li><li><a href="#litiges">The most common disputes</a></li><li><a href="#acte-vente">The role of the bill of sale and limiting clauses</a></li><li><a href="#protection-acheteur">How the buyer protects themselves</a></li><li><a href="#protection-vendeur">How the seller protects themselves</a></li><li><a href="#recours">Possible remedies in case of a dispute</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="principe">The principle of seller liability</h2>
+<p>In a private sale of a used aircraft, the seller remains bound, after signing, by two essential obligations stemming from general sales law: an obligation to deliver an aircraft matching its description (the aircraft delivered must correspond to what was described in the listing and the bill of sale) and a warranty against hidden defects. This liability does not end on the day the keys are handed over: a defect discovered several months after the sale can still hold the seller liable if that defect existed before the sale and was not disclosed.</p>
+<p>The exact regime varies according to the national law applicable to the contract (generally the law of the country where the sale is concluded, or one explicitly chosen in the bill of sale), but the general principle of a hidden-defect warranty is found in most European legal systems, many of which draw on continental civil law.</p>
+
+<h2 id="vice-cache">The hidden-defect warranty</h2>
+<p>A hidden defect is one that meets three cumulative conditions: it existed before the sale, it was not apparent during a normal examination of the aircraft (including a standard pre-purchase inspection), and it renders the aircraft unfit for its intended use or significantly reduces its value. Internal corrosion not detectable without disassembly, a concealed or undisclosed structural repair, or an incident history erased from the flight logbook are typical examples of hidden defects in light aviation.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Pre-existence of the defect</strong> — the defect must be proven to have existed before the sale, not appeared afterwards.</span></li>
+  <li><i data-icon="check"></i><span><strong>Hidden nature</strong> — a defect visible during a normal inspection cannot be invoked as a hidden defect.</span></li>
+  <li><i data-icon="check"></i><span><strong>Severity</strong> — the defect must significantly affect the aircraft's use or value.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — An "as is" sale clause never removes the hidden-defect warranty if the seller knew about the defect and concealed it: bad faith on the seller's part neutralises this type of clause in most European legal systems.</div></div>
+
+<h2 id="litiges">The most common disputes</h2>
+<p>The most common post-sale disputes between private individuals rarely concern a disagreement over price, but rather a divergence over the aircraft's actual condition at the time of the transaction.</p>
+<h3>Non-matching engine history</h3>
+<p>The most frequent dispute concerns the stated engine hours: an incomplete logbook, flight hours not recorded, or an engine logbook that does not exactly match the aircraft's flight logbook. The buyer often discovers the discrepancy at the first major overhaul following the purchase, sometimes months after the transaction.</p>
+<h3>Undisclosed structural damage</h3>
+<p>A hard landing, a propeller strike, or a damage repair not mentioned in the maintenance logbook is one of the most costly disputes to settle, since bringing the aircraft back into compliance can represent a significant share of its value.</p>
+<h3>Advertised equipment that is missing or non-functional</h3>
+<p>Avionics presented as installed and working in the listing but faulty or removed before delivery: this type of dispute, while financially smaller, remains one of the most frequent in the absence of a precise written condition report before the sale.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point of caution</strong> — Most of these disputes could have been avoided with an independent pre-purchase inspection and a bill of sale precisely detailing the condition of the equipment at the time of the transaction.</div></div>
+
+<h2 id="acte-vente">The role of the bill of sale and limiting clauses</h2>
+<p>The bill of sale is the reference document in the event of a dispute: the more precisely it describes the aircraft's condition, its equipment and the engine hours at the date of sale, the better it protects both parties. A vague bill of sale that is limited to identifying the aircraft and the price leaves room for interpretation that favours later disputes.</p>
+<p>Clauses limiting the warranty (an "as is" sale, exclusion of certain warranties) can reduce the seller's exposure, but their validity depends on the applicable law and they never protect against the deliberate concealment of a known defect. In all cases, they must be drafted explicitly and accepted in writing by the buyer to have any chance of being enforceable.</p>
+
+<h2 id="protection-acheteur">How the buyer protects themselves</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Have a pre-purchase inspection carried out by a mechanic independent of the seller, never one recommended by them.</span></li>
+  <li><i data-icon="check"></i><span>Require the full copy of the logbook and engine logbook before committing, not just a verbal summary.</span></li>
+  <li><i data-icon="check"></i><span>Have the precise condition of the advertised optional equipment confirmed in writing, as an annex to the bill of sale.</span></li>
+  <li><i data-icon="check"></i><span>Keep all written communications with the seller (listing, email exchanges): they serve as evidence in the event of a later dispute.</span></li>
+</ul>
+
+<h2 id="protection-vendeur">How the seller protects themselves</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Disclose the aircraft's entire known history, including repaired minor incidents, rather than letting the buyer discover them later.</span></li>
+  <li><i data-icon="check"></i><span>Have the aircraft's condition assessed by a professional before listing it, to have a dated report available in case of a future dispute.</span></li>
+  <li><i data-icon="check"></i><span>Draft a detailed bill of sale, explicitly stating known facts and the warranty limitations accepted by the buyer.</span></li>
+  <li><i data-icon="check"></i><span>Never alter or have a logbook corrected to mask an inconsistency: this greatly worsens liability in the event of a dispute.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Documented transparency remains the seller's best protection: a defect disclosed before the sale, even an unfavourable one, can no longer later be classified as a hidden defect.</div></div>
+
+<h2 id="recours">Possible remedies in case of a dispute</h2>
+<p>In the event of a disagreement after the sale, the first step remains direct amicable negotiation, often the fastest and least costly route. Failing agreement, the buyer may bring a hidden-defect warranty claim before the court having jurisdiction as determined by the bill of sale or, failing that, by the applicable private international law rules. Mediation or arbitration, where provided for in the bill of sale, often resolves the dispute faster than a conventional court procedure.</p>
+<p>In every case, a dated pre-purchase inspection report, a detailed bill of sale and written exchanges with the seller form the core evidence of any case, whether handled amicably or before a court.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Before starting proceedings, weigh the real cost of the dispute (legal fees, delays) against the amount at stake: for a minor defect, an amicable negotiation is often more cost-effective than legal action.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to sell or buy with confidence?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="documents-obligatoires-vente-avion.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Seller's guide</span><strong>Mandatory documents for selling an aircraft in Europe</strong><p>Airworthiness, logbooks, ownership, bill of sale: the seller's complete checklist.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>The pre-purchase inspection of an aircraft: complete guide</strong><p>Everything you need to check before buying a used aircraft in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="vendre-avion-particulier-europe.html" class="card"><span class="icon-box"><i data-icon="tag"></i></span><span class="eyebrow">Seller's guide</span><strong>How to sell your aircraft privately in Europe</strong><p>Writing an effective listing, setting the right price, securing the transaction.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

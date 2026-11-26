@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="How to calculate the real 5-year cost of owning an aircraft (TCO): method, expense items and a comparison by aircraft category.">
+<meta property="og:title" content="Real cost of ownership over 5 years: calculating aircraft TCO by category | Aircraft2Sell">
+<meta property="og:description" content="How to calculate the real 5-year cost of owning an aircraft (TCO): method, expense items and a comparison by aircraft category.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/cout-reel-de-possession-sur-5-ans-calculer-le-tco-par-categorie-d-avion.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/cout-reel-de-possession-sur-5-ans-calculer-le-tco-par-categorie-d-avion.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/cout-reel-de-possession-sur-5-ans-calculer-le-tco-par-categorie-d-avion.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/cout-reel-de-possession-sur-5-ans-calculer-le-tco-par-categorie-d-avion.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/cout-reel-de-possession-sur-5-ans-calculer-le-tco-par-categorie-d-avion.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Real cost of ownership over 5 years: calculating aircraft TCO by category | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Real cost of ownership over 5 years: calculating aircraft TCO by category", "description": "How to calculate the real 5-year cost of owning an aircraft (TCO): method, expense items and a comparison by aircraft category.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/cout-reel-de-possession-sur-5-ans-calculer-le-tco-par-categorie-d-avion.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Real cost of ownership over 5 years: calculating aircraft TCO by category", "item": "https://aircraft2sell.eu/en/cout-reel-de-possession-sur-5-ans-calculer-le-tco-par-categorie-d-avion.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">5-year cost of ownership</span></nav>
+    <span class="eyebrow">Buyer's guide</span>
+    <h1>Real cost of ownership over 5 years: calculating aircraft TCO by category</h1>
+    <p>The purchase price is only part of the bill. Here's how to calculate the total cost of ownership (TCO) of your next aircraft over 5 years, with a comparison across aircraft categories.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#why">Why total cost matters more than purchase price</a></li><li><a href="#fixed">The fixed costs of ownership</a></li><li><a href="#variable">The variable costs tied to actual use</a></li><li><a href="#method">How to calculate TCO over 5 years</a></li><li><a href="#categories">TCO by aircraft category: comparing the order of magnitude</a></li><li><a href="#pitfalls">Common pitfalls that skew the calculation</a></li><li><a href="#example">A worked comparison example</a></li><li><a href="#use">Using TCO to decide between two aircraft</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="why">Why total cost matters more than purchase price</h2>
+<p>Two used aircraft listed at the same purchase price can end up representing very different budgets once the first five years of ownership have passed. The asking price, however decisive it may feel at the time of the decision, tells you nothing about remaining engine hours, the insurance cost tied to the category, or how often maintenance work will be required going forward. Thinking in terms of total cost of ownership (TCO) puts the purchase price back into its proper context: the real amount of money you will actually spend over a given holding period.</p>
+<p>This approach is especially useful when comparing very different categories of aircraft — a light sport aircraft and a certified single-engine piston, for example — that serve the same mobility need but whose cost structures have nothing in common. It also helps avoid the classic disappointment of a buyer who focuses on the sticker price and discovers, a year or two later, that the annual maintenance budget far exceeds the original forecast.</p>
+
+<h2 id="fixed">The fixed costs of ownership</h2>
+<p>Some expenses are due every year regardless of how many hours are actually flown. They form the unavoidable base of the cost of ownership.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Parking or hangar</strong> — the cost varies widely by airfield, region and type of shelter (outdoor tie-down, shared hangar or private hangar).</span></li>
+  <li><i data-icon="check"></i><span><strong>Insurance</strong> — liability cover and, where relevant, hull insurance; the premium depends on the category, the insured value and the pilot's experience.</span></li>
+  <li><i data-icon="check"></i><span><strong>Mandatory annual inspection</strong> — periodic check whose cost depends on the aircraft's complexity and the labour time required.</span></li>
+  <li><i data-icon="check"></i><span><strong>Memberships and subscriptions</strong> — flying club membership, navigation database subscriptions or digital logbook software.</span></li>
+</ul>
+<p>These fixed costs weigh proportionally much more heavily on an owner who flies little: an aircraft used only a few dozen hours a year will see its hourly cost climb mechanically, since fixed expenses are spread over fewer flight hours.</p>
+
+<h2 id="variable">The variable costs tied to actual use</h2>
+<p>By contrast, other expense items scale directly with the number of flight hours flown and must be estimated from a realistic annual activity assumption.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Fuel</strong> — often the most visible line item, driven by the aircraft's hourly fuel burn and the fuel price at the home airfield.</span></li>
+  <li><i data-icon="check"></i><span><strong>Overhaul reserve</strong> — a regular set-aside to fund the engine's major overhaul as it approaches the manufacturer's recommended hour limit, whether on a certified aircraft or a Rotax-powered light sport aircraft.</span></li>
+  <li><i data-icon="check"></i><span><strong>Routine upkeep</strong> — oil changes, spark plugs, tyres, brakes and other wear parts, which scale with usage intensity.</span></li>
+  <li><i data-icon="check"></i><span><strong>Recurrent training and currency</strong> — dual flights with an instructor and rating renewals, worthwhile even when not strictly mandatory for the pilot's profile.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Always start from a realistic annual flight-hour assumption, slightly below your initial ambitions, rather than overestimating activity and underestimating the real hourly cost.</div></div>
+
+<h2 id="method">How to calculate TCO over 5 years</h2>
+<p>Calculating TCO over 5 years follows a straightforward logic, as long as no expense item is left out.</p>
+<h3>The calculation steps</h3>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Add the aircraft's purchase price to the immediate ancillary costs: pre-purchase inspection, registration and transfer fees, any initial refurbishment.</span></li>
+  <li><i data-icon="check"></i><span>List every annual fixed cost and multiply the total by 5.</span></li>
+  <li><i data-icon="check"></i><span>Estimate the planned annual flight hours and derive the fuel cost and overhaul reserve over the period from it.</span></li>
+  <li><i data-icon="check"></i><span>Add a contingency reserve, typically between 10 and 15% of total annual costs, to absorb unplanned work.</span></li>
+  <li><i data-icon="check"></i><span>Deduct, where applicable, the aircraft's estimated resale value at the end of the 5 years to obtain a net cost of ownership.</span></li>
+</ul>
+<p>The resulting figure represents the real cost you will have borne over the period, not just the capital committed at the time of purchase. This is the number that lets you compare two acquisition projects on a consistent basis, instead of stopping at the headline listing price.</p>
+
+<h2 id="categories">TCO by aircraft category: comparing the order of magnitude</h2>
+<p>Without claiming absolute precision — every aircraft, region and usage profile is different — clear patterns emerge when comparing the broad categories of light aircraft against one another.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Category</th><th>Relative weight of fixed costs</th><th>Dominant cost item over 5 years</th></tr></thead>
+<tbody>
+<tr><td>Multi-axis or weight-shift light sport aircraft</td><td>Generally lighter (lower insurance and parking)</td><td>Fuel and Rotax engine reserve</td></tr>
+<tr><td>Entry-level certified single (Cessna, Piper...)</td><td>Intermediate</td><td>Engine major overhaul reserve</td></tr>
+<tr><td>High-end single or twin</td><td>Heavier (insurance, hangar, two powerplants where applicable)</td><td>Combined engine and avionics upkeep</td></tr>
+<tr><td>Glider or motor glider</td><td>Light to moderate depending on towing/winch</td><td>Club dues and aero-towing</td></tr>
+</tbody></table></div>
+<p>This category-by-category view confirms a simple principle: an aircraft's purchase price and its real 5-year cost of ownership don't always follow the same ranking. A more expensive aircraft at purchase can turn out cheaper to operate if its remaining engine hours are high and its maintenance network well developed, and the reverse is just as true.</p>
+
+<h2 id="pitfalls">Common pitfalls that skew the calculation</h2>
+<p>Several mistakes come up repeatedly when a buyer estimates the real cost of ownership of their future aircraft for the first time.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Watch out</strong> — Forgetting the engine overhaul reserve is the costliest mistake: it is often the single largest expense of the first five years of ownership, and its due date should be known from day one via the engine logbook.</div></div>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Basing the fuel estimate on a price observed at a single airfield, ignoring possible regional variation.</span></li>
+  <li><i data-icon="check"></i><span>Overlooking the cost of ferrying the aircraft to its home airfield, which can be significant for a remote purchase.</span></li>
+  <li><i data-icon="check"></i><span>Overestimating the annual flight hours actually flown, which artificially lowers the overall hourly cost.</span></li>
+  <li><i data-icon="check"></i><span>Ignoring the insurance premium gap between two categories of aircraft at a comparable purchase budget.</span></li>
+</ul>
+
+<h2 id="example">A worked comparison example</h2>
+<p>Take a simplified, purely illustrative example: a buyer is weighing a recent multi-axis light sport aircraft against an older certified single-engine aircraft, both listed at a similar purchase price. For the same annual activity, the light sport aircraft will likely show lighter fixed costs (insurance, parking) and fuel burn, but the certified single can partly offset that gap if its remaining engine hours before the next major overhaul are high and its logbook flawless.</p>
+<p>Conversely, a certified single nearing its engine hour limit, facing a major overhaul within the next two or three years, will see its 5-year TCO badly hit by that single reserve alone — sometimes enough to exceed that of the light sport aircraft despite its lower initial purchase price. This is exactly the kind of reversal that a proper TCO calculation reveals, where comparing listing prices alone would be misleading.</p>
+
+<h2 id="use">Using TCO to decide between two aircraft</h2>
+<p>Once the calculation has been done for each aircraft under consideration, the 5-year TCO becomes a far more reliable decision tool than the purchase price alone. It lets you compare different categories on a consistent basis and prioritise criteria according to your real goal: minimising total spend, maximising aircraft availability, or limiting the risk of an unplanned expense tied to a looming major overhaul.</p>
+<p>In every case, this calculation should rely on verified data — a complete logbook, documented engine hours, recent maintenance invoices — rather than on the seller's statements alone. An independent pre-purchase inspection remains the best way to validate the assumptions in your calculation before committing to five years of ownership.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Build your own TCO spreadsheet for each aircraft you compare, using the same annual flight-hour assumptions, rather than relying on generic averages found online: only a personalised estimate reflects your real use.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Compare the real cost of several aircraft</h3>
+            <p>Browse verified listings on Aircraft2Sell to compare purchase price and remaining engine hours.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Maintenance</span><strong>The cost of maintaining a light aircraft</strong><p>Expense items, the frequency of work and the annual budget to plan for maintaining a light aircraft.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="comment-financer-avion-leger.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Financing</span><strong>How to finance the purchase of a light aircraft in Europe</strong><p>A complete guide to financing options for buying a light aircraft: bank loan, lease-purchase, leasing, private financing.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

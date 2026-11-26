@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Corrosion sur un avion d'occasion : zones à risque, types de corrosion, signes d'alerte et méthode d'inspection pour détecter le problème avant achat.">
+<meta property="og:title" content="Corrosion sur un avion d'occasion : comment la détecter | Aircraft2Sell">
+<meta property="og:description" content="Corrosion sur un avion d'occasion : zones à risque, types de corrosion, signes d'alerte et méthode d'inspection pour détecter le problème avant achat.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/corrosion-sur-un-avion-d-occasion-comment-la-detecter.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/corrosion-sur-un-avion-d-occasion-comment-la-detecter.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/corrosion-sur-un-avion-d-occasion-comment-la-detecter.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/corrosion-sur-un-avion-d-occasion-comment-la-detecter.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/corrosion-sur-un-avion-d-occasion-comment-la-detecter.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Corrosion sur un avion d'occasion : comment la détecter | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Corrosion sur un avion d'occasion : comment la détecter", "description": "Corrosion sur un avion d'occasion : zones à risque, types de corrosion, signes d'alerte et méthode d'inspection pour détecter le problème avant achat.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/corrosion-sur-un-avion-d-occasion-comment-la-detecter.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Corrosion sur un avion d'occasion : comment la détecter", "item": "https://aircraft2sell.eu/corrosion-sur-un-avion-d-occasion-comment-la-detecter.html"}]}
+</script>
+<script type="application/ld+json">
+{"@type": "FAQPage", "@context": "https://schema.org", "mainEntity": [
+  {"@type": "Question", "name": "La corrosion est-elle toujours visible à l'œil nu ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. La corrosion de surface peut être visible, mais la corrosion intergranulaire ou celle logée sous un revêtement, dans une longeron ou derrière un panneau d'habillage reste invisible sans démontage partiel, boroscope ou contrôle non destructif."}},
+  {"@type": "Question", "name": "Un avion stocké en bord de mer est-il plus exposé ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. L'air salin accélère fortement la corrosion, en particulier sur les aéronefs à structure métallique peu protégés ou mal rincés après un vol au-dessus de la mer. L'historique de stationnement de l'appareil est un élément clé à demander au vendeur."}},
+  {"@type": "Question", "name": "Une corrosion détectée interdit-elle automatiquement l'achat ?", "acceptedAnswer": {"@type": "Answer", "text": "Pas nécessairement. Une corrosion de surface superficielle, traitée à temps, peut rester sans conséquence. C'est l'étendue, la localisation sur un élément structural et la méthode de traitement qui déterminent la gravité, à évaluer par un mécanicien agréé indépendant."}}
+]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Corrosion sur un avion d'occasion</span></nav>
+    <span class="eyebrow">Guide technique</span>
+    <h1>Corrosion sur un avion d'occasion : comment la détecter</h1>
+    <p>La corrosion est l'une des causes de dévalorisation les plus coûteuses — et les plus difficiles à repérer — sur un aéronef d'occasion. Voici où regarder, quels signes doivent alerter et comment l'inspection pré-achat permet de la débusquer.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi la corrosion est une menace sérieuse</a></li><li><a href="#zones">Les zones les plus exposées sur un aéronef</a></li><li><a href="#types">Les différents types de corrosion à connaître</a></li><li><a href="#signes">Les signes visuels qui doivent alerter</a></li><li><a href="#facteurs">Les facteurs qui favorisent la corrosion</a></li><li><a href="#inspection">Comment un mécanicien recherche la corrosion</a></li><li><a href="#consequences">Corrosion détectée : conséquences et négociation</a></li><li><a href="#faq">Questions fréquentes</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi la corrosion est une menace sérieuse</h2>
+<p>Sur un avion d'occasion, la corrosion n'est pas un simple défaut esthétique : elle attaque directement la résistance structurale des pièces métalliques. Une cellule, un longeron ou une ferrure corrodés perdent progressivement leur capacité à supporter les charges prévues par le constructeur, parfois sans aucun signe extérieur visible. C'est ce qui rend ce défaut particulièrement redouté par les acheteurs et les mécaniciens agréés : contrairement à une panne moteur qui se révèle en vol, la corrosion progresse silencieusement.</p>
+<p>Le coût de réparation varie énormément selon la pièce touchée et l'étendue du phénomène. Un traitement de surface localisé reste abordable ; en revanche, le remplacement d'un longeron, d'une ferrure de fixation de voilure ou d'une partie de fuselage peut représenter une facture équivalente à une part importante de la valeur de l'appareil, voire conduire à une mise hors service économique. C'est pourquoi la recherche de corrosion doit être une priorité absolue lors de toute inspection pré-achat, avant même de discuter du prix.</p>
+
+<h2 id="zones">Les zones les plus exposées sur un aéronef</h2>
+<p>Certaines zones concentrent l'essentiel des cas de corrosion rencontrés sur les aéronefs légers, car elles cumulent humidité, frottement ou contact électrolytique entre métaux différents.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Bas de fuselage et planchers</strong> — zone de stagnation de l'humidité, des résidus de carburant et des produits de dégivrage.</span></li>
+  <li><i data-icon="check"></i><span><strong>Longerons et nervures de voilure</strong> — accès difficile, inspection souvent limitée à des trappes de visite.</span></li>
+  <li><i data-icon="check"></i><span><strong>Attaches de train d'atterrissage</strong> — zone exposée aux projections d'eau, de sel et de produits de piste.</span></li>
+  <li><i data-icon="check"></i><span><strong>Autour des batteries</strong> — corrosion chimique liée aux vapeurs d'électrolyte en cas de fuite.</span></li>
+  <li><i data-icon="check"></i><span><strong>Jonctions entre matériaux différents</strong> — rivets, vis ou ferrures en acier au contact de l'aluminium, propices à la corrosion galvanique.</span></li>
+  <li><i data-icon="check"></i><span><strong>Échappement et compartiment moteur</strong> — chaleur, suie et condensation favorisent une corrosion rapide sur les tôles proches.</span></li>
+</ul>
+
+<h2 id="types">Les différents types de corrosion à connaître</h2>
+<p>Tous les types de corrosion ne se manifestent pas de la même façon, et certains sont beaucoup plus difficiles à détecter que d'autres.</p>
+<h3>Corrosion uniforme</h3>
+<p>La plus facile à repérer : une attaque généralisée de la surface, souvent liée à une exposition prolongée à l'humidité sans protection adaptée. Elle se traduit par un aspect terne, poudreux ou blanchâtre sur l'aluminium.</p>
+<h3>Corrosion par piqûres (pitting)</h3>
+<p>Elle crée de petits cratères localisés qui peuvent sembler anodins en surface mais se prolonger en profondeur dans le métal, fragilisant la pièce bien plus que ne le laisse supposer son aspect extérieur.</p>
+<h3>Corrosion intergranulaire</h3>
+<p>La plus insidieuse : elle progresse à l'intérieur même de la structure du métal, le long des joints de grains, sans toujours produire de signe visible en surface. Elle touche en particulier certains alliages d'aluminium vieillissants et nécessite souvent un contrôle non destructif pour être confirmée.</p>
+<h3>Corrosion galvanique</h3>
+<p>Elle apparaît au contact de deux métaux différents en présence d'humidité (par exemple une vis en acier sur une structure en aluminium), créant une réaction électrochimique qui attaque préférentiellement l'un des deux métaux.</p>
+<h3>Corrosion filiforme</h3>
+<p>Caractéristique des surfaces peintes ou traitées, elle se propage sous forme de filaments fins sous le revêtement, souvent à partir d'un éclat de peinture ou d'une rayure non traitée.</p>
+
+<h2 id="signes">Les signes visuels qui doivent alerter</h2>
+<p>Même sans démontage, plusieurs indices visuels permettent à un œil averti de suspecter une corrosion active ou passée.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Dépôts blanchâtres ou poudreux sur l'aluminium, cloques ou boursouflures sous la peinture.</span></li>
+  <li><i data-icon="check"></i><span>Peinture récente et localisée sur une seule zone, incohérente avec le reste de la cellule — signe possible d'une réparation masquée.</span></li>
+  <li><i data-icon="check"></i><span>Rivets desserrés, traces de coulures rougeâtres autour des fixations en acier.</span></li>
+  <li><i data-icon="check"></i><span>Joints d'étanchéité ou mastics neufs sur un seul panneau, à contrôler systématiquement.</span></li>
+  <li><i data-icon="check"></i><span>Odeur d'humidité persistante dans le fuselage ou la cabine, souvent révélatrice d'infiltrations chroniques.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Une carrosserie repeinte intégralement juste avant la mise en vente n'est pas forcément un drapeau rouge, mais elle justifie de demander systématiquement les factures et le détail des travaux réalisés avant toute négociation.</div></div>
+
+<h2 id="facteurs">Les facteurs qui favorisent la corrosion</h2>
+<p>Le risque de corrosion dépend fortement de l'historique de vie de l'appareil, bien plus que de son âge en années ou de ses heures de vol affichées.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Stationnement prolongé en extérieur</strong>, surtout sous climat humide ou en bord de mer.</span></li>
+  <li><i data-icon="check"></i><span><strong>Utilisation irrégulière</strong> — un avion peu volé accumule davantage de condensation interne qu'un appareil utilisé régulièrement.</span></li>
+  <li><i data-icon="check"></i><span><strong>Vols fréquents au-dessus de la mer</strong> sans rinçage systématique de la cellule à l'eau douce.</span></li>
+  <li><i data-icon="check"></i><span><strong>Stockage dans un hangar non chauffé ou mal ventilé</strong>, propice aux cycles de condensation.</span></li>
+  <li><i data-icon="check"></i><span><strong>Entretien préventif négligé</strong> — absence de traitement anticorrosion périodique recommandé par le constructeur.</span></li>
+</ul>
+<p>Demander au vendeur l'historique géographique de l'appareil (pays, proximité du littoral, type de hangar) fait donc partie intégrante de la due diligence, au même titre que la lecture du carnet d'entretien.</p>
+
+<h2 id="inspection">Comment un mécanicien recherche la corrosion</h2>
+<p>Lors d'une inspection pré-achat, la recherche de corrosion suit une méthode progressive, de l'examen visuel vers les moyens de contrôle plus approfondis si un doute subsiste.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Inspection visuelle complète par les trappes de visite, à la lampe et parfois au miroir d'inspection.</span></li>
+  <li><i data-icon="check"></i><span>Utilisation d'un boroscope pour examiner les zones inaccessibles sans démontage (longerons, caissons de voilure).</span></li>
+  <li><i data-icon="check"></i><span>Test au marteau sonore ou à la pointe pour détecter un délaminage ou une zone fragilisée sous la peinture.</span></li>
+  <li><i data-icon="check"></i><span>Contrôle non destructif (ressuage, courants de Foucault) sur les pièces critiques en cas de doute persistant.</span></li>
+  <li><i data-icon="check"></i><span>Croisement avec le carnet d'entretien : toute mention antérieure de corrosion traitée doit être documentée et vérifiée sur place.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Faites réaliser cette inspection par un mécanicien indépendant familier du type d'aéronef, jamais par un prestataire recommandé par le vendeur, et demandez un rapport écrit détaillant chaque zone examinée.</div></div>
+
+<h2 id="consequences">Corrosion détectée : conséquences et négociation</h2>
+<p>Toute corrosion n'a pas la même gravité. Il faut distinguer la corrosion de surface, superficielle et traitable à moindre coût, de la corrosion touchant un élément structural, qui peut remettre en cause l'achat lui-même.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Situation constatée</th><th>Gravité</th><th>Impact probable sur la négociation</th></tr></thead>
+<tbody>
+<tr><td>Corrosion de surface légère, hors zone structurale</td><td>Faible</td><td>Traitement local à budgétiser, remise mineure possible</td></tr>
+<tr><td>Corrosion par piqûres sur une pièce non structurale</td><td>Modérée</td><td>Remplacement de la pièce, négociation sur le coût de réparation</td></tr>
+<tr><td>Corrosion intergranulaire ou sur élément structural (longeron, ferrure)</td><td>Élevée</td><td>Expertise complémentaire obligatoire, renégociation importante ou renoncement</td></tr>
+<tr><td>Corrosion non traitée et carnet d'entretien lacunaire sur le sujet</td><td>Élevée</td><td>Signal d'alerte global sur la rigueur d'entretien de l'appareil</td></tr>
+</tbody></table></div>
+<p>Dans tous les cas, le rapport d'inspection chiffrant la remise en état constitue votre meilleur argument de négociation — ou, le cas échéant, la meilleure raison de vous retirer sans regret d'une transaction trop risquée.</p>
+
+<h2 id="faq">Questions fréquentes</h2>
+<h3>La corrosion est-elle toujours visible à l'œil nu ?</h3>
+<p>Non. La corrosion de surface peut être visible, mais la corrosion intergranulaire ou celle logée sous un revêtement, dans un longeron ou derrière un panneau d'habillage reste invisible sans démontage partiel, boroscope ou contrôle non destructif.</p>
+<h3>Un avion stocké en bord de mer est-il plus exposé ?</h3>
+<p>Oui. L'air salin accélère fortement la corrosion, en particulier sur les aéronefs à structure métallique peu protégés ou mal rincés après un vol au-dessus de la mer. L'historique de stationnement de l'appareil est un élément clé à demander au vendeur.</p>
+<h3>Une corrosion détectée interdit-elle automatiquement l'achat ?</h3>
+<p>Pas nécessairement. Une corrosion de surface superficielle, traitée à temps, peut rester sans conséquence. C'est l'étendue, la localisation sur un élément structural et la méthode de traitement qui déterminent la gravité, à évaluer par un mécanicien agréé indépendant.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="pieges-achat-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="alert-triangle"></i></span><span class="eyebrow">Guide acheteur</span><strong>7 pièges à éviter à l'achat d'un avion d'occasion</strong><p>Les erreurs les plus fréquentes et comment les éviter pour un achat serein.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Entretien</span><strong>Combien coûte l'entretien d'un avion léger par an</strong><p>Budget annuel, grande visite, imprévus : ce qu'il faut prévoir pour entretenir un avion léger.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261007a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

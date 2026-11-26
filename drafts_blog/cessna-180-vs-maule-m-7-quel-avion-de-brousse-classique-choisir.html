@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Cessna 180 ou Maule M-7 : comparatif complet des deux taildraggers classiques pour la brousse, selon performances STOL, budget et entretien.">
+<meta property="og:title" content="Cessna 180 vs Maule M-7 : quel avion de brousse classique choisir | Aircraft2Sell">
+<meta property="og:description" content="Cessna 180 ou Maule M-7 : comparatif complet des deux taildraggers classiques pour la brousse, selon performances STOL, budget et entretien.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/cessna-180-vs-maule-m-7-quel-avion-de-brousse-classique-choisir.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/cessna-180-vs-maule-m-7-quel-avion-de-brousse-classique-choisir.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/cessna-180-vs-maule-m-7-quel-avion-de-brousse-classique-choisir.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/cessna-180-vs-maule-m-7-quel-avion-de-brousse-classique-choisir.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/cessna-180-vs-maule-m-7-quel-avion-de-brousse-classique-choisir.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Cessna 180 vs Maule M-7 : quel avion de brousse choisir | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Cessna 180 vs Maule M-7 : quel avion de brousse choisir", "description": "Cessna 180 ou Maule M-7 : comparatif complet des deux taildraggers classiques pour la brousse, selon performances STOL, budget et entretien.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/cessna-180-vs-maule-m-7-quel-avion-de-brousse-classique-choisir.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Cessna 180 vs Maule M-7", "item": "https://aircraft2sell.eu/cessna-180-vs-maule-m-7-quel-avion-de-brousse-classique-choisir.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Cessna 180 vs Maule M-7</span></nav>
+    <span class="eyebrow">Comparatif</span>
+    <h1>Cessna 180 vs Maule M-7 : quel avion de brousse classique choisir</h1>
+    <p>Deux taildraggers de référence pour le vol en terrain sommaire : comparatif des performances STOL, du budget et des points de vigilance à l'achat d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Deux légendes du vol en brousse</a></li><li><a href="#cessna180">Le Cessna 180 : le taildragger increvable</a></li><li><a href="#maulem7">Le Maule M-7 : performance STOL et motorisations modernes</a></li><li><a href="#performances">Comparatif performances et aptitudes brousse</a></li><li><a href="#budget">Budget d'achat et coûts d'exploitation</a></li><li><a href="#occasion">Acheter l'un ou l'autre d'occasion : points de vigilance</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Deux légendes du vol en brousse</h2>
+<p>Le Cessna 180 et le Maule M-7 occupent une place à part dans l'univers des avions de brousse classiques. Tous deux sont des taildraggers (avions à roulette de queue) construits pour décoller et se poser sur des terrains sommaires : pistes en herbe, sable, gravier ou neige. Pourtant, leur philosophie de conception diffère sensiblement, et le choix entre les deux dépend avant tout de l'usage que vous envisagez et du budget que vous êtes prêt à y consacrer.</p>
+<p>Le Cessna 180 incarne la robustesse d'une conception des années 1950, produite en grande série et éprouvée sur tous les continents. Le Maule M-7, plus récent dans ses évolutions, met l'accent sur des performances STOL (décollage et atterrissage courts) et une motorisation modulable selon les versions. Comparer ces deux appareils permet de mieux cerner ce que recherche réellement un acheteur d'avion de brousse d'occasion.</p>
+
+<p>Avant de comparer en détail performances et budget, il faut aussi considérer le marché secondaire sur lequel chaque appareil évolue en Europe : les deux types restent minoritaires sur le continent par rapport aux États-Unis ou au Canada, ce qui implique souvent d'élargir sa recherche à plusieurs pays et de prévoir les démarches d'importation si l'appareil provient d'un registre extra-européen.</p>
+<h2 id="cessna180">Le Cessna 180 : le taildragger increvable</h2>
+<p>Produit de 1953 à 1981, le Cessna 180 s'est imposé comme une référence pour le transport léger en région isolée, le travail aérien et les loisirs en terrain difficile. Sa cellule tout métal, réputée pour sa solidité, et son train classique à roulette de queue en font un appareil capable d'absorber des conditions de piste que peu de monomoteurs tolèrent aussi bien.</p>
+<p>Sur le marché de l'occasion, le Cessna 180 bénéficie d'un parc installé important et d'une bonne disponibilité des pièces détachées, notamment en Amérique du Nord. De nombreux exemplaires ont fait l'objet de modifications approuvées (kits STOL, pneus surdimensionnés, hélices à pas variable) qui améliorent sensiblement ses capacités de décollage et d'atterrissage courts par rapport à la configuration d'origine.</p>
+<p>Sa réputation de robustesse s'accompagne toutefois d'un revers : les appareils les plus anciens accumulent souvent un nombre d'heures moteur élevé, et l'historique d'entretien peut être inégal selon la région d'origine de l'appareil. Un contrôle rigoureux du carnet d'entretien reste indispensable avant tout achat.</p>
+
+<h2 id="maulem7">Le Maule M-7 : performance STOL et motorisations modernes</h2>
+<p>Le Maule M-7 appartient à une famille d'appareils développée à partir des années 1980, pensée dès l'origine pour exceller en décollage et atterrissage courts. Sa voilure spécifique, ses becs de bord d'attaque et ses volets à grand débattement lui permettent d'opérer sur des distances de piste nettement plus réduites que la plupart des monomoteurs classiques, y compris le Cessna 180.</p>
+<p>Le constructeur a proposé le M-7 avec plusieurs motorisations au fil des années, du quatre-cylindres au six-cylindres, ce qui permet d'ajuster assez finement le rapport entre puissance disponible, charge utile et consommation selon l'usage prévu. Cette diversité de versions constitue à la fois un atout de flexibilité et un facteur de complexité lors de l'achat, car les caractéristiques de performance varient sensiblement d'une motorisation à l'autre.</p>
+<p>Contrairement au Cessna 180, dont la production s'est arrêtée au début des années 1980, le Maule M-7 a continué d'évoluer, ce qui se traduit sur le marché de l'occasion par des appareils globalement plus jeunes et par un accès plus simple aux pièces d'origine auprès du constructeur.</p>
+
+<h2 id="performances">Comparatif performances et aptitudes brousse</h2>
+<p>Sur le papier, le Maule M-7 affiche des distances de décollage et d'atterrissage généralement plus courtes que le Cessna 180 à charge comparable, grâce à sa voilure optimisée pour le vol lent. Le Cessna 180, de son côté, compense par une cellule reconnue pour sa capacité à encaisser des conditions de piste dégradées et par une charge utile qui reste très compétitive une fois équipé de pneus adaptés.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Cessna 180</th><th>Maule M-7</th></tr></thead>
+<tbody>
+<tr><td>Période de production</td><td>1953 à 1981</td><td>Famille toujours en production, évolutions continues</td></tr>
+<tr><td>Aptitudes STOL</td><td>Bonnes, améliorées par kits STOL fréquents</td><td>Nativement optimisées, distances de piste réduites</td></tr>
+<tr><td>Structure</td><td>Tout métal, réputée très robuste</td><td>Structure tubulaire entoilée sur certaines parties, plus légère</td></tr>
+<tr><td>Disponibilité des pièces</td><td>Bon parc installé, pièces souvent via le marché secondaire</td><td>Accès direct aux pièces constructeur</td></tr>
+<tr><td>Âge moyen du parc d'occasion</td><td>Appareils plus anciens en moyenne</td><td>Appareils globalement plus récents</td></tr>
+</tbody></table></div>
+<p>Dans les faits, le choix entre les deux appareils se fait souvent sur des critères pratiques : disponibilité locale d'un atelier compétent sur le type, accès aux pièces dans la région d'exploitation, et préférence personnelle pour le ressenti en vol, qui diffère sensiblement entre une cellule tout métal et une structure plus légère.</p>
+
+<h2 id="budget">Budget d'achat et coûts d'exploitation</h2>
+<p>Le budget d'acquisition dépend fortement du millésime, du nombre d'heures moteur restantes avant la grande visite et du niveau d'équipement (kits STOL, avionique, pneus surdimensionnés). Un Cessna 180 ancien avec un potentiel moteur réduit se négocie généralement à un niveau d'entrée plus accessible qu'un Maule M-7 récent bien équipé, mais l'écart se resserre fortement selon les modifications apportées à chaque appareil.</p>
+<p>Côté exploitation, les deux appareils restent dans une fourchette de coûts comparable pour un monomoteur à pistons de cette catégorie, avec quelques nuances : l'entretien d'une structure tubulaire entoilée, présente sur certaines parties du Maule, demande un suivi régulier de la toile, tandis que la cellule tout métal du Cessna 180 impose une vigilance accrue sur la corrosion, en particulier pour les appareils ayant opéré sur flotteurs ou en environnement humide.</p>
+
+<p>Il faut également garder à l'esprit que les deux appareils ont souvent connu une vie d'exploitation intensive avant d'arriver sur le marché de l'occasion : travail aérien, remorquage, usage sur flotteurs ou skis selon les régions. Ce passé opérationnel influence directement l'état réel de la cellule et doit être documenté aussi précisément que possible par le vendeur, au-delà des seules heures affichées au compteur.</p>
+<h2 id="occasion">Acheter l'un ou l'autre d'occasion : points de vigilance</h2>
+<p>Qu'il s'agisse d'un Cessna 180 ou d'un Maule M-7, l'inspection pré-achat doit être confiée à un mécanicien indépendant familier des avions de brousse et de leurs usages réels. Les points suivants méritent une attention particulière.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Historique moteur complet : heures moteur écoulées, statut SMOH (heures depuis la dernière grande visite), traçabilité des interventions majeures.</span></li>
+  <li><i data-icon="check"></i><span>État de la structure : recherche de corrosion sur le Cessna 180, contrôle de l'état de la toile et de la structure tubulaire sur les parties entoilées du Maule.</span></li>
+  <li><i data-icon="check"></i><span>Conformité et documentation des modifications approuvées (kits STOL, pneus, hélice), qui doivent figurer dans le dossier technique de l'appareil.</span></li>
+  <li><i data-icon="check"></i><span>Validité du certificat de navigabilité et cohérence du carnet d'entretien avec l'usage réel déclaré de l'appareil (travail aérien, loisir, flotteurs).</span></li>
+  <li><i data-icon="check"></i><span>Historique d'exploitation : un avion de brousse utilisé intensivement en terrain difficile mérite une inspection plus poussée du train d'atterrissage et des fixations.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Demandez systématiquement l'intégralité du carnet d'entretien et des factures de maintenance, et faites réaliser l'inspection pré-achat par un atelier habitué aux appareils de brousse, dont les sollicitations structurelles diffèrent de celles d'un avion utilisé uniquement sur piste en dur.</div></div>
+<p>En définitive, le Cessna 180 séduira les acheteurs qui privilégient une cellule tout métal éprouvée et un vaste choix d'appareils modifiés sur le marché, tandis que le Maule M-7 conviendra davantage à ceux qui recherchent des performances STOL maximales et un accès simplifié aux pièces constructeur sur un appareil globalement plus jeune.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Cessna 180 ou Maule M-7</h3>
+            <p>Comparez les annonces de Cessna 180 et Maule M-7 d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="diamond-da40-da42-comparatif.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Comparatif</span><strong>Diamond DA40 vs DA42 : lequel choisir</strong><p>Monomoteur ou bimoteur composite : comparatif complet pour choisir selon budget et usage.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cessna 172 d'occasion : guide d'achat complet</strong><p>Budget, points de vigilance et entretien pour l'avion d'entraînement le plus produit au monde.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

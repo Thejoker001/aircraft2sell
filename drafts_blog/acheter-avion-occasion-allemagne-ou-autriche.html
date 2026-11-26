@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Acheter un avion d'occasion en Allemagne ou en Autriche : comparatif marché, prix, fiscalité, immatriculation et entretien pour choisir le meilleur pays.">
+<meta name="keywords" content="avion occasion Allemagne, avion occasion Autriche, comparatif pays avion, immatriculation LBA, immatriculation Austro Control">
+<meta property="og:title" content="Acheter un avion d'occasion en Allemagne ou en Autriche | Aircraft2Sell">
+<meta property="og:description" content="Acheter un avion d'occasion en Allemagne ou en Autriche : comparatif marché, prix, fiscalité, immatriculation et entretien pour choisir le meilleur pays.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/acheter-avion-occasion-allemagne-ou-autriche.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/acheter-avion-occasion-allemagne-ou-autriche.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-allemagne-ou-autriche.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-allemagne-ou-autriche.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-allemagne-ou-autriche.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Acheter un avion d'occasion en Allemagne ou en Autriche | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Acheter un avion d'occasion en Allemagne ou en Autriche : quel pays choisir", "description": "Acheter un avion d'occasion en Allemagne ou en Autriche : comparatif marché, prix, fiscalité, immatriculation et entretien pour choisir le meilleur pays.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/acheter-avion-occasion-allemagne-ou-autriche.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Acheter un avion d'occasion en Allemagne ou en Autriche", "item": "https://aircraft2sell.eu/acheter-avion-occasion-allemagne-ou-autriche.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Allemagne ou Autriche</span></nav>
+    <span class="eyebrow">Comparatif pays</span>
+    <h1>Acheter un avion d'occasion en Allemagne ou en Autriche : quel pays choisir</h1>
+    <p>Marché, prix, fiscalité, immatriculation et entretien : comparatif entre l'Allemagne et l'Autriche pour vous aider à choisir où chercher votre avion d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Deux marchés alpins et germaniques, deux dynamiques différentes</a></li><li><a href="#marche">Taille et dynamisme du marché de l'occasion</a></li><li><a href="#prix">Comparatif des prix pratiqués</a></li><li><a href="#fiscalite">Fiscalité et frais liés à l'achat</a></li><li><a href="#immatriculation">Immatriculation : LBA contre Austro Control</a></li><li><a href="#entretien">Réseau d'entretien et disponibilité des pièces</a></li><li><a href="#choix">Quel pays privilégier selon votre profil</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Deux marchés alpins et germaniques, deux dynamiques différentes</h2>
+<p>L'Allemagne et l'Autriche partagent une langue, une frontière commune étendue et une forte culture de l'aviation légère, mais leurs marchés de l'occasion présentent des différences de taille notables. L'Allemagne, pays bien plus peuplé et doté d'un réseau d'aérodromes considérablement plus dense, propose logiquement une offre d'avions d'occasion beaucoup plus large que l'Autriche. L'Autriche, de son côté, compense une offre plus restreinte par une pratique de l'aviation de montagne très spécifique, avec une proportion importante d'appareils adaptés aux terrains courts et à l'altitude.</p>
+<p>Pour un acheteur germanophone, chercher dans les deux pays élargit mécaniquement le choix sans barrière linguistique, ce qui en fait une combinaison naturelle à explorer conjointement lors d'une recherche d'avion d'occasion en Europe centrale.</p>
+
+<h2 id="marche">Taille et dynamisme du marché de l'occasion</h2>
+<p>Le parc d'avions légers allemand est l'un des plus importants d'Europe continentale, avec une offre abondante sur les monomoteurs de tourisme classiques (Cessna 172, Piper PA-28, Diamond DA40) ainsi qu'un volume conséquent d'ULM et de biplaces. La taille du marché permet souvent de comparer plusieurs appareils très similaires avant de se décider.</p>
+<p>Le marché autrichien est plus restreint en volume, en cohérence avec la taille du pays, mais reste actif, en particulier pour les appareils adaptés au vol en montagne et aux terrains d'altitude. L'offre y est également marquée par une tradition de l'aviation de club bien implantée, avec des appareils souvent suivis de façon rigoureuse au sein des aéroclubs régionaux.</p>
+
+<h2 id="prix">Comparatif des prix pratiqués</h2>
+<p>Les niveaux de prix entre les deux marchés restent globalement comparables pour un même modèle et un même état d'entretien, l'Autriche ne présentant pas de prime ou de décote systématique par rapport à l'Allemagne. Les variations observées tiennent surtout à l'offre et à la demande locales, et à la rareté relative de certains types d'appareils adaptés à la montagne sur le marché autrichien.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Allemagne</th><th>Autriche</th></tr></thead>
+<tbody>
+<tr><td>Taille du marché de l'occasion</td><td>Large, offre abondante</td><td>Plus restreinte, en lien avec la taille du pays</td></tr>
+<tr><td>Niveau de prix pour un même modèle</td><td>Comparable, selon l'offre locale</td><td>Comparable, parfois plus tendu sur les appareils de montagne</td></tr>
+<tr><td>Spécialités du marché</td><td>Monomoteurs de tourisme, ULM</td><td>Appareils STOL et de montagne, planeurs</td></tr>
+<tr><td>Langue des documents techniques</td><td>Allemand, parfois anglais</td><td>Allemand, parfois anglais</td></tr>
+</tbody></table></div>
+<p>Dans les deux pays, comparer plusieurs annonces de modèles similaires reste la meilleure façon d'évaluer un juste prix avant de s'engager, en particulier pour les appareils équipés spécifiquement pour l'altitude ou les terrains courts, dont la valeur peut varier sensiblement d'une annonce à l'autre selon l'équipement installé.</p>
+
+<h2 id="fiscalite">Fiscalité et frais liés à l'achat</h2>
+<p>Comme pour toute transaction en Europe, la fiscalité applicable dépend avant tout du statut de l'acheteur (particulier ou professionnel), du pays de résidence fiscale et du pays dans lequel l'appareil sera immatriculé après la vente. Une vente entre particuliers n'est généralement pas soumise à TVA dans l'un ou l'autre pays, tandis qu'une vente par un professionnel ou une société peut y être soumise selon les règles nationales en vigueur.</p>
+<p>Pour une transaction transfrontalière entre l'Allemagne et l'Autriche, il convient de vérifier les éventuelles formalités de TVA intracommunautaire applicables entre professionnels, ainsi que les frais administratifs propres à chaque pays de destination. Faire appel à un professionnel habitué aux transactions transfrontalières limite le risque d'erreur de procédure.</p>
+
+<h2 id="immatriculation">Immatriculation : LBA contre Austro Control</h2>
+<p>En Allemagne, l'immatriculation d'un aéronef relève du <strong>Luftfahrt-Bundesamt (LBA)</strong>, sous préfixe <strong>D-</strong>. En Autriche, c'est <strong>Austro Control</strong> qui gère le registre d'immatriculation, sous préfixe <strong>OE-</strong>. Les deux autorités appliquent les règles communes de l'EASA pour le transfert d'immatriculation entre États membres, ce qui simplifie sensiblement les démarches par rapport à un import depuis un pays hors Union européenne.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Certificat de navigabilité et ARC en cours de validité</strong> — condition préalable à toute mise en vol sous la nouvelle immatriculation, quel que soit le pays de destination.</span></li>
+  <li><i data-icon="check"></i><span><strong>Radiation du registre d'origine</strong> — nécessaire avant la nouvelle immatriculation si l'appareil change de pays.</span></li>
+  <li><i data-icon="check"></i><span><strong>Dossier technique complet</strong> — carnets de cellule, moteur et hélice à transmettre à la nouvelle autorité.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Comptez généralement de 2 à 8 semaines pour un transfert d'immatriculation entre l'Allemagne et l'Autriche selon la complétude du dossier, un délai comparable à celui observé pour tout transfert intra-européen.</div></div>
+
+<h2 id="entretien">Réseau d'entretien et disponibilité des pièces</h2>
+<p>L'Allemagne dispose d'un réseau d'ateliers de maintenance agréés particulièrement dense, avec une bonne disponibilité de pièces pour les modèles les plus courants. L'Autriche, bien que disposant d'un réseau plus restreint en nombre, compte des ateliers expérimentés sur les appareils adaptés à la montagne et aux terrains courts, une spécialité moins répandue ailleurs en Europe.</p>
+<p>La proximité géographique entre les deux pays et l'absence de barrière linguistique permettent souvent de faire entretenir un appareil dans l'un ou l'autre pays sans contrainte majeure, à condition de vérifier que l'atelier choisi est bien agréé pour le type d'appareil concerné. Pour un appareil équipé de modifications spécifiques à la montagne (pneus renforcés, hélice adaptée), il peut être utile de privilégier un atelier autrichien habitué à ce type de configuration.</p>
+
+<h2 id="choix">Quel pays privilégier selon votre profil</h2>
+<p>Pour un acheteur recherchant un monomoteur de tourisme classique avec le choix le plus large possible, l'Allemagne offre généralement un volume d'annonces plus important et donc davantage de possibilités de comparaison. Pour un acheteur intéressé par un appareil adapté au vol en montagne, à l'altitude ou aux terrains courts, le marché autrichien mérite une attention particulière, les vendeurs locaux étant souvent les mieux placés pour proposer ce type de configuration avec un suivi d'entretien adapté.</p>
+<p>Un pilote qui envisage de voler régulièrement dans les Alpes trouvera également un intérêt pratique à immatriculer son appareil en Autriche, ne serait-ce que pour la proximité avec les terrains de montagne les plus fréquentés et la familiarité des ateliers locaux avec ce type d'exploitation. À l'inverse, un pilote basé plus au nord, qui privilégie des vols de voyage sur de longues distances à travers l'Europe, trouvera souvent plus d'avantages pratiques à rester sur le marché allemand, mieux pourvu en aérodromes et en ateliers généralistes.</p>
+<p>Le budget global de possession doit également intégrer la question du convoyage : un appareil repéré loin de votre aérodrome de base entraînera des frais et un délai supplémentaires avant la première utilisation, qu'il se trouve en Allemagne ou en Autriche. Ce facteur, souvent sous-estimé, mérite d'être chiffré avant de se décider pour une annonce plutôt qu'une autre, en particulier lorsque la distance entre les deux pays reste réduite mais que le relief alpin complique le trajet.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Dans tous les cas, une inspection pré-achat par un mécanicien indépendant qualifié reste indispensable, qu'il s'agisse d'un appareil situé en Allemagne, en Autriche ou ailleurs en Europe.</div></div>
+<p>Au final, élargir sa recherche aux deux marchés permet souvent d'accéder à une offre plus large et à de meilleures opportunités de négociation, notamment lorsque le profil recherché correspond davantage aux spécialités de l'un ou l'autre pays. Prendre le temps de comparer calmement les annonces disponibles dans les deux pays, plutôt que de se limiter au marché le plus proche géographiquement, reste la meilleure stratégie pour trouver l'appareil le mieux adapté à votre usage.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre avion d'occasion</h3>
+            <p>Comparez les annonces d'avions d'occasion disponibles en Allemagne, en Autriche et partout en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="acheter-avion-occasion-allemagne.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide pays</span><strong>Acheter un avion d'occasion en Allemagne</strong><p>Marché, prix, fiscalité et démarches pour acheter un avion d'occasion en Allemagne.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Achat</span><strong>Certification et immatriculation d'un aéronef en Europe</strong><p>Démarches, choix du pays d'immatriculation, dossier à constituer, délais et coûts.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

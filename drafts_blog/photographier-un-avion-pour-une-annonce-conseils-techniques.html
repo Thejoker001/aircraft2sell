@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    'photographier-un-avion-pour-une-annonce-conseils-techniques.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Comment photographier un avion pour une annonce de vente : lumière, angles, intérieur, moteur, matériel et erreurs à éviter pour vendre plus vite.">
+<meta property="og:title" content="Photographier un avion pour une annonce : conseils techniques | Aircraft2Sell">
+<meta property="og:description" content="Comment photographier un avion pour une annonce de vente : lumière, angles, intérieur, moteur, matériel et erreurs à éviter pour vendre plus vite.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/photographier-un-avion-pour-une-annonce-conseils-techniques.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/photographier-un-avion-pour-une-annonce-conseils-techniques.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/photographier-un-avion-pour-une-annonce-conseils-techniques.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/photographier-un-avion-pour-une-annonce-conseils-techniques.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/photographier-un-avion-pour-une-annonce-conseils-techniques.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Photographier un avion pour une annonce : conseils techniques | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Photographier un avion pour une annonce : conseils techniques", "description": "Comment photographier un avion pour une annonce de vente : lumière, angles, intérieur, moteur, matériel et erreurs à éviter pour vendre plus vite.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/photographier-un-avion-pour-une-annonce-conseils-techniques.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Photographier un avion pour une annonce : conseils techniques", "item": "https://aircraft2sell.eu/photographier-un-avion-pour-une-annonce-conseils-techniques.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Photographier un avion</span></nav>
+    <span class="eyebrow">Guide vendeur</span>
+    <h1>Photographier un avion pour une annonce : conseils techniques</h1>
+    <p>Des photos nettes, bien éclairées et complètes font la différence entre une annonce qui génère des appels et une annonce qui stagne. Voici la méthode pour photographier votre appareil comme un professionnel, sans matériel coûteux.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi la photo détermine le succès d'une annonce</a></li><li><a href="#materiel">Quel matériel pour photographier un avion d'occasion</a></li><li><a href="#lumiere">Choisir le bon moment et la bonne lumière</a></li><li><a href="#exterieur">Les angles extérieurs indispensables</a></li><li><a href="#interieur-moteur">Cabine, poste de pilotage et compartiment moteur</a></li><li><a href="#documents-detail">Photographier les documents et les détails qui rassurent</a></li><li><a href="#erreurs">Les erreurs qui font fuir les acheteurs</a></li><li><a href="#organisation">Organiser et nommer ses fichiers avant publication</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi la photo détermine le succès d'une annonce</h2>
+<p>Un acheteur potentiel passe en moyenne quelques secondes sur la photo de couverture avant de décider s'il ouvre l'annonce complète ou passe à la suivante. Pour un avion d'occasion, cette décision se joue souvent sur un seul critère visuel : l'appareil a-t-il l'air entretenu, propre et pris au sérieux par son propriétaire ? Une série de photos floues, sombres ou mal cadrées donne immédiatement l'impression inverse, même si l'avion est en excellent état mécanique.</p>
+<p>À l'inverse, une annonce avec quinze à vingt photos nettes, prises sous plusieurs angles, en extérieur comme en intérieur, rassure instantanément. Elle montre que le vendeur n'a rien à cacher et qu'il considère la transaction avec sérieux. C'est particulièrement vrai pour un avion d'occasion, où l'acheteur doit se projeter sur un achat représentant souvent plusieurs dizaines ou centaines de milliers d'euros sans pouvoir se déplacer avant d'avoir présélectionné quelques annonces.</p>
+<p>Les photos ne remplacent jamais une inspection physique ni un essai en vol, mais elles déterminent qui ira jusqu'au bout du processus d'achat. Investir une heure ou deux dans une séance photo soignée est l'un des gestes les plus rentables pour vendre plus vite et au bon prix.</p>
+
+<h2 id="materiel">Quel matériel pour photographier un avion d'occasion</h2>
+<p>Un appareil photo professionnel n'est pas indispensable. Un smartphone récent avec un bon capteur produit aujourd'hui des résultats largement suffisants pour une annonce en ligne, à condition de respecter quelques principes simples. Ce qui compte réellement, c'est la lumière, la stabilité et le cadrage, pas la résolution brute du capteur.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Un chiffon microfibre et un nettoyant vitre</strong> — nettoyez le pare-brise, les hublots et la carlingue juste avant la séance ; la poussière et les traces se voient énormément en photo.</span></li>
+  <li><i data-icon="check"></i><span><strong>Un trépied léger ou un simple appui stable</strong> — évite le flou de bougé, surtout pour les photos d'intérieur où la lumière est plus faible.</span></li>
+  <li><i data-icon="check"></i><span><strong>Un objectif grand angle (natif ou additionnel sur smartphone)</strong> — utile pour la cabine et le cockpit, mais à utiliser avec modération en extérieur pour éviter de déformer les proportions de l'appareil.</span></li>
+  <li><i data-icon="check"></i><span><strong>Une lampe torche ou la lampe du téléphone</strong> — pour éclairer le compartiment moteur et les zones d'ombre sous le capot sans flash direct qui crée des reflets sur le métal.</span></li>
+  <li><i data-icon="check"></i><span><strong>Un escabeau ou un marchepied</strong> — pour obtenir des angles en légère hauteur, plus flatteurs que des photos prises au niveau du sol.</span></li>
+</ul>
+<p>Si vous disposez d'un appareil photo réflex ou hybride, privilégiez un objectif entre 24 et 35 mm en équivalent plein format pour les plans d'ensemble : il offre une perspective naturelle, proche de ce que l'œil humain perçoit, sans les déformations d'un grand angle trop prononcé.</p>
+
+<h2 id="lumiere">Choisir le bon moment et la bonne lumière</h2>
+<p>La lumière est le facteur technique le plus déterminant, bien avant le matériel utilisé. Évitez le soleil de plein midi, qui écrase les couleurs, crée des ombres dures sous le fuselage et produit des reflets agressifs sur la verrière et les surfaces métalliques polies.</p>
+<p>Les meilleurs moments sont le début de matinée et la fin d'après-midi, lorsque la lumière est plus douce, plus chaude et plus directionnelle. Elle révèle les reliefs de la carlingue et donne du volume à l'appareil sans créer de contraste excessif. Un ciel légèrement voilé ou couvert, sans être gris et plat, offre également un éclairage très homogène, idéal pour les photos de détail.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Évitez les photos en plein soleil direct entre 11 h et 15 h, surtout en été.</span></li>
+  <li><i data-icon="check"></i><span>Placez le soleil derrière vous ou légèrement de côté, jamais face à l'objectif.</span></li>
+  <li><i data-icon="check"></i><span>Par temps couvert, rapprochez-vous légèrement pour compenser la baisse de contraste naturel.</span></li>
+  <li><i data-icon="check"></i><span>Pour les photos d'intérieur, ouvrez portes et hublots pour laisser entrer un maximum de lumière naturelle avant d'ajouter un éclairage d'appoint.</span></li>
+</ul>
+
+<h2 id="exterieur">Les angles extérieurs indispensables</h2>
+<p>Une série de photos extérieures complète doit permettre à l'acheteur de reconstituer mentalement l'appareil dans son ensemble, comme s'il tournait autour. Variez les angles plutôt que de multiplier les photos de face sous des cadrages quasi identiques.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Vue de face trois-quarts</strong> — la photo de couverture idéale, qui montre le nez, une aile et le flanc de l'appareil en une seule image.</span></li>
+  <li><i data-icon="check"></i><span><strong>Profil complet</strong> — de côté, l'avion entier dans le cadre, pour donner une idée exacte des proportions et de la silhouette.</span></li>
+  <li><i data-icon="check"></i><span><strong>Vue arrière trois-quarts</strong> — empennage, gouverne de direction et éventuel aileron de dérive bien visibles.</span></li>
+  <li><i data-icon="check"></i><span><strong>Dessous du fuselage et train d'atterrissage</strong> — accroupi ou avec le téléphone tendu au ras du sol, pour montrer l'état des pneus, des jambes de train et des carénages de roue.</span></li>
+  <li><i data-icon="check"></i><span><strong>Gros plan sur chaque aile</strong> — bord d'attaque, volets, ailerons et extrémité, pour détecter d'éventuels impacts ou traces de réparation.</span></li>
+  <li><i data-icon="check"></i><span><strong>Hélice ou entrée moteur</strong> — état des pales, absence d'éclats ou de traces de corrosion.</span></li>
+</ul>
+
+<h2 id="interieur-moteur">Cabine, poste de pilotage et compartiment moteur</h2>
+<p>L'intérieur d'un avion d'occasion est souvent scruté au moins autant que l'extérieur, car l'état de la sellerie et de l'avionique renseigne sur la façon dont l'appareil a été utilisé et entretenu au quotidien.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Planche de bord complète</strong> — une seule photo large depuis le siège pilote montrant l'ensemble des instruments, radios et équipements avioniques installés.</span></li>
+  <li><i data-icon="check"></i><span><strong>Gros plans sur les instruments récents</strong> — GPS, pilote automatique, transpondeur mode S : ces équipements ont une forte influence sur la valeur et méritent une photo dédiée.</span></li>
+  <li><i data-icon="check"></i><span><strong>Sièges, tapis et garnitures</strong> — sous plusieurs angles, en insistant sur l'état réel plutôt qu'en cachant une usure visible.</span></li>
+  <li><i data-icon="check"></i><span><strong>Compartiment moteur capot ouvert</strong> — propreté générale, absence de traces d'huile ou de fuite, état des durites et du câblage visible.</span></li>
+  <li><i data-icon="check"></i><span><strong>Numéro de série moteur et cellule</strong> — une photo nette et lisible de chaque plaque signalétique, qui permet à l'acheteur de recouper l'information avec le carnet moteur et le carnet de route.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne masquez jamais un défaut visible (corrosion, fissure, trace de choc) en évitant de le photographier. Un acheteur qui le découvre lors de l'inspection pré-achat après avoir vu une annonce « parfaite » perd confiance et négocie plus durement, voire se retire.</div></div>
+
+<h2 id="documents-detail">Photographier les documents et les détails qui rassurent</h2>
+<p>Au-delà de l'appareil lui-même, quelques photos de documents accélèrent la prise de décision de l'acheteur en répondant par avance à ses questions les plus fréquentes.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Page de garde du carnet de route (livre de bord), montrant les heures totales cumulées.</span></li>
+  <li><i data-icon="check"></i><span>Dernière page renseignée du carnet moteur, avec les heures depuis révision (SMOH) clairement lisibles.</span></li>
+  <li><i data-icon="check"></i><span>Certificat de navigabilité (CofA) en cours de validité.</span></li>
+  <li><i data-icon="check"></i><span>Dernière facture ou rapport d'entretien significatif, s'il valorise un équipement récent (avionique, peinture, révision moteur).</span></li>
+</ul>
+<p>Floutez systématiquement les informations personnelles sensibles (adresse complète, numéro de téléphone, coordonnées bancaires) avant de publier ces photos de documents dans une annonce publique.</p>
+
+<h2 id="erreurs">Les erreurs qui font fuir les acheteurs</h2>
+<p>Certaines erreurs reviennent constamment dans les annonces qui restent en ligne des mois sans générer de contact sérieux. Les corriger demande peu d'effort supplémentaire par rapport au gain qu'elles apportent.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Une seule photo, ou des photos en trop petit nombre</strong> — une annonce avec moins de huit photos paraît incomplète et suscite la méfiance.</span></li>
+  <li><i data-icon="check"></i><span><strong>Arrière-plan encombré</strong> — hangar en désordre, autres appareils, matériel de maintenance éparpillé : dégagez la zone avant de photographier, ou choisissez un angle qui isole l'avion.</span></li>
+  <li><i data-icon="check"></i><span><strong>Photos prises par temps pluvieux ou avec un fuselage sale</strong> — mieux vaut attendre une fenêtre météo favorable que publier des photos ternes et peu flatteuses.</span></li>
+  <li><i data-icon="check"></i><span><strong>Cadrages serrés qui coupent une partie de l'appareil</strong> — ailes ou empennage hors champ, qui empêchent l'acheteur d'apprécier la silhouette complète.</span></li>
+  <li><i data-icon="check"></i><span><strong>Filtres ou retouches excessives</strong> — une saturation ou un contraste artificiellement poussés paraissent suspects et nuisent à la crédibilité de l'annonce.</span></li>
+  <li><i data-icon="check"></i><span><strong>Absence de photo d'intérieur</strong> — un acheteur qui ne voit que l'extérieur suppose souvent le pire sur l'état du cockpit.</span></li>
+</ul>
+
+<h2 id="organisation">Organiser et nommer ses fichiers avant publication</h2>
+<p>Une fois la séance photo terminée, prenez quelques minutes pour trier les clichés avant de les charger dans votre annonce. Supprimez les doublons flous, recadrez légèrement si nécessaire pour équilibrer la composition, et classez les photos dans un ordre logique : d'abord les vues d'ensemble extérieures, puis les détails techniques, puis l'intérieur, puis les documents.</p>
+<p>Cet ordre de présentation guide naturellement le regard de l'acheteur et reproduit le parcours qu'il suivrait s'il visitait l'appareil en personne : d'abord une impression générale, puis un examen plus fin. Une annonce bien structurée sur le plan visuel inspire davantage confiance qu'une simple galerie de photos dans le désordre.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Mettez à jour vos photos si l'avion reste en vente plusieurs mois : des photos datées (feuilles mortes, neige) donnent l'impression que l'annonce traîne, ce qui peut pousser un acheteur à penser qu'il y a un problème caché.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="camera"></i></span>
+          <div>
+            <h3>Prêt à publier votre annonce ?</h3>
+            <p>Déposez votre annonce sur Aircraft2Sell, sans commission sur la vente.</p>
+          </div>
+        </div>
+        <a href="post-listing.html" class="btn-primary btn-lg">Publier une annonce <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="vendre-avion-particulier-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Guide vendeur</span><strong>Vendre un avion entre particuliers en Europe</strong><p>Les étapes clés pour vendre votre avion en toute sécurité, de l'estimation à la signature de l'acte de vente.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="vendre-avion-rapidement-erreurs-eviter.html" class="card"><span class="icon-box"><i data-icon="alert-triangle"></i></span><span class="eyebrow">Guide vendeur</span><strong>Vendre un avion rapidement : les erreurs à éviter</strong><p>Les pièges les plus fréquents qui ralentissent une vente, et comment les éviter dès la mise en ligne de l'annonce.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="estimer-valeur-revente-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Guide vendeur</span><strong>Estimer la valeur de revente d'un avion d'occasion</strong><p>Les critères qui font varier le prix d'un appareil d'occasion et comment fixer un prix de vente réaliste.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

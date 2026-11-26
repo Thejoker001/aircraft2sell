@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Quel avion choisir pour voler à deux le week-end : comparatif des monomoteurs 2 places et 4 places selon budget, autonomie et plaisir de vol.">
+<meta property="og:title" content="Quel avion pour voler à deux en week-end | Aircraft2Sell">
+<meta property="og:description" content="Quel avion choisir pour voler à deux le week-end : comparatif des monomoteurs 2 places et 4 places selon budget, autonomie et plaisir de vol.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/quel-avion-pour-voler-a-deux-en-week-end.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/quel-avion-pour-voler-a-deux-en-week-end.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/quel-avion-pour-voler-a-deux-en-week-end.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/quel-avion-pour-voler-a-deux-en-week-end.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/quel-avion-pour-voler-a-deux-en-week-end.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Quel avion pour voler à deux en week-end | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Quel avion pour voler à deux en week-end", "description": "Quel avion choisir pour voler à deux le week-end : comparatif des monomoteurs 2 places et 4 places selon budget, autonomie et plaisir de vol.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/quel-avion-pour-voler-a-deux-en-week-end.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Quel avion pour voler à deux en week-end", "item": "https://aircraft2sell.eu/quel-avion-pour-voler-a-deux-en-week-end.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Voler à deux en week-end</span></nav>
+    <span class="eyebrow">Comparatif usage</span>
+    <h1>Quel avion pour voler à deux en week-end</h1>
+    <p>Comparatif des avions légers adaptés à l'escapade de week-end à deux : autonomie, budget, confort de cabine et facilité d'exploitation.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#besoin">Voler à deux le week-end : un besoin bien particulier</a></li><li><a href="#criteres">Les critères qui comptent vraiment pour deux personnes</a></li><li><a href="#2places">Les monomoteurs 2 places : légèreté et budget maîtrisé</a></li><li><a href="#4places">Les monomoteurs 4 places utilisés à deux : confort et bagages</a></li><li><a href="#budget">Comparatif budget et coûts d'exploitation</a></li><li><a href="#destination">Choisir selon le type de week-end envisagé</a></li><li><a href="#occasion">Acheter d'occasion : points de vigilance</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="besoin">Voler à deux le week-end : un besoin bien particulier</h2>
+<p>Partir à deux pour un week-end en avion n'a pas les mêmes contraintes qu'un vol d'instruction solo, qu'un déplacement professionnel ou qu'un voyage en famille à quatre places pleines. Le besoin se résume souvent à trois priorités : une autonomie suffisante pour relier une destination à quelques centaines de kilomètres sans escale technique, un peu de place pour des bagages de week-end, et un coût d'exploitation qui reste raisonnable pour une utilisation plutôt occasionnelle, concentrée sur quelques sorties par mois.</p>
+<p>Cette utilisation typique élargit sensiblement le champ des appareils pertinents : un monomoteur 2 places léger peut parfaitement convenir si le couple de pilotes voyage léger, tandis qu'un monomoteur 4 places classique offre davantage de marge de charge et de confort, au prix d'un budget d'acquisition et d'entretien un peu plus élevé.</p>
+
+<h2 id="criteres">Les critères qui comptent vraiment pour deux personnes</h2>
+<p>Avant de regarder des modèles précis, il est utile de lister les critères qui feront vraiment la différence pour ce type de mission. L'autonomie et la vitesse de croisière déterminent le rayon d'action réaliste pour une escapade de deux ou trois jours. La capacité d'emport conditionne le volume de bagages transportable sans dépasser la masse maximale au décollage. Le confort de cabine, souvent sous-estimé, devient important sur un vol de plusieurs heures. Enfin, le coût horaire d'exploitation (carburant, entretien, assurance) pèse directement sur la fréquence à laquelle le couple pourra réellement utiliser l'appareil.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Autonomie et vitesse de croisière : rayon d'action réaliste pour un aller-retour de week-end.</span></li>
+  <li><i data-icon="check"></i><span>Capacité d'emport : masse disponible pour les bagages après le plein de carburant.</span></li>
+  <li><i data-icon="check"></i><span>Confort de cabine : largeur, visibilité, ergonomie des sièges sur plusieurs heures de vol.</span></li>
+  <li><i data-icon="check"></i><span>Coût horaire d'exploitation : carburant, entretien programmé, assurance.</span></li>
+  <li><i data-icon="check"></i><span>Simplicité d'exploitation : disponibilité de pièces, réseau de mécaniciens formés au type.</span></li>
+</ul>
+
+<h2 id="2places">Les monomoteurs 2 places : légèreté et budget maîtrisé</h2>
+<p>Pour un couple qui voyage léger et privilégie un budget d'acquisition et d'exploitation contenu, un monomoteur 2 places bien choisi peut tout à fait remplir la mission. Ces appareils offrent généralement une consommation de carburant modérée, un entretien simplifié par une motorisation souvent plus simple, et un prix d'achat d'occasion plus accessible que les appareils 4 places équivalents en âge et en équipement.</p>
+<p>La contrepartie est une capacité d'emport plus limitée : il faut composer avec un volume de bagages réduit et, selon le modèle, une autonomie parfois inférieure à celle d'un 4 places de croisière. Pour des week-ends dans un rayon de quelques centaines de kilomètres et des bagages légers, cette limite reste rarement un problème réel.</p>
+
+<h2 id="4places">Les monomoteurs 4 places utilisés à deux : confort et bagages</h2>
+<p>Choisir un monomoteur 4 places pour une utilisation à deux personnes, en laissant les deux sièges arrière disponibles pour les bagages, est une approche très répandue chez les propriétaires privés. Cette formule offre davantage de marge de charge utile, un confort de cabine généralement supérieur et, selon le modèle, une autonomie et une vitesse de croisière qui élargissent le rayon d'action pour les week-ends plus lointains.</p>
+<p>Des références comme le <a href="cessna-172-occasion-guide-achat.html">Cessna 172</a>, le <a href="piper-pa28-cherokee-occasion-guide-achat.html">Piper PA-28 Cherokee</a> ou le <a href="robin-dr400-occasion.html">Robin DR400</a> illustrent bien cette catégorie : des appareils robustes, bien documentés sur le marché de l'occasion, avec un réseau de mécaniciens familiers du type en Europe. Pour un budget plus élevé et des performances de croisière supérieures, un appareil composite comme le <a href="cirrus-sr22-occasion-guide-achat-budget.html">Cirrus SR22</a> apporte vitesse et confort, au prix d'un coût d'exploitation plus important.</p>
+
+<h2 id="budget">Comparatif budget et coûts d'exploitation</h2>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Monomoteur 2 places léger</th><th>Monomoteur 4 places classique</th></tr></thead>
+<tbody>
+<tr><td>Budget d'acquisition d'occasion</td><td>Généralement plus accessible</td><td>Plus élevé à âge et équipement comparables</td></tr>
+<tr><td>Consommation carburant</td><td>Modérée</td><td>Plus élevée, variable selon le modèle</td></tr>
+<tr><td>Capacité d'emport pour bagages</td><td>Limitée</td><td>Confortable, sièges arrière disponibles</td></tr>
+<tr><td>Assurance</td><td>Généralement plus basse</td><td>Généralement plus élevée</td></tr>
+<tr><td>Disponibilité des pièces et mécaniciens</td><td>Variable selon le modèle</td><td>Souvent très bonne sur les modèles diffusés</td></tr>
+</tbody></table></div>
+<p>Comme pour tout achat d'avion léger, le coût réel à l'heure de vol dépend fortement de l'état de l'appareil, du potentiel moteur restant et de la fréquence d'utilisation. Un appareil peu volant mais ancien peut nécessiter des travaux coûteux à court terme, tandis qu'un appareil bien suivi, même plus âgé, peut s'avérer plus économique sur la durée.</p>
+
+<h2 id="destination">Choisir selon le type de week-end envisagé</h2>
+<p>Le choix final dépend beaucoup du type de week-end visé. Pour des sorties locales, des terrains proches et des bagages très légers, un 2 places économique suffit largement et permet de multiplier les sorties sans faire exploser le budget carburant. Pour des week-ends plus ambitieux, impliquant des distances plus longues, davantage de bagages ou un terrain de destination moins accessible, un 4 places offre une marge de sécurité et de confort appréciable.</p>
+<p>Il faut aussi tenir compte de la météo et de la saison : un appareil avec une meilleure autonomie permet de contourner plus facilement une zone de mauvais temps sans remettre en cause le programme du week-end, ce qui est un argument fréquemment cité par les propriétaires qui volent régulièrement à deux.</p>
+
+<h2 id="occasion">Acheter d'occasion : points de vigilance</h2>
+<p>Quel que soit le modèle retenu, l'achat d'un avion léger d'occasion pour ce type d'usage mérite les mêmes précautions que pour tout achat d'aéronef : vérification complète du carnet d'entretien, cohérence des heures moteur (SMOH) avec l'âge de l'appareil, examen attentif de la cellule et de l'avionique, et contrôle de la validité du certificat de navigabilité (CofA).</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Faites toujours réaliser une inspection pré-achat par un mécanicien indépendant et familier du type avant de vous engager, surtout si l'appareil a peu volé récemment.</div></div>
+<p>Comparer plusieurs annonces de modèles similaires reste la meilleure façon de se faire une idée du marché et d'identifier un appareil correctement entretenu, qu'il s'agisse d'un 2 places léger ou d'un 4 places classique utilisé à deux.</p>
+<p>Enfin, n'oubliez pas d'intégrer dans votre réflexion la question du terrain de départ et des terrains d'arrivée envisagés : une piste en herbe courte ou un terrain d'altitude peut favoriser un appareil avec de bonnes performances au décollage et à l'atterrissage, quitte à sacrifier un peu de vitesse de croisière. De la même façon, un propriétaire qui envisage plusieurs week-ends par mois a tout intérêt à privilégier la simplicité d'exploitation et la disponibilité des pièces plutôt que la seule performance pure, car c'est souvent ce qui détermine, sur la durée, le plaisir réel tiré de la possession d'un avion.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre avion pour voler à deux</h3>
+            <p>Comparez les annonces de monomoteurs 2 et 4 places d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cessna 172 d'occasion : guide d'achat complet</strong><p>Budget, points de vigilance et entretien pour l'avion d'entraînement le plus produit au monde.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="piper-pa28-cherokee-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Piper PA-28 Cherokee d'occasion : guide d'achat</strong><p>Un monomoteur 4 places robuste et répandu, parfait pour un usage régulier à deux ou en famille.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="premier-achat-avion-guide-debutant.html" class="card"><span class="icon-box"><i data-icon="compass"></i></span><span class="eyebrow">Guide acheteur</span><strong>Premier achat d'avion : guide pour débutant</strong><p>Les étapes clés pour réussir son premier achat d'aéronef, du choix du modèle au financement.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used PZL SZD-50 Puchacz buying guide: budget, inspection points to watch, airworthiness and maintenance for this Polish two-seat training glider.">
+<meta name="keywords" content="used PZL SZD-50 Puchacz, two-seat training glider, Polish glider, buying a used glider">
+<meta property="og:title" content="Used PZL SZD-50 Puchacz: Buying Guide | Aircraft2Sell">
+<meta property="og:description" content="Used PZL SZD-50 Puchacz buying guide: budget, inspection points to watch, airworthiness and maintenance for this Polish two-seat training glider.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/pzl-szd-50-puchacz-occasion-guide-achat-planeur.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/pzl-szd-50-puchacz-occasion-guide-achat-planeur.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/pzl-szd-50-puchacz-occasion-guide-achat-planeur.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/pzl-szd-50-puchacz-occasion-guide-achat-planeur.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/pzl-szd-50-puchacz-occasion-guide-achat-planeur.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used PZL SZD-50 Puchacz: Buying Guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used PZL SZD-50 Puchacz: buying guide", "description": "Used PZL SZD-50 Puchacz buying guide: budget, inspection points to watch, airworthiness and maintenance for this Polish two-seat training glider.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/pzl-szd-50-puchacz-occasion-guide-achat-planeur.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used PZL SZD-50 Puchacz", "item": "https://aircraft2sell.eu/en/pzl-szd-50-puchacz-occasion-guide-achat-planeur.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/en/index.html">Home</a><i data-icon="chevron-right"></i><a href="/en/blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used PZL SZD-50 Puchacz</span></nav>
+    <span class="eyebrow">Model guide</span>
+    <h1>Used PZL SZD-50 Puchacz: buying guide</h1>
+    <p>Budget to plan for, inspection points to watch, airworthiness and maintenance to help you buy a used PZL SZD-50 Puchacz with full knowledge of the facts.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">The PZL SZD-50 Puchacz, a Polish two-seat training glider</a></li><li><a href="#caracteristiques">Technical features and performance</a></li><li><a href="#budget">What budget to plan for at purchase</a></li><li><a href="#inspection">What to check before buying</a></li><li><a href="#navigabilite">Logbook and certificate of airworthiness</a></li><li><a href="#entretien">Routine maintenance and parts availability</a></li><li><a href="#utilisation">A well-regarded training glider that demands disciplined flying</a></li><li><a href="#revente">Resale and the used market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">The PZL SZD-50 Puchacz, a Polish two-seat training glider</h2>
+<p>The PZL SZD-50 Puchacz is a tandem two-seat glider designed by the Polish design bureau SZD (Szybowcowy Zakład Doświadczalny) and produced from the late 1970s onward. Conceived from the outset as a training tool, it spread widely through gliding clubs across Europe, where it has long been used for initial instruction and solo check-outs for generations of glider pilots.</p>
+<p>Its composite structure, well-known robustness and forgiving handling made it a long-standing reference for flying schools, alongside other training two-seaters of the same era. On the used market today, examples of varying ages can be found, some having accumulated a substantial number of airframe hours after decades of intensive club use.</p>
+
+<h2 id="caracteristiques">Technical features and performance</h2>
+<p>The Puchacz is a classic two-seat glider, with front and rear cockpits allowing dual control, essential for instruction. Its glide ratio and overall performance remain typical of a training glider of its generation: it isn't meant to compete with a pure performance glider on a cross-country task, but it offers stable and predictable handling, valued for teaching the basics of airmanship, visual navigation and off-field landing procedures.</p>
+<p>Its composite structure, wing and airbrakes are built to withstand intensive use, with many take-offs and landings per flying day, which makes it a particularly hard-worked aircraft at a flying school compared with a club glider flown only occasionally.</p>
+
+<h2 id="budget">What budget to plan for at purchase</h2>
+<p>The price of a used Puchacz depends above all on its age, total airframe hours, maintenance history, and whether or not any previous structural repairs are well documented. The oldest examples, which have typically seen intensive club use, generally trade at an accessible entry level, while a more recent example or one flown privately with a clear history can sit noticeably higher.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Accumulated airframe hours</td><td>Intensive club use weighs on value, especially close to a major overhaul</td></tr>
+<tr><td>History of structural repairs</td><td>Well-documented repairs carried out at an approved shop reassure buyers, the opposite raises concern</td></tr>
+<tr><td>Condition of canopy and interior</td><td>A scratched or yellowed canopy and worn upholstery weigh on resale price</td></tr>
+<tr><td>Logbook and technical file</td><td>A complete, traceable file clearly adds value</td></tr>
+</tbody></table></div>
+<p>Beyond the purchase price, your budget should include ancillary costs: an independent glider mechanic's pre-purchase inspection, transport costs (a dedicated trailer is essential), registration, insurance, and possibly refurbishing the canopy, paint or upholstery.</p>
+
+<h2 id="inspection">What to check before buying</h2>
+<p>As with any used glider, a pre-purchase inspection by an independent mechanic qualified on the type is essential before finalising a transaction. For a Puchacz, many examples of which have seen intensive use at flying schools, a few points deserve particular attention.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Condition of the composite structure: look for any impacts, delamination or previous repairs to the fuselage, wings and landing gear attachment points.</span></li>
+  <li><i data-icon="check"></i><span>Play and wear in the flight controls and wing fittings, particularly stressed by repeated rigging and de-rigging at a club.</span></li>
+  <li><i data-icon="check"></i><span>Canopy condition: deep scratches, yellowing and seal integrity, a costly item to replace if too far gone.</span></li>
+  <li><i data-icon="check"></i><span>Operation of the airbrakes and landing gear, repeatedly stressed on a training aircraft.</span></li>
+  <li><i data-icon="check"></i><span>Complete airframe logbook and technical file, with no grey areas in the history of repairs and any major overhauls already carried out.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Never rely solely on the seller's statements about overall condition: a written independent inspection report, including a thorough structural check, remains the best protection when buying a glider that has been used for instruction.</div></div>
+
+<h2 id="navigabilite">Logbook and certificate of airworthiness</h2>
+<p>The logbook of a Puchacz should record the aircraft's full technical life: periodic inspections, any structural repairs, parts replacements and major overhauls already carried out under the programme defined by the manufacturer or its successor in intellectual property. An incomplete technical file, or one with undocumented maintenance periods, should prompt caution.</p>
+<p>A valid certificate of airworthiness (CofA), together with the associated airworthiness review certificate, is an essential precondition before any flight under a new registration. For a registration transfer between European countries, check that the whole technical file will be passed on without gaps to the new supervising authority.</p>
+
+<h2 id="entretien">Routine maintenance and parts availability</h2>
+<p>Routine maintenance on a Puchacz remains comparable to that of other composite two-seat gliders of its generation: mandatory periodic inspection, checks of flight controls, canopy and landing gear, and careful monitoring of the airframe's structural condition. Parts availability, while lower than for a currently produced glider, remains reasonable in Europe given the number of units built and the presence of workshops specialised in composite gliders of Polish origin.</p>
+<p>Having the aircraft maintained at an approved shop familiar with the type, and ideally already experienced with SZD gliders, helps limit unpleasant surprises and preserve its resale value. Rigorous, well-documented maintenance records are a strong argument at a future resale.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for details of the latest periodic inspections and the last major overhaul before making an offer: these documents give an accurate picture of how seriously the aircraft has been maintained, particularly for one used at a club.</div></div>
+
+<h2 id="utilisation">A well-regarded training glider that demands disciplined flying</h2>
+<p>The Puchacz has long been, and remains, a widely used training platform in Europe for initial instruction and solo preparation. It offers broadly stable handling, but like any glider of this type, it demands solid mastery of the stall-recognition and recovery procedures taught in training, which has led several civil aviation authorities, through their training guidance, to stress the importance of respecting speed margins and the recovery procedures specific to this type.</p>
+<p>For a private buyer, none of this calls into question the Puchacz's value as a training or introductory aerobatic glider, but it does justify consistently referring to the flight manual and current guidance, and completing suitable familiarisation with an instructor qualified on the type before any solo flying.</p>
+
+<h2 id="revente">Resale and the used market</h2>
+<p>The Puchacz benefits from a relatively large installed fleet across Europe, built up over decades of club use, which makes it easier to source parts and compare listings. A well-maintained example, with a complete logbook and a structure free of questionable history, generally resells more easily and on better terms than one whose technical file has grey areas.</p>
+<p>Comparing several listings of similar gliders remains the best way to assess a fair price, both for buying and for preparing a future resale. Price differences between two examples of the same model year are almost always explained by accumulated airframe hours, the history of structural repairs and canopy condition.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your used glider</h3>
+            <p>Browse used glider listings available across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="/en/search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="/en/blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="/en/planeur-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Category guide</span><strong>Used gliders: the complete buying guide</strong><p>Budget, points to watch and maintenance to help you choose a used glider.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Buyer's guide</span><strong>Aircraft insurance: the complete guide</strong><p>Understand the cover, deductibles and criteria that affect the cost of aircraft insurance.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

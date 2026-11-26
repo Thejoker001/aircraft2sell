@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used Schweizer 300 buying guide: budget, rotor and transmission inspection points, maintenance and flight-school use of this light piston helicopter.">
+<meta name="keywords" content="Schweizer 300 for sale, Hughes 300 for sale, piston training helicopter, Schweizer 300CB price, Schweizer 300 maintenance">
+<meta property="og:title" content="Used Schweizer 300: buying guide | Aircraft2Sell">
+<meta property="og:description" content="Used Schweizer 300 buying guide: budget, rotor and transmission inspection points, maintenance and flight-school use of this light piston helicopter.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/schweizer-300-occasion-guide-achat-helicoptere.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/schweizer-300-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/schweizer-300-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/schweizer-300-occasion-guide-achat-helicoptere.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/schweizer-300-occasion-guide-achat-helicoptere.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Schweizer 300: buying guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Schweizer 300: buying guide", "description": "Used Schweizer 300 buying guide: budget, rotor and transmission inspection points, maintenance and flight-school use of this light piston helicopter.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/schweizer-300-occasion-guide-achat-helicoptere.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Schweizer 300: buying guide", "item": "https://aircraft2sell.eu/en/schweizer-300-occasion-guide-achat-helicoptere.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used Schweizer 300</span></nav>
+    <span class="eyebrow">Model guide</span>
+    <h1>Used Schweizer 300: buying guide</h1>
+    <p>Budget to plan for, rotor and transmission inspection points, maintenance and flight-school use to help you buy a used Schweizer 300 with full knowledge of the facts.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#pourquoi">The Schweizer 300: a historic piston trainer</a></li><li><a href="#budget">What budget to plan for at purchase</a></li><li><a href="#inspection">What to check before buying</a></li><li><a href="#variantes">The main variants: 269 and 300</a></li><li><a href="#ecole">Flight-school or private use: a direct impact on price</a></li><li><a href="#entretien">Maintenance and engine overhaul</a></li><li><a href="#revente">Resale and the used market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">The Schweizer 300: a historic piston trainer</h2>
+<p>A direct descendant of the Hughes 269 launched in the 1960s and later marketed as the Hughes 300, this light two- or three-seat piston helicopter was taken over by Schweizer Aircraft in the 1980s, before more recently becoming the Sikorsky S-300. On the used market, the type is still universally known as the Schweizer 300, and it remains one of the most widely used training helicopters in the world, alongside the Robinson R22.</p>
+<p>Its reputation rests on a feature prized by flight schools and students alike: its rotor head, heavier and more stable than a Robinson's, generally makes it more forgiving of piloting mistakes during training, particularly in collective pitch management. This "forgiving" handling quality often makes it the recommended choice for a first helicopter experience, ahead of a possible transition to more demanding types.</p>
+
+<h2 id="budget">What budget to plan for at purchase</h2>
+<p>The price of a used Schweizer 300 depends mainly on the variant (two-seat or three-seat), the year of construction, total airframe and engine hours, the remaining potential before the next major overhaul, and usage history. Older examples close to their overhaul limit trade at a noticeably more accessible entry level than recent or recently overhauled aircraft, which represent a significantly higher budget. Generally speaking, the Schweizer 300 sits in a price bracket comparable to a Robinson R22 of similar hours and condition.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Total airframe and engine hours</td><td>An aircraft close to its major overhaul trades at a discount reflecting the cost of the upcoming overhaul</td></tr>
+<tr><td>Two-seat (269) or three-seat (300) variant</td><td>The more powerful three-seat version is generally more sought after and trades at a higher price</td></tr>
+<tr><td>Previous use (school vs. private)</td><td>A flight-school history generally implies a heavier usage and cycle rate</td></tr>
+<tr><td>Condition of the main rotor and transmission</td><td>Life-limited components whose replacement weighs on residual value</td></tr>
+</tbody></table></div>
+<p>On top of the purchase price come the usual ancillary costs for a used aircraft: a pre-purchase inspection by an independent mechanic qualified on the type, registration and transfer fees, insurance, and possibly documentation compliance work if the logbook has grey areas.</p>
+
+<h2 id="inspection">What to check before buying</h2>
+<p>Beyond the standard checks that apply to any light helicopter (logbook, compliance with airworthiness directives, general airframe condition), the Schweizer 300 has a few technical particularities that deserve extra attention during a pre-purchase inspection.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Condition of the rotor head and main blades: these components have limited hours or calendar life, and their replacement is a significant expense relative to the aircraft's value.</span></li>
+  <li><i data-icon="check"></i><span>History of any hard landing or rotor overspeed, two incidents commonly seen on an aircraft used for initial training, whose consequences must be documented in the logbook.</span></li>
+  <li><i data-icon="check"></i><span>Time remaining before the next major engine overhaul and consistency between the engine logbook, maintenance invoices and displayed hours.</span></li>
+  <li><i data-icon="check"></i><span>Condition of the transmission, drive belts and clutches, components stressed by the repeated start/stop cycles typical of flight-school use.</span></li>
+  <li><i data-icon="check"></i><span>Signs of corrosion on the tubular airframe and skid landing gear, particularly on aircraft parked outdoors or operated near the coast.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — A pre-purchase inspection carried out by a shop approved on the type is strongly recommended, particularly to check the condition of the main rotor and transmission, two costly items if potential has been overrun without being reflected in the asking price.</div></div>
+
+<h2 id="variantes">The main variants: 269 and 300</h2>
+<p>The Schweizer 300 comes in several versions inherited from its long Hughes-then-Schweizer lineage, with capacity and power differences worth knowing before you buy.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>269A / 269B: original two-seat versions, the simplest and oldest on the market.</span></li>
+  <li><i data-icon="check"></i><span>300C / 300CB / 300CBi: three-seat versions with a more powerful engine, the most common in flight schools today.</span></li>
+  <li><i data-icon="check"></i><span>Avionics and cockpit updates vary by production year, to be checked case by case on the specific example you're considering.</span></li>
+</ul>
+
+<h2 id="ecole">Flight-school or private use: a direct impact on price</h2>
+<p>The Schweizer 300 leads a double life on the used market: a large part of the fleet has served or still serves initial flight training at flying schools, while another part, often more recent or less used, remains in the hands of private owners for occasional leisure flying. An aircraft coming from a school fleet generally accumulates more flight hours, but also more start/stop cycles and demanding exercises for the mechanics (autorotations, hard touchdowns) that the logbook doesn't always reflect in detail.</p>
+<p>Conversely, a privately used aircraft may show fewer hours, but also extended periods of inactivity which are not without consequences for certain components (seals, internal corrosion). In both cases, asking for the complete operating history and, if possible, the name of the organisation that carried out maintenance, helps you better assess whether the asking price matches the aircraft's real condition.</p>
+
+<h2 id="entretien">Maintenance and engine overhaul</h2>
+<p>Like any light helicopter, the Schweizer 300 requires a frequent periodic maintenance schedule, with life-limited components (main blades, rotor head, certain transmission parts) to be replaced after a number of hours or a calendar period set by the manufacturer, regardless of apparent condition. Its piston engine, derived from powerplants widely used across light aviation, has the advantage of being well known to mechanics and benefiting from good parts availability. The major engine overhaul nevertheless remains the heaviest item to plan for financially: its due date, clearly documented in the technical file, should always be factored into the sale price negotiation.</p>
+<p>Having the aircraft maintained by a shop approved on the type and familiar with its particularities limits the risk of unpleasant surprises and preserves resale value. A complete maintenance file, with detailed invoices and traceable parts replacement, remains one of the most convincing arguments at the time of sale.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for the complete engine logbook and the last three maintenance invoices: they often reveal, better than the listing itself, how seriously the aircraft has been maintained.</div></div>
+
+<h2 id="revente">Resale and the used market</h2>
+<p>Thanks to a large worldwide fleet and good parts availability tied to its proven piston engine, the Schweizer 300 benefits from an active resale market, driven largely by steady demand from flight schools and from owners looking to start flying helicopters at a lower cost. An aircraft with a transparent maintenance file, a clearly documented usage history and recently replaced life-limited components generally resells faster and on better terms.</p>
+<p>Comparing several listings of similar generation and hours remains the best way to assess a fair price, both for buying and for preparing a future resale. Price differences between two similar-looking Schweizer 300s are almost always explained by the remaining potential of life-limited parts, proximity to the major engine overhaul, and the documented quality of past maintenance.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Schweizer 300</h3>
+            <p>Compare used Schweizer 300 listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="robinson-r44-occasion-guide-achat-helicoptere.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Robinson R44: the complete buying guide</strong><p>Budget, points to watch and maintenance for the most widely used light helicopter in the world.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="helicoptere-occasion-guide-achat-particulier.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buying</span><strong>Used helicopters: a buying guide for private owners</strong><p>The key benchmarks for approaching the purchase of your first helicopter with confidence.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

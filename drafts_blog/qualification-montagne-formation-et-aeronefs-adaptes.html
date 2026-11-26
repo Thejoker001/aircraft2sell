@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Qualification montagne en avion léger : formation, altisurfaces, aéronefs adaptés et budget pour poser et décoller en terrain de montagne.">
+<meta property="og:title" content="Qualification montagne : formation et aéronefs adaptés | Aircraft2Sell">
+<meta property="og:description" content="Qualification montagne en avion léger : formation, altisurfaces, aéronefs adaptés et budget pour poser et décoller en terrain de montagne.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/qualification-montagne-formation-et-aeronefs-adaptes.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/qualification-montagne-formation-et-aeronefs-adaptes.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/qualification-montagne-formation-et-aeronefs-adaptes.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/qualification-montagne-formation-et-aeronefs-adaptes.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/qualification-montagne-formation-et-aeronefs-adaptes.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Qualification montagne : formation et aéronefs adaptés | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Qualification montagne : formation et aéronefs adaptés", "description": "Qualification montagne en avion léger : formation, altisurfaces, aéronefs adaptés et budget pour poser et décoller en terrain de montagne.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/qualification-montagne-formation-et-aeronefs-adaptes.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Qualification montagne : formation et aéronefs adaptés", "item": "https://aircraft2sell.eu/qualification-montagne-formation-et-aeronefs-adaptes.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Qualification montagne</span></nav>
+    <span class="eyebrow">Guide thématique</span>
+    <h1>Qualification montagne : formation et aéronefs adaptés</h1>
+    <p>Comment se former à la qualification montagne, sur quels terrains, et quels avions sont réellement adaptés au posé-décollé en altisurface.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#definition">Qu'est-ce que la qualification montagne</a></li><li><a href="#prerequis">Prérequis pour se former</a></li><li><a href="#formation">Déroulement de la formation</a></li><li><a href="#terrains">Les altisurfaces et terrains de montagne</a></li><li><a href="#aeronefs">Les aéronefs adaptés au vol en montagne</a></li><li><a href="#budget">Budget et entretien d'un avion de montagne</a></li><li><a href="#securite">Sécurité et facteurs à risque</a></li><li><a href="#maintien">Maintien de la qualification et expérience</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">Qu'est-ce que la qualification montagne</h2>
+<p>La qualification montagne est une formation complémentaire destinée aux pilotes d'avion léger souhaitant se poser et décoller sur des terrains de montagne (altisurfaces) ou des pistes courtes et pentues situées en zone de relief. Elle sanctionne la maîtrise de techniques spécifiques : approche en pente, atterrissage en montée, décollage en descente, gestion du vent de montagne et des turbulences liées au relief, ainsi que la connaissance des contraintes propres à l'altitude des terrains concernés.</p>
+<p>Cette qualification n'est pas une licence à part entière mais une mention ajoutée au carnet de vol du pilote, généralement délivrée terrain par terrain ou par groupe de terrains, selon la réglementation et l'organisme de formation. Elle est particulièrement répandue dans les massifs alpins, pyrénéens et dans certains massifs d'Europe centrale où subsistent des altisurfaces homologuées.</p>
+
+<h2 id="prerequis">Prérequis pour se former</h2>
+<p>Les organismes de formation exigent généralement une licence de pilote privé (PPL) en cours de validité, un nombre d'heures de vol minimum (souvent de l'ordre de quelques dizaines d'heures en tant que commandant de bord, le seuil précis variant selon l'organisme et le pays) et une bonne maîtrise des procédures de vol à vue de base. Une expérience récente, avec un nombre d'heures de vol dans les mois précédant la formation, est également recommandée par la plupart des instructeurs montagne.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Licence de pilote privé (PPL) ou équivalent en cours de validité.</span></li>
+  <li><i data-icon="check"></i><span>Expérience récente en tant que commandant de bord, idéalement sur le type d'appareil utilisé pour la formation.</span></li>
+  <li><i data-icon="check"></i><span>Aptitude médicale à jour et adaptée au vol en altitude si les terrains visés sont élevés.</span></li>
+  <li><i data-icon="check"></i><span>Aisance avec les procédures de vol à vue en relief (navigation, estimation visuelle des pentes et des distances).</span></li>
+</ul>
+
+<h2 id="formation">Déroulement de la formation</h2>
+<p>La formation se déroule généralement sur plusieurs jours, avec un instructeur qualifié montagne habilité sur les terrains concernés. Elle combine un briefing théorique (météorologie de montagne, lecture du relief, performances de l'avion en altitude) et une progression pratique terrain par terrain, en commençant par des altisurfaces relativement faciles avant d'aborder des terrains plus exigeants.</p>
+<p>Le nombre de terrains abordés et le volume d'heures varient fortement d'un organisme à l'autre et selon le rythme de progression du pilote. Certains organismes délivrent une qualification par terrain homologué, d'autres une qualification plus générale couvrant un massif ou un groupe de terrains aux caractéristiques similaires.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Les conditions d'obtention, la durée de validité et le périmètre exact de la qualification montagne varient selon le pays et l'organisme de formation. Vérifiez toujours les exigences en vigueur auprès de l'autorité compétente et de l'organisme choisi avant de vous engager.</div></div>
+
+<h3>Ce que couvre généralement la formation pratique</h3>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Observation du terrain et de son environnement avant la première approche (survol de reconnaissance).</span></li>
+  <li><i data-icon="check"></i><span>Techniques d'approche en pente et de gestion de la vitesse sur piste courte.</span></li>
+  <li><i data-icon="check"></i><span>Décollage en descente de pente et gestion de la marge de sécurité en cas d'interruption.</span></li>
+  <li><i data-icon="check"></i><span>Lecture des conditions aérologiques locales : vent de pente, rotors, turbulences de relief.</span></li>
+</ul>
+
+<h2 id="terrains">Les altisurfaces et terrains de montagne</h2>
+<p>Les altisurfaces sont des terrains sommaires, souvent en herbe ou en terre, situés en altitude et caractérisés par une pente prononcée, une longueur réduite et un environnement montagneux contraignant (approche encaissée, absence de dégagement en cas de remise de gaz). Leur homologation et les conditions d'usage (créneaux horaires, restrictions saisonnières, autorisation préalable) relèvent de la réglementation nationale et locale, qu'il convient de vérifier avant tout vol.</p>
+<p>Chaque terrain présente des particularités propres (longueur, pente, orientation par rapport aux vents dominants, altitude) qui exigent une familiarisation spécifique, même pour un pilote déjà qualifié montagne sur d'autres terrains. C'est pourquoi la progression se fait traditionnellement terrain par terrain, sous la supervision d'un instructeur local avant tout posé en solo.</p>
+
+<h2 id="aeronefs">Les aéronefs adaptés au vol en montagne</h2>
+<p>Tous les avions légers ne sont pas adaptés au posé-décollé sur altisurface. Les appareils recherchés pour ce type de vol combinent généralement une vitesse de décrochage basse, une bonne capacité de décollage et d'atterrissage courts (STOL), un train d'atterrissage robuste capable d'absorber les irrégularités du terrain, et une puissance suffisante pour compenser la perte de performance liée à l'altitude.</p>
+<p>Parmi les types régulièrement utilisés en montagne figurent les avions à aile haute avec volets performants et train renforcé, ainsi que certains appareils spécifiquement conçus ou modifiés pour les performances STOL. Le choix précis dépend des terrains visés, de la charge emportée et des habitudes de l'instructeur ou du club local : il n'existe pas un modèle universellement "meilleur", mais des appareils dont les performances et la robustesse sont mieux adaptées à l'usage montagne que d'autres.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Vitesse de décrochage basse et bonne marge de pilotage à basse vitesse.</span></li>
+  <li><i data-icon="check"></i><span>Distances de décollage et d'atterrissage courtes, avec une marge de sécurité réelle sur le terrain visé.</span></li>
+  <li><i data-icon="check"></i><span>Train d'atterrissage robuste, adapté aux pistes non préparées.</span></li>
+  <li><i data-icon="check"></i><span>Puissance et performance en montée suffisantes compte tenu de l'altitude et de la température des terrains visés.</span></li>
+</ul>
+<p>Avant d'acheter un appareil destiné à un usage montagne régulier, une inspection pré-achat approfondie est indispensable, en particulier sur le train d'atterrissage et la structure, sollicités plus fortement par les posés sur terrain irrégulier qu'en usage sur piste en dur.</p>
+
+<h2 id="budget">Budget et entretien d'un avion de montagne</h2>
+<p>Un avion utilisé régulièrement en montagne subit des contraintes mécaniques plus importantes qu'un usage exclusivement sur aérodrome en dur : le train d'atterrissage, les pneus et certains éléments de structure s'usent plus rapidement. Il convient d'anticiper un budget d'entretien légèrement supérieur à la moyenne pour ce type d'usage, ainsi qu'une vigilance accrue lors des visites périodiques sur les éléments les plus sollicités.</p>
+<p>Le coût de la formation à la qualification montagne elle-même varie selon le nombre de terrains visés, le nombre d'heures nécessaires et l'organisme choisi. Il convient de demander un devis détaillé incluant le nombre de vols prévus et les terrains abordés avant de s'engager.</p>
+
+<h2 id="securite">Sécurité et facteurs à risque</h2>
+<p>Le vol en montagne combine plusieurs facteurs de risque spécifiques : marges de performance réduites par l'altitude et la température, aérologie locale parfois imprévisible (vent de pente, rotors), environnement encaissé limitant les possibilités de remise de gaz, et absence fréquente d'infrastructure de secours à proximité immédiate du terrain. La discipline de décision — notamment le renoncement en cas de doute sur les conditions ou sur ses propres aptitudes du jour — est un élément central enseigné lors de la formation.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne volez jamais sur un terrain de montagne non homologué ou sans l'accompagnement préalable d'un instructeur local qualifié sur ce terrain précis, même si vous détenez déjà une qualification montagne obtenue sur d'autres sites.</div></div>
+
+<h2 id="maintien">Maintien de la qualification et expérience</h2>
+<p>La qualification montagne nécessite un maintien de compétences régulier : un pilote qui ne pratique plus pendant une longue période verra ses repères s'estomper plus vite que sur un vol de plaine classique. De nombreux organismes recommandent, voire exigent, un nombre minimal de posés par an et par terrain pour continuer à s'y poser en toute autonomie, au-delà des éventuelles obligations réglementaires de recyclage.</p>
+<p>Voler régulièrement avec un instructeur ou d'autres pilotes montagne expérimentés, échanger sur l'évolution des terrains (état de piste, nouveaux obstacles, changement de pente) et se tenir informé des conditions aérologiques locales restent les meilleures façons de conserver un niveau de sécurité élevé sur la durée.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez un avion adapté à la montagne</h3>
+            <p>Comparez les annonces d'avions légers STOL et de montagne disponibles sur Aircraft2Sell, partout en Europe.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="licence-pilote-prive-cout.html" class="card"><span class="icon-box"><i data-icon="user-check"></i></span><span class="eyebrow">Formation</span><strong>Licence de pilote privé (PPL) : coût et durée</strong><p>Combien coûte une licence de pilote privé (PPL) en Europe et combien de temps faut-il pour l'obtenir ? Budget, durée, étapes et conseils.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="avion-voltige-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide acheteur</span><strong>Avion de voltige d'occasion : ce qu'il faut savoir avant d'acheter</strong><p>Budget, carnet G, points de vigilance à l'inspection, qualification et revente.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261007a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

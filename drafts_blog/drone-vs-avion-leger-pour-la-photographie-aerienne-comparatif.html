@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Drone ou avion léger pour la photographie aérienne ? Comparatif coûts, réglementation, autonomie et qualité d'image pour choisir le bon outil.">
+<meta property="og:title" content="Drone vs avion léger pour la photographie aérienne : comparatif | Aircraft2Sell">
+<meta property="og:description" content="Drone ou avion léger pour la photographie aérienne ? Comparatif coûts, réglementation, autonomie et qualité d'image pour choisir le bon outil.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/drone-vs-avion-leger-pour-la-photographie-aerienne-comparatif.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/drone-vs-avion-leger-pour-la-photographie-aerienne-comparatif.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/drone-vs-avion-leger-pour-la-photographie-aerienne-comparatif.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/drone-vs-avion-leger-pour-la-photographie-aerienne-comparatif.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/drone-vs-avion-leger-pour-la-photographie-aerienne-comparatif.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Drone vs avion léger pour la photographie aérienne : comparatif | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Drone vs avion léger pour la photographie aérienne : comparatif", "description": "Drone ou avion léger pour la photographie aérienne ? Comparatif coûts, réglementation, autonomie et qualité d'image pour choisir le bon outil.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/drone-vs-avion-leger-pour-la-photographie-aerienne-comparatif.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Drone vs avion léger pour la photographie aérienne : comparatif", "item": "https://aircraft2sell.eu/drone-vs-avion-leger-pour-la-photographie-aerienne-comparatif.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Drone vs avion léger : photo aérienne</span></nav>
+    <span class="eyebrow">Guide thématique</span>
+    <h1>Drone vs avion léger pour la photographie aérienne : comparatif</h1>
+    <p>Drone ou avion léger : quel outil choisir pour vos prises de vue aériennes ? Comparatif coûts, réglementation, autonomie et qualité d'image.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#comparaison">Deux outils, deux philosophies de prise de vue aérienne</a></li><li><a href="#drone">Le drone : accessibilité, maniabilité et cadre réglementaire allégé</a></li><li><a href="#avion">L'avion léger : portée, autonomie et liberté de composition</a></li><li><a href="#reglementation">Ce que la réglementation impose, dans les grandes lignes</a></li><li><a href="#couts">Comparatif des coûts : investissement et exploitation</a></li><li><a href="#qualite">Qualité d'image, stabilité et possibilités créatives</a></li><li><a href="#usages">Quel choix selon votre usage</a></li><li><a href="#combiner">Combiner drone et avion léger : une approche complémentaire</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="comparaison">Deux outils, deux philosophies de prise de vue aérienne</h2>
+<p>Le drone et l'avion léger répondent tous les deux au même besoin — obtenir un point de vue aérien — mais avec des logiques radicalement différentes. Le drone privilégie la proximité, la précision du cadrage et une mise en œuvre quasi immédiate depuis le sol. L'avion léger, lui, ouvre un champ d'action beaucoup plus vaste : altitude, distance et autonomie qu'aucun drone grand public ne peut approcher, au prix d'une organisation plus lourde et d'un budget plus élevé.</p>
+<p>Avant de choisir, il est utile de clarifier le besoin réel : s'agit-il de documenter un bâtiment, un chantier ou une propriété à quelques dizaines de mètres de hauteur, ou de couvrir un paysage, un littoral, un événement sportif ou une zone industrielle sur plusieurs kilomètres ? La réponse à cette question oriente presque toujours le choix de l'outil.</p>
+
+<h2 id="drone">Le drone : accessibilité, maniabilité et cadre réglementaire allégé</h2>
+<p>Le drone reste, pour la très grande majorité des usages de proximité, l'outil le plus simple à mettre en œuvre. Son coût d'accès est sans comparaison avec celui de l'aviation légère, sa prise en main est rapide et il permet des angles de vue impossibles pour un avion, comme un survol lent et stationnaire au-dessus d'un sujet précis ou une approche à très basse hauteur.</p>
+<p>Sa limite principale tient à son rayon d'action et à son autonomie de vol, généralement de l'ordre de quelques dizaines de minutes par batterie, ainsi qu'aux restrictions de hauteur et de distance qui s'appliquent selon la catégorie d'opération et la zone survolée. Le drone excelle sur l'immobilier, les chantiers, les petits événements et les sujets rapprochés, mais atteint vite ses limites dès qu'il s'agit de couvrir un territoire étendu ou de voler loin de l'opérateur.</p>
+
+<h2 id="avion">L'avion léger : portée, autonomie et liberté de composition</h2>
+<p>L'avion léger change complètement d'échelle. Avec une autonomie de plusieurs heures de vol et une vitesse de déplacement bien supérieure, il permet de couvrir en une seule sortie un territoire que plusieurs journées de vol en drone ne suffiraient pas à documenter. Il est particulièrement adapté aux reportages paysagers, aux couvertures côtières, aux grands événements sportifs, à la photographie immobilière à grande échelle ou aux missions professionnelles nécessitant une vue d'ensemble depuis plusieurs centaines de mètres d'altitude.</p>
+<p>La prise de vue depuis un avion léger impose en revanche une vraie préparation : choix de l'aéronef, aménagement pour ouvrir une fenêtre ou retirer une porte en toute sécurité, coordination avec le pilote sur la trajectoire et l'inclinaison souhaitées, et parfois recours à une nacelle stabilisée pour limiter les vibrations transmises par la cellule et le moteur.</p>
+
+<h2 id="reglementation">Ce que la réglementation impose, dans les grandes lignes</h2>
+<p>Le cadre réglementaire des drones en Europe repose sur plusieurs catégories d'opération, définies notamment par la masse de l'appareil, la distance par rapport à des tiers et le survol ou non de zones habitées. Selon la catégorie concernée, l'opérateur peut devoir s'enregistrer, suivre une formation et obtenir une attestation de compétence avant de voler, en particulier à l'approche de personnes, d'infrastructures sensibles ou de zones aéroportuaires.</p>
+<p>Pour l'avion léger, la prise de vue aérienne n'exige pas de licence spécifique au-delà de celle du pilote qui commande l'appareil, mais elle doit respecter les règles générales de circulation aérienne : hauteurs minimales de survol des agglomérations, zones réglementées et espaces aériens contrôlés. L'ouverture d'une porte ou d'une fenêtre en vol, lorsqu'elle est nécessaire au photographe, doit être validée par le constructeur ou un atelier agréé, et jamais improvisée.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Les règles applicables aux drones comme aux aéronefs évoluent régulièrement et varient selon le pays européen survolé. Vérifiez toujours la réglementation en vigueur auprès de l'autorité nationale de l'aviation civile avant toute mission.</div></div>
+
+<h2 id="couts">Comparatif des coûts : investissement et exploitation</h2>
+<p>Le drone domine largement sur le plan budgétaire à l'achat : un modèle professionnel performant reste nettement moins coûteux qu'un avion léger d'occasion, même ancien. L'avion implique en revanche un budget de tout autre nature — acquisition ou location horaire, carburant, entretien, assurance — mais il permet de rentabiliser une seule sortie sur un territoire que plusieurs dizaines de vols de drone ne couvriraient pas.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Drone</th><th>Avion léger</th></tr></thead>
+<tbody>
+<tr><td>Investissement initial</td><td>Faible à modéré</td><td>Élevé (achat) ou location horaire</td></tr>
+<tr><td>Coût par mission</td><td>Très faible</td><td>Plus élevé, mais rentable sur de grandes surfaces</td></tr>
+<tr><td>Formation requise</td><td>Variable selon la catégorie d'opération</td><td>Licence de pilote déjà détenue, requise pour piloter</td></tr>
+<tr><td>Rayon d'action par sortie</td><td>Limité (proximité de l'opérateur)</td><td>Très étendu (plusieurs centaines de km)</td></tr>
+<tr><td>Mise en œuvre</td><td>Rapide, en solo</td><td>Nécessite un pilote et une préparation de vol</td></tr>
+</tbody></table></div>
+<p>Pour un usage ponctuel ou local, le drone reste quasi systématiquement le choix le plus rationnel. Pour un usage professionnel régulier sur de grandes étendues, le coût horaire de l'avion devient rapidement secondaire face au temps gagné et à la surface couverte.</p>
+
+<h2 id="qualite">Qualité d'image, stabilité et possibilités créatives</h2>
+<p>Les drones grand public et professionnels embarquent aujourd'hui des capteurs de très bonne qualité, avec une stabilisation mécanique qui permet des images d'une fluidité remarquable, en particulier pour la vidéo. Leur principal atout créatif réside dans la précision du cadrage : on peut positionner l'appareil au centimètre près, à hauteur exacte du sujet.</p>
+<p>L'avion léger, combiné à un objectif adapté et éventuellement à une nacelle stabilisée, permet d'obtenir des perspectives d'ensemble, des effets de profondeur et des compositions grand-angle qu'un drone ne peut pas reproduire à la même échelle. La lumière rasante en fin de journée, associée à l'altitude et à la vitesse de déplacement de l'avion, offre des rendus particulièrement recherchés pour les reportages paysagers et les couvertures de grands sites.</p>
+
+<h2 id="usages">Quel choix selon votre usage</h2>
+<p>Le choix entre les deux outils dépend presque toujours de la nature du sujet et de l'échelle du projet.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Immobilier et chantiers</strong> — le drone s'impose, pour son coût et sa précision de cadrage à faible hauteur.</span></li>
+  <li><i data-icon="check"></i><span><strong>Événementiel ponctuel</strong> — le drone reste le plus adapté, sauf pour les très grands rassemblements nécessitant une vue d'ensemble large.</span></li>
+  <li><i data-icon="check"></i><span><strong>Reportage paysager ou côtier étendu</strong> — l'avion léger devient pertinent dès que la zone à couvrir dépasse quelques kilomètres.</span></li>
+  <li><i data-icon="check"></i><span><strong>Missions professionnelles répétées sur de grandes surfaces</strong> — l'avion offre un rendement par heure de vol largement supérieur.</span></li>
+  <li><i data-icon="check"></i><span><strong>Contraintes réglementaires fortes (zones sensibles, proximité aéroportuaire)</strong> — l'avion léger, opéré selon les règles de la circulation aérienne générale, peut parfois offrir plus de souplesse que le drone en zone restreinte au sol.</span></li>
+</ul>
+
+<h2 id="combiner">Combiner drone et avion léger : une approche complémentaire</h2>
+<p>De nombreux photographes professionnels ne choisissent pas l'un contre l'autre, mais combinent les deux outils selon les besoins du projet. Le drone sert à documenter les détails, les angles rapprochés et les prises de vue impossibles à obtenir autrement ; l'avion léger couvre les vues d'ensemble, les transitions de grande échelle et les reportages où la distance parcourue devient le facteur déterminant.</p>
+<p>Pour ceux qui envisagent un usage régulier de l'avion léger à des fins de photographie aérienne, l'achat d'un appareil adapté — bonne visibilité cabine, possibilité d'ouverture sécurisée d'une porte ou d'une fenêtre, autonomie suffisante — devient un projet à part entière, qui mérite d'être mûrement comparé aux solutions de location ou de copropriété avant de s'engager.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Avant tout achat d'avion léger destiné à la photographie aérienne, faites réaliser une inspection pré-achat complète et vérifiez la compatibilité de la cellule avec l'aménagement photo envisagé.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces d'avions légers vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="ulm-ou-avion-leger-debuter.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide débutant</span><strong>ULM ou avion léger : par quoi débuter ?</strong><p>Comparatif pour choisir entre l'ULM et l'avion léger selon votre budget et vos ambitions de vol.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="premier-achat-avion-guide-debutant.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide acheteur</span><strong>Premier achat d'avion : le guide du débutant</strong><p>Les étapes clés et les pièges à éviter pour un premier achat d'avion réussi.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="licence-pilote-prive-cout.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Formation</span><strong>Licence de pilote privé : combien ça coûte ?</strong><p>Budget détaillé pour obtenir sa licence de pilote privé en Europe.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

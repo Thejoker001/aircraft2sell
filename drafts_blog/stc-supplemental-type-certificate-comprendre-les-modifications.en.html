@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="STC (Supplemental Type Certificate): how modification certificates work, and their impact on value and used aircraft purchases.">
+<meta property="og:title" content="STC (Supplemental Type Certificate): understanding modifications | Aircraft2Sell">
+<meta property="og:description" content="STC (Supplemental Type Certificate): how modification certificates work, and their impact on value and used aircraft purchases.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/stc-supplemental-type-certificate-comprendre-les-modifications.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/stc-supplemental-type-certificate-comprendre-les-modifications.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/stc-supplemental-type-certificate-comprendre-les-modifications.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/stc-supplemental-type-certificate-comprendre-les-modifications.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/stc-supplemental-type-certificate-comprendre-les-modifications.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>STC (Supplemental Type Certificate): understanding modifications | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "STC (Supplemental Type Certificate): understanding modifications", "description": "STC (Supplemental Type Certificate): how modification certificates work, and their impact on value and used aircraft purchases.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/stc-supplemental-type-certificate-comprendre-les-modifications.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "STC (Supplemental Type Certificate): understanding modifications", "item": "https://aircraft2sell.eu/en/stc-supplemental-type-certificate-comprendre-les-modifications.html"}]}
+</script>
+<script type="application/ld+json">
+{"@type": "FAQPage", "@context": "https://schema.org", "mainEntity": [{"@type": "Question", "name": "What is an STC (Supplemental Type Certificate)?", "acceptedAnswer": {"@type": "Answer", "text": "An STC is a certificate issued by a civil aviation authority (EASA, FAA...) that approves a modification to an aircraft relative to its original type design. It is added to the original type certificate rather than replacing it."}}, {"@type": "Question", "name": "Does an aircraft modified under an STC lose value?", "acceptedAnswer": {"@type": "Answer", "text": "Not necessarily. A recognised STC, properly documented and installed by an approved facility, can actually increase an aircraft's value and appeal (modern avionics, more power, winglets). It is missing documentation or a questionable installation that hurts value."}}, {"@type": "Question", "name": "How do I verify an STC is valid before buying an aircraft?", "acceptedAnswer": {"@type": "Answer", "text": "Ask for a copy of the STC itself, the invoice and installation report from the approved facility, and the updated weight and balance sheet. Check that the STC is still recognised by the relevant authority for the country of intended registration."}}, {"@type": "Question", "name": "Is a US STC automatically valid in Europe?", "acceptedAnswer": {"@type": "Answer", "text": "No. An FAA STC is not automatically accepted by EASA: specific validation or bilateral acceptance may be required depending on the type of modification and the agreements in force. This must be checked before buying any US-modified aircraft intended for registration in Europe."}}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">STC: understanding modifications</span></nav>
+    <span class="eyebrow">Technical guide</span>
+    <h1>STC (Supplemental Type Certificate): understanding modifications</h1>
+    <p>Upgraded avionics, a more powerful engine, winglets fitted at the factory or later: these changes almost always go through an STC. Here is how this certificate works and what to check before buying.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#definition">What is an STC?</a></li><li><a href="#types">The main categories of STC modifications</a></li><li><a href="#processus">How an STC is issued</a></li><li><a href="#valeur">How an STC affects an aircraft's value</a></li><li><a href="#verification">What to check before buying</a></li><li><a href="#europe-usa">US STCs and registration in Europe</a></li><li><a href="#pieges">Common pitfalls and points to watch</a></li><li><a href="#faq">Frequently asked questions</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">What is an STC?</h2>
+<p>A Supplemental Type Certificate (STC) is an official document issued by a civil aviation authority — EASA in Europe, the FAA in the United States — that approves a modification made to an already-certified aircraft. Unlike a standard repair recorded in the logbook, a change that departs from the manufacturer's original type design must go through this specific regulatory route.</p>
+<p>The STC does not replace the aircraft's type certificate (TC); it is added alongside it. An aircraft modified under an STC keeps its original type certificate, supplemented by one or more STCs that precisely describe the modification, its operating limitations and the conditions required to maintain its airworthiness.</p>
+<p>This distinction matters for a buyer: an aircraft can accumulate several STCs over its life (avionics, engine, interior fit-out, structure), each documented separately in the aircraft's technical file.</p>
+
+<h2 id="types">The main categories of STC modifications</h2>
+<p>STCs cover a wide range of modifications, from the most common to some of the most significant for an aircraft's value.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Avionics</strong> — replacing analogue instruments with a glass cockpit, adding an IFR-certified GPS, an ADS-B transponder or an autopilot.</span></li>
+  <li><i data-icon="check"></i><span><strong>Engine</strong> — a power increase, replacing an engine with a newer or more capable version, or converting to a different engine make.</span></li>
+  <li><i data-icon="check"></i><span><strong>Aerodynamics</strong> — adding winglets, performance kits, or optimised fairings that reduce drag.</span></li>
+  <li><i data-icon="check"></i><span><strong>Structure and equipment</strong> — structural reinforcements, a modified landing gear installation, specific interior fit-outs, extra baggage compartments.</span></li>
+  <li><i data-icon="check"></i><span><strong>Systems</strong> — integrating de-icing systems, extra fuel tanks, or survival equipment for specific missions.</span></li>
+</ul>
+<p>Each STC is specific to a particular aircraft model (or family of models) and to a precise configuration: an STC approved on a Cessna 172 does not automatically apply to a Cessna 182, even though the two aircraft share a common manufacturer lineage.</p>
+
+<h2 id="processus">How an STC is issued</h2>
+<p>The company or organisation developing a modification (an approved maintenance facility, an equipment manufacturer, a third-party developer) must demonstrate to the relevant authority that the modification meets applicable airworthiness requirements: structural analysis, flight testing, performance calculations, and updates to the airworthiness continuation documentation.</p>
+<p>Once the application is approved, the authority issues the STC, which specifies the exact references of the affected aircraft (model, serial number or serial number range), a description of the modification, associated limitations, and continued-airworthiness instructions specific to that modification.</p>
+<p>Installing an STC on a given aircraft must then be carried out by an approved facility, which records the installation in the logbook and updates the weight and balance sheet if required.</p>
+
+<h2 id="valeur">How an STC affects an aircraft's value</h2>
+<p>A well-chosen, properly documented STC can noticeably increase an aircraft's appeal on the used market. Modern avionics installed under an STC, a recognised power upgrade or approved winglets are generally viewed favourably by buyers and can justify a higher asking price compared to an aircraft left in its original configuration.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Situation</th><th>Likely effect on value</th></tr></thead>
+<tbody>
+<tr><td>Recognised STC, complete documentation, installed by an approved facility</td><td>Neutral to positive</td></tr>
+<tr><td>Popular, in-demand modification (e.g. modern avionics)</td><td>Positive</td></tr>
+<tr><td>Uncommon STC, scarce spare parts</td><td>Neutral to negative depending on demand</td></tr>
+<tr><td>Incomplete or missing documentation</td><td>Negative, risk of blocking resale</td></tr>
+<tr><td>STC not recognised in the intended country of registration</td><td>Strongly negative, a barrier to purchase</td></tr>
+</tbody></table></div>
+<p>Conversely, missing documentation for a visible modification can lower an aircraft's perceived value, since it raises doubts about regulatory compliance and the overall quality of maintenance.</p>
+
+<h2 id="verification">What to check before buying</h2>
+<p>Before committing to an aircraft carrying one or more STC modifications, systematically ask the seller for the following documents.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>A copy of the STC itself, with its operating limitations and continued-airworthiness instructions.</span></li>
+  <li><i data-icon="check"></i><span>The invoice and work report from the approved facility that carried out the installation.</span></li>
+  <li><i data-icon="check"></i><span>The weight and balance sheet updated after the modification, consistent with the aircraft's current configuration.</span></li>
+  <li><i data-icon="check"></i><span>A record of the modification in the logbook, with the exact references of the applied STC.</span></li>
+  <li><i data-icon="check"></i><span>Consistency between the aircraft's serial number and the applicability range stated on the STC.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — A visible modification (a new screen, an engine that doesn't match the original type data) with no corresponding paper trail in the logbook is a major red flag. Never assume a modification is compliant without the documentation that should accompany it.</div></div>
+
+<h2 id="europe-usa">US STCs and registration in Europe</h2>
+<p>A point often underestimated by buyers: an STC issued by the FAA is not automatically recognised by EASA. Depending on the type of modification and the bilateral recognition agreements in force between the two authorities, specific validation may be required before the modification is accepted on an aircraft intended for registration in an EU member state.</p>
+<p>This point deserves careful checking, particularly if you are considering importing a modified aircraft from the United States into Europe. Lack of EASA recognition for the STC can require reverting to the original configuration, at significant cost and delay, or can even make the import impractical for certain major modifications.</p>
+
+<h2 id="pieges">Common pitfalls and points to watch</h2>
+<p>Certain situations come up regularly and deserve particular attention during the pre-purchase inspection of a modified aircraft.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>A modification carried out by a facility not approved for that type of STC: regulatory compliance can be called into question.</span></li>
+  <li><i data-icon="check"></i><span>An STC that applies only to certain variants of the model: check that the aircraft's serial number is actually covered.</span></li>
+  <li><i data-icon="check"></i><span>Several overlapping STCs whose continued-airworthiness instructions may conflict (weight and balance, speed limitations).</span></li>
+  <li><i data-icon="check"></i><span>Spare parts specific to the modification that have become scarce or expensive, which should be factored into the operating cost.</span></li>
+</ul>
+<p>In all cases, have the pre-purchase inspection carried out by an independent mechanic familiar with the aircraft type and the common modifications applied to it: they will quickly spot whether an installation actually matches the declared STC.</p>
+
+<h2 id="faq">Frequently asked questions</h2>
+<h3>What is an STC (Supplemental Type Certificate)?</h3>
+<p>An STC is a certificate issued by a civil aviation authority (EASA, FAA...) that approves a modification to an aircraft relative to its original type design. It is added to the original type certificate rather than replacing it.</p>
+<h3>Does an aircraft modified under an STC lose value?</h3>
+<p>Not necessarily. A recognised STC, properly documented and installed by an approved facility, can actually increase an aircraft's value and appeal (modern avionics, more power, winglets). It is missing documentation or a questionable installation that hurts value.</p>
+<h3>How do I verify an STC is valid before buying an aircraft?</h3>
+<p>Ask for a copy of the STC itself, the invoice and installation report from the approved facility, and the updated weight and balance sheet. Check that the STC is still recognised by the relevant authority for the country of intended registration.</p>
+<h3>Is a US STC automatically valid in Europe?</h3>
+<p>No. An FAA STC is not automatically accepted by EASA: specific validation or bilateral acceptance may be required depending on the type of modification and the agreements in force. This must be checked before buying any US-modified aircraft intended for registration in Europe.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always keep every document related to the STCs applied to your aircraft: they are an integral part of its technical file and affect its resale value just as much as its logbook does.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to compare aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Find an inspector <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Maintenance</span><strong>How much does it cost to maintain a light aircraft per year</strong><p>Real annual budget for maintaining a light aircraft: maintenance, insurance, hangar, fuel. Figures broken down by aircraft type.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Procedures</span><strong>Registering an aircraft in Europe</strong><p>How to register an aircraft in France or Europe: DGAC procedures, registration marks, timelines, costs and pitfalls to avoid after buying.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

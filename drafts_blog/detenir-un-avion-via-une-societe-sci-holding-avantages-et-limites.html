@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="SCI, holding ou société commerciale pour détenir un avion : avantages, limites et pièges juridiques et fiscaux à connaître avant de structurer son achat.">
+<meta property="og:title" content="Détenir un avion via une SCI ou une holding : avantages et limites | Aircraft2Sell">
+<meta property="og:description" content="SCI, holding ou société commerciale pour détenir un avion : avantages, limites et pièges juridiques et fiscaux à connaître avant de structurer son achat.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/detenir-un-avion-via-une-societe-sci-holding-avantages-et-limites.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/detenir-un-avion-via-une-societe-sci-holding-avantages-et-limites.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/detenir-un-avion-via-une-societe-sci-holding-avantages-et-limites.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/detenir-un-avion-via-une-societe-sci-holding-avantages-et-limites.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/detenir-un-avion-via-une-societe-sci-holding-avantages-et-limites.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Détenir un avion via une SCI ou une holding : avantages et limites | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Détenir un avion via une société (SCI/holding) : avantages et limites", "description": "SCI, holding ou société commerciale pour détenir un avion : avantages, limites et pièges juridiques et fiscaux à connaître avant de structurer son achat.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/detenir-un-avion-via-une-societe-sci-holding-avantages-et-limites.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Détenir un avion via une société (SCI/holding) : avantages et limites", "item": "https://aircraft2sell.eu/detenir-un-avion-via-une-societe-sci-holding-avantages-et-limites.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">SCI / holding et avion</span></nav>
+    <span class="eyebrow">Guide thématique</span>
+    <h1>Détenir un avion via une société (SCI/holding) : avantages et limites</h1>
+    <p>SCI, holding ou société commerciale : ce qu'il faut comprendre avant de structurer la détention d'un avion via une société, entre avantages patrimoniaux réels et contraintes à ne pas sous-estimer.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi envisager une structure sociétaire pour un avion</a></li><li><a href="#sci">La SCI : un outil pensé pour l'immobilier, pas pour l'aérien</a></li><li><a href="#holding">Holding ou société commerciale : une alternative plus adaptée</a></li><li><a href="#avantages">Les avantages patrimoniaux et organisationnels</a></li><li><a href="#limites">Les limites et pièges à anticiper</a></li><li><a href="#formalites">Immatriculation, assurance et formalités propres à l'aéronef</a></li><li><a href="#choisir">Comment choisir la structure adaptée à votre projet</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi envisager une structure sociétaire pour un avion</h2>
+<p>Acheter un avion d'occasion en nom propre reste la solution la plus simple pour un usage strictement personnel. Mais dès qu'un projet implique plusieurs copropriétaires, une transmission patrimoniale anticipée, ou une volonté de séparer juridiquement l'actif aéronautique du patrimoine personnel, la question de la structure de détention se pose rapidement. Faire porter la propriété de l'appareil par une société plutôt que par un ou plusieurs particuliers permet d'organiser plus clairement les règles de gouvernance, de financement et de sortie du capital.</p>
+<p>Cette approche n'est toutefois pas réservée aux flottes professionnelles ou aux jets d'affaires : elle concerne aussi des monomoteurs de tourisme détenus par un petit groupe d'amis ou de membres d'une même famille, qui préfèrent formaliser leurs relations via des statuts plutôt que par une simple convention d'indivision.</p>
+
+<h2 id="sci">La SCI : un outil pensé pour l'immobilier, pas pour l'aérien</h2>
+<p>La société civile immobilière (SCI) est historiquement conçue pour détenir des biens immobiliers, et son objet social est juridiquement centré sur cette activité. Loger un aéronef dans une SCI classique pose donc une difficulté de fond : l'objet social doit être rédigé ou adapté pour couvrir explicitement la détention et la gestion d'un bien mobilier particulier comme un avion, ce qui s'éloigne de l'usage habituel de cette forme sociale.</p>
+<p>Certains propriétaires ont pu, par simplification ou par méconnaissance, chercher à loger un avion dans une SCI existante créée initialement pour un bien immobilier. Cette pratique expose à un risque de requalification ou de contestation de l'objet social, notamment en cas de contrôle fiscal ou de litige entre associés. Une société civile peut en théorie être adaptée pour détenir un bien mobilier, mais elle doit alors être pensée et rédigée pour cet usage dès l'origine, avec des statuts spécifiques — et non simplement réutilisée telle quelle.</p>
+
+<h2 id="holding">Holding ou société commerciale : une alternative plus adaptée</h2>
+<p>Pour la détention d'un aéronef, de nombreux montages patrimoniaux privilégient plutôt une société commerciale (société civile à objet mobilier correctement rédigée, société par actions simplifiée, ou holding patrimoniale) dont l'objet social couvre explicitement l'acquisition, la détention et l'exploitation d'aéronefs. Une holding peut en outre faciliter l'articulation avec d'autres actifs professionnels ou patrimoniaux détenus par le même groupe familial, et organiser la gouvernance entre plusieurs associés de manière plus lisible qu'une indivision classique.</p>
+<p>Ce type de structure permet également d'envisager plus sereinement une mise à disposition de l'appareil à des tiers (location, usage par d'autres associés, mise en gestion auprès d'un exploitant), avec des règles contractuelles internes claires entre la société propriétaire et les utilisateurs de l'avion.</p>
+
+<h2 id="avantages">Les avantages patrimoniaux et organisationnels</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Séparation du patrimoine</strong> — l'avion devient un actif de la société, distinct du patrimoine personnel des associés, ce qui peut limiter certains risques en cas de difficulté personnelle d'un associé.</span></li>
+  <li><i data-icon="check"></i><span><strong>Gouvernance formalisée</strong> — les statuts et un pacte d'associés définissent les règles d'usage, de répartition des coûts et de prise de décision, bien plus précisément qu'une convention d'indivision informelle.</span></li>
+  <li><i data-icon="check"></i><span><strong>Transmission facilitée</strong> — céder des parts sociales peut s'avérer plus souple, dans certains cas, que céder une quote-part d'un bien détenu en indivision directe.</span></li>
+  <li><i data-icon="check"></i><span><strong>Entrée et sortie de co-investisseurs</strong> — un nouvel associé entre au capital sans qu'il soit nécessaire de modifier le titre de propriété de l'aéronef lui-même.</span></li>
+  <li><i data-icon="check"></i><span><strong>Lisibilité comptable</strong> — les charges liées à l'avion (entretien, assurance, grande visite, carburant) sont suivies dans une comptabilité dédiée, séparée des comptes personnels des associés.</span></li>
+</ul>
+<p>Ces avantages sont réels, mais ils ne constituent pas un gain automatique : ils dépendent entièrement de la qualité de rédaction des statuts, du pacte d'associés et de la convention d'usage de l'appareil, ainsi que du respect scrupuleux des règles de fonctionnement de la société dans le temps.</p>
+
+<h2 id="limites">Les limites et pièges à anticiper</h2>
+<p>Le premier piège est le coût de structuration : créer et faire vivre une société (rédaction des statuts, comptabilité annuelle, formalités de dépôt) représente une charge récurrente qui n'a de sens économique qu'à partir d'un certain niveau d'investissement ou d'un nombre suffisant d'associés. Pour un monomoteur de faible valeur détenu par deux personnes, une convention d'indivision bien rédigée peut rester plus simple et moins coûteuse qu'une société dédiée.</p>
+<p>Le deuxième piège concerne le régime fiscal applicable, qui varie fortement selon le pays, le type de société choisi et l'usage réel de l'appareil (personnel, locatif, professionnel). Les règles de TVA, de taxation des plus-values en cas de cession des parts, ou de déductibilité des charges diffèrent sensiblement d'une juridiction à l'autre et évoluent régulièrement. Il serait imprudent d'avancer ici un taux ou un seuil précis : chaque situation doit être validée avec un avocat fiscaliste ou un expert-comptable connaissant à la fois le droit des sociétés et la réglementation aéronautique locale.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne jamais calquer une structure pensée pour l'immobilier (SCI type) sur un aéronef sans faire vérifier l'objet social et le régime fiscal applicable par un professionnel spécialisé en droit aéronautique. Une structure mal adaptée peut être requalifiée et entraîner des conséquences fiscales et juridiques coûteuses.</div></div>
+<p>Enfin, une société propriétaire ne dispense pas des obligations attachées à l'aéronef lui-même : certificat de navigabilité à jour, respect des consignes de navigabilité, souscription d'une assurance adaptée à l'usage réel de l'appareil. La personnalité morale change le titulaire de la propriété, pas les règles de sécurité et de maintien de navigabilité qui s'appliquent à l'avion.</p>
+
+<h2 id="formalites">Immatriculation, assurance et formalités propres à l'aéronef</h2>
+<p>Lorsqu'une société devient propriétaire d'un aéronef, elle doit en principe apparaître comme titulaire sur les documents d'immatriculation auprès de l'autorité nationale compétente, avec les justificatifs liés à son existence juridique (extrait d'immatriculation de la société, statuts, le cas échéant preuve de capacité financière). Le dossier administratif est donc un peu plus dense que pour un achat en nom propre, mais reste gérable avec l'aide d'un courtier ou d'un conseil spécialisé.</p>
+<p>Côté assurance, les contrats doivent être souscrits au nom de la société propriétaire, en précisant les pilotes autorisés (associés, salariés, pilotes professionnels le cas échéant) et l'usage prévu de l'appareil. Une société qui loue l'avion à des tiers ou qui autorise plusieurs pilotes doit vérifier que sa police couvre bien cette réalité d'usage, sous peine de voir un sinistre contesté par l'assureur.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Vérifier que l'objet social couvre explicitement la détention et l'exploitation d'un aéronef avant toute immatriculation.</span></li>
+  <li><i data-icon="check"></i><span>Conserver le carnet d'entretien et tous les justificatifs de maintenance au nom de la société, pas d'un associé en particulier.</span></li>
+  <li><i data-icon="check"></i><span>Faire relire le pacte d'associés et la convention d'usage par un avocat avant signature, notamment les clauses de sortie et de rachat de parts.</span></li>
+  <li><i data-icon="check"></i><span>Anticiper la répartition des heures moteur entre associés si l'avion est partagé, pour éviter les litiges sur la revente future.</span></li>
+</ul>
+
+<h2 id="choisir">Comment choisir la structure adaptée à votre projet</h2>
+<p>Le choix de la structure dépend avant tout du nombre d'associés, de la valeur de l'appareil, de l'usage envisagé (strictement privé, locatif, professionnel) et des objectifs patrimoniaux à moyen terme (transmission, revente, intégration dans un groupe familial existant). Un achat solo pour un usage personnel justifie rarement la création d'une société dédiée. À l'inverse, un projet à plusieurs associés, un budget élevé, ou une volonté de préparer une transmission patrimoniale rendent une structure sociétaire souvent pertinente, à condition qu'elle soit correctement dimensionnée dès le départ.</p>
+<p>Dans tous les cas, l'étape la plus importante reste de faire valider le montage — type de société, rédaction des statuts, régime fiscal applicable — par des professionnels qui maîtrisent à la fois le droit des sociétés et les spécificités de l'aviation d'occasion, avant de signer le compromis d'achat de l'avion.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À retenir</strong> — Une société bien structurée simplifie la gouvernance et la transmission d'un avion détenu à plusieurs ; une société mal adaptée (SCI type recyclée sans adaptation) peut au contraire créer plus de risques juridiques et fiscaux qu'une détention en nom propre bien organisée.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez l'avion adapté à votre projet</h3>
+            <p>Comparez les annonces d'avions d'occasion disponibles en Europe sur Aircraft2Sell, quelle que soit la structure d'achat envisagée.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="copropriete-avion-guide.html" class="card"><span class="icon-box"><i data-icon="swap"></i></span><span class="eyebrow">Achat</span><strong>Copropriété d'avion : comment ça marche</strong><p>Fonctionnement, avantages, précautions et structure juridique pour partager la détention d'un aéronef.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="comment-financer-avion-leger.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Financement</span><strong>Comment financer l'achat d'un avion léger en Europe</strong><p>Prêt bancaire, crédit-bail, leasing, financement entre particuliers : toutes les options pour financer votre appareil.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Guide acheteur</span><strong>Immatriculation d'un aéronef en Europe</strong><p>Démarches, documents et spécificités selon le pays d'immatriculation choisi.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

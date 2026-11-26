@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Guide d'achat du Piper M600 d'occasion : budget, points de vigilance à l'inspection, système Halo, formation pilote et entretien d'un PA-46 turbopropulseur.">
+<meta name="keywords" content="Piper M600 occasion, PA-46 turbopropulseur occasion, achat Piper M600, Garmin Halo autoland, PT6A-42A">
+<meta property="og:title" content="Piper M600 d'occasion : guide d'achat | Aircraft2Sell">
+<meta property="og:description" content="Guide d'achat du Piper M600 d'occasion : budget, points de vigilance à l'inspection, système Halo, formation pilote et entretien d'un PA-46 turbopropulseur.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/piper-m600-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/piper-m600-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/piper-m600-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/piper-m600-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/piper-m600-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Piper M600 d'occasion : guide d'achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Piper M600 d'occasion : guide d'achat", "description": "Guide d'achat du Piper M600 d'occasion : budget, points de vigilance à l'inspection, système Halo, formation pilote et entretien d'un PA-46 turbopropulseur.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/piper-m600-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Piper M600 d'occasion : guide d'achat", "item": "https://aircraft2sell.eu/piper-m600-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Piper M600 d'occasion</span></nav>
+    <span class="eyebrow">Guide modèle</span>
+    <h1>Piper M600 d'occasion : guide d'achat</h1>
+    <p>Fiche technique, budget à prévoir, points de vigilance à l'inspection, système Halo et entretien pour acheter un Piper M600 d'occasion en connaissance de cause.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi le M600 séduit les propriétaires-pilotes</a></li><li><a href="#technique">Fiche technique et performances à connaître</a></li><li><a href="#budget">Quel budget prévoir à l'achat</a></li><li><a href="#inspection">Les points à vérifier avant d'acheter</a></li><li><a href="#halo">Le système Halo et l'avionique Garmin G3000</a></li><li><a href="#formation">Formation et qualification pilote</a></li><li><a href="#entretien">Entretien et coûts d'exploitation</a></li><li><a href="#revente">Revente et marché de l'occasion</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi le M600 séduit les propriétaires-pilotes</h2>
+<p>Le Piper M600 est un monomoteur turbopropulseur pressurisé, dernier développement de la famille PA-46 lancée par Piper dans les années 1980. Positionné en haut de la gamme des avions légers de voyage, il s'adresse à des propriétaires-pilotes souhaitant franchir l'étape du turbopropulseur sans basculer vers la complexité et le coût d'un jet d'affaires. Sa cabine pressurisée, sa vitesse de croisière élevée et son rayon d'action en font un outil de déplacement redoutablement efficace pour relier plusieurs destinations européennes dans la même journée.</p>
+<p>Sur le marché de l'occasion, le M600 reste un appareil relativement récent : les premiers exemplaires sont sortis d'usine au milieu des années 2010, ce qui limite le parc disponible mais garantit en contrepartie des appareils globalement jeunes, avec une avionique numérique de dernière génération déjà installée d'origine plutôt qu'ajoutée après coup.</p>
+
+<h2 id="technique">Fiche technique et performances à connaître</h2>
+<p>Le M600 est propulsé par un turbopropulseur Pratt &amp; Whitney Canada PT6A-42A, moteur reconnu pour sa fiabilité et largement répandu sur de nombreux types d'aéronefs légers et régionaux dans le monde. Cette motorisation offre une vitesse de croisière maximale annoncée par le constructeur autour de 274 ktas et un rayon d'action pouvant dépasser 1 400 nm selon la configuration de vol choisie, ce qui permet de relier la plupart des grandes villes européennes sans escale.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Caractéristique</th><th>Donnée constructeur</th></tr></thead>
+<tbody>
+<tr><td>Motorisation</td><td>Pratt &amp; Whitney Canada PT6A-42A</td></tr>
+<tr><td>Vitesse de croisière maximale</td><td>Environ 274 ktas</td></tr>
+<tr><td>Rayon d'action</td><td>Environ 1 400 à 1 650 nm selon configuration</td></tr>
+<tr><td>Avionique</td><td>Garmin G3000 avec système Halo (Autoland)</td></tr>
+<tr><td>Cabine</td><td>Pressurisée, jusqu'à 5 ou 6 occupants selon aménagement</td></tr>
+</tbody></table></div>
+<p>Au-delà des chiffres de performance, l'appareil se distingue par sa cabine pressurisée qui permet de voler à des altitudes élevées, au-dessus de la majorité des turbulences et du trafic aérien le plus dense, un atout de confort et d'efficacité notable pour les longues liaisons.</p>
+
+<h2 id="budget">Quel budget prévoir à l'achat</h2>
+<p>Le budget d'acquisition d'un M600 d'occasion varie fortement selon l'année de fabrication, le nombre d'heures total cellule et moteur, le statut du moteur par rapport à son programme d'entretien et le niveau de mise à jour de l'avionique. Les premiers exemplaires de la gamme, aujourd'hui disponibles sur le marché secondaire, se négocient à un niveau nettement plus accessible que les appareils récents sortis d'usine avec le système Halo déjà installé, qui représentent un investissement bien plus conséquent.</p>
+<p>Au-delà du prix d'achat lui-même, il faut intégrer dans le plan de financement les frais annexes propres à un turbopropulseur : inspection pré-achat réalisée par un atelier qualifié sur le type, immatriculation et transfert, assurance adaptée à la catégorie turbopropulseur, et éventuellement une remise à niveau de l'avionique si l'appareil ne dispose pas encore de la dernière version logicielle du système Halo.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Le coût d'exploitation horaire d'un turbopropulseur reste supérieur à celui d'un monomoteur à pistons haut de gamme : carburant Jet A, maintenance spécialisée et primes d'assurance pèsent plus lourd dans le budget annuel global.</div></div>
+
+<h2 id="inspection">Les points à vérifier avant d'acheter</h2>
+<p>Un M600 est un appareil technologiquement sophistiqué, ce qui impose une inspection pré-achat menée par un mécanicien ou un atelier spécifiquement qualifié sur le type, idéalement un centre de service agréé par le constructeur. Plusieurs points méritent une attention particulière.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Historique complet du moteur PT6A-42A : heures écoulées, respect scrupuleux du programme d'entretien défini par le motoriste, traçabilité des pièces changées et des éventuelles interventions majeures.</span></li>
+  <li><i data-icon="check"></i><span>État du système de pressurisation cabine, dont le bon fonctionnement est essentiel au confort et à la sécurité des vols à haute altitude.</span></li>
+  <li><i data-icon="check"></i><span>Version logicielle et état de l'avionique Garmin G3000, ainsi que la présence ou non du système Halo selon l'année de production de l'appareil.</span></li>
+  <li><i data-icon="check"></i><span>Carnet de route, dossier technique et historique des éventuelles réparations structurelles, sans zone d'ombre sur le passé de l'appareil.</span></li>
+  <li><i data-icon="check"></i><span>Conformité aux consignes de navigabilité et bulletins de service applicables au type, à faire vérifier systématiquement par l'atelier retenu pour l'inspection.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Pour un appareil de cette complexité, ne jamais se contenter des déclarations du vendeur : un rapport d'inspection écrit, établi par un atelier habitué au PA-46 turbopropulseur, reste la meilleure protection avant de s'engager.</div></div>
+
+<h2 id="halo">Le système Halo et l'avionique Garmin G3000</h2>
+<p>Le système Halo, développé avec Garmin, intègre une fonction d'atterrissage automatique d'urgence : en cas d'incapacitation du pilote, l'appareil peut se dérouter et se poser automatiquement sur l'aérodrome le plus adapté, sans intervention humaine. Cette fonction, propre aux versions les plus récentes du M600, constitue un argument de sécurité et de valeur de revente important, et sa présence ou son absence doit être clairement identifiée avant toute négociation de prix.</p>
+<p>Sur les exemplaires antérieurs à l'introduction du Halo, il convient de vérifier auprès du constructeur ou d'un centre de service agréé si une mise à niveau rétroactive est disponible pour le millésime concerné, et d'intégrer ce coût éventuel dans la négociation si cette option intéresse l'acheteur.</p>
+
+<h2 id="formation">Formation et qualification pilote</h2>
+<p>Le passage au turbopropulseur suppose une formation spécifique sur le type, généralement dispensée par un organisme agréé ou par le réseau de formation du constructeur. Cette formation couvre les procédures propres à la motorisation à turbine, la gestion de la pressurisation cabine et la prise en main de l'avionique intégrée, dont le système Halo. Les assureurs demandent le plus souvent la preuve de cette qualification avant de couvrir un pilote propriétaire sur ce type d'appareil, un point à anticiper dès le projet d'achat.</p>
+<p>Un pilote venant d'un monomoteur à pistons devra prévoir un temps d'adaptation pour se familiariser avec les spécificités de vol d'un turbopropulseur pressurisé, notamment en matière de gestion de puissance et de procédures en haute altitude.</p>
+
+<h2 id="entretien">Entretien et coûts d'exploitation</h2>
+<p>L'entretien d'un M600 doit être confié à un atelier agréé pour le PA-46 turbopropulseur, capable de suivre le programme de maintenance défini par Piper et par le motoriste pour le PT6A-42A. Les postes de dépense principaux restent les visites périodiques obligatoires, le suivi du moteur selon son programme d'entretien, l'assurance et, à plus long terme, les opérations de révision majeure du moteur une fois le potentiel horaire atteint.</p>
+<p>Un historique d'entretien rigoureux, documenté et réalisé exclusivement en atelier agréé constitue un argument de poids lors d'une revente future, d'autant plus pour un appareil de cette catégorie où les acheteurs potentiels sont particulièrement attentifs à la traçabilité technique.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez systématiquement le dossier moteur complet et les dernières factures de maintenance avant de faire une offre : elles donnent une image fidèle du sérieux de l'entretien passé sur un appareil de cette technicité.</div></div>
+
+<h2 id="revente">Revente et marché de l'occasion</h2>
+<p>Le marché de l'occasion du M600 reste restreint en volume par rapport aux monomoteurs à pistons les plus répandus, en raison du nombre limité d'exemplaires produits depuis le lancement du modèle. Cette rareté relative joue plutôt en faveur des vendeurs sur un appareil bien entretenu et documenté, tout en imposant à l'acheteur de comparer les annonces disponibles à l'échelle européenne, voire au-delà, pour identifier la meilleure opportunité.</p>
+<p>Un appareil équipé du système Halo, avec un historique transparent et un moteur disposant d'un bon potentiel restant, se revend généralement plus facilement et dans de meilleures conditions qu'un exemplaire plus ancien dont le dossier technique comporte des zones d'ombre ou dont l'avionique n'a pas été mise à jour.</p>
+<p>Avant de signer, il reste utile de comparer plusieurs appareils de la même génération afin de mesurer objectivement l'impact du système Halo, de l'état moteur et de la qualité de l'entretien sur le prix demandé. Un acheteur patient, prêt à élargir sa recherche à l'échelle européenne plutôt qu'à son seul marché national, a généralement plus de chances de trouver un exemplaire correspondant précisément à son budget et à ses exigences techniques.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Piper M600</h3>
+            <p>Comparez les annonces de Piper M600 d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide thématique</span><strong>Turbopropulseur ou jet d'affaires : lequel choisir</strong><p>Comparatif des deux catégories pour orienter votre choix d'appareil haut de gamme.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="cirrus-sr22-occasion-guide-achat-budget.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cirrus SR22 d'occasion : guide d'achat et budget</strong><p>Budget, points de vigilance et entretien pour un monomoteur à pistons haut de gamme.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

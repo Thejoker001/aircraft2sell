@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used Schleicher ASH 25 buying guide: the open class two-seat glider. Budget, versions, inspection points to watch, maintenance and resale.">
+<meta name="keywords" content="used Schleicher ASH 25, open class glider for sale, ASH 25 M, ASH 25 Mi, two-seat performance glider, buy a glider">
+<meta property="og:title" content="Used Schleicher ASH 25: buying guide | Aircraft2Sell">
+<meta property="og:description" content="Used Schleicher ASH 25 buying guide: the open class two-seat glider. Budget, versions, inspection points to watch, maintenance and resale.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/schleicher-ash-25-occasion-guide-achat-planeur.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/schleicher-ash-25-occasion-guide-achat-planeur.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/schleicher-ash-25-occasion-guide-achat-planeur.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/schleicher-ash-25-occasion-guide-achat-planeur.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/schleicher-ash-25-occasion-guide-achat-planeur.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Schleicher ASH 25: buying guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Schleicher ASH 25: buying guide", "description": "Used Schleicher ASH 25 buying guide: the open class two-seat glider. Budget, versions, inspection points to watch, maintenance and resale.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/schleicher-ash-25-occasion-guide-achat-planeur.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Schleicher ASH 25: buying guide", "item": "https://aircraft2sell.eu/en/schleicher-ash-25-occasion-guide-achat-planeur.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used Schleicher ASH 25</span></nav>
+    <span class="eyebrow">Model guide</span>
+    <h1>Used Schleicher ASH 25: buying guide</h1>
+    <p>Budget to plan for, differences between versions, inspection points to watch, routine maintenance and resale outlook to help you buy a used Schleicher ASH 25 with full knowledge of the facts.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#pourquoi">Why the ASH 25 remains a benchmark in open class</a></li><li><a href="#versions">ASH 25, ASH 25 M and ASH 25 Mi: what's the difference</a></li><li><a href="#budget">What budget to plan for at purchase</a></li><li><a href="#inspection">What to check before buying</a></li><li><a href="#ballast">Water ballast and the 25-metre wingspan: specifics to plan for</a></li><li><a href="#entretien">Maintenance and operating costs</a></li><li><a href="#revente">Resale and the used market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Why the ASH 25 remains a benchmark in open class</h2>
+<p>The Schleicher ASH 25 is a two-seat performance glider designed by the German manufacturer Alexander Schleicher for the open class, the category that allows the largest wingspans with no area limit. With a 25-metre wingspan, an all-composite structure and a high glide ratio, it was designed for cross-country distance flying and two-seat competition, while remaining within reach of private crews chasing the best two-seat performance on the market.</p>
+<p>Since its launch, the ASH 25 has established itself as a benchmark among demanding glider pilots, both for high-performance task flying and for cross-country distance flights over mountains or flatlands. Its reputation for structural robustness and clean handling, even heavily loaded with water ballast, has made it a preferred choice for ownership groups wanting to share a two-seat glider able to rival the best single-seaters on glide ratio.</p>
+<p>On the used market, the ASH 25 comes in several production years spanning multiple decades, with developments in cockpit layout, instrumentation and powered versions. This long production run explains reasonable availability of supply in Europe, but also a wide price range depending on age, airframe hours and the version concerned.</p>
+
+<h2 id="versions">ASH 25, ASH 25 M and ASH 25 Mi: what's the difference</h2>
+<p>The base version, the ASH 25, is a pure glider with no engine, relying on a tow plane or winch to launch. This is the most common configuration among the earliest airframes produced, with a more accessible purchase and maintenance cost.</p>
+<p>The ASH 25 M version adds a retractable auxiliary engine, allowing self-launch and self-sustaining flight without relying on an available tow plane or winch. The later ASH 25 Mi version follows the same principle with a folding-propeller powerplant, offering even greater independence to get home from a cross-country flight without outside assistance if needed.</p>
+<p>Before targeting one version or the other, it's worth clearly defining your main intended use — club flying with a tow plane available, or independent cross-country flying far from towing infrastructure — since the gap in budget and maintenance obligations between a pure glider and a powered version is significant.</p>
+
+<h2 id="budget">What budget to plan for at purchase</h2>
+<p>The price of a used ASH 25 depends above all on its age, total airframe hours, the condition of its composite skin and, for the M and Mi versions, the hours and condition of the auxiliary engine. The oldest airframes trade at a noticeably more accessible entry level than recent, well-maintained, low-hour examples held by a careful ownership group.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Age and airframe hours</td><td>A recent, lightly used example trades noticeably higher</td></tr>
+<tr><td>Condition of the composite skin</td><td>No history of major repair reassures buyers and raises value</td></tr>
+<tr><td>Version (pure, M or powered Mi)</td><td>Powered versions represent a significantly larger investment</td></tr>
+<tr><td>Maintenance history</td><td>A complete logbook and consistent maintenance at an approved shop reassure the buyer</td></tr>
+</tbody></table></div>
+<p>Beyond the purchase price, your budget should include ancillary costs: an independent mechanic's pre-purchase inspection, registration and transfer fees, insurance, and a transport trailer or hangar space sized for the 25-metre wingspan.</p>
+
+<h2 id="inspection">What to check before buying</h2>
+<p>As with any used glider, a pre-purchase inspection by an independent mechanic qualified on the type is essential before finalising a transaction. For an ASH 25, a few points deserve particular attention.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Condition of the composite skin across the full wingspan, especially the wing roots and joint areas, which take repeated stress through frequent assembly and disassembly.</span></li>
+  <li><i data-icon="check"></i><span>Total airframe hours and the history of periodic inspections, with a complete logbook and no chronological gaps.</span></li>
+  <li><i data-icon="check"></i><span>For the M and Mi versions, hours and maintenance on the auxiliary engine, and proper operation of the propeller's retraction and extension system.</span></li>
+  <li><i data-icon="check"></i><span>Condition of the water ballast system, its valves and overall sealing, a system put under stress on every performance flight.</span></li>
+  <li><i data-icon="check"></i><span>Past storage conditions (hangar or trailer): an airframe regularly disassembled and stored under cover keeps its composite skin in noticeably better condition over time.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Never rely solely on the seller's statements about overall condition: a written independent inspection report, ideally done by a shop approved on the type, remains the best protection against a bad surprise after the purchase.</div></div>
+
+<h2 id="ballast">Water ballast and the 25-metre wingspan: specifics to plan for</h2>
+<p>The ASH 25 is designed to fly with substantial water ballast, which increases mass and therefore the optimal cruise speed on cross-country flights in strong thermal conditions. This system calls for a careful check of tank sealing and dump valves before buying, since an undetected leak can throw off in-flight balance and complicate mass management.</p>
+<p>The 25-metre wingspan also brings logistical requirements specific to this type of glider: a suitably sized transport trailer, enough assembly space at the airfield and, where relevant, appropriately sized hangar space. These elements need to be planned for before buying, since they represent an investment and an operating constraint in their own right, separate from the price of the airframe itself.</p>
+
+<h2 id="entretien">Maintenance and operating costs</h2>
+<p>The operating cost of an ASH 25 remains well below that of a motor aircraft of comparable size, which explains part of its appeal to ownership groups. The main expense items remain the periodic airworthiness inspection, insurance, transport and storage (hangar or trailer) and, for powered versions, maintenance on the auxiliary engine and its retraction system.</p>
+<p>Having the aircraft maintained at an approved shop familiar with the type and with composite materials helps limit unpleasant surprises and preserve its resale value. Rigorous, well-documented maintenance records are a strong argument at a future resale, especially for a glider held by an ownership group with several pilots having flown it over time.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for the complete logbook and the latest periodic inspection reports before making an offer: they give an accurate picture of how seriously the glider has been maintained, especially for an airframe coming out of an ownership group.</div></div>
+
+<h2 id="revente">Resale and the used market</h2>
+<p>The ASH 25 benefits from an active used market in Europe, supported by a sizeable installed base among performance pilots and good parts availability through the manufacturer and its approved shops. A well-maintained glider, with a transparent history and composite skin in good condition, generally resells more easily and on better terms than an example whose technical file has grey areas.</p>
+<p>Comparing several listings of similar airframes remains the best way to assess a fair price, both for buying and for preparing a future resale. Price differences between two examples of the same model year are almost always explained by airframe hours, skin condition and the quality of documented maintenance, as well as by the version (pure, M or powered Mi) concerned.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Schleicher ASH 25</h3>
+            <p>Compare used Schleicher ASH 25 listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="planeur-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Category guide</span><strong>Used glider: the complete buying guide</strong><p>Budget, benchmark brands, inspection points, licence requirements and resale for a used glider.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Buying</span><strong>Certifying and registering an aircraft in Europe</strong><p>Steps, choosing a registration country, the paperwork needed, timelines and costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

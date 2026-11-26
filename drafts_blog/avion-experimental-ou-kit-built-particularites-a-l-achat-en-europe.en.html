@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Experimental or kit-built aircraft in Europe: registration, usage limits, insurance and what to check before buying one secondhand.">
+<meta property="og:title" content="Experimental or kit-built aircraft: what's different about buying one in Europe | Aircraft2Sell">
+<meta property="og:description" content="Experimental or kit-built aircraft in Europe: registration, usage limits, insurance and what to check before buying one secondhand.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Experimental or kit-built aircraft: what's different about buying one in Europe | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Experimental or kit-built aircraft: what's different about buying one in Europe", "description": "Experimental or kit-built aircraft in Europe: registration, usage limits, insurance and what to check before buying one secondhand.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Experimental or kit-built aircraft: what's different about buying one in Europe", "item": "https://aircraft2sell.eu/en/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Experimental / kit-built aircraft</span></nav>
+    <span class="eyebrow">Topic guide</span>
+    <h1>Experimental or kit-built aircraft: what's different about buying one in Europe</h1>
+    <p>An experimental or kit-built aircraft doesn't carry the same status as a type-certified aircraft. Registration, allowed use, insurance, resale: what to understand before buying a secondhand aircraft of this kind in Europe.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#definition">What is an experimental or kit-built aircraft</a></li><li><a href="#statut">A different regulatory status from a certified aircraft</a></li><li><a href="#achat-occasion">Buying a secondhand kit-built: what changes</a></li><li><a href="#inspection">Pre-purchase inspection: specific points to check</a></li><li><a href="#assurance">Insurance and usage limits</a></li><li><a href="#revente">Resale and the secondhand market</a></li><li><a href="#pays">Rules that vary from country to country</a></li><li><a href="#check-list">Checklist before committing</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">What is an experimental or kit-built aircraft</h2>
+<p>A kit-built aircraft is one assembled by an amateur builder from a kit supplied by a manufacturer (Van's Aircraft, Zenith, Sling, Lancair, to name a few of the best-known), following detailed plans and instructions. Once assembly is complete and inspected, the aircraft receives what's usually called an "experimental" status or a national equivalent, distinct from the type certification applied to aircraft produced in series by an industrial manufacturer.</p>
+<p>This category covers a wide range of aircraft: capable touring aircraft, replicas of historic types, two-seat aerobatic machines, or highly specialised designs built in very small numbers. The common thread isn't the aircraft's mission but its mode of production and the regulatory framework that comes with it.</p>
+
+<h2 id="statut">A different regulatory status from a certified aircraft</h2>
+<p>Unlike an aircraft holding a type certificate (EASA or equivalent), a kit-built aircraft has not been evaluated against the same design requirements. In Europe, it is registered under a national scheme specific to amateur-built aircraft, often managed by an association or a delegated national authority rather than directly by EASA. The exact arrangements of this scheme vary from one member state to another, which makes local verification essential before any purchase or import project.</p>
+<p>This status has practical consequences: commercial use is generally restricted or prohibited, and certain modifications or repairs may require the involvement of the original amateur builder, their designated successor, or a recognised competent body, depending on the rules in the country of registration.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — The rules for registration, continued airworthiness and allowed use of an amateur-built aircraft vary considerably from one country to another. Always check with the civil aviation authority of the country of registration concerned before committing.</div></div>
+
+<h2 id="achat-occasion">Buying a secondhand kit-built: what changes</h2>
+<p>Buying a secondhand experimental aircraft differs from buying a certified one in several key respects. First, build quality depends directly on the original amateur builder: two examples of the same kit model can show very different finish and reliability depending on the care taken during assembly, the builder's experience and how closely the instructions were followed.</p>
+<p>Second, the technical file matters even more than for a certified aircraft. The building log, photos taken during assembly, the conformity inspection reports completed before the first flight, and the full history of modifications are as valuable as the flight logbook itself. An incomplete file, or a build with no traceable history, should be treated as a strong warning sign.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Ask for the complete building log, not just the flight logbook since entry into service.</span></li>
+  <li><i data-icon="check"></i><span>Check the identity of the original amateur builder and, if the aircraft has changed hands several times, the continuity of technical follow-up.</span></li>
+  <li><i data-icon="check"></i><span>Look into the kit's reputation (model, manufacturer) and any known technical bulletins or feedback from the builder community.</span></li>
+  <li><i data-icon="check"></i><span>Confirm the aircraft went through a conformity inspection before its first flight and that the limits of the initial flight-test programme were respected.</span></li>
+</ul>
+
+<h2 id="inspection">Pre-purchase inspection: specific points to check</h2>
+<p>A pre-purchase inspection on a kit-built aircraft follows the same general principles as for a certified one, with additional points specific to amateur construction. Using an independent mechanic or inspector, ideally familiar with the kit type involved, remains the best protection — see our guide on pre-purchase aircraft inspection for the general methodology.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Quality of structural assembly: riveting, composite bonding or welding, depending on the construction technique used.</span></li>
+  <li><i data-icon="check"></i><span>Consistency between the original kit plans and the modifications actually found on the aircraft.</span></li>
+  <li><i data-icon="check"></i><span>Engine installation and wiring: often done by the amateur builder themselves, so more variable in quality than an industrial production line.</span></li>
+  <li><i data-icon="check"></i><span>History of reported incidents or occurrences, and follow-up on any recommendations issued by the kit manufacturer.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — A kit-built aircraft whose original amateur builder can no longer be reached, or whose building log has been lost, loses much of its resale value and the trust a buyer can place in it, even if the aircraft flies without apparent issue.</div></div>
+
+<h2 id="assurance">Insurance and usage limits</h2>
+<p>Insuring an experimental aircraft follows a particular logic: insurers assess not only the aircraft and the pilot, but also the reputation of the kit model and, sometimes, the documented quality of the build. Premiums can be higher than for an equivalent certified model, especially for less common kits or one-off builds with no statistical track record.</p>
+<p>In terms of use, an aircraft in the experimental category is most often restricted to personal, non-commercial flying. Carrying paying passengers, renting the aircraft to third parties, or using it for flight training is generally excluded or subject to very restrictive conditions depending on the applicable national scheme. These restrictions should be checked before purchase if the intended use goes beyond simple personal or leisure flying.</p>
+
+<h2 id="revente">Resale and the secondhand market</h2>
+<p>The secondhand market for kit-built aircraft remains active in Europe, driven by popular models backed by a well-organised community of builders and pilots, which makes it easier to find spare parts, technical advice and shared experience. Rarer models or one-off builds reach a smaller audience, which can lengthen the time needed to resell.</p>
+<p>Documentary transparency plays a decisive role in resale value: an aircraft with a complete building log, assembly photos and a rigorous maintenance history negotiates on better terms than a similar aircraft with uncertain traceability.</p>
+
+<h2 id="pays">Rules that vary from country to country</h2>
+<p>Each European country regulates amateur construction and the registration of experimental aircraft differently: some delegate management to a recognised national association, others apply procedures directly supervised by the civil aviation authority. The rules for transferring registration during a private sale between countries, or during an import, can also differ significantly.</p>
+<p>Before buying an aircraft registered in a country different from the one where you plan to base it, look into the registration-change procedures that apply to amateur-built aircraft in both countries involved — the process can be longer or more complex than for a standard certified aircraft.</p>
+
+<h2 id="check-list">Checklist before committing</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Complete building log, with photos and conformity inspection reports from before the first flight.</span></li>
+  <li><i data-icon="check"></i><span>Verification of the exact regulatory status with the competent authority or association in the country of registration.</span></li>
+  <li><i data-icon="check"></i><span>Technical inspection by an independent professional familiar with the kit type.</span></li>
+  <li><i data-icon="check"></i><span>Insurance quote obtained before purchase, specifying the intended use (personal, aerobatics, touring).</span></li>
+  <li><i data-icon="check"></i><span>Verification of registration-transfer conditions if the aircraft is to change its country of base.</span></li>
+</ul>
+<p>Properly prepared, buying a secondhand kit-built aircraft can give access to performance and flying enjoyment often superior to a certified aircraft at a comparable budget. The trade-off is a higher level of documentary and regulatory diligence, which should be anticipated from the very first searches through listings.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to compare aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Topic guide</span><strong>Registering an aircraft in Europe</strong><p>Registration steps for an aircraft, helicopter or microlight by country, and points to watch when changing registry.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Insurance</span><strong>Insuring your aircraft in Europe: the complete guide</strong><p>Liability, hull cover, essential guarantees: how to properly insure your aircraft, helicopter or microlight in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Email confirmation handler (Supabase Auth links)
+   --------------------------------------------------------------------------
+   When a user clicks the confirmation link sent by email, Supabase redirects
+   to the site with a hash containing the tokens:
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Without this script, NOTHING reads this hash: the email gets confirmed in
+   the database but the user never obtains a session — they would have to log
+   in manually (or stay stuck if they don't understand why). Result:
+   "users can't publish a listing".
+
+   This script must load WITHOUT defer, early in <head>, to create the
+   session BEFORE page scripts (pseudo-gate, login guard, etc.) redirect and
+   lose the hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + name from the JWT (no second network call). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Clean the URL hash (the token must not stay visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination: redirect_to (if same origin) → reset-password if
+       recovery → otherwise dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used Wassmer WA52 and WA54 buying guide: budget, inspection points to watch, maintenance and parts availability on the European market.">
+<meta property="og:title" content="Used Wassmer WA52 and WA54: buying guide | Aircraft2Sell">
+<meta property="og:description" content="Used Wassmer WA52 and WA54 buying guide: budget, inspection points to watch, maintenance and parts availability on the European market.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/wassmer-wa52-54-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/wassmer-wa52-54-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/wassmer-wa52-54-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/wassmer-wa52-54-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/wassmer-wa52-54-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Wassmer WA52 and WA54: buying guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Wassmer WA52 and WA54: buying guide", "description": "Used Wassmer WA52 and WA54 buying guide: budget, inspection points to watch, maintenance and parts availability on the European market.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/wassmer-wa52-54-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Wassmer WA52 and WA54: buying guide", "item": "https://aircraft2sell.eu/en/wassmer-wa52-54-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used Wassmer WA52/WA54</span></nav>
+    <span class="eyebrow">Model guide</span>
+    <h1>Used Wassmer WA52 and WA54: buying guide</h1>
+    <p>Budget to plan for, inspection points to watch, routine maintenance and parts availability for buying a used Wassmer WA52 or WA54 with full confidence.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#overview">The Wassmer WA52 and WA54: two derivatives of the same family</a></li><li><a href="#budget">What budget to plan for</a></li><li><a href="#inspection">What to check before buying</a></li><li><a href="#structure">Wood and fabric covering: a structure to monitor</a></li><li><a href="#maintenance">Routine maintenance and spare parts</a></li><li><a href="#usage">Typical use and pilot profile</a></li><li><a href="#insurance">Insurance and storage</a></li><li><a href="#resale">Resale and the used market</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="overview">The Wassmer WA52 and WA54: two derivatives of the same family</h2>
+<p>The Wassmer WA52 Europa and the WA54 Atlantic belong to the family of light aircraft built by the French manufacturer Wassmer in Issoire during the 1970s. Designed as four-seat evolutions of the WA50/WA51 line, these aircraft share a sturdy fabric-covered wooden airframe, a landing gear configuration that varies by version, and piston engines suited to family touring or advanced flight training.</p>
+<p>The WA54 Atlantic stands out with generally more engine power and a slightly higher useful load compared to the WA52, making it a preferred choice for pilots seeking more versatility over longer distances. On the used market, both models remain relatively rare compared to large American production runs, which calls for a more patient search but also opens the door to acquisition prices that are often more accessible.</p>
+
+<h2 id="budget">What budget to plan for</h2>
+<p>The price of a used WA52 or WA54 depends above all on the overall condition of the wooden airframe, the remaining engine hours before the major overhaul, the quality of the maintenance documented in the logbook, and the availability of parts specific to the type. An aircraft that has been rigorously maintained by a shop familiar with wood-and-fabric construction will naturally command a higher price than an example that has gone through extended periods of inactivity.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Condition of the wood-and-fabric structure</td><td>Recent fabric covering and a sound structure significantly increase value</td></tr>
+<tr><td>Remaining engine hours (SMOH)</td><td>An engine close to its major overhaul limit weighs heavily on price</td></tr>
+<tr><td>History documented in the logbook</td><td>A complete, traceable record reassures buyers and eases resale</td></tr>
+<tr><td>Rarity and parts availability</td><td>The small population of this type can extend repair turnaround times</td></tr>
+</tbody></table></div>
+<p>Beyond the purchase price, budget for a pre-purchase inspection carried out by an independent mechanic familiar with wood-and-fabric construction, registration fees, insurance, and a possible refurbishment of the fabric covering or onboard equipment if the aircraft needs it.</p>
+
+<h2 id="inspection">What to check before buying</h2>
+<p>A used aircraft of this type requires a particularly careful inspection, due to its wood-and-fabric structure and its age. Engage an independent mechanic experienced with this type of construction before making any offer.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Condition of the wooden structure: look for any trace of moisture, rot or poorly documented previous repairs, especially around the spars and metal fittings.</span></li>
+  <li><i data-icon="check"></i><span>Condition and tension of the fabric covering: cracking, detachment or aging of the fabric, which may require a complete recovering if it hasn't been done recently.</span></li>
+  <li><i data-icon="check"></i><span>Complete engine history: engine hours since last overhaul, compliance with the maintenance program, traceability of replaced parts.</span></li>
+  <li><i data-icon="check"></i><span>Complete flight log and logbook, with no gray areas in the aircraft's history or in the validity of the certificate of airworthiness (CofA).</span></li>
+  <li><i data-icon="check"></i><span>Real availability of type-specific spare parts through owner networks or shops specializing in older French-built aircraft.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — On an older wood-and-fabric aircraft, a written independent inspection report explicitly covering the condition of the internal structure remains the best protection against an unpleasant surprise after purchase.</div></div>
+
+<h2 id="structure">Wood and fabric covering: a structure to monitor</h2>
+<p>The fabric-covered wooden airframe of the WA52 and WA54 requires maintenance specific to this type of construction, different from that of the metal or composite aircraft more common on the market. Moisture, temperature swings and the natural aging of wood and fabric are the main degradation factors to watch over time.</p>
+<p>Dry hangar storage and regular inspection of sensitive points (spars, metal fittings, assembly areas) help limit these risks. Before buying, always ask for the date of the last complete fabric recovering and the reports from periodic inspections covering the internal structure.</p>
+<p>It is also worth asking about the construction method originally used and any major modifications or repairs carried out over the decades. A shop specializing in wood-and-fabric aircraft restoration can, on request, carry out a thorough check of the internal structure without full disassembly, using targeted probing on the areas most exposed to moisture.</p>
+
+<h2 id="maintenance">Routine maintenance and spare parts</h2>
+<p>Routine maintenance of a WA52 or WA54 remains comparable to that of other piston light aircraft in its category for the standard items: mandatory annual inspection, insurance and parking. The particularity lies mainly in the availability of parts specific to the airframe and certain equipment, which is less widespread than for mass-produced series.</p>
+<p>Connecting with a Wassmer owners' network or a shop specializing in older French-built aircraft helps anticipate supply lead times and benefit from accumulated experience with this type.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Ask the seller for the contact details of the shop that has maintained the aircraft in recent years: a mechanic already familiar with the type is a valuable resource going forward.</div></div>
+
+<h2 id="usage">Typical use and pilot profile</h2>
+<p>The WA52 and WA54 suit family touring or four-seat travel well, with good cabin comfort for their category. Their handling characteristics, inherited from the WA50/WA51 line, remain appreciated by pilots looking for a distinctive aircraft, different from the American standards that dominate the used market.</p>
+<p>This type of aircraft appeals more to a buyer motivated by French aviation heritage and willing to invest time in maintaining a wood-and-fabric structure than to a pilot seeking maximum operational simplicity. Joining an owners' association or a club with a passion for this type of aircraft greatly eases access to practical advice, trusted shop contacts and, occasionally, rare used parts that never circulate through standard sales channels.</p>
+
+<h2 id="insurance">Insurance and storage</h2>
+<p>Insurance for a Wassmer WA52 or WA54 remains broadly comparable to that of a piston light aircraft in the same category, except that some insurers ask for a precise statement on the age of the structure and the date of the last fabric recovering. A complete and transparent technical file generally makes it easier to obtain a reasonable rate from a broker specializing in light aviation.</p>
+<p>Closed hangar storage is strongly recommended for this type of aircraft: prolonged exposure to weather accelerates the aging of the wood and fabric, while dry hangar storage considerably limits the moisture cycles responsible for most of the deterioration seen on older airframes. This expense item should be planned for from the moment of purchase, alongside insurance and routine maintenance.</p>
+
+<h2 id="resale">Resale and the used market</h2>
+<p>The used market for the WA52 and WA54 remains limited, with a much smaller population than the large American single-engine production series. This rarity can work in favor of the seller of a well-maintained aircraft, but it can also extend search times for buyers and sale times for owners.</p>
+<p>A complete technical file, recent fabric covering and documented maintenance remain the best arguments for a good sale. Comparing the few available listings is the best way to assess a fair price for this type of aircraft, which is underrepresented on general marketplaces.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Wassmer WA52/WA54</h3>
+            <p>Compare used Wassmer WA52 and WA54 listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="robin-dr400-occasion.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Robin DR400: what you need to know</strong><p>Another French classic in wood-fabric and composite, for a comparable aircraft profile.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Topic guide</span><strong>Light aircraft maintenance cost</strong><p>The expense items to plan for when operating a used light aircraft over time.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

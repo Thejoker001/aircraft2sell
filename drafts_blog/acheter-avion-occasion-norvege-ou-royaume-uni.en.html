@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Buying a used aircraft in Norway or the UK in 2026: market, prices, registration (Luftfartstilsynet / CAA), taxation and pitfalls to avoid. The complete comparison.">
+<meta property="og:title" content="Buying a Used Aircraft in Norway or the UK: Which Country to Choose | Aircraft2Sell">
+<meta property="og:description" content="Buying a used aircraft in Norway or the UK in 2026: market, prices, registration (Luftfartstilsynet / CAA), taxation and pitfalls to avoid. The complete comparison.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/acheter-avion-occasion-norvege-ou-royaume-uni.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/acheter-avion-occasion-norvege-ou-royaume-uni.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-norvege-ou-royaume-uni.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-norvege-ou-royaume-uni.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-norvege-ou-royaume-uni.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Buying a Used Aircraft in Norway or the UK: Which Country to Choose | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Buying a Used Aircraft in Norway or the UK: Which Country to Choose", "description": "Buying a used aircraft in Norway or the UK in 2026: market, prices, registration (Luftfartstilsynet / CAA), taxation and pitfalls to avoid. The complete comparison.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/acheter-avion-occasion-norvege-ou-royaume-uni.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Buying a Used Aircraft in Norway or the UK", "item": "https://aircraft2sell.eu/en/acheter-avion-occasion-norvege-ou-royaume-uni.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/en/index.html">Home</a><i data-icon="chevron-right"></i><a href="/en/blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Norway or the UK</span></nav>
+    <span class="eyebrow">Country comparison</span>
+    <h1>Buying a Used Aircraft in Norway or the UK: Which Country to Choose</h1>
+    <p>Market, prices, registration, taxation and pitfalls to avoid: a complete comparison to help you decide where to buy your used light aircraft between Norway and the United Kingdom.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#marches">Two very different light aviation markets</a></li><li><a href="#prix">Price comparison by aircraft type</a></li><li><a href="#immatriculation">Registration: Luftfartstilsynet versus CAA</a></li><li><a href="#fiscalite">Taxation and customs: two regimes outside the EU</a></li><li><a href="#inspection">Pre-purchase inspection and documents</a></li><li><a href="#choix">Which country to choose depending on your profile</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="marches">Two very different light aviation markets</h2>
+<p>Norway and the United Kingdom represent two very different faces of light aviation in Europe. The United Kingdom ranks among the largest general aviation markets on the continent, with a dense network of airfields and a substantial installed base of touring single-engine aircraft, two-seaters, microlights and gliders. Norway, by contrast, has a smaller market in terms of aircraft numbers, but one that is structurally significant relative to its population, shaped by a geography of fjords, coastline and remote areas where light aircraft and floatplanes remain a practical means of transport and not just a leisure activity.</p>
+<p>From a regulatory standpoint, Norway, although not an EU member, directly applies EASA airworthiness rules as a member of the European Economic Area (EEA) that has adopted the European aviation safety framework. The United Kingdom, since Brexit, has had its own civil aviation authority, independent of EASA, for aircraft registration and airworthiness. This difference is the key point to understand before comparing a Norwegian listing with a British one.</p>
+<p>The Norwegian market is also marked by a strong presence of floatplanes and aircraft suited to short or unprepared strips, whereas the British market remains dominated by classic club flying on paved or grass airfields, with left-hand-pattern operations and widespread use of pounds sterling in listings.</p>
+
+<h2 id="prix">Price comparison by aircraft type</h2>
+<p>Price ranges depend above all on engine history (hours remaining before TBO), airframe condition and installed avionics, far more than on the country of sale alone. The British market, being larger, generally offers a wider choice at an equivalent budget, while the smaller Norwegian market can be more specialised in certain categories such as floatplanes or aircraft with reinforced gear for rough strips.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Aircraft type</th><th>Norway</th><th>United Kingdom</th></tr></thead>
+<tbody>
+<tr><td>Microlight</td><td>Limited supply, niche market</td><td>Wide supply, comparable prices once converted to euros</td></tr>
+<tr><td>Light single-engine (Cessna 172, Piper PA-28)</td><td>Supply present but less dense, comparable prices once converted to euros</td><td>Equivalent to roughly €50,000 to €120,000 (sterling pricing)</td></tr>
+<tr><td>Floatplane and reinforced-gear aircraft</td><td>Active, specialised market tied to the country's geography</td><td>Much smaller supply in this segment</td></tr>
+<tr><td>Glider and motor glider</td><td>Modest supply, niche market</td><td>Historic and very active gliding market</td></tr>
+</tbody>
+</table></div>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always convert Norwegian and British listings at the day's exchange rate (Norwegian krone and pounds sterling), and always compare at equivalent engine potential and avionics level before deciding.</div></div>
+
+<h2 id="immatriculation">Registration: Luftfartstilsynet versus CAA</h2>
+<p>In Norway, every aircraft based and operated in the country must be registered with the <strong>Luftfartstilsynet</strong>, the Norwegian civil aviation authority, under the <strong>LN-</strong> prefix. Although Norway is not an EU member, it applies the EASA airworthiness framework by virtue of its membership of the European Economic Area, which brings its procedures noticeably close to those of an EU country. In the United Kingdom, the competent authority is the <strong>Civil Aviation Authority (CAA)</strong>, which assigns the <strong>G-</strong> prefix and has, since Brexit, applied its own airworthiness framework independent of EASA.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Valid certificate of airworthiness</strong> — issued under the EASA framework in Norway, under the CAA's own post-Brexit framework in the United Kingdom.</span></li>
+  <li><i data-icon="check"></i><span><strong>Bill of sale</strong> — dated, signed by both parties, stating the serial number, required by both the Luftfartstilsynet and the CAA.</span></li>
+  <li><i data-icon="check"></i><span><strong>Liability insurance certificate</strong> — required before first use under the new registration, in both Norway and the United Kingdom.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — A registration transfer between Norway and an EASA member state generally follows a common technical framework, which simplifies the strictly airworthiness-related aspects. A transfer between Norway and the United Kingdom, by contrast, involves dealing with two authorities applying separate airworthiness procedures since Brexit: build in extra time and check the exact formalities with the CAA before committing.</div></div>
+
+<h2 id="fiscalite">Taxation and customs: two regimes outside the EU</h2>
+<p>Contrary to a common assumption, Norway has never been part of the European Union or its common VAT regime, and this was true long before the UK's Brexit: its membership of the European Economic Area covers the free movement of goods and the harmonisation of airworthiness rules, but not taxation, which remains a national matter. An aircraft imported into Norway, including from an EU country, can therefore be subject to Norwegian VAT and to customs formalities specific to the country.</p>
+<p>The United Kingdom, for its part, is no longer part of the European Union or its common customs regime following Brexit. An aircraft imported into the UK from the EU, or the reverse, may be subject to customs formalities and to UK VAT calculated on the value of the aircraft, except in specific situations that need to be confirmed case by case. In both cases, it is essential to have your tax and customs situation confirmed before acquisition, particularly for an aircraft that has already changed country of registration several times.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Situation</th><th>Norway (outside the EU, EEA member)</th><th>United Kingdom (outside the EU since Brexit)</th></tr></thead>
+<tbody>
+<tr><td>Sale between local resident private individuals</td><td>Norwegian VAT potentially due depending on the case</td><td>UK VAT potentially due on import into the country</td></tr>
+<tr><td>Sale by a professional</td><td>Norwegian VAT generally applicable</td><td>UK VAT generally applicable</td></tr>
+<tr><td>Import/export with an EU country</td><td>Specific customs formalities to check case by case</td><td>Specific customs formalities to check case by case since Brexit</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="inspection">Pre-purchase inspection and documents</h2>
+<p>Whether the aircraft is Norwegian or British, a pre-purchase inspection by a certified mechanic independent of the seller remains the best protection against unpleasant surprises. It covers the condition of the airframe, the consistency of the engine logbook, maintenance history and the compliance of the avionics with current requirements — requirements that remain broadly similar in both countries despite the regulatory split between EASA and the CAA's own framework.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Up-to-date airframe, engine and propeller logbooks, with no chronological gaps, whether kept in Norway or the United Kingdom.</span></li>
+  <li><i data-icon="check"></i><span>History of maintenance invoices from recent years, from an approved workshop in the relevant country.</span></li>
+  <li><i data-icon="check"></i><span>For a Norwegian aircraft, particular attention to the condition of the structure and landing gear if used on short, unprepared strips or as a floatplane.</span></li>
+  <li><i data-icon="check"></i><span>No undisclosed structural damage, verifiable via the maintenance file and a thorough visual inspection.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point of caution</strong> — Never finalise a purchase, in Norway or in the United Kingdom, without having seen the original logbooks and having their consistency checked by a professional independent of the seller.</div></div>
+
+<h2 id="choix">Which country to choose depending on your profile</h2>
+<p>The choice between Norway and the United Kingdom depends above all on your flying project and your tolerance for administrative steps. The United Kingdom appeals to buyers looking for a large volume of listings and a mature club flying and gliding market, at the cost of its own tax and customs formalities since Brexit. Norway appeals more to pilots interested in floatplane flying or flying into remote or challenging strips, and benefits from an airworthiness framework largely aligned with EASA despite being outside the EU, even though its taxation has always remained national and independent.</p>
+<p>In all cases, the decisive factor remains the quality of maintenance and the transparency of the aircraft's history, far more than the country of registration alone. Comparing several listings in both countries, at an equivalent budget and category, and always converting prices at the day's exchange rate, remains the best way to make an informed choice.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — If you are considering an import between the two countries, have the applicable customs and tax formalities confirmed in advance by a specialist professional: this avoids unpleasant surprises after signing.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your aircraft in Norway or the UK</h3>
+            <p>Browse verified listings of aircraft for sale in Norway and the United Kingdom on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="/en/search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying project.</p>
+      </div>
+      <a href="/en/blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="/en/acheter-avion-occasion-norvege.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Buying</span><strong>Buying a Used Aircraft in Norway: Complete Guide</strong><p>Market, prices, Luftfartstilsynet registration and taxation for buying in Norway.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/acheter-avion-occasion-royaume-uni-brexit.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Buying</span><strong>Buying a Used Aircraft in the UK: The Post-Brexit Market</strong><p>Market, prices, CAA registration, VAT and import procedures from the European Union.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>The Pre-Purchase Inspection of an Aircraft: Complete Guide</strong><p>Everything you need to check before buying a used aircraft in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

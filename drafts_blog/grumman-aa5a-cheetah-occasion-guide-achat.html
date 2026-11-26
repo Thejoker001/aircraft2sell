@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Guide d'achat du Grumman AA-5A Cheetah d'occasion : budget, points à vérifier à l'inspection, entretien du moteur Lycoming et marché de la revente.">
+<meta property="og:title" content="Grumman AA-5A Cheetah d'occasion : guide d'achat | Aircraft2Sell">
+<meta property="og:description" content="Guide d'achat du Grumman AA-5A Cheetah d'occasion : budget, points à vérifier à l'inspection, entretien du moteur Lycoming et marché de la revente.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/grumman-aa5a-cheetah-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/grumman-aa5a-cheetah-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/grumman-aa5a-cheetah-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/grumman-aa5a-cheetah-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/grumman-aa5a-cheetah-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Grumman AA-5A Cheetah d'occasion : guide d'achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Grumman AA-5A Cheetah d'occasion : guide d'achat", "description": "Guide d'achat du Grumman AA-5A Cheetah d'occasion : budget, points à vérifier à l'inspection, entretien du moteur Lycoming et marché de la revente.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/grumman-aa5a-cheetah-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Grumman AA-5A Cheetah d'occasion : guide d'achat", "item": "https://aircraft2sell.eu/grumman-aa5a-cheetah-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Grumman AA-5A Cheetah d'occasion</span></nav>
+    <span class="eyebrow">Guide modèle</span>
+    <h1>Grumman AA-5A Cheetah d'occasion : guide d'achat</h1>
+    <p>Budget à prévoir, points de vigilance à l'inspection, entretien du moteur Lycoming et perspectives de revente pour acheter un Grumman AA-5A Cheetah d'occasion en toute connaissance de cause.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi le Cheetah séduit les pilotes propriétaires</a></li><li><a href="#budget">Quel budget prévoir à l'achat</a></li><li><a href="#inspection">Les points à vérifier avant d'acheter</a></li><li><a href="#verriere">Verrière coulissante et structure : les fragilités à connaître</a></li><li><a href="#moteur">Moteur Lycoming O-235 : entretien et potentiel</a></li><li><a href="#utilisation">Utilisation réelle : école, loisir et voyage</a></li><li><a href="#revente">Revente et marché de l'occasion</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi le Cheetah séduit les pilotes propriétaires</h2>
+<p>Le Grumman AA-5A Cheetah est un monomoteur quadriplace à train fixe produit par American Aviation puis Grumman American de la seconde moitié des années 1970 au début des années 1980. Reconnaissable à sa verrière coulissante en forme de bulle et à sa structure en grande partie collée plutôt que rivetée, il se distingue nettement des Cessna 172 et Piper Cherokee de la même époque par sa ligne basse et sa visibilité panoramique très appréciée en vol d'instruction comme en vol de loisir.</p>
+<p>Sur le marché de l'occasion européen, le Cheetah reste une alternative intéressante aux modèles plus répandus : moins nombreux, souvent proposés à un tarif d'entrée attractif, mais nécessitant une attention particulière à l'entretien de la verrière et de la structure collée, spécifiques à la gamme Grumman American.</p>
+
+<h2 id="budget">Quel budget prévoir à l'achat</h2>
+<p>Le prix d'un AA-5A Cheetah d'occasion dépend avant tout des heures cellule et moteur, du potentiel restant avant la prochaine révision, de l'état de la verrière et de la cellule, ainsi que du niveau d'équipement avionique. Un appareil avec un moteur proche de sa limite de potentiel se négocie nettement moins cher qu'un exemplaire récemment révisé et bien équipé, mais le différentiel de prix doit toujours être mis en regard du coût d'une révision à venir.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Impact sur le prix</th></tr></thead>
+<tbody>
+<tr><td>Heures moteur restantes avant révision (SMOH)</td><td>Un faible SMOH pèse lourdement sur le prix, à la hausse comme à la baisse</td></tr>
+<tr><td>État de la verrière coulissante</td><td>Une verrière fissurée ou mal réglée implique un remplacement coûteux</td></tr>
+<tr><td>Avionique installée</td><td>Un cockpit équipé de systèmes récents valorise sensiblement l'appareil</td></tr>
+<tr><td>Historique d'entretien documenté</td><td>Un carnet d'entretien complet et traçable rassure l'acheteur et facilite la revente</td></tr>
+</tbody></table></div>
+<p>Au-delà du prix d'achat, prévoyez les frais annexes : inspection pré-achat par un mécanicien indépendant connaissant la gamme Grumman American, frais d'immatriculation, assurance, et éventuellement une remise à niveau de l'avionique si l'appareil en a besoin.</p>
+
+<h2 id="inspection">Les points à vérifier avant d'acheter</h2>
+<p>Comme pour tout avion d'occasion, une inspection pré-achat menée par un mécanicien indépendant qualifié sur le type reste la meilleure protection avant de finaliser une transaction. Pour un Cheetah, certains points méritent une attention particulière.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>État et mécanisme de la verrière coulissante : rails, joints d'étanchéité et absence de fissures sur le plexiglas, un point faible classique de la gamme.</span></li>
+  <li><i data-icon="check"></i><span>Intégrité des zones collées de la structure, à inspecter avec attention car la réparation d'un décollement structurel peut s'avérer longue et coûteuse.</span></li>
+  <li><i data-icon="check"></i><span>Historique complet du moteur Lycoming : heures moteur, respect du programme d'entretien constructeur, traçabilité des pièces changées.</span></li>
+  <li><i data-icon="check"></i><span>Carnet d'entretien et dossier technique complets, avec certificat de navigabilité à jour et sans zone d'ombre sur l'historique de l'appareil.</span></li>
+  <li><i data-icon="check"></i><span>État du train d'atterrissage fixe et des pneumatiques, ainsi que de la peinture extérieure, souvent révélatrice de la rigueur générale d'entretien.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Ne jamais se contenter des déclarations du vendeur sur l'état général : un rapport d'inspection indépendant écrit reste la meilleure protection contre une mauvaise surprise après l'achat.</div></div>
+
+<h2 id="verriere">Verrière coulissante et structure : les fragilités à connaître</h2>
+<p>La verrière coulissante en bulle qui fait la particularité esthétique du Cheetah est aussi un poste de vigilance technique : son mécanisme de coulissement et ses joints d'étanchéité s'usent avec le temps et les cycles d'ouverture, et une verrière fissurée ou jaunie doit être remplacée pour des raisons de sécurité comme de confort en vol.</p>
+<p>La structure de l'appareil fait par ailleurs un usage important de l'assemblage par collage plutôt que par rivetage, une technique qui demande une expertise spécifique lors de l'inspection : un mécanicien non familier de la gamme Grumman American peut passer à côté d'un défaut qu'un spécialiste du type identifiera immédiatement.</p>
+
+<h2 id="moteur">Moteur Lycoming O-235 : entretien et potentiel</h2>
+<p>Le Cheetah est le plus souvent motorisé par un Lycoming O-235, un quatre cylindres réputé pour sa fiabilité et son coût d'exploitation contenu par rapport à des moteurs plus puissants. Le suivi du potentiel moteur (heures écoulées depuis la dernière grande visite) reste le critère numéro un à vérifier avant tout achat, car une grande visite moteur représente une dépense significative à anticiper dans le plan de financement.</p>
+<p>Un entretien régulier effectué dans un atelier agréé habitué au type, avec changement d'huile et analyses périodiques, permet de limiter les mauvaises surprises et de préserver la valeur de revente de l'appareil.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez systématiquement les trois dernières factures de maintenance avant de faire une offre : elles donnent une image fidèle du sérieux de l'entretien passé.</div></div>
+
+<h2 id="utilisation">Utilisation réelle : école, loisir et voyage</h2>
+<p>Le Cheetah est principalement utilisé pour le vol de loisir et la formation, grâce à un comportement en vol doux et prévisible et à des coûts d'exploitation raisonnables pour un quadriplace. Il permet également des voyages courts à moyens en famille, bien que sa charge utile et ses performances en croisière restent plus modestes que celles de modèles plus puissants de la même époque.</p>
+<p>Cette polyvalence en fait un choix pertinent pour un premier achat ou pour un usage en copropriété au sein d'un club ou d'un groupe de pilotes, à condition d'anticiper les coûts d'entretien propres à la structure collée et à la verrière de l'appareil.</p>
+
+<h2 id="revente">Revente et marché de l'occasion</h2>
+<p>Le marché de l'occasion du Cheetah reste plus restreint que celui des Cessna 172 ou Piper Cherokee, ce qui peut rallonger le délai de revente mais offre aussi des opportunités d'achat à prix attractif pour un acquéreur patient. Un appareil bien entretenu, avec un historique transparent et une verrière en bon état, se revend généralement plus facilement qu'un exemplaire dont le dossier technique comporte des zones d'ombre.</p>
+<p>Comparer plusieurs annonces de modèles similaires reste la meilleure façon d'évaluer un juste prix, aussi bien pour acheter que pour préparer une future revente. Les écarts de prix entre deux appareils du même millésime s'expliquent presque toujours par le potentiel moteur restant et l'état de la verrière.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Grumman AA-5A Cheetah</h3>
+            <p>Comparez les annonces de Grumman AA-5A Cheetah d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cessna 172 d'occasion : guide d'achat complet</strong><p>Budget, points de vigilance et entretien pour l'avion d'entraînement le plus produit au monde.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="piper-pa28-cherokee-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Piper PA-28 Cherokee : ce qu'il faut savoir avant d'acheter</strong><p>Les points clés pour bien choisir et budgéter l'achat d'un PA-28 d'occasion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

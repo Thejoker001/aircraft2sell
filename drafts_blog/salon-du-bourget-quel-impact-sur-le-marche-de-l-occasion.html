@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Le Salon du Bourget influence-t-il vraiment le marché de l'avion d'occasion ? Visibilité, nouveautés, effet sur les prix et le volume d'annonces.">
+<meta property="og:title" content="Salon du Bourget : quel impact sur le marché de l'occasion | Aircraft2Sell">
+<meta property="og:description" content="Le Salon du Bourget influence-t-il vraiment le marché de l'avion d'occasion ? Visibilité, nouveautés, effet sur les prix et le volume d'annonces.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/salon-du-bourget-quel-impact-sur-le-marche-de-l-occasion.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/salon-du-bourget-quel-impact-sur-le-marche-de-l-occasion.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/salon-du-bourget-quel-impact-sur-le-marche-de-l-occasion.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/salon-du-bourget-quel-impact-sur-le-marche-de-l-occasion.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/salon-du-bourget-quel-impact-sur-le-marche-de-l-occasion.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Salon du Bourget : quel impact sur le marché de l'occasion | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Salon du Bourget : quel impact sur le marché de l'occasion", "description": "Le Salon du Bourget influence-t-il vraiment le marché de l'avion d'occasion ? Visibilité, nouveautés, effet sur les prix et le volume d'annonces.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/salon-du-bourget-quel-impact-sur-le-marche-de-l-occasion.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Salon du Bourget : quel impact sur le marché de l'occasion", "item": "https://aircraft2sell.eu/salon-du-bourget-quel-impact-sur-le-marche-de-l-occasion.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Salon du Bourget et marché de l'occasion</span></nav>
+    <span class="eyebrow">Marché & tendances</span>
+    <h1>Salon du Bourget : quel impact sur le marché de l'occasion</h1>
+    <p>Le Salon international de l'aéronautique et de l'espace fait la une pour ses nouveautés et ses commandes d'avions de ligne — mais que retient réellement le marché de l'avion léger, de l'hélicoptère ou du jet d'affaires d'occasion ?</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#evenement">Le Salon du Bourget, un rendez-vous d'abord industriel</a></li><li><a href="#occasion">Pourquoi le marché de l'occasion n'est pas le cœur du salon</a></li><li><a href="#effets-indirects">Les effets indirects sur l'occasion</a></li><li><a href="#segments">Des effets très différents selon le segment</a></li><li><a href="#visibilite">Visibilité médiatique et intérêt des acheteurs</a></li><li><a href="#prix">Le salon fait-il bouger les prix de l'occasion</a></li><li><a href="#conseils">Ce qu'un acheteur ou un vendeur peut en tirer</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="evenement">Le Salon du Bourget, un rendez-vous d'abord industriel</h2>
+<p>Le Salon international de l'aéronautique et de l'espace, organisé près de Paris les années impaires en juin, reste l'un des plus grands rassemblements mondiaux de l'industrie aérospatiale. Constructeurs, motoristes, équipementiers et compagnies aériennes y annoncent commandes, nouveaux programmes et partenariats, sous l'œil des médias du monde entier.</p>
+<p>L'essentiel de ce qui se joue au Bourget concerne l'aviation commerciale et militaire : carnets de commandes d'Airbus et de Boeing, démonstrations de nouveaux moteurs, présentations de drones et de programmes de défense. Le marché de l'avion léger, de l'hélicoptère ou du jet d'affaires d'occasion n'y occupe qu'une place marginale en volume de transactions, mais le salon n'est pas pour autant sans effet sur ce segment.</p>
+
+<h2 id="occasion">Pourquoi le marché de l'occasion n'est pas le cœur du salon</h2>
+<p>Un salon aéronautique de cette envergure est construit autour de la vente d'appareils neufs et de la signature de contrats. Les stands des grands constructeurs, les démonstrations en vol et les conférences de presse mettent en avant des programmes à plusieurs années, pas des transactions d'occasion qui se concluent, elles, au cas par cas entre un vendeur, un acheteur et éventuellement un courtier.</p>
+<p>Les exposants présents sur le marché de l'aviation générale et des jets d'affaires — constructeurs de monomoteurs, d'hélicoptères légers ou de jets légers — y viennent surtout pour présenter leurs gammes neuves, nouer des partenariats de distribution ou rencontrer des opérateurs de flotte. L'occasion reste en arrière-plan, portée davantage par les réseaux de courtiers, les plateformes d'annonces et le bouche-à-oreille professionnel que par un événement médiatique ponctuel.</p>
+
+<h2 id="effets-indirects">Les effets indirects sur l'occasion</h2>
+<p>L'impact du salon sur le marché de l'occasion est donc surtout indirect, mais réel sur plusieurs points précis.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Effet de substitution à la marge</strong> — l'annonce d'un nouveau modèle ou d'une nouvelle motorisation peut inciter certains propriétaires à anticiper la revente de leur appareil actuel avant que l'écart technologique ou la cote ne se creuse.</span></li>
+  <li><i data-icon="check"></i><span><strong>Mise en lumière de catégories entières</strong> — une communication forte autour des jets d'affaires ou des turbopropulseurs lors du salon peut relancer temporairement l'intérêt du grand public et des investisseurs pour ces segments, y compris en occasion.</span></li>
+  <li><i data-icon="check"></i><span><strong>Rencontres professionnelles</strong> — courtiers, experts et compagnies de maintenance profitent du rassemblement pour échanger, ce qui peut accélérer certaines transactions déjà en préparation sans que le salon en soit la cause directe.</span></li>
+  <li><i data-icon="check"></i><span><strong>Communication des réseaux de revente</strong> — certains réseaux de distribution d'avions neufs communiquent sur leurs programmes de reprise à l'occasion du salon, ce qui alimente indirectement l'offre d'occasion dans les mois suivants.</span></li>
+</ul>
+<p>Aucun de ces effets ne produit un choc immédiat et mesurable sur les prix ou les volumes d'annonces publiées. Il s'agit plutôt d'une influence d'ambiance, qui s'ajoute aux fondamentaux habituels du marché : état de l'appareil, heures moteur, carnet d'entretien, et niveau de la demande dans la catégorie concernée.</p>
+
+<h2 id="segments">Des effets très différents selon le segment</h2>
+<p>L'ampleur de l'influence du salon varie fortement selon le type d'appareil concerné.</p>
+<h3>Jets d'affaires et turbopropulseurs</h3>
+<p>C'est le segment le plus directement exposé à l'actualité du salon : les acheteurs de jets d'affaires suivent de près les annonces de nouveaux programmes, les évolutions de cabine et les améliorations de rayon d'action. Un nouveau modèle présenté au Bourget peut accélérer la décision de revente d'un appareil plus ancien par un opérateur qui souhaite moderniser sa flotte, ce qui alimente ponctuellement l'offre d'occasion sur ce segment.</p>
+<h3>Avions légers et hélicoptères</h3>
+<p>Le lien est beaucoup plus distant. Les acheteurs de ce segment, souvent des particuliers ou de petites structures, se décident davantage sur la base du budget, de l'usage prévu et de la disponibilité locale que sur l'actualité d'un grand salon aéronautique parisien. L'effet du Bourget y est quasiment inexistant en dehors d'un regain d'intérêt général pour l'aviation dans les médias.</p>
+<h3>Avions vintage et de collection</h3>
+<p>Ce segment évolue sur une logique patrimoniale et passionnée largement indépendante de l'actualité industrielle du salon. Les valeurs des appareils historiques dépendent davantage de leur rareté, de leur état d'origine et de la communauté de collectionneurs que des annonces de nouveaux programmes commerciaux.</p>
+
+<h2 id="visibilite">Visibilité médiatique et intérêt des acheteurs</h2>
+<p>L'un des effets les plus mesurables du salon reste la visibilité médiatique qu'il donne à l'aviation en général. Les semaines qui l'entourent voient une hausse de l'intérêt du public pour l'aéronautique, relayée par la presse généraliste autant que spécialisée. Pour les plateformes d'annonces et les sites spécialisés, cela se traduit souvent par un pic de trafic et de curiosité, sans que cela se transforme nécessairement en hausse immédiate du nombre de transactions d'occasion conclues.</p>
+<p>Cet effet de visibilité profite davantage aux vendeurs qui savent en tirer parti — en publiant une annonce soignée avec photos de qualité et historique complet au moment où l'attention du public pour l'aviation est la plus forte — qu'à une évolution structurelle du marché.</p>
+
+<h2 id="prix">Le salon fait-il bouger les prix de l'occasion</h2>
+<p>Non, pas de façon directe et généralisée. Les prix de l'avion d'occasion restent déterminés par des facteurs structurels bien documentés : l'offre et la demande sur chaque catégorie d'appareil, l'état de la cellule et du moteur, les heures de vol restantes avant grande visite, la conformité du carnet d'entretien et le contexte économique général (taux de change, coût du carburant, pouvoir d'achat des acheteurs).</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À retenir</strong> — Un salon aéronautique, même majeur, ne crée ni bulle ni correction sur le marché de l'occasion. Son influence reste marginale comparée à celle des fondamentaux de chaque appareil et de chaque segment.</div></div>
+<p>En revanche, un cycle d'annonces industrielles répété (nouveaux moteurs plus économes, nouvelles normes environnementales, nouveaux standards avioniques) peut, sur plusieurs années, contribuer à faire évoluer la décote de certains appareils plus anciens — un phénomène de fond bien plus lent qu'un simple salon biennal.</p>
+
+<h2 id="conseils">Ce qu'un acheteur ou un vendeur peut en tirer</h2>
+<p>Pour un vendeur, la période du salon peut être une bonne fenêtre de visibilité pour publier ou mettre à jour une annonce, profitant du regain d'intérêt général pour l'aviation. Pour un acheteur, l'actualité du salon ne doit jamais remplacer les vérifications habituelles : état réel de l'appareil, cohérence du carnet d'entretien, et inspection pré-achat par un professionnel indépendant restent les critères qui déterminent la valeur et la fiabilité d'un avion d'occasion, bien plus que l'actualité d'un événement ponctuel.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne laissez jamais l'effervescence médiatique d'un grand salon influencer une décision d'achat sans vérification technique indépendante de l'appareil visé.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="trending-up"></i></span>
+          <div>
+            <h3>Suivre les tendances du marché</h3>
+            <p>Consultez les prix moyens par catégorie d'aéronef sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="tendances-marche.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Voir les tendances <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="tendances-marche.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Marché</span><strong>Tendances du marché aéronautique</strong><p>Prix moyens par catégorie d'aéronef calculés à partir des annonces publiées sur Aircraft2Sell.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="avion-neuf-ou-occasion-comparatif.html" class="card"><span class="icon-box"><i data-icon="scale"></i></span><span class="eyebrow">Comparatif</span><strong>Avion neuf ou d'occasion : comparatif complet</strong><p>Prix, dépréciation, garantie, avionique et délais pour choisir avant d'acheter.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="prix-moyen-jet-prive-2026.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Jets d'affaires</span><strong>Prix moyen d'un jet privé en 2026</strong><p>Fourchettes de prix, coûts d'exploitation et facteurs qui font varier la valeur d'un jet.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

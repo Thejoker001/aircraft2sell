@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Buying a used aircraft in Serbia or Romania: market, prices, tax, registration and maintenance compared to help you choose the best country.">
+<meta name="keywords" content="used aircraft Serbia, used aircraft Romania, country comparison aircraft, YU registration, YR registration">
+<meta property="og:title" content="Buying a Used Aircraft in Serbia or Romania | Aircraft2Sell">
+<meta property="og:description" content="Buying a used aircraft in Serbia or Romania: market, prices, tax, registration and maintenance compared to help you choose the best country.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/acheter-avion-occasion-serbie-ou-roumanie.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/acheter-avion-occasion-serbie-ou-roumanie.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-serbie-ou-roumanie.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-serbie-ou-roumanie.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-serbie-ou-roumanie.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Buying a Used Aircraft in Serbia or Romania | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Buying a used aircraft in Serbia or Romania: which country to choose", "description": "Buying a used aircraft in Serbia or Romania: market, prices, tax, registration and maintenance compared to help you choose the best country.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/acheter-avion-occasion-serbie-ou-roumanie.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Buying a used aircraft in Serbia or Romania", "item": "https://aircraft2sell.eu/en/acheter-avion-occasion-serbie-ou-roumanie.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Serbia or Romania</span></nav>
+    <span class="eyebrow">Country comparison</span>
+    <h1>Buying a used aircraft in Serbia or Romania: which country to choose</h1>
+    <p>Market, prices, tax, registration and maintenance: a comparison between Serbia and Romania to help you decide where to look for your used aircraft in the Balkans and Eastern Europe.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">Two emerging markets, two different contexts</a></li><li><a href="#marche">Size and composition of the used market</a></li><li><a href="#prix">Comparing prices</a></li><li><a href="#fiscalite">Tax, EU status and purchase-related costs</a></li><li><a href="#immatriculation">Registration: the Serbian register versus the Romanian register</a></li><li><a href="#entretien">Maintenance network and parts availability</a></li><li><a href="#convoyage">Ferrying and logistics from Western Europe</a></li><li><a href="#choix">Which country to favour depending on your profile</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Two emerging markets, two different contexts</h2>
+<p>Serbia and Romania are attracting a growing number of used-aircraft buyers looking for more affordable options than in Western Europe. Both countries share a rich aviation heritage, with a tradition of domestic manufacturing (Romania in particular, which long produced its own light aircraft and gliders) and a used-aircraft fleet partly inherited from club flying and the state-run aviation of previous decades.</p>
+<p>The most important structural difference between the two countries remains their status with respect to the European Union: Romania has been an EU member state since 2007, which considerably simplifies a transaction for a buyer based in another European country, while Serbia remains a candidate country outside the EU, with noticeably different customs and registration formalities.</p>
+
+<h2 id="marche">Size and composition of the used market</h2>
+<p>The Romanian used market is driven by a substantial historic fleet of light aircraft and microlights, partly inherited from the national flying club and local production (IAR, for example), alongside a more recent supply of Western single-engines imported by clubs and private owners. Supply remains less abundant and less standardised than in Western Europe, however, with a notable share of aircraft needing restoration work before resale.</p>
+<p>The Serbian market is smaller in volume, concentrated around a handful of historic flying clubs and a limited number of specialist dealers. Supply there is marked by a notable presence of Eastern European types (Zlin, Utva) alongside more recent imports of Western models, particularly among flying schools and aerobatic clubs.</p>
+
+<h2 id="prix">Comparing prices</h2>
+<p>In both countries, prices for a standard Western model (Cessna 172, Piper PA-28) generally remain lower than those seen in Western Europe for comparable condition, which explains the growing interest from foreign buyers. Aircraft of local or Eastern European origin (Zlin, Utva, IAR), however, trade at highly variable levels, often difficult to compare for lack of a standardised price reference.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Serbia</th><th>Romania</th></tr></thead>
+<tbody>
+<tr><td>Status with respect to the EU</td><td>Candidate country, outside the EU</td><td>Member state since 2007</td></tr>
+<tr><td>Size of the used-aircraft market</td><td>Smaller, a handful of active hubs</td><td>Larger, legacy of domestic production</td></tr>
+<tr><td>Price level for a standard Western model</td><td>Generally lower than Western Europe</td><td>Generally lower than Western Europe</td></tr>
+<tr><td>Market specialties</td><td>Zlin, Utva, aerobatic and training types</td><td>IAR, microlights, imported single-engines</td></tr>
+</tbody></table></div>
+<p>In both cases, the absence of a market as liquid as in Western Europe makes comparing several listings of the same aircraft type all the more useful before committing, as the asking price can reflect a very uneven maintenance condition from one listing to another.</p>
+
+<h2 id="fiscalite">Tax, EU status and purchase-related costs</h2>
+<p>Romania, as an EU member state, applies common EU VAT rules to transactions between professionals, and a sale between private individuals is generally not subject to VAT there, as elsewhere in the European Union. A buyer based in another member state can therefore treat a purchase in Romania in a way comparable to a standard intra-EU transaction.</p>
+<p>Serbia, outside the EU, instead involves customs formalities when importing into an EU member state, potentially including import duties and import VAT calculated when the aircraft enters the EU. This point is worth verifying in detail with a customs clearance professional before any negotiation, as the cost of this formality can represent a significant share of the total budget.</p>
+
+<h2 id="immatriculation">Registration: the Serbian register versus the Romanian register</h2>
+<p>In Romania, aircraft registration is handled by the <strong>Autoritatea Aeronautică Civilă Română (AACR)</strong>, under the <strong>YR-</strong> prefix, following the common EASA rules applicable to any member state. A registration transfer from another EU country follows the standard intra-EU procedure, with no additional customs step.</p>
+<p>In Serbia, the <strong>Direktorat civilnog vazduhoplovstva Srbije</strong> manages the national register, under the <strong>YU-</strong> prefix. As Serbia is not an EASA member, an aircraft registered YU- and destined for a European register will typically require a more thorough airworthiness assessment by the destination authority, which can noticeably extend the timeline compared with a simple intra-EU transfer.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Valid certificate of airworthiness</strong> — a precondition for any flight under the new registration, whatever the country of origin.</span></li>
+  <li><i data-icon="check"></i><span><strong>Translated technical file</strong> — airframe, engine and propeller logbooks are often written in the local language; a certified translation may be required by the destination authority.</span></li>
+  <li><i data-icon="check"></i><span><strong>Enhanced airworthiness assessment for a Serbian aircraft</strong> — plan for this if the destination is an EU member state, as the country is not under EASA oversight.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Generally allow a few weeks for a transfer from Romania to another EU member state, against an often longer and less predictable timeline for an aircraft imported from Serbia, due to the additional airworthiness review required.</div></div>
+
+<h2 id="entretien">Maintenance network and parts availability</h2>
+<p>Romania has a growing network of approved workshops, particularly around the larger flying clubs and training schools, with reasonable parts availability for the most common Western models. Maintenance of locally built aircraft (IAR) can be more complex, however, as original parts can be difficult to source abroad.</p>
+<p>In Serbia, the maintenance network remains smaller, concentrated around the main flying clubs and airfields. Local workshops have good experience with Zlin and Utva types, but parts availability for these types is a point of attention, particularly for a Western buyer with no direct access to Eastern European parts channels.</p>
+
+<h2 id="convoyage">Ferrying and logistics from Western Europe</h2>
+<p>Ferry distance remains an important factor for both countries, which are geographically further from the main Western markets than Germany or Austria. A ferry flight from Romania or Serbia to Western Europe generally involves several refuelling stops and more extensive weather planning, particularly when crossing the mountainous terrain of the Balkans or the Carpathians.</p>
+<p>For Romania, EU/Schengen membership (since March 2024 for air and sea border checks) simplifies border formalities during a ferry flight to another EU country. For Serbia, customs formalities related to importation must be settled before departure, which means this point should be arranged with a freight forwarder or aviation-specialist customs agent before planning the ferry flight.</p>
+
+<h2 id="choix">Which country to favour depending on your profile</h2>
+<p>For a European buyer who wants a simple transaction with no customs formalities and prefers a standard Western model, Romania offers the clear advantage of its EU member status, which brings the transaction closer to a standard intra-EU purchase. The market there is also larger, with more choice on the most common models.</p>
+<p>For a buyer interested in an unusual type (Zlin, Utva) for aerobatics or training, or willing to take on the additional customs steps in exchange for a potentially more attractive price, Serbia remains worth considering, provided the import timeline and the enhanced airworthiness review towards a European register are planned well in advance.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — In all cases, a pre-purchase inspection by a qualified independent mechanic remains essential, and matters even more for an aircraft whose maintenance history is documented in a different language and according to practices that differ from what is usually found in Western Europe.</div></div>
+<p>Ultimately, the choice between Serbia and Romania depends less on a raw price gap than on your tolerance for administrative formalities and your interest in aircraft types less common elsewhere in Europe. Taking the time to have the entire technical file translated and verified, whichever country you choose, remains the best safeguard before committing to this kind of cross-border transaction.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your used aircraft</h3>
+            <p>Browse used aircraft listings available in Eastern Europe and across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Buying</span><strong>Certification and registration of an aircraft in Europe</strong><p>Procedures, choosing the country of registration, the file to prepare, timelines and costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="importer-avion-usa-europe.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Buyer's guide</span><strong>Importing an aircraft from the United States to Europe</strong><p>EASA certification, transatlantic transport, customs and import VAT.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Cabin air conditioning and heating on a light aircraft: how it works, maintenance, common failures and repair costs to know before buying.">
+<meta property="og:title" content="Cabin air conditioning and heating: maintenance and failures | Aircraft2Sell">
+<meta property="og:description" content="Cabin air conditioning and heating on a light aircraft: how it works, maintenance, common failures and repair costs to know before buying.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/climatisation-et-chauffage-cabine-entretien-et-pannes.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/climatisation-et-chauffage-cabine-entretien-et-pannes.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/climatisation-et-chauffage-cabine-entretien-et-pannes.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/climatisation-et-chauffage-cabine-entretien-et-pannes.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/climatisation-et-chauffage-cabine-entretien-et-pannes.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Cabin air conditioning and heating: maintenance and failures | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Cabin air conditioning and heating: maintenance and failures", "description": "Cabin air conditioning and heating on a light aircraft: how it works, maintenance, common failures and repair costs to know before buying.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/climatisation-et-chauffage-cabine-entretien-et-pannes.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Cabin air conditioning and heating: maintenance and failures", "item": "https://aircraft2sell.eu/en/climatisation-et-chauffage-cabine-entretien-et-pannes.html"}]}
+</script>
+<script type="application/ld+json">
+{"@type": "FAQPage", "@context": "https://schema.org", "mainEntity": [{"@type": "Question", "name": "Why does light aircraft air conditioning fail so often?", "acceptedAnswer": {"@type": "Answer", "text": "Cabin air conditioning is rarely used on many light aircraft, especially in Northern Europe. A system that sits idle for long periods gradually loses refrigerant through seals and fittings, and the compressor can seize after extended inactivity, which explains why failures are commonly found at the time of purchase."}}, {"@type": "Question", "name": "Is an exhaust heat-exchanger cabin heater dangerous?", "acceptedAnswer": {"@type": "Answer", "text": "It can be if the heat exchanger develops a crack, allowing exhaust gases containing carbon monoxide to mix with the warm air sent into the cabin. This is why regular inspection of the exchanger and the use of an onboard CO detector are essential precautions on aircraft fitted with this type of system."}}, {"@type": "Question", "name": "How much does repairing a light aircraft's air conditioning cost?", "acceptedAnswer": {"@type": "Answer", "text": "Depending on the fault, a refrigerant recharge with leak detection often costs a few hundred euros, while replacing a compressor or a condenser can exceed a thousand euros including parts and labour, not counting the aircraft being out of service during the repair."}}] }
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Cabin air conditioning and heating</span></nav>
+    <span class="eyebrow">Technical guide</span>
+    <h1>Cabin air conditioning and heating: maintenance and failures</h1>
+    <p>How cabin heating and air conditioning systems work on a light aircraft, how to maintain them, and the failures you need to check before buying.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#intro">A comfort system that is often overlooked</a></li><li><a href="#chauffage">Cabin heating: how it works and the risks</a></li><li><a href="#clim">Cabin air conditioning: how it works</a></li><li><a href="#pannes">The most common failures</a></li><li><a href="#entretien">Preventive maintenance and best practice</a></li><li><a href="#achat">What to check before buying</a></li><li><a href="#couts">Repair costs to expect</a></li><li><a href="#faq">Frequently asked questions</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="intro">A comfort system that is often overlooked</h2>
+<p>On a light aircraft, cabin heating and air conditioning are often seen as mere comfort features, far behind the airframe, the engine or the avionics in the list of buying priorities. Yet this is a maintenance item in its own right, one that can represent a significant expense if neglected, and one that also touches on safety in the specific case of exhaust heat-exchanger heating.</p>
+<p>Most light single-engine aircraft come with cabin heating as standard, while air conditioning remains an option reserved for higher-end aircraft (high-performance singles, twins, turboprops and business jets), where it becomes an important comfort factor, particularly on long flights or in warmer regions.</p>
+
+<h2 id="chauffage">Cabin heating: how it works and the risks</h2>
+<p>On the vast majority of piston singles, cabin heating works through a <strong>heat exchanger fitted on the exhaust</strong>: outside air circulates around a section of the exhaust pipe, warms up by conduction, and is then ducted into the cabin via hoses and adjustable vents. This simple, inexpensive system has one major drawback: if the exchanger develops a crack or corrosion, exhaust gases containing carbon monoxide (CO) can mix with the air sent into the cabin, creating a poisoning risk for the occupants.</p>
+<p>On newer or higher-end aircraft, you also find electric heating systems or independent combustion heaters (such as a Janitrol-type or dedicated hot-air generator), which are less exposed to this specific risk but come with their own maintenance and certification requirements.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Onboard carbon monoxide detector</strong> — an inexpensive and strongly recommended item on any aircraft fitted with an exhaust heat exchanger, whether an electronic detector or a colorimetric spot card.</span></li>
+  <li><i data-icon="check"></i><span><strong>Periodic inspection of the exchanger</strong> — must be checked during scheduled maintenance visits, in line with the aircraft's maintenance programme.</span></li>
+  <li><i data-icon="check"></i><span><strong>Unusual smell in the cabin</strong> — any exhaust smell noticed in flight must be taken seriously and checked on the ground immediately.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — Carbon monoxide is colourless and odourless. A working detector on board is not an optional extra on an aircraft fitted with exhaust heat-exchanger heating — it is a basic safety item.</div></div>
+
+<h2 id="clim">Cabin air conditioning: how it works</h2>
+<p>When fitted, a light aircraft's cabin air conditioning works on a principle close to that of a car: a compressor (driven mechanically by the engine or electrically), a condenser, an expansion valve and an evaporator circulate a refrigerant in a closed loop to remove heat from the cabin air. On turboprops and business jets, you also find air conditioning systems using air bled from the engine (bleed air), combined with a more complete air conditioning system that also pressurises the cabin.</p>
+<p>Air conditioning remains a relatively uncommon option on classic training and touring singles, where it represents both an added purchase cost and extra weight carried on board — two factors that limit its adoption outside the hottest markets.</p>
+
+<h2 id="pannes">The most common failures</h2>
+<p>Cabin air conditioning failures follow a fairly classic pattern, close to what is observed on automotive systems, with a few specifics linked to often more intermittent use on an aircraft.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Refrigerant leak</strong> — the most common failure, caused by seals and fittings ageing, particularly on a system that goes unused for long stretches.</span></li>
+  <li><i data-icon="check"></i><span><strong>Compressor seizure</strong> — common after a long period of inactivity, especially on aircraft based in temperate regions where air conditioning is barely used out of season.</span></li>
+  <li><i data-icon="check"></i><span><strong>Dirty condenser or evaporator</strong> — reduces system efficiency without causing an outright failure, but increases electrical draw and speeds up wear on other components.</span></li>
+  <li><i data-icon="check"></i><span><strong>Electrical fault</strong> — relay, wiring or air conditioning control, particularly on older electrical systems.</span></li>
+</ul>
+<p>On the heating side, the most common faults are the cracking of the exhaust heat exchanger mentioned above, but also sticking or broken cables controlling the hot-air distribution vents, which can bind over time from heat and vibration exposure.</p>
+
+<h2 id="entretien">Preventive maintenance and best practice</h2>
+<p>For air conditioning, running the system regularly, even outside hot periods, helps keep the compressor lubricated and limits the drying out of seals. A refrigerant recharge should always be preceded by a thorough leak search: recharging without addressing the cause only delays the problem by a few months.</p>
+<p>For heating, strictly following the exhaust heat exchanger inspection intervals set out in the aircraft's maintenance programme remains the best protection. A suspect exchanger should be replaced without delay — the cost of a new part is nothing compared with the risk involved.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask your mechanic to include a visual check of the heat exchanger and a functional test of the air conditioning (if fitted) at every annual inspection, even though this item is not always top of the priority list.</div></div>
+
+<h2 id="achat">What to check before buying</h2>
+<p>Before buying a used aircraft fitted with cabin heating or air conditioning, a few simple checks help avoid an unpleasant surprise after signing.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Test the heating and air conditioning during the viewing, under conditions that let you genuinely assess their effectiveness (not just a puff of air, but a real temperature difference).</span></li>
+  <li><i data-icon="check"></i><span>Ask for the date of the last check or replacement of the exhaust heat exchanger and verify it is recorded in the logbook.</span></li>
+  <li><i data-icon="check"></i><span>Check that a carbon monoxide detector is fitted on board and working.</span></li>
+  <li><i data-icon="check"></i><span>For air conditioning, ask for the refrigerant recharge history: repeated, closely spaced recharges point to an unresolved leak.</span></li>
+</ul>
+
+<h2 id="couts">Repair costs to expect</h2>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Work</th><th>Indicative cost</th></tr></thead>
+<tbody>
+<tr><td>Leak search and air conditioning recharge</td><td>€200 to €600</td></tr>
+<tr><td>Air conditioning compressor replacement</td><td>€800 to €2,500</td></tr>
+<tr><td>Exhaust heat exchanger replacement</td><td>€300 to €1,200</td></tr>
+<tr><td>Hot-air vent control cable replacement</td><td>€100 to €400</td></tr>
+</tbody></table></div>
+<p>These ranges remain indicative and vary considerably depending on the aircraft model, parts availability and the hourly rate of the chosen maintenance workshop. On an older or less common aircraft, the availability of a specific exchanger or compressor can also significantly extend the downtime.</p>
+
+<h2 id="faq">Frequently asked questions</h2>
+<h3>Why does light aircraft air conditioning fail so often?</h3>
+<p>Cabin air conditioning is rarely used on many light aircraft, especially in Northern Europe. A system that sits idle for long periods gradually loses refrigerant through seals and fittings, and the compressor can seize after extended inactivity, which explains why failures are commonly found at the time of purchase.</p>
+<h3>Is an exhaust heat-exchanger cabin heater dangerous?</h3>
+<p>It can be if the heat exchanger develops a crack, allowing exhaust gases containing carbon monoxide to mix with the warm air sent into the cabin. This is why regular inspection of the exchanger and the use of an onboard CO detector are essential precautions on aircraft fitted with this type of system.</p>
+<h3>How much does repairing a light aircraft's air conditioning cost?</h3>
+<p>Depending on the fault, a refrigerant recharge with leak detection often costs a few hundred euros, while replacing a compressor or a condenser can exceed a thousand euros including parts and labour, not counting the aircraft being out of service during the repair.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to compare aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Find an inspector <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Maintenance</span><strong>The cost of maintaining a light aircraft</strong><p>Periodic checks, major overhaul, parts and labour: what light aircraft maintenance really costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Insurance</span><strong>Insuring your aircraft in Europe: the complete guide</strong><p>Liability, hull coverage, essential guarantees: how to properly insure your aircraft, helicopter or light sport aircraft in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

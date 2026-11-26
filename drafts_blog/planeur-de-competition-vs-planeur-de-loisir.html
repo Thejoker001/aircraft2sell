@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Planeur de compétition ou planeur de loisir : différences de finesse, de budget et d'entretien pour choisir l'appareil adapté à votre pratique du vol à voile.">
+<meta property="og:title" content="Planeur de compétition vs planeur de loisir : quelles différences | Aircraft2Sell">
+<meta property="og:description" content="Planeur de compétition ou planeur de loisir : différences de finesse, de budget et d'entretien pour choisir l'appareil adapté à votre pratique du vol à voile.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/planeur-de-competition-vs-planeur-de-loisir.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/planeur-de-competition-vs-planeur-de-loisir.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/planeur-de-competition-vs-planeur-de-loisir.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/planeur-de-competition-vs-planeur-de-loisir.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/planeur-de-competition-vs-planeur-de-loisir.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Planeur de compétition vs planeur de loisir : quelles différences | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Planeur de compétition vs planeur de loisir : quelles différences", "description": "Planeur de compétition ou planeur de loisir : différences de finesse, de budget et d'entretien pour choisir l'appareil adapté à votre pratique du vol à voile.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/planeur-de-competition-vs-planeur-de-loisir.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Planeur de compétition vs planeur de loisir : quelles différences", "item": "https://aircraft2sell.eu/planeur-de-competition-vs-planeur-de-loisir.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Compétition vs loisir</span></nav>
+    <span class="eyebrow">Guide thématique</span>
+    <h1>Planeur de compétition vs planeur de loisir : quelles différences</h1>
+    <p>Finesse, instrumentation, budget d'achat et d'entretien : les critères qui distinguent vraiment un planeur de compétition d'un planeur de loisir, pour choisir l'appareil adapté à votre pratique du vol à voile.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#intro">Deux usages du vol à voile, deux cahiers des charges</a></li><li><a href="#competition">Le planeur de compétition : performance avant tout</a></li><li><a href="#loisir">Le planeur de loisir : simplicité et polyvalence</a></li><li><a href="#technique">Comparatif technique : finesse, envergure, instrumentation</a></li><li><a href="#budget">Budget d'achat et d'exploitation</a></li><li><a href="#profil">Quel profil de pilote pour quel planeur</a></li><li><a href="#occasion">Acheter d'occasion selon le type de pratique</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="intro">Deux usages du vol à voile, deux cahiers des charges</h2>
+<p>Dans le monde du vol à voile, le mot « planeur » recouvre des appareils dont les vocations peuvent être radicalement différentes. Un planeur conçu pour la compétition et le vol de performance n'a pas grand-chose à voir, dans ses priorités de conception, avec un planeur pensé pour l'école, le vol local ou la découverte en club. Les deux volent, les deux exploitent l'énergie des courants ascendants, mais ils ne répondent pas aux mêmes besoins.</p>
+<p>Avant d'investir dans un planeur d'occasion, il est donc essentiel de clarifier son propre usage : vise-t-on la performance en circuit, le record de distance, la compétition fédérale, ou plutôt un vol de détente, une progression tranquille et des sorties en club ? Cette question oriente directement le choix du type d'appareil, bien plus que la seule enveloppe budgétaire.</p>
+
+<h2 id="competition">Le planeur de compétition : performance avant tout</h2>
+<p>Un planeur de compétition est avant tout optimisé pour la finesse et la vitesse de croisière entre les ascendances. Sa cellule, souvent en matériaux composites avancés, est dessinée pour minimiser la traînée : grande envergure, profils d'aile travaillés, volets de courbure pour adapter le profil selon la vitesse recherchée, et parfois eau de ballast pour augmenter la masse en vol et gagner en vitesse de pénétration sur les longues transitions.</p>
+<p>Ces appareils exigent une pratique régulière et une certaine expérience pour en tirer le meilleur parti : la gestion du ballast, le réglage fin des volets et l'exploitation précise de la masse d'air demandent un pilotage plus exigeant qu'un planeur d'initiation. Leur instrumentation est également plus poussée, avec des systèmes de navigation et de calcul de plané dédiés à l'optimisation du circuit.</p>
+<p>En contrepartie de ces performances, l'entretien est plus pointu : surfaces aérodynamiques à préserver avec soin, mécanismes de volets et de ballast à vérifier régulièrement, et une cellule souvent plus sensible aux chocs ou aux micro-dommages qu'un planeur massif d'école.</p>
+
+<h2 id="loisir">Le planeur de loisir : simplicité et polyvalence</h2>
+<p>Le planeur de loisir, qu'il soit biplace d'école ou monoplace d'entrée de gamme, privilégie la robustesse, la facilité de pilotage et la tolérance aux erreurs plutôt que la performance pure. Ces appareils, souvent plus anciens et construits en structure mixte bois-toile-métal ou en composite d'ancienne génération, sont réputés pour leur comportement prévisible et leur résistance à un usage intensif en club.</p>
+<p>Leur finesse est nettement inférieure à celle d'un planeur de compétition moderne, mais cela n'empêche nullement de réaliser de beaux vols locaux, de progresser en autonomie et de profiter du plaisir du vol à voile sans la pression de la performance chronométrée. Leur instrumentation reste généralement simple : anémomètre, variomètre, altimètre, parfois un compas, sans les systèmes de navigation sophistiqués des planeurs de circuit.</p>
+<p>C'est aussi le choix privilégié pour la formation, le partage en club ou une première acquisition personnelle, grâce à un coût d'entrée et d'entretien nettement plus accessible.</p>
+
+<h2 id="technique">Comparatif technique : finesse, envergure, instrumentation</h2>
+<p>Les écarts techniques entre les deux familles se mesurent avant tout sur trois critères : la finesse maximale (le rapport entre la distance parcourue et l'altitude perdue), l'envergure de l'aile et le niveau d'équipement embarqué.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Planeur de compétition</th><th>Planeur de loisir</th></tr></thead>
+<tbody>
+<tr><td>Finesse</td><td>Élevée, optimisée pour la vitesse entre ascendances</td><td>Plus modeste, suffisante pour le vol local</td></tr>
+<tr><td>Envergure</td><td>Généralement importante</td><td>Plus réduite, cellule compacte</td></tr>
+<tr><td>Structure</td><td>Composite avancé, volets de courbure, ballast</td><td>Bois-toile-métal ou composite simple, sans ballast</td></tr>
+<tr><td>Instrumentation</td><td>Navigation et calcul de plané dédiés</td><td>Instruments de base (anémomètre, variomètre, altimètre)</td></tr>
+<tr><td>Exigence de pilotage</td><td>Plus élevée, gestion fine des réglages</td><td>Accessible dès les premières heures d'autonomie</td></tr>
+</tbody></table></div>
+<p>Ce tableau illustre une tendance générale plutôt que des valeurs absolues : chaque modèle, chaque génération et chaque état d'entretien modifie sensiblement les performances réelles d'un appareil donné.</p>
+
+<h2 id="budget">Budget d'achat et d'exploitation</h2>
+<p>Le budget d'acquisition varie fortement selon la famille retenue. Un planeur de loisir d'ancienne génération, en bon état et bien suivi, reste généralement bien plus accessible à l'achat qu'un planeur de compétition moderne doté d'une cellule composite récente et d'une avionique complète. L'écart se retrouve aussi à l'entretien : une cellule composite de compétition impose un suivi technique plus rigoureux, notamment sur les surfaces aérodynamiques et les mécanismes mobiles, tandis qu'un planeur de loisir robuste supporte souvent mieux un usage intensif en club avec une maintenance plus simple.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Comparer le prix d'achat à équipement et à heures de vol cellule comparables, jamais sur le seul modèle.</span></li>
+  <li><i data-icon="check"></i><span>Intégrer le coût d'une remorque, d'un hangar ou d'un abri adapté à l'envergure de l'appareil.</span></li>
+  <li><i data-icon="check"></i><span>Vérifier le coût et la disponibilité des pièces détachées, souvent plus rares sur un planeur de compétition ancien.</span></li>
+  <li><i data-icon="check"></i><span>Anticiper le budget d'assurance, qui peut varier selon la valeur de l'appareil et son usage déclaré.</span></li>
+</ul>
+<p>Au-delà du prix catalogue, c'est souvent le coût d'entretien annuel et la disponibilité d'un atelier compétent qui déterminent le budget réel sur plusieurs années de possession.</p>
+
+<h2 id="profil">Quel profil de pilote pour quel planeur</h2>
+<p>Le choix entre les deux familles doit avant tout partir d'une évaluation honnête de sa propre pratique et de ses ambitions. Un pilote qui vise la compétition fédérale, les circuits de distance ou simplement le plaisir de repousser ses performances personnelles trouvera dans un planeur de compétition un outil à la hauteur de ses objectifs, à condition d'avoir l'expérience nécessaire pour l'exploiter en sécurité.</p>
+<p>À l'inverse, un pilote qui recherche avant tout le plaisir du vol local, la convivialité du club, la formation de nouveaux pilotes ou une pratique occasionnelle sans contrainte de performance s'orientera naturellement vers un planeur de loisir, plus simple à exploiter, plus tolérant et moins coûteux à faire vivre au quotidien.</p>
+<p>Entre ces deux extrêmes, de nombreux planeurs intermédiaires offrent un compromis intéressant : une finesse correcte sans les exigences les plus poussées d'un appareil de haut niveau, pour accompagner une progression régulière vers davantage de performance.</p>
+
+<h2 id="occasion">Acheter d'occasion selon le type de pratique</h2>
+<p>Qu'il s'agisse d'un planeur de compétition ou de loisir, l'inspection pré-achat reste une étape incontournable : état de la structure, historique des réparations, conformité du carnet d'entretien et validité du certificat de navigabilité doivent systématiquement être vérifiés avant tout engagement. Pour un planeur de compétition, une attention particulière doit être portée aux surfaces composites, aux mécanismes de volets et de ballast ainsi qu'à l'historique des heures de vol en circuit, souvent plus intensif.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Faites toujours vérifier la cellule par un mécanicien ou un contrôleur familier du type, et demandez l'intégralité du carnet d'entretien avant de vous engager, quelle que soit la famille de planeur envisagée.</div></div>
+<p>Comparer plusieurs annonces de planeurs similaires, en tenant compte de leur usage déclaré et de leur état d'entretien réel, reste la meilleure façon d'évaluer un juste prix et de trouver l'appareil qui correspond vraiment à votre pratique du vol à voile.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre planeur d'occasion</h3>
+            <p>Comparez les annonces de planeurs d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="planeur-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide catégorie</span><strong>Planeur d'occasion : le guide d'achat complet</strong><p>Budget, points de vigilance et entretien pour bien choisir son planeur d'occasion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un aéronef d'occasion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Assurance</span><strong>Assurance aéronef : le guide complet</strong><p>Comprendre les garanties et bien assurer son aéronef, planeur compris.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Marché européen vs marché américain de l'avion d'occasion : pourquoi les prix diffèrent, le rôle du taux de change et le coût réel d'une importation USA-Europe.">
+<meta property="og:title" content="Marché européen vs marché américain : comparatif des prix | Aircraft2Sell">
+<meta property="og:description" content="Marché européen vs marché américain de l'avion d'occasion : pourquoi les prix diffèrent, le rôle du taux de change et le coût réel d'une importation USA-Europe.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/marche-europeen-vs-marche-americain-comparatif-des-prix.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/marche-europeen-vs-marche-americain-comparatif-des-prix.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/marche-europeen-vs-marche-americain-comparatif-des-prix.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/marche-europeen-vs-marche-americain-comparatif-des-prix.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/marche-europeen-vs-marche-americain-comparatif-des-prix.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Marché européen vs marché américain : comparatif des prix</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Marché européen vs marché américain : comparatif des prix", "description": "Marché européen vs marché américain de l'avion d'occasion : pourquoi les prix diffèrent, le rôle du taux de change et le coût réel d'une importation USA-Europe.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/marche-europeen-vs-marche-americain-comparatif-des-prix.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Marché européen vs marché américain : comparatif des prix", "item": "https://aircraft2sell.eu/marche-europeen-vs-marche-americain-comparatif-des-prix.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Europe vs USA</span></nav>
+    <span class="eyebrow">Marché</span>
+    <h1>Marché européen vs marché américain : comparatif des prix</h1>
+    <p>Pourquoi un avion d'occasion coûte-t-il souvent moins cher aux États-Unis qu'en Europe ? Structure des deux marchés, taux de change et coût réel d'une importation transatlantique.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#contexte">Deux marchés, deux dynamiques de prix</a></li><li><a href="#structure">Pourquoi les prix diffèrent structurellement</a></li><li><a href="#change">Le rôle du taux de change dollar/euro</a></li><li><a href="#import">Coûts d'importation et de mise en conformité</a></li><li><a href="#categories">Les catégories où l'écart est le plus marqué</a></li><li><a href="#pieges">Les pièges d'un achat « bon marché » aux États-Unis</a></li><li><a href="#comparer">Comment comparer deux annonces entre les deux marchés</a></li><li><a href="#conclusion">Conclusion : comparer au-delà du prix affiché</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="contexte">Deux marchés, deux dynamiques de prix</h2>
+<p>Le marché américain de l'avion d'occasion (used aircraft) est historiquement plus profond et plus liquide que le marché européen : davantage d'appareils en circulation, un réseau de mécaniciens agréés plus dense, et une culture de l'aviation privée plus ancienne. Cette profondeur se traduit souvent par des prix affichés plus bas pour des modèles comparables, en particulier sur les monomoteurs classiques très répandus aux États-Unis.</p>
+<p>En Europe, l'offre est plus restreinte et plus fragmentée entre pays, avec des réglementations locales, des fiscalités et des coûts d'entretien qui varient sensiblement d'un marché national à l'autre. Cette fragmentation limite la liquidité et peut maintenir des prix plus élevés sur certains modèles recherchés, tout en créant aussi des écarts de prix significatifs entre pays européens eux-mêmes.</p>
+
+<h2 id="structure">Pourquoi les prix diffèrent structurellement entre l'Europe et les États-Unis</h2>
+<p>Plusieurs facteurs structurels expliquent l'écart de prix moyen constaté entre les deux marchés, au-delà du simple taux de change. Le volume de production et de revente aux États-Unis crée une concurrence plus forte entre vendeurs, ce qui pousse les prix vers le bas sur les modèles les plus courants. En Europe, les coûts d'entretien plus élevés, la rareté relative de certains modèles et les contraintes de stationnement (hangar, parking) pèsent différemment sur la valeur perçue d'un appareil.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Volume du parc</strong> — un parc nord-américain bien plus large pour la plupart des monomoteurs classiques.</span></li>
+  <li><i data-icon="check"></i><span><strong>Coût de l'entretien</strong> — main-d'œuvre et pièces souvent moins coûteuses aux États-Unis, ce qui soutient des prix de revente plus bas.</span></li>
+  <li><i data-icon="check"></i><span><strong>Fiscalité et réglementation</strong> — cadre plus homogène aux États-Unis, contre une mosaïque de règles nationales en Europe.</span></li>
+</ul>
+
+<h2 id="change">Le rôle du taux de change dollar/euro dans la perception des écarts</h2>
+<p>Une partie de l'écart de prix observé entre les deux marchés n'est pas structurelle mais purement monétaire : les fluctuations du taux de change entre le dollar américain et l'euro peuvent, à elles seules, faire paraître le marché américain plus ou moins attractif d'une année à l'autre, sans que la valeur réelle des appareils n'ait changé. Un acheteur européen doit donc raisonner en coût total converti au jour de la transaction, et non sur la base d'un taux de change figé ou ancien.</p>
+<p>Ce facteur monétaire explique pourquoi l'intérêt pour l'importation depuis les États-Unis connaît des cycles : plus le dollar est faible face à l'euro, plus les appareils américains paraissent abordables pour un acheteur européen, et inversement.</p>
+
+<h2 id="import">Coûts d'importation et de mise en conformité EASA/FAA</h2>
+<p>L'écart de prix affiché entre une annonce américaine et une annonce européenne ne reflète jamais le coût final réel d'un achat transatlantique. Un appareil certifié FAA doit généralement faire l'objet d'une procédure de reconnaissance ou de conversion vers une certification EASA pour pouvoir être immatriculé et exploité durablement en Europe, avec des frais d'inspection, de mise en conformité éventuelle et de dossier administratif à budgétiser.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Transport transatlantique (convoyage en vol ou transport par container) à intégrer au budget total.</span></li>
+  <li><i data-icon="check"></i><span>Frais de conversion de certification FAA vers EASA, variables selon le modèle et son dossier technique.</span></li>
+  <li><i data-icon="check"></i><span>TVA et droits de douane à l'importation dans le pays européen de destination.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Le coût total d'un avion importé des États-Unis dépasse presque toujours le prix d'achat affiché. Faites systématiquement établir un chiffrage complet avant de comparer ce prix à une offre européenne équivalente.</div></div>
+
+<h2 id="categories">Les catégories d'avions où l'écart de prix est le plus marqué</h2>
+<p>L'écart entre les deux marchés n'est pas uniforme selon les catégories d'appareils. Il tend à être le plus visible sur les monomoteurs à pistons très répandus aux États-Unis, où l'abondance de l'offre fait fortement baisser les prix par rapport aux modèles équivalents, plus rares, sur le marché européen. Il est en revanche souvent moins marqué sur les appareils plus spécifiques ou déjà bien implantés en Europe, où l'offre locale reste suffisante pour maintenir des prix comparables d'un continent à l'autre.</p>
+<p>Sur les turbopropulseurs et jets d'affaires, l'écart dépend davantage de la rareté du modèle recherché et de sa base d'opérateurs mondiale que de la seule origine géographique de l'annonce, le marché de ces catégories étant par nature plus international.</p>
+
+<h2 id="pieges">Les pièges d'un achat « bon marché » aux États-Unis</h2>
+<p>Un prix affiché nettement inférieur à son équivalent européen peut cacher des différences de configuration, d'avionique ou de standard d'entretien qui expliquent en partie l'écart, sans lien direct avec la seule origine géographique. Il est indispensable de comparer des appareils réellement équivalents en termes d'heures moteur (engine hours), de temps depuis la grande visite (SMOH) et d'état général du carnet d'entretien (logbook), plutôt que de se focaliser sur le seul prix affiché.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Comparer des appareils à heures moteur et SMOH réellement comparables, pas seulement la même référence de modèle.</span></li>
+  <li><i data-icon="check"></i><span>Vérifier l'historique accident/incident, souvent plus facilement accessible pour un appareil immatriculé aux États-Unis.</span></li>
+  <li><i data-icon="check"></i><span>Chiffrer le coût complet d'importation avant de conclure qu'une offre américaine est réellement plus avantageuse.</span></li>
+</ul>
+
+<h2 id="comparer">Comment comparer deux annonces entre les deux marchés</h2>
+<p>Pour comparer utilement une annonce européenne et une annonce américaine, il faut raisonner en coût total d'acquisition disponible à l'usage en Europe : prix d'achat converti au taux de change du jour, plus transport, plus mise en conformité réglementaire, plus taxes à l'importation, moins ce que coûterait une remise en état équivalente sur l'appareil européen concurrent. Ce calcul donne une base de comparaison bien plus fiable que la simple différence de prix affiché.</p>
+<p>Il est également utile de solliciter, pour les deux options, une inspection pré-achat indépendante, afin de ne pas comparer un prix théorique américain à un prix déjà négocié et vérifié côté européen. Un tableau comparatif simple, construit poste par poste, aide à objectiver la décision plutôt que de se laisser guider par la seule impression d'une « bonne affaire » outre-Atlantique.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Lister séparément prix d'achat, transport, conversion de certification, taxes et remise en état estimée, pour chaque option.</span></li>
+  <li><i data-icon="check"></i><span>Convertir systématiquement les montants en euros au taux du jour, pas au taux constaté lors d'une recherche antérieure.</span></li>
+  <li><i data-icon="check"></i><span>Demander un délai réaliste pour chaque option : un achat transatlantique prend presque toujours plus de temps qu'un achat local.</span></li>
+</ul>
+<p>Le délai de disponibilité de l'appareil fait aussi partie du calcul, même s'il ne s'exprime pas en euros : un appareil américain séduisant sur le papier mais indisponible pendant plusieurs mois de formalités peut s'avérer moins intéressant qu'un appareil européen immédiatement utilisable, notamment pour un acheteur ayant un projet de vol à court terme.</p>
+
+<h2 id="conclusion">Conclusion : comparer au-delà du prix affiché</h2>
+<p>Le marché américain reste souvent plus profond et moins coûteux à l'achat pour de nombreux modèles courants, mais l'écart réel avec le marché européen se réduit fortement une fois intégrés le transport, la mise en conformité réglementaire et la fiscalité à l'importation. Avant de se décider pour une option transatlantique, mieux vaut toujours établir un chiffrage complet et comparable plutôt que de se fier au seul prix de vente affiché sur l'annonce.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne comparez jamais deux annonces sur la seule base du prix affiché : intégrez systématiquement le transport, la conversion de certification et la fiscalité d'importation avant de conclure qu'un marché est plus avantageux que l'autre.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin sur l'importation et la fiscalité transfrontalière.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="importer-avion-usa-europe.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Guide acheteur</span><strong>Importer un avion des États-Unis vers l'Europe</strong><p>Certification EASA, douanes, TVA et transport : le parcours complet d'une importation.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="tva-fiscalite-achat-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Fiscalité</span><strong>TVA et fiscalité sur l'achat d'un aéronef en Europe</strong><p>Le panorama complet des règles de TVA applicables à l'achat d'un avion en Europe.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="prix-moyen-jet-prive-2026.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Achat</span><strong>Prix moyen d'un jet privé en 2026</strong><p>Fourchettes de prix par catégorie et facteurs qui font varier la valeur d'un jet d'affaires.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

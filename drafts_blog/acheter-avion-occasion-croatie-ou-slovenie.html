@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Acheter un avion d'occasion en Croatie ou en Slovénie : comparatif marché, prix, fiscalité, immatriculation et entretien pour choisir le meilleur pays.">
+<meta name="keywords" content="avion occasion Croatie, avion occasion Slovénie, comparatif pays avion, immatriculation CCAA Croatie, immatriculation CAA Slovénie">
+<meta property="og:title" content="Acheter un avion d'occasion en Croatie ou en Slovénie | Aircraft2Sell">
+<meta property="og:description" content="Acheter un avion d'occasion en Croatie ou en Slovénie : comparatif marché, prix, fiscalité, immatriculation et entretien pour choisir le meilleur pays.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/acheter-avion-occasion-croatie-ou-slovenie.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/acheter-avion-occasion-croatie-ou-slovenie.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-croatie-ou-slovenie.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-croatie-ou-slovenie.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-croatie-ou-slovenie.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Acheter un avion d'occasion en Croatie ou en Slovénie | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Acheter un avion d'occasion en Croatie ou en Slovénie : quel pays choisir", "description": "Acheter un avion d'occasion en Croatie ou en Slovénie : comparatif marché, prix, fiscalité, immatriculation et entretien pour choisir le meilleur pays.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/acheter-avion-occasion-croatie-ou-slovenie.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Acheter un avion d'occasion en Croatie ou en Slovénie", "item": "https://aircraft2sell.eu/acheter-avion-occasion-croatie-ou-slovenie.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Croatie ou Slovénie</span></nav>
+    <span class="eyebrow">Comparatif pays</span>
+    <h1>Acheter un avion d'occasion en Croatie ou en Slovénie : quel pays choisir</h1>
+    <p>Marché, prix, fiscalité, immatriculation et entretien : comparatif entre la Croatie et la Slovénie pour vous aider à choisir où chercher votre avion d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>9 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Deux voisins adriatiques, deux marchés différents</a></li><li><a href="#marche">Taille et dynamisme du marché de l'occasion</a></li><li><a href="#prix">Comparatif des prix pratiqués</a></li><li><a href="#fiscalite">Fiscalité et frais liés à l'achat</a></li><li><a href="#immatriculation">Immatriculation : CCAA contre CAA slovène</a></li><li><a href="#entretien">Réseau d'entretien et disponibilité des pièces</a></li><li><a href="#langue">Langue, documents et démarches pratiques</a></li><li><a href="#choix">Quel pays privilégier selon votre profil</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Deux voisins adriatiques, deux marchés différents</h2>
+<p>La Croatie et la Slovénie partagent une frontière commune, un littoral adriatique très fréquenté par l'aviation de tourisme en été et une appartenance commune à l'Union européenne depuis plusieurs années. Leurs marchés de l'occasion restent pourtant assez différents en taille : la Croatie, avec son relief côtier étendu et ses nombreux aérodromes dédiés au tourisme et à l'aviation de loisir, dispose d'un parc d'avions légers plus développé que sa petite voisine slovène.</p>
+<p>La Slovénie, pays alpin de taille réduite, affiche malgré tout un dynamisme notable dans l'aviation légère, porté par une industrie locale de construction d'ULM et de planeurs reconnue au niveau européen. Pour un acheteur prêt à élargir sa recherche aux deux pays, cette complémentarité géographique et industrielle peut ouvrir des opportunités intéressantes de part et d'autre de la frontière.</p>
+
+<h2 id="marche">Taille et dynamisme du marché de l'occasion</h2>
+<p>Le marché croate de l'occasion bénéficie d'un volume d'annonces plus conséquent, en lien avec le nombre important d'aéroclubs et d'écoles de pilotage répartis le long de la côte et dans l'arrière-pays. L'activité touristique estivale soutient une demande régulière en monomoteurs de tourisme, ce qui se traduit par une offre renouvelée plus fréquemment que dans un marché plus restreint.</p>
+<p>Le marché slovène, plus modeste en volume absolu, se distingue par la présence de plusieurs constructeurs reconnus d'ULM et de planeurs, ce qui donne lieu à une offre locale d'occasion parfois intéressante sur des machines relativement récentes et bien documentées. L'offre en monomoteurs classiques de tourisme y est en revanche plus limitée que chez son voisin croate, un facteur à prendre en compte selon le type d'appareil recherché.</p>
+
+<h2 id="prix">Comparatif des prix pratiqués</h2>
+<p>Les niveaux de prix restent globalement dans des fourchettes comparables pour un même modèle et un même état d'entretien, sans prime systématique d'un pays sur l'autre. Les écarts observés tiennent surtout à la disponibilité relative de certains types d'appareils : plus grande en Croatie pour les monomoteurs de tourisme classiques, et parfois plus avantageuse en Slovénie sur les ULM et planeurs d'origine locale.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Croatie</th><th>Slovénie</th></tr></thead>
+<tbody>
+<tr><td>Taille du marché de l'occasion</td><td>Volume plus important, offre renouvelée régulièrement</td><td>Marché plus restreint, offre ciblée</td></tr>
+<tr><td>Niveau de prix pour un même modèle</td><td>Comparable, parfois tendu en haute saison touristique</td><td>Comparable, intéressant sur ULM et planeurs locaux</td></tr>
+<tr><td>Spécialités du marché</td><td>Monomoteurs de tourisme, appareils liés à l'activité côtière</td><td>ULM et planeurs de construction locale, appareils récents</td></tr>
+<tr><td>Langue des documents techniques</td><td>Croate, souvent anglais</td><td>Slovène, souvent anglais</td></tr>
+</tbody></table></div>
+<p>Dans les deux cas, comparer plusieurs annonces de modèles similaires reste la meilleure façon d'évaluer un prix juste, en particulier pour les ULM et planeurs slovènes dont la cote peut varier sensiblement selon l'année de fabrication et les options installées.</p>
+
+<h2 id="fiscalite">Fiscalité et frais liés à l'achat</h2>
+<p>Comme pour toute transaction au sein de l'Union européenne, la fiscalité applicable dépend avant tout du statut de l'acheteur (particulier ou professionnel), de son pays de résidence fiscale et du pays dans lequel l'appareil sera immatriculé après la vente. Une vente entre particuliers n'est en général pas soumise à TVA en Croatie ni en Slovénie, tandis qu'une vente par un professionnel ou une société peut y être soumise selon les règles nationales en vigueur.</p>
+<p>Pour une transaction transfrontalière entre les deux pays, il convient de vérifier les éventuelles formalités de TVA intracommunautaire applicables entre professionnels, ainsi que les frais administratifs propres à chaque pays de destination. Faire appel à un professionnel habitué aux transactions transfrontalières limite le risque d'erreur de procédure, notamment pour les démarches liées à l'importation d'un ULM ou d'un planeur de construction slovène vers la Croatie.</p>
+
+<h2 id="immatriculation">Immatriculation : CCAA contre CAA slovène</h2>
+<p>En Croatie, c'est la <strong>Croatian Civil Aviation Agency (CCAA)</strong> qui gère le registre d'immatriculation des aéronefs, sous préfixe <strong>9A-</strong>. En Slovénie, c'est l'<strong>Agence de l'aviation civile slovène</strong> (Civil Aviation Agency, CAA) qui tient ce rôle, sous préfixe <strong>S5-</strong>. Les deux autorités appliquent les règles communes de l'EASA pour le transfert d'immatriculation entre États membres pour les aéronefs relevant du champ EASA, ce qui simplifie sensiblement les démarches par rapport à un import depuis un pays hors Union européenne. Les ULM et certains planeurs restent en revanche souvent régis par des règles nationales spécifiques à chaque pays, à vérifier auprès de l'autorité compétente avant tout transfert.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Certificat de navigabilité et ARC en cours de validité</strong> — condition préalable à toute mise en vol sous la nouvelle immatriculation, pour les appareils relevant du champ EASA.</span></li>
+  <li><i data-icon="check"></i><span><strong>Radiation du registre d'origine</strong> — nécessaire avant la nouvelle immatriculation si l'appareil change de pays.</span></li>
+  <li><i data-icon="check"></i><span><strong>Dossier technique complet</strong> — carnets de cellule, moteur et hélice à transmettre à la nouvelle autorité.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Comptez généralement de 2 à 8 semaines pour un transfert d'immatriculation entre la Croatie et la Slovénie selon la complétude du dossier et le type d'appareil, un délai comparable à celui observé pour tout transfert intra-européen.</div></div>
+
+<h2 id="entretien">Réseau d'entretien et disponibilité des pièces</h2>
+<p>La Croatie dispose d'un réseau d'ateliers de maintenance agréée relativement développé, notamment autour des aéroclubs côtiers où l'activité touristique soutient une demande régulière d'entretien courant. La Slovénie, pays plus petit, compte un réseau d'ateliers plus restreint en nombre, mais souvent très compétent sur les ULM et planeurs de construction locale, en lien direct avec les constructeurs nationaux.</p>
+<p>La proximité géographique entre les deux pays permet souvent de faire entretenir un appareil dans l'un ou l'autre pays sans contrainte majeure, à condition de vérifier que l'atelier choisi est bien agréé pour le type d'appareil concerné. Pour un ULM ou un planeur de fabrication slovène, il peut être utile de privilégier un atelier slovène proche du constructeur d'origine, qui disposera d'une meilleure connaissance des pièces et des procédures spécifiques au modèle.</p>
+
+<h2 id="langue">Langue, documents et démarches pratiques</h2>
+<p>La barrière linguistique peut constituer un facteur pratique à prendre en compte selon le pays choisi. En Croatie, les documents techniques sont généralement rédigés en croate, souvent accompagnés d'une traduction ou d'un résumé en anglais pour les appareils régulièrement vendus à l'international, en particulier ceux destinés à la clientèle touristique étrangère. En Slovénie, les documents sont rédigés en slovène, avec une disponibilité variable de versions anglaises selon le vendeur et le type d'appareil.</p>
+<p>Dans les deux cas, il est recommandé de faire vérifier les documents techniques et contractuels par un professionnel maîtrisant la langue locale avant de signer, en particulier pour le carnet d'entretien (logbook) et le certificat de navigabilité (CofA), dont une mauvaise compréhension pourrait masquer une information importante sur l'historique de l'appareil.</p>
+
+<h2 id="choix">Quel pays privilégier selon votre profil</h2>
+<p>Pour un acheteur recherchant un monomoteur de tourisme classique avec un choix large, la Croatie offre généralement un volume d'annonces plus important et donc davantage de possibilités de comparaison, notamment pour des appareils adaptés au vol côtier et aux liaisons entre les îles. Pour un acheteur intéressé par un ULM ou un planeur récent et bien documenté, la Slovénie mérite une attention particulière, le pays disposant d'une expertise industrielle reconnue dans ces catégories et d'une offre d'occasion locale parfois avantageuse.</p>
+<p>Un pilote envisageant un usage principalement côtier ou touristique trouvera un intérêt pratique à chercher en priorité en Croatie, ne serait-ce que pour la proximité avec les terrains les plus fréquentés en saison et la densité du réseau d'ateliers habitués à ce type d'usage. À l'inverse, un pilote intéressé avant tout par le vol à voile ou l'ULM, y compris pour un usage dans les reliefs alpins voisins, trouvera souvent un intérêt à explorer en priorité le marché slovène.</p>
+<p>Le budget global de possession doit également intégrer la question du convoyage : un appareil repéré loin de votre aérodrome de base entraînera des frais et un délai supplémentaires avant la première utilisation, qu'il se trouve en Croatie ou en Slovénie. Ce facteur, souvent sous-estimé, mérite d'être chiffré avant de se décider pour une annonce plutôt qu'une autre.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Dans tous les cas, une inspection pré-achat par un mécanicien indépendant qualifié reste indispensable, qu'il s'agisse d'un appareil situé en Croatie, en Slovénie ou ailleurs en Europe.</div></div>
+<p>Au final, élargir sa recherche aux deux marchés permet souvent d'accéder à une offre complémentaire intéressante, notamment lorsque le profil recherché correspond davantage aux spécialités de l'un ou l'autre pays. Prendre le temps de comparer calmement les annonces disponibles en Croatie et en Slovénie, plutôt que de se limiter au marché le plus proche géographiquement, reste la meilleure stratégie pour trouver l'appareil le mieux adapté à votre usage.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre avion d'occasion</h3>
+            <p>Comparez les annonces d'avions d'occasion disponibles en Croatie, en Slovénie et partout en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="acheter-avion-occasion-croatie.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide pays</span><strong>Acheter un avion d'occasion en Croatie</strong><p>Marché, prix, fiscalité et démarches pour acheter un avion d'occasion en Croatie.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Guide thématique</span><strong>Immatriculation d'un aéronef en Europe</strong><p>Comprendre les démarches d'immatriculation et de transfert entre pays européens.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

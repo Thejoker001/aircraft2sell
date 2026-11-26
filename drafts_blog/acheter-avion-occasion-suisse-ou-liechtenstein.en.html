@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Buying a used aircraft in Switzerland or Liechtenstein: market reality, HB- registration, taxation and customs explained for buyers.">
+<meta property="og:title" content="Buying a Used Aircraft in Switzerland or Liechtenstein | Aircraft2Sell">
+<meta property="og:description" content="Buying a used aircraft in Switzerland or Liechtenstein: market reality, HB- registration, taxation and customs explained for buyers.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/acheter-avion-occasion-suisse-ou-liechtenstein.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/acheter-avion-occasion-suisse-ou-liechtenstein.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-suisse-ou-liechtenstein.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-suisse-ou-liechtenstein.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-suisse-ou-liechtenstein.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Buying a Used Aircraft in Switzerland or Liechtenstein | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Buying a Used Aircraft in Switzerland or Liechtenstein: Which Country to Choose", "description": "Buying a used aircraft in Switzerland or Liechtenstein: market reality, HB- registration, taxation and customs explained for buyers.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/acheter-avion-occasion-suisse-ou-liechtenstein.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Switzerland or Liechtenstein", "item": "https://aircraft2sell.eu/en/acheter-avion-occasion-suisse-ou-liechtenstein.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/en/index.html">Home</a><i data-icon="chevron-right"></i><a href="/en/blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Switzerland or Liechtenstein</span></nav>
+    <span class="eyebrow">Country comparison</span>
+    <h1>Buying a Used Aircraft in Switzerland or Liechtenstein: Which Country to Choose</h1>
+    <p>Market reality, HB- registration, taxation and customs: what the close relationship between Switzerland and Liechtenstein actually means for a used-aircraft buyer.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">Two neighbouring micro-markets, one single aviation framework</a></li><li><a href="#marche">A used-aircraft market that barely exists in Liechtenstein</a></li><li><a href="#immatriculation">HB- registration: one shared register, not two separate ones</a></li><li><a href="#fiscalite">Taxation and ownership structuring: why some buyers look at Liechtenstein</a></li><li><a href="#douane">Customs and VAT: the customs union with Switzerland changes everything</a></li><li><a href="#entretien">Airfields, maintenance and real-world logistics</a></li><li><a href="#choix">Which country to favour depending on your profile</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Two neighbouring micro-markets, one single aviation framework</h2>
+<p>Switzerland and Liechtenstein often come up together in buyer searches, for a simple reason: the two countries share the same civil aviation authority and the same aircraft register. Before comparing a "Swiss market" to a "Liechtenstein market", it helps to understand that the latter does not really exist as a standalone light-aviation market — Liechtenstein has no airfield for fixed-wing aircraft, only a heliport at Balzers.</p>
+<p>In practice, a buyer looking to "buy an aircraft in Liechtenstein" will almost always end up buying an aircraft actually based in Switzerland or Austria, possibly held through a Liechtenstein-based legal entity. The comparison, then, is less about two distinct used-aircraft markets than about two different ways of approaching ownership and taxation of essentially the same aircraft, registered under the same prefix.</p>
+
+<h2 id="marche">A used-aircraft market that barely exists in Liechtenstein</h2>
+<p>The Swiss used-aircraft market is small by country size but genuinely active: airfields spread across the whole territory, a touring and mountain-flying fleet that is generally very well maintained, and price levels reflecting Switzerland's high cost of living. Listings are refreshed regularly on specialist platforms.</p>
+<p>Liechtenstein, by contrast, has no fixed-wing aviation infrastructure at all: no airfield is located within the country, and its only aeronautical site is the Balzers heliport, reserved for helicopters. There are therefore no listings for aircraft "based in Liechtenstein" in the way one would understand that for a Swiss, German or French airfield. Liechtenstein residents and companies who own an aircraft invariably base it at a neighbouring airfield, most often in eastern Switzerland (notably St. Gallen-Altenrhein, just a few kilometres from the border) or in Austria.</p>
+
+<h2 id="immatriculation">HB- registration: one shared register, not two separate ones</h2>
+<p>This is the most structural point in this comparison: Liechtenstein does not have its own aircraft register. Aircraft linked to Liechtenstein carry the same <strong>HB-</strong> prefix as Swiss aircraft, and the Liechtenstein register is kept by the same authority, <strong>FOCA</strong> (the Federal Office of Civil Aviation, BAZL in German), under a bilateral treaty between the two states. There is therefore no separate "Liechtenstein" prefix or register, unlike most other country comparisons.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>The choice between "Swiss" or "Liechtenstein" registration is a question of the owner's domicile or registered office, not a different technical register.</span></li>
+  <li><i data-icon="check"></i><span>Airworthiness procedures, the certificate of airworthiness and technical checks are identical in both cases, since the same authority handles them.</span></li>
+  <li><i data-icon="check"></i><span>Changing the registered owner of an aircraft already on the HB- register remains a simple administrative formality with FOCA, with no transfer to another state involved.</span></li>
+</ul>
+
+<h2 id="fiscalite">Taxation and ownership structuring: why some buyers look at Liechtenstein</h2>
+<p>Even though Liechtenstein has no used-aircraft market of its own, it still attracts some buyers of business aircraft and light jets for legal and tax structuring reasons. The country applies an attractive corporate tax rate and a legal framework favourable to holding assets through local structures (foundations, companies). A number of business-aircraft owners therefore choose to hold their aircraft through a Liechtenstein company, even though the aircraft itself remains based in Switzerland, Austria or elsewhere in Europe.</p>
+<p>In practice, this approach almost never concerns buyers of a light touring aircraft, for whom the complexity and cost of a Liechtenstein structure generally cannot be justified. It is, however, common in the business-jet and high-end turboprop segment, where the financial volumes justify bringing in a tax adviser specialised in Liechtenstein and Swiss law.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Any structuring through a Liechtenstein company should be validated by a specialist tax adviser: the rules on effective tax residence, VAT and economic substance are strict and change regularly.</div></div>
+
+<h2 id="douane">Customs and VAT: the customs union with Switzerland changes everything</h2>
+<p>Liechtenstein, like Switzerland, is not an EU member state, but the two countries have formed a <strong>customs union</strong> since 1923: there is no customs border between Switzerland and Liechtenstein, and Liechtenstein applies the Swiss VAT regime rather than a VAT system of its own. For a buyer, this means that transferring an aircraft between Switzerland and Liechtenstein is treated as an internal movement, without the customs formalities a classic import or export would involve.</p>
+<p>The situation differs for an aircraft coming from the European Union: whether it enters Switzerland or Liechtenstein, the same Swiss customs and VAT formalities apply in both cases, since Liechtenstein follows the Swiss customs regime rather than the EU VAT regime, even though it is otherwise a member of the European Economic Area for matters other than customs.</p>
+
+<h2 id="entretien">Airfields, maintenance and real-world logistics</h2>
+<p>For maintaining an aircraft linked to Liechtenstein, geography dictates the answer: the nearest approved maintenance workshops are located in eastern Switzerland (the St. Gallen area) or in neighbouring Austria (the Vorarlberg region), since Liechtenstein itself has no dedicated maintenance workshop for fixed-wing aircraft. Turnaround times and service quality are therefore identical to those of an owner based directly in eastern Switzerland.</p>
+<p>A buyer considering a Liechtenstein link for structuring reasons must, in practice, think in terms of the Swiss or Austrian aviation catchment area for everything related to parking, maintenance and the actual operation of the aircraft — Liechtenstein only coming into play on the legal and administrative side of ownership.</p>
+
+<h2 id="choix">Which country to favour depending on your profile</h2>
+<p>For a buyer of a light touring aircraft simply looking for a well-maintained example and a convenient home airfield, the "Switzerland or Liechtenstein" question does not really arise in practice: the answer is almost always Switzerland, since Liechtenstein offers no infrastructure of its own for this type of use. The comparison between the two countries becomes meaningful for a buyer or a company considering a business aircraft or light jet, for whom structuring ownership through a Liechtenstein entity may offer tax and estate-planning advantages, subject to proper professional advice.</p>
+<p>In either case, whether the aircraft is registered through a Swiss or a Liechtenstein entity, an independent pre-purchase inspection remains essential: the HB- prefix shared by both countries says nothing about the actual condition of a given example — only the aircraft's individual maintenance history does.</p>
+<p>Ultimately, the real choice here is not between two used-aircraft markets — since only one of them genuinely exists — but between two ways of approaching ownership of essentially the same Swiss or regional aircraft, depending on your buyer profile and estate-planning objectives.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your used aircraft</h3>
+            <p>Compare listings of used aircraft available in Switzerland and across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="/en/search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="/en/blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="/en/acheter-avion-occasion-suisse.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Country guide</span><strong>Buying a used aircraft in Switzerland</strong><p>Market, prices, taxation and procedures for buying a used aircraft in Switzerland.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Thematic guide</span><strong>Registering an aircraft in Europe</strong><p>Understanding the rules for registering and changing the register of an aircraft in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="/en/inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>The pre-purchase inspection of an aircraft: complete guide</strong><p>Everything you need to check before buying a used aircraft in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

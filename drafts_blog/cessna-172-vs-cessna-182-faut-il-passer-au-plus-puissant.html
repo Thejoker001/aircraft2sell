@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Cessna 172 ou 182 : faut-il passer au plus puissant ? Comparatif budget, charge utile, performances et usage pour bien choisir.">
+<meta property="og:title" content="Cessna 172 vs Cessna 182 : faut-il passer au plus puissant | Aircraft2Sell">
+<meta property="og:description" content="Cessna 172 ou 182 : faut-il passer au plus puissant ? Comparatif budget, charge utile, performances et usage pour bien choisir.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/cessna-172-vs-cessna-182-faut-il-passer-au-plus-puissant.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/cessna-172-vs-cessna-182-faut-il-passer-au-plus-puissant.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/cessna-172-vs-cessna-182-faut-il-passer-au-plus-puissant.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/cessna-172-vs-cessna-182-faut-il-passer-au-plus-puissant.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/cessna-172-vs-cessna-182-faut-il-passer-au-plus-puissant.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Cessna 172 vs Cessna 182 : faut-il passer au plus puissant | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Cessna 172 vs Cessna 182 : faut-il passer au plus puissant", "description": "Cessna 172 ou 182 : faut-il passer au plus puissant ? Comparatif budget, charge utile, performances et usage pour bien choisir.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/cessna-172-vs-cessna-182-faut-il-passer-au-plus-puissant.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Cessna 172 vs Cessna 182 : faut-il passer au plus puissant", "item": "https://aircraft2sell.eu/cessna-172-vs-cessna-182-faut-il-passer-au-plus-puissant.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Cessna 172 vs Cessna 182</span></nav>
+    <span class="eyebrow">Comparatif modèles</span>
+    <h1>Cessna 172 vs Cessna 182 : faut-il passer au plus puissant</h1>
+    <p>Le Cessna 172 Skyhawk et le Cessna 182 Skylane partagent une même silhouette mais pas le même budget ni la même mission. Voici comment choisir entre les deux selon votre usage réel.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Deux best-sellers Cessna, deux vocations</a></li><li><a href="#172">Le Cessna 172 : la référence de l'entraînement</a></li><li><a href="#182">Le Cessna 182 : plus de puissance, plus de charge utile</a></li><li><a href="#budget">Comparatif budget : achat et exploitation</a></li><li><a href="#performances">Performances et charge utile en détail</a></li><li><a href="#usage">Quel appareil pour quel usage</a></li><li><a href="#occasion">Acheter l'un ou l'autre d'occasion : points de vigilance</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Deux best-sellers Cessna, deux vocations</h2>
+<p>Le Cessna 172 Skyhawk et le Cessna 182 Skylane sont, avec le Cessna 150/152, parmi les avions les plus produits au monde. Ils partagent une architecture générale proche — monomoteur à train fixe, aile haute, cabine à quatre places — mais répondent à des besoins différents. Le 172 est l'avion d'école par excellence, économique et facile à exploiter. Le 182, plus puissant et mieux motorisé, s'adresse à des pilotes qui ont besoin de davantage de charge utile, de performances en altitude ou de capacité d'emport pour le voyage en famille.</p>
+<p>La question « 172 ou 182 » revient très souvent chez les propriétaires qui envisagent de passer du premier au second avion : s'agit-il d'une évolution naturelle justifiée, ou d'un surcoût qui ne correspond pas à un besoin réel ?</p>
+
+<h2 id="172">Le Cessna 172 : la référence de l'entraînement</h2>
+<p>Le Cessna 172 s'est imposé comme l'avion école et l'avion de voyage léger par excellence, grâce à sa simplicité d'exploitation, sa bonne disponibilité de pièces détachées et un parc d'occasion considérable, toutes générations confondues. Sa motorisation, plus modeste que celle du 182, se traduit par une consommation de carburant réduite et des coûts d'entretien généralement inférieurs.</p>
+<p>Sur le marché de l'occasion, le 172 reste le choix le plus accessible pour un premier achat d'avion propriétaire, un usage club ou un usage personnel régulier sur des trajets courts à moyens, avec un équipage et des bagages limités.</p>
+
+<h2 id="182">Le Cessna 182 : plus de puissance, plus de charge utile</h2>
+<p>Le Cessna 182 Skylane reprend la même architecture générale que le 172, mais avec un moteur nettement plus puissant et une structure renforcée pour supporter une masse maximale au décollage supérieure. Cette puissance additionnelle se traduit par une meilleure charge utile, de meilleures performances au décollage sur terrain court ou en altitude, et une vitesse de croisière supérieure.</p>
+<p>Le 182 s'adresse à des propriétaires qui volent régulièrement à quatre personnes avec bagages, qui opèrent depuis des terrains en altitude ou à piste courte, ou qui recherchent davantage de confort et de performance pour des trajets de voyage plus longs, en acceptant en contrepartie un budget d'acquisition et d'exploitation plus élevé.</p>
+
+<h2 id="budget">Comparatif budget : achat et exploitation</h2>
+<p>Le choix entre les deux modèles se résume souvent, en pratique, à un arbitrage budgétaire. Le 172 reste moins coûteux à l'achat à année et équipement comparables, consomme moins de carburant à l'heure et bénéficie généralement d'une prime d'assurance plus basse. Le 182, avec un moteur plus puissant à entretenir et une consommation plus élevée, implique un budget annuel supérieur, mais offre en retour davantage de capacité d'emport et de performance.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Cessna 172 Skyhawk</th><th>Cessna 182 Skylane</th></tr></thead>
+<tbody>
+<tr><td>Budget d'acquisition</td><td>Généralement plus accessible</td><td>Plus élevé à équipement comparable</td></tr>
+<tr><td>Consommation de carburant</td><td>Plus modérée</td><td>Plus élevée</td></tr>
+<tr><td>Assurance</td><td>Prime généralement plus basse</td><td>Prime généralement plus élevée</td></tr>
+<tr><td>Charge utile</td><td>Limitée, surtout avec plein de carburant</td><td>Supérieure, plus adaptée à quatre occupants avec bagages</td></tr>
+<tr><td>Performances au décollage / altitude</td><td>Correctes en conditions standards</td><td>Nettement meilleures, utiles en terrain court ou en altitude</td></tr>
+</tbody></table></div>
+<p>Comme pour tout comparatif d'avions d'occasion, le coût réel à l'heure de vol dépend fortement de l'âge de l'appareil, du potentiel moteur restant avant la prochaine grande visite et de la fréquence d'utilisation envisagée.</p>
+
+<h2 id="performances">Performances et charge utile en détail</h2>
+<p>La différence de motorisation entre les deux modèles est le facteur qui explique la plupart des écarts de performance. Le 182 dispose d'une puissance sensiblement supérieure à celle du 172, ce qui se traduit directement par une masse maximale au décollage plus élevée et donc par une charge utile disponible nettement supérieure, une fois le réservoir rempli.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Cessna 172 : charge utile souvent limitée avec le plein de carburant et quatre occupants, un calcul de masse et centrage s'impose systématiquement.</span></li>
+  <li><i data-icon="check"></i><span>Cessna 182 : charge utile généralement suffisante pour quatre occupants et bagages avec un plein complet, un avantage décisif pour le voyage en famille.</span></li>
+  <li><i data-icon="check"></i><span>Cessna 182 : meilleures performances au décollage sur terrain court ou en altitude, un critère important en montagne.</span></li>
+  <li><i data-icon="check"></i><span>Cessna 172 : vitesse de croisière plus modeste mais largement suffisante pour la formation et les trajets courts à moyens.</span></li>
+</ul>
+<p>Pour un pilote qui vole essentiellement seul ou avec un passager sur des trajets courts, l'avantage de charge utile du 182 n'a souvent que peu d'intérêt pratique au quotidien.</p>
+
+<h2 id="usage">Quel appareil pour quel usage</h2>
+<p>Le choix entre 172 et 182 doit d'abord se baser sur l'usage réel envisagé plutôt que sur l'envie de « monter en gamme ». Pour un pilote qui vole principalement en club, qui débute dans la propriété d'un avion ou qui effectue des trajets courts avec peu de bagages, le 172 offre un excellent compromis entre coût maîtrisé et plaisir de vol.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Cessna 172 : idéal pour la formation, le premier achat d'avion propriétaire et un usage club ou personnel régulier à budget contenu.</span></li>
+  <li><i data-icon="check"></i><span>Cessna 182 : pertinent pour le voyage en famille, les terrains en altitude ou à piste courte, et les pilotes qui valorisent la marge de performance.</span></li>
+  <li><i data-icon="check"></i><span>Budget disponible pour l'entretien annuel et le carburant : souvent plus décisif que le prix d'achat initial.</span></li>
+  <li><i data-icon="check"></i><span>Fréquence des vols à quatre occupants avec bagages : un critère clé pour justifier le passage au 182.</span></li>
+</ul>
+<p>À l'inverse, un propriétaire qui vole régulièrement complet, qui opère depuis des terrains exigeants ou qui recherche davantage de confort pour de longs trajets trouvera dans le 182 un investissement justifié par un usage réel et non par un simple effet de gamme.</p>
+
+<h2 id="occasion">Acheter l'un ou l'autre d'occasion : points de vigilance</h2>
+<p>Qu'il s'agisse d'un 172 ou d'un 182, le marché de l'occasion couvre un très large éventail de générations et de motorisations, avec des écarts de prix importants selon l'âge, les heures moteur et l'avionique installée. Il est essentiel de comparer des annonces d'années et de configurations similaires pour évaluer un juste prix.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Vérifiez systématiquement les heures moteur depuis la dernière grande visite (SMOH), la cohérence du carnet d'entretien, et faites réaliser une inspection pré-achat par un mécanicien indépendant familier du type, quel que soit le modèle choisi.</div></div>
+<p>Pour le 182 en particulier, examinez attentivement l'historique moteur et les éventuelles modifications sous STC (remontée en puissance, avionique), qui peuvent influencer sensiblement la valeur et les performances réelles de l'appareil.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Cessna 172 ou 182</h3>
+            <p>Comparez les annonces de Cessna 172 et 182 d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cessna 172 d'occasion : guide d'achat complet</strong><p>Guide d'achat complet du Cessna 172 d'occasion : budget selon l'année et la variante, points de contrôle, usages et alternatives sur le marché de l'aviation légère.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="diamond-da40-da42-comparatif.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Comparatif</span><strong>Diamond DA40 vs DA42 : lequel choisir</strong><p>Diamond DA40 ou DA42 : comparatif complet pour choisir entre le monomoteur et le bimoteur composite, selon budget, usage et coûts d'exploitation.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261007a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

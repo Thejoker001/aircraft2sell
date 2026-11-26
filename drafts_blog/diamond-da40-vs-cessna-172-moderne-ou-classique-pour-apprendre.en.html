@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Diamond DA40 or Cessna 172: a complete comparison between the modern all-composite trainer and the classic, most-produced fixed-gear aircraft in the world.">
+<meta name="keywords" content="Diamond DA40, Cessna 172, modern trainer aircraft, classic trainer aircraft, used aircraft comparison">
+<meta property="og:title" content="Diamond DA40 vs Cessna 172: Modern or Classic for Learning | Aircraft2Sell">
+<meta property="og:description" content="Diamond DA40 or Cessna 172: a complete comparison between the modern all-composite trainer and the classic, most-produced fixed-gear aircraft in the world.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/diamond-da40-vs-cessna-172-moderne-ou-classique-pour-apprendre.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/diamond-da40-vs-cessna-172-moderne-ou-classique-pour-apprendre.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/diamond-da40-vs-cessna-172-moderne-ou-classique-pour-apprendre.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/diamond-da40-vs-cessna-172-moderne-ou-classique-pour-apprendre.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/diamond-da40-vs-cessna-172-moderne-ou-classique-pour-apprendre.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Diamond DA40 vs Cessna 172: Modern or Classic for Learning | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Diamond DA40 vs Cessna 172: Modern or Classic for Learning", "description": "Diamond DA40 or Cessna 172: a complete comparison between the modern all-composite trainer and the classic, most-produced fixed-gear aircraft in the world.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/diamond-da40-vs-cessna-172-moderne-ou-classique-pour-apprendre.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Diamond DA40 vs Cessna 172", "item": "https://aircraft2sell.eu/en/diamond-da40-vs-cessna-172-moderne-ou-classique-pour-apprendre.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Diamond DA40 vs Cessna 172</span></nav>
+    <span class="eyebrow">Comparison</span>
+    <h1>Diamond DA40 vs Cessna 172: Modern or Classic for Learning</h1>
+    <p>All-composite digital cockpit or a proven high-wing classic: comparing the Diamond DA40 and the Cessna 172 to help you pick your training aircraft.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">Two philosophies, one shared mission: training pilots</a></li><li><a href="#da40">The DA40: digital cockpit and composite structure</a></li><li><a href="#c172">The Cessna 172: the proven high-wing reference, decades running</a></li><li><a href="#pilotage">Flying and learning: what really changes</a></li><li><a href="#budget">Purchase budget and operating costs</a></li><li><a href="#occasion">Buying used: points to watch for each model</a></li><li><a href="#choix">Which aircraft for which student or club profile</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Two philosophies, one shared mission: training pilots</h2>
+<p>The Diamond DA40 and the Cessna 172 both hold a central place in private pilot training across Europe today, yet they embody two very different generations and design philosophies. The DA40, launched in the 1990s, was designed from the outset around a composite airframe and integrated digital avionics. The Cessna 172, in near-continuous production since the 1950s, relies on a classic, simple all-metal structure proven over millions of flight hours worldwide.</p>
+<p>For a club, a flight school or an individual buyer, the choice between the two isn't purely a matter of performance, but touches on very practical issues: acquisition budget, maintenance costs, parts availability, instructors' teaching habits and, increasingly, whether it makes sense to learn on modern avionics from day one rather than on a classic analogue panel.</p>
+
+<h2 id="da40">The DA40: digital cockpit and composite structure</h2>
+<p>The Diamond DA40 has established itself in many flight schools thanks to its all-composite airframe, renowned for in-flight comfort, careful aerodynamics and refined handling. Nearly all examples available on the used market come equipped with a digital cockpit (an integrated glass suite such as Garmin G1000 or equivalent, depending on the generation), which makes it a preferred choice for schools wanting to train students directly on avionics close to what they'll encounter later on more advanced aircraft.</p>
+<p>This approach has a downside: the composite structure demands particular care during any inspection (impacts, delamination, undocumented previous repairs), and an avionics failure on an integrated system can be more costly to diagnose and repair than a single analogue instrument on a classic panel.</p>
+
+<h2 id="c172">The Cessna 172: the proven high-wing reference, decades running</h2>
+<p>The Cessna 172 Skyhawk remains the most-produced light aircraft in aviation history. Its high-wing configuration offers excellent downward visibility, a real advantage for spotting the ground, visual references and other traffic in the airfield circuit. Its classic metal structure, well known to almost every aircraft mechanic in Europe, makes routine maintenance easier and spare parts generally quick to source at controlled cost.</p>
+<p>The used 172 market is uniquely rich: entry-level examples with classic analogue avionics sit alongside more recent versions fully equipped with glass cockpits, making it possible to find an aircraft suited to almost any budget, from a first club aircraft to a better-equipped personal example.</p>
+
+<h2 id="pilotage">Flying and learning: what really changes</h2>
+<p>For a beginning student, both aircraft remain broadly accessible and are considered good trainers. The most significant difference lies less in raw flying characteristics than in the learning environment: a glass-cockpit-equipped DA40 requires the student to get used to a digital interface right from the start — extra workload for some beginners, but an advantage for those who go on to fly modern aircraft. The classic analogue Cessna 172, by contrast, lets students focus on the fundamentals of flying with simple, easy-to-read instruments, before tackling digital avionics later in training.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Diamond DA40: excellent training ground for modern digital avionics, well-regarded handling, composite airframe known for its comfort.</span></li>
+  <li><i data-icon="check"></i><span>Cessna 172: remarkable visibility, proven robustness, maintenance and parts widely available throughout Europe.</span></li>
+  <li><i data-icon="check"></i><span>Both models are broadly accepted by European training organisations, with no particular type-related restriction.</span></li>
+  <li><i data-icon="check"></i><span>A student trained on one can transition to the other quickly, as both are designed for progressive handling.</span></li>
+</ul>
+<p>In practice, some schools deliberately choose the DA40 to align their training fleet with the avionics their students will later encounter in commercial training, while others keep the Cessna 172 for its simplicity, robustness and generally more predictable long-term ownership cost.</p>
+
+<h2 id="budget">Purchase budget and operating costs</h2>
+<p>For a comparable model year, the Diamond DA40 generally sits at a higher acquisition budget than the Cessna 172, notably due to its integrated digital avionics and composite structure. The Cessna 172, produced in very large numbers across a much wider range of model years, makes it possible to find significantly more affordable entry-level examples, particularly among older analogue-avionics versions.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Diamond DA40</th><th>Cessna 172</th></tr></thead>
+<tbody>
+<tr><td>Structure</td><td>Composite, low wing</td><td>Metal, high wing</td></tr>
+<tr><td>Typical avionics</td><td>Mostly integrated glass cockpit</td><td>Classic analogue or glass cockpit depending on model year</td></tr>
+<tr><td>Acquisition budget</td><td>Generally higher</td><td>Wide range, often more accessible at entry level</td></tr>
+<tr><td>Parts availability</td><td>Narrower, composite-specific network</td><td>Very wide network, parts abundant across Europe</td></tr>
+<tr><td>In-flight visibility</td><td>Good, modern cabin</td><td>Excellent downward view, high-wing configuration</td></tr>
+</tbody></table></div>
+<p>Routine maintenance costs also depend heavily on the installed avionics: a failure on a complex integrated system can be more expensive to diagnose than a failure on a single analogue instrument, a factor worth factoring into the real long-term cost of ownership.</p>
+
+<h2 id="occasion">Buying used: points to watch for each model</h2>
+<p>On a used Diamond DA40, the pre-purchase inspection must pay particular attention to the composite structure: looking for impacts, delamination or undocumented previous repairs, as well as to the complete history and proper operation of the integrated avionics, whose update or replacement can represent a significant budget item.</p>
+<p>On a used Cessna 172, attention should focus more on the condition of the aluminium structure (corrosion, particularly around fuel tanks and attachment points), engine history and remaining hours before the next major overhaul (SMOH), as well as the condition of the main landing gear and shock struts, often stressed by years of use in a training fleet.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Whichever model you choose, always have the pre-purchase inspection carried out by an independent mechanic familiar with the exact type, and ask for the complete logbook and maintenance invoices before committing.</div></div>
+
+<h2 id="choix">Which aircraft for which student or club profile</h2>
+<p>For a school or club that wants to prepare students for a professional career where digital avionics are everywhere, the Diamond DA40 offers a training environment closer to current standards, at the cost of a higher acquisition budget and more demanding avionics maintenance. For a club or owner who favours simplicity, robustness and a controlled long-term ownership cost, the Cessna 172 remains a safe bet, with a particularly wide used market that makes it possible to find an example suited to almost any budget.</p>
+<p>In summary, the choice between the two depends less on an inherent superiority of one over the other than on the training philosophy and budget strategy of the club or buyer, as well as on the individual quality of the aircraft under consideration, which always remains the deciding factor on the used market.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Diamond DA40 or Cessna 172</h3>
+            <p>Compare used Diamond DA40 and Cessna 172 listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Cessna 172: the complete buying guide</strong><p>Budget, points to watch and maintenance for the most-produced training aircraft in the world.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="diamond-da40-da42-comparatif.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Comparison</span><strong>Diamond DA40 vs DA42: which one to choose</strong><p>Single-engine or composite twin: a complete comparison based on budget, use and operating costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

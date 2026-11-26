@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Best used glider under 30,000 euros: comparison of entry-level gliders (Ka6, K8, ASK21), real budget, inspection checkpoints and choice by profile.">
+<meta property="og:title" content="Best used glider under 30,000 euros | Aircraft2Sell">
+<meta property="og:description" content="Best used glider under 30,000 euros: comparison of entry-level gliders (Ka6, K8, ASK21), real budget, inspection checkpoints and choice by profile.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/meilleur-planeur-d-occasion-sous-30-000-euros.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/meilleur-planeur-d-occasion-sous-30-000-euros.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/meilleur-planeur-d-occasion-sous-30-000-euros.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/meilleur-planeur-d-occasion-sous-30-000-euros.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/meilleur-planeur-d-occasion-sous-30-000-euros.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Best used glider under 30,000 euros | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Best used glider under 30,000 euros", "description": "Best used glider under 30,000 euros: comparison of entry-level gliders (Ka6, K8, ASK21), real budget, inspection checkpoints and choice by profile.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/meilleur-planeur-d-occasion-sous-30-000-euros.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Best used glider under 30,000 euros", "item": "https://aircraft2sell.eu/en/meilleur-planeur-d-occasion-sous-30-000-euros.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Best glider under 30,000 €</span></nav>
+    <span class="eyebrow">Budget comparison</span>
+    <h1>Best used glider under 30,000 euros</h1>
+    <p>A comparison of entry-level gliders available within this budget — Ka6, K8, ASK21 — to help you pick the aircraft best suited to your profile and intended use.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#budget">A budget under 30,000 €: what is actually accessible</a></li><li><a href="#segment">The entry-level segment: vintage gliders and training two-seaters</a></li><li><a href="#comparatif">Vintage single-seater or training two-seater: two different logics</a></li><li><a href="#cellule">Wood-and-fabric or metal: what it changes for maintenance</a></li><li><a href="#budget-reel">Real budget: purchase, towing, licence and annual maintenance</a></li><li><a href="#inspection">Pre-purchase inspection checkpoints</a></li><li><a href="#ou-trouver">Where to find a glider under 30,000 € and how to negotiate</a></li><li><a href="#conclusion">Which glider to choose depending on your profile</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="budget">A budget under 30,000 €: what is actually accessible</h2>
+<p>The used glider market is one of the most affordable segments in light aviation. Under 30,000 euros, a buyer can access a wide range of aircraft, from vintage wood-and-fabric gliders to more recent metal training two-seaters, as well as older high-performance single-seaters. This budget corresponds to the entry level of the market, well below the high-performance competition gliders that trade for considerably more.</p>
+<p>In this price range, three families of gliders come up regularly on the European market: vintage single-seaters such as the Ka6, rugged training two-seaters such as the K8, and more modern metal two-seaters such as the ASK21, when older or more heavily used. Each answers a different need, and the right choice depends above all on what you intend to do with it.</p>
+
+<h2 id="segment">The entry-level segment: vintage gliders and training two-seaters</h2>
+<p>The Ka6 is a vintage wood-and-fabric single-seater, valued for its simple construction, respectable glide performance for its era, and very contained acquisition price. It is a historic aircraft that requires particular attention to the condition of the wood, the glued joints and the fabric covering, but remains very flyable when it has been properly maintained and stored indoors.</p>
+<p>The K8 — originally designed as a very widespread training single-seater in some clubs — is prized for its ruggedness and tolerance for student pilots. Its construction, also wood-and-fabric for most examples, makes it an economical purchase but one that demands the same kind of vigilance as the Ka6 regarding airframe condition.</p>
+<p>The ASK21 is newer, with a metal or composite construction depending on the version, specifically designed for dual controls and training. Within this budget, examples found are generally older or have accumulated more club flying hours, but the modern construction and parts availability make it an attractive option for anyone looking for a versatile aircraft, suitable for both training and personal flying.</p>
+
+<h2 id="comparatif">Vintage single-seater or training two-seater: two different logics</h2>
+<p>Choosing between a single-seater like the Ka6 and a two-seater like the K8 or ASK21 starts with defining the intended use. A single-seater suits an already-qualified pilot looking for solo flying, for pleasure or to progress in cross-country and thermal flying. A two-seater, on the other hand, can carry a passenger or a student, making it a more versatile choice for club or family use.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Vintage single-seater (Ka6): minimal budget, solo flying, demanding but well-documented wood-and-fabric maintenance within historic clubs.</span></li>
+  <li><i data-icon="check"></i><span>Rugged training two-seater (K8): pedagogical tolerance, parts still available through the club network, but often an older airframe.</span></li>
+  <li><i data-icon="check"></i><span>Modern two-seater (older ASK21): training and leisure versatility, more recent construction, entry budget at the top of the under-30,000 € range.</span></li>
+  <li><i data-icon="check"></i><span>Availability of a tow plane or a winch at the field where you'll fly: a criterion often overlooked but decisive.</span></li>
+</ul>
+<p>Beyond the airframe type, the decisive factor is often the actual condition of the aircraft and its maintenance history, far more than the design year of the model.</p>
+
+<h2 id="cellule">Wood-and-fabric or metal: what it changes for maintenance</h2>
+<p>Wood-and-fabric construction, typical of the Ka6 and the K8, requires rigorous monitoring of the condition of the glued joints, the ambient humidity of the storage location and the tension of the fabric covering. A wood-and-fabric glider properly stored in a hangar and maintained by a serious club can remain in very good airworthy condition for decades, but a poorly stored example can develop costly structural issues.</p>
+<p>Metal or mixed metal-composite construction, found on more recent generations of the ASK21, is generally more tolerant of climate variations and simpler to visually assess, particularly for detecting corrosion. In exchange, the purchase price for an equivalent number of airframe hours is often higher than for an equivalent vintage wood-and-fabric glider.</p>
+
+<h2 id="budget-reel">Real budget: purchase, towing, licence and annual maintenance</h2>
+<p>The purchase price is only part of the real budget. You also need to add club membership or individual storage costs, aircraft insurance, annual inspection fees, and possibly tow or winch launch fees if the glider is not self-launching. For a self-launch motor glider, you would also need to factor in engine monitoring, with its own maintenance milestones up to the major overhaul.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Expense item</th><th>Ka6 (vintage single-seater)</th><th>K8 / older ASK21 (two-seater)</th></tr></thead>
+<tbody>
+<tr><td>Typical purchase price</td><td>Lower end of the under-30,000 € range</td><td>Middle to upper end depending on condition</td></tr>
+<tr><td>Airframe maintenance</td><td>Wood-and-fabric joints and covering monitoring</td><td>Metal/composite monitoring depending on construction</td></tr>
+<tr><td>Primary use</td><td>Solo flying, personal performance</td><td>Training, dual controls, club use</td></tr>
+<tr><td>Parts availability</td><td>Specialised vintage glider network</td><td>Broader network, more common parts</td></tr>
+</tbody></table></div>
+<p>Before committing, always ask for the aircraft's complete logbook and check its consistency with the airframe hours declared in the listing.</p>
+
+<h2 id="inspection">Pre-purchase inspection checkpoints</h2>
+<p>On a wood-and-fabric glider, the inspection should focus primarily on the condition of the structural glued joints, any signs of moisture or mould, the state of the fabric covering, and the legibility of the logbook across the aircraft's entire service life. On a metal or mixed airframe, attention shifts more toward corrosion, particularly around fittings and the flight control anchor points.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Always have the glider inspected by a mechanic or inspector familiar with the type before buying, and require the full set of airworthiness documents and the logbook before committing financially.</div></div>
+<p>A properly documented older glider that has always been hangared is often worth considerably more, in real-world use, than a more recent example with incomplete history or irregular storage.</p>
+
+<h2 id="ou-trouver">Where to find a glider under 30,000 € and how to negotiate</h2>
+<p>Most used gliders in this segment circulate through the gliding club network, specialist classified ads and general used-aircraft platforms. Comparing several listings of similar models and model years remains the best way to assess a fair price, especially since the value of a vintage glider depends heavily on its actual condition rather than simply its year of manufacture.</p>
+<p>When negotiating, highlight objective findings from the inspection — glue defects, corrosion, upcoming maintenance milestones — rather than negotiating on the listed price alone. A glider with an exemplary logbook often justifies a price above the market average, and vice versa.</p>
+
+<h2 id="conclusion">Which glider to choose depending on your profile</h2>
+<p>For a beginner pilot or a club primarily looking for a rugged, versatile dual-control aircraft, a two-seater like the K8 or an older ASK21 remains the most rational choice within this budget. For an already-qualified pilot who wants to fly solo, progress in thermalling and take advantage of a minimal acquisition budget, a vintage single-seater like the Ka6 is an economical and endearing option, provided you accept the maintenance constraints specific to wood-and-fabric construction.</p>
+<p>In all cases, a budget under 30,000 euros gives access to a thoroughly flyable and safe aircraft, provided you always prioritise the actual condition and documented history of the aircraft over the listed price alone.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your used glider</h3>
+            <p>Compare used glider listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="planeur-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Category guide</span><strong>Used Glider Buyer's Guide</strong><p>Budget, reference brands, pre-purchase inspection checks, licensing and resale.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wallet"></i></span><span class="eyebrow">Buyer's guide</span><strong>How much does it cost to maintain a light aircraft per year</strong><p>Real annual budget to maintain a light aircraft: maintenance, insurance, hangar, fuel.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

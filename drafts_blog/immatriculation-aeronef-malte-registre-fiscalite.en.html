@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Registering an aircraft in Malta (9H-): how the Transport Malta register works, the registration process, VAT treatment, tax regime and appeal for European owners.">
+<meta property="og:title" content="Registering an aircraft in Malta: register, VAT and taxation | Aircraft2Sell">
+<meta property="og:description" content="Registering an aircraft in Malta (9H-): how the Transport Malta register works, the registration process, VAT treatment, tax regime and appeal for European owners.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/immatriculation-aeronef-malte-registre-fiscalite.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/immatriculation-aeronef-malte-registre-fiscalite.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/immatriculation-aeronef-malte-registre-fiscalite.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/immatriculation-aeronef-malte-registre-fiscalite.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/immatriculation-aeronef-malte-registre-fiscalite.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Registering an aircraft in Malta: register, VAT and taxation | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Registering an aircraft in Malta: register, VAT and taxation", "description": "Registering an aircraft in Malta (9H-): how the Transport Malta register works, the registration process, VAT treatment, tax regime and appeal for European owners.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/immatriculation-aeronef-malte-registre-fiscalite.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Registering an aircraft in Malta: register, VAT and taxation", "item": "https://aircraft2sell.eu/en/immatriculation-aeronef-malte-registre-fiscalite.html"}]}
+</script>
+<script type="application/ld+json">
+{"@type": "FAQPage", "@context": "https://schema.org", "mainEntity": [{"@type": "Question", "name": "Do I need to be a Maltese resident to register an aircraft under the 9H prefix?", "acceptedAnswer": {"@type": "Answer", "text": "No. The Maltese register accepts non-resident owners and operators, through a holding structure (company) or a lease/operating agreement that meets Transport Malta's requirements."}}, {"@type": "Question", "name": "Does registering in Malta exempt the aircraft from VAT?", "acceptedAnswer": {"@type": "Answer", "text": "No, registration itself has no direct effect on VAT. The VAT treatment depends on the ownership structure and the aircraft's use, and must be validated case by case with a specialist tax adviser."}}, {"@type": "Question", "name": "How long does registration in Malta take?", "acceptedAnswer": {"@type": "Answer", "text": "The timeline depends on how complete the file is and the legal structure chosen, but the Maltese register is known for relatively fast processing compared with some other European registers."}}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Registering in Malta</span></nav>
+    <span class="eyebrow">Registration</span>
+    <h1>Registering an aircraft in Malta: register, VAT and taxation</h1>
+    <p>How the Maltese 9H register works, the process with Transport Malta, VAT treatment and tax appeal: what you need to know before registering an aircraft in Malta.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#registre">The Maltese aircraft register: how it works</a></li><li><a href="#pourquoi-malte">Why Malta appeals to owners and operators</a></li><li><a href="#demarches">The registration process with Transport Malta</a></li><li><a href="#tva-fiscalite">VAT and taxation: what you really need to understand</a></li><li><a href="#documents">Documents and paperwork to gather</a></li><li><a href="#comparaison">Malta versus other European registers</a></li><li><a href="#pieges">Pitfalls to avoid</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="registre">The Maltese aircraft register: how it works</h2>
+<p>Malta operates a national civil aircraft register, managed by <strong>Transport Malta</strong>, the country's civil aviation authority, under the registration prefix <strong>9H-</strong>. As an EU and EASA member state, Malta applies the common European regulatory framework for airworthiness and safety, which makes a Maltese registration easier to recognise across the rest of the European airspace.</p>
+<p>The Maltese register is open to a wide range of aircraft: private light aircraft and helicopters, but also business jets and commercial aircraft, making it a versatile register used both by private owners and by professional operating structures.</p>
+
+<h2 id="pourquoi-malte">Why Malta appeals to owners and operators</h2>
+<p>Several factors explain the appeal of the Maltese register within the European Union. First, an administration reputed for responsiveness, with processing times generally shorter than some other major national registers. Second, legislation that recognises and secures a variety of ownership structures (direct ownership, dedicated company, financing or leasing arrangements), which makes it easier to set up operations involving several parties (financing, co-ownership, leasing).</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>EU and EASA member status, with airworthiness recognised across the European airspace.</span></li>
+  <li><i data-icon="check"></i><span>A civil aviation administration reputed for responsiveness and for supporting international files.</span></li>
+  <li><i data-icon="check"></i><span>A flexible legal framework for ownership and financing structures (companies, leasing, co-ownership).</span></li>
+  <li><i data-icon="check"></i><span>A register open to private owners as well as commercial operators and business jet fleets.</span></li>
+</ul>
+<p>This positioning explains why Malta has established itself, alongside other European registers reputed to be attractive, as an option regularly considered by business aircraft owners and, to a lesser extent, by some light aircraft or helicopter owners seeking a stable registration framework within the EU.</p>
+
+<h2 id="demarches">The registration process with Transport Malta</h2>
+<p>The registration procedure follows the broad steps common to any registration transfer in Europe: putting together a technical and legal file, verifying the aircraft's airworthiness, and approval by the competent authority before issuing the certificate of registration under the 9H prefix.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Proof of ownership or right to operate</strong> — a bill of sale or lease/leasing agreement depending on the structure chosen.</span></li>
+  <li><i data-icon="check"></i><span><strong>Deregistration from the original register</strong> — mandatory for an aircraft already registered elsewhere before the new Malta registration.</span></li>
+  <li><i data-icon="check"></i><span><strong>Valid Certificate of Airworthiness (CofA)</strong> — or a file enabling its issuance by the Maltese authorities.</span></li>
+  <li><i data-icon="check"></i><span><strong>Proof of insurance</strong> — meeting the minimum requirements applicable to the aircraft type and intended use.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — The Maltese register is known for relatively fast processing of complete files, but the actual timeline depends heavily on the legal structure chosen (direct ownership or via a company) and the nature of the aircraft. Using an agent or firm specialised in Maltese aircraft registration generally helps the file move smoothly.</div></div>
+
+<h2 id="tva-fiscalite">VAT and taxation: what you really need to understand</h2>
+<p>The tax appeal often associated with Malta is not linked to registration itself: registering an aircraft under the 9H prefix has no automatic effect on its VAT or tax treatment. It is the ownership and operating structure chosen (direct ownership, dedicated Maltese company, leasing arrangement) that determines the applicable regime, and that regime must be analysed case by case with a tax adviser specialised in this type of transaction.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Situation</th><th>Tax point to watch</th></tr></thead>
+<tbody>
+<tr><td>Direct ownership by an EU-resident individual</td><td>Treatment generally close to ownership in another member state</td></tr>
+<tr><td>Ownership via a dedicated Maltese company</td><td>Regime to be validated with local counsel depending on use and group structure</td></tr>
+<tr><td>Importing an aircraft from outside the EU</td><td>Import VAT potentially due, calculated on the customs value</td></tr>
+<tr><td>Commercial use / professional operation</td><td>Specific rules may apply, distinct from strictly private use</td></tr>
+</tbody></table></div>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Caution</strong> — European rules on VAT and state aid have evolved in recent years, and some leasing schemes historically used in Malta have been revised. Never rely on a general sales pitch: have your specific situation validated by a tax specialist in aviation law before committing.</div></div>
+
+<h2 id="documents">Documents and paperwork to gather</h2>
+<p>Beyond the paperwork strictly tied to registration, a solid file greatly eases the process with Transport Malta and limits administrative back-and-forth.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Complete logbook for the airframe, engine and equipment, with no gaps in traceability.</span></li>
+  <li><i data-icon="check"></i><span>Recent maintenance history, allowing verification of compliance with the applicable maintenance program.</span></li>
+  <li><i data-icon="check"></i><span>Evidence of the legal ownership structure (company articles, leasing agreement where applicable).</span></li>
+  <li><i data-icon="check"></i><span>Insurance certificates covering the transfer period and entry into service under the new registration.</span></li>
+</ul>
+
+<h2 id="comparaison">Malta versus other European registers</h2>
+<p>Within the European Union, several national registers stand out for their administrative flexibility or tax treatment, similar to what can be observed for example with the Irish or Isle of Man registers. The choice between these registers depends above all on the type of aircraft, the planned ownership structure and the intended use (private, commercial, international leasing), far more than a simple surface-level comparison between countries.</p>
+<p>For a private owner of a light aircraft or helicopter for strictly personal use, registering in the country of habitual residence often remains the simplest solution, with the appeal of a register like Malta's mainly coming into play for more complex structures (financing, international co-ownership, business fleets).</p>
+
+<h2 id="pieges">Pitfalls to avoid</h2>
+<p>The main mistake is confusing the administrative appeal of the register with an automatic tax advantage: these are two distinct subjects that must be treated separately. A second common mistake is starting the registration process without first obtaining effective deregistration from the aircraft's original register, which can block or delay the Maltese file. Finally, neglecting the pre-purchase inspection and the review of logbooks before even starting the registration process remains a classic mistake, whichever register is chosen.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Before taking any steps, have your plan validated by a legal and tax adviser specialised in Maltese aviation law: structures evolve along with European regulation, and information found online can quickly become outdated.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your next aircraft</h3>
+            <p>Browse verified aircraft and helicopter listings for sale across Europe on Aircraft2Sell, with zero commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or registration project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Registration</span><strong>Certifying and registering an aircraft in Europe</strong><p>Steps, choosing a registration country, the required file, timelines and costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="acheter-avion-usage-professionnel-statut-fiscalite.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Taxation</span><strong>Buying an aircraft for professional use: status and taxation</strong><p>Structuring options and the tax points to know for a professional purchase.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

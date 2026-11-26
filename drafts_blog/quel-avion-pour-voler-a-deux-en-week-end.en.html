@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Which aircraft to choose for a weekend getaway for two: comparing 2-seat and 4-seat single-engine aircraft by budget, range and flying enjoyment.">
+<meta property="og:title" content="Which Aircraft for a Weekend Getaway for Two | Aircraft2Sell">
+<meta property="og:description" content="Which aircraft to choose for a weekend getaway for two: comparing 2-seat and 4-seat single-engine aircraft by budget, range and flying enjoyment.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/quel-avion-pour-voler-a-deux-en-week-end.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/quel-avion-pour-voler-a-deux-en-week-end.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/quel-avion-pour-voler-a-deux-en-week-end.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/quel-avion-pour-voler-a-deux-en-week-end.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/quel-avion-pour-voler-a-deux-en-week-end.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Which Aircraft for a Weekend Getaway for Two | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Which Aircraft for a Weekend Getaway for Two", "description": "Which aircraft to choose for a weekend getaway for two: comparing 2-seat and 4-seat single-engine aircraft by budget, range and flying enjoyment.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/quel-avion-pour-voler-a-deux-en-week-end.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Which Aircraft for a Weekend Getaway for Two", "item": "https://aircraft2sell.eu/en/quel-avion-pour-voler-a-deux-en-week-end.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Weekend Getaway for Two</span></nav>
+    <span class="eyebrow">Use-case comparison</span>
+    <h1>Which Aircraft for a Weekend Getaway for Two</h1>
+    <p>Comparing light aircraft suited to a weekend getaway for two: range, budget, cabin comfort and ease of operation.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#besoin">A weekend getaway for two: a very specific need</a></li><li><a href="#criteres">The criteria that really matter for two people</a></li><li><a href="#2places">2-seat single-engines: light and budget-friendly</a></li><li><a href="#4places">4-seat single-engines flown by two: comfort and luggage</a></li><li><a href="#budget">Budget and operating cost comparison</a></li><li><a href="#destination">Choosing based on the type of weekend trip</a></li><li><a href="#occasion">Buying used: points to watch</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="besoin">A weekend getaway for two: a very specific need</h2>
+<p>Flying away for a weekend with two people onboard doesn't come with the same constraints as a solo training flight, a business trip, or a family trip with four seats filled. The need usually boils down to three priorities: enough range to reach a destination a few hundred kilometres away without a technical stop, some room for weekend luggage, and an operating cost that stays reasonable for what is often fairly occasional use, concentrated on a handful of trips a month.</p>
+<p>This typical use case significantly widens the field of relevant aircraft: a light 2-seat single-engine can be perfectly suitable if the couple travels light, while a classic 4-seat single-engine offers more useful load margin and comfort, at the cost of a somewhat higher acquisition and maintenance budget.</p>
+
+<h2 id="criteres">The criteria that really matter for two people</h2>
+<p>Before looking at specific models, it's worth listing the criteria that will truly make a difference for this type of mission. Range and cruise speed determine the realistic radius of action for a two- or three-day getaway. Payload capacity determines how much luggage can be carried without exceeding maximum takeoff weight. Cabin comfort, often underestimated, becomes important on a flight of several hours. Finally, hourly operating cost (fuel, maintenance, insurance) directly affects how often the couple will actually be able to use the aircraft.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Range and cruise speed: realistic radius of action for a weekend round trip.</span></li>
+  <li><i data-icon="check"></i><span>Payload capacity: weight available for luggage after refuelling.</span></li>
+  <li><i data-icon="check"></i><span>Cabin comfort: width, visibility, seat ergonomics over several hours of flight.</span></li>
+  <li><i data-icon="check"></i><span>Hourly operating cost: fuel, scheduled maintenance, insurance.</span></li>
+  <li><i data-icon="check"></i><span>Ease of operation: parts availability, network of mechanics trained on the type.</span></li>
+</ul>
+
+<h2 id="2places">2-seat single-engines: light and budget-friendly</h2>
+<p>For a couple who travels light and favours a tighter acquisition and operating budget, a well-chosen 2-seat single-engine aircraft can perfectly fulfil the mission. These aircraft generally offer moderate fuel consumption, simplified maintenance thanks to a usually simpler engine, and a more accessible used purchase price than equivalent 4-seat aircraft of similar age and equipment.</p>
+<p>The trade-off is more limited payload capacity: you have to work with a reduced luggage volume and, depending on the model, sometimes less range than a comparable cruising 4-seater. For weekends within a few hundred kilometres and light luggage, this limitation is rarely a real problem.</p>
+
+<h2 id="4places">4-seat single-engines flown by two: comfort and luggage</h2>
+<p>Choosing a 4-seat single-engine for use by two people, leaving the two rear seats available for luggage, is a very common approach among private owners. This formula offers more useful load margin, generally superior cabin comfort, and, depending on the model, range and cruise speed that widen the radius of action for more distant weekends.</p>
+<p>References such as the <a href="cessna-172-occasion-guide-achat.html">Cessna 172</a>, the <a href="piper-pa28-cherokee-occasion-guide-achat.html">Piper PA-28 Cherokee</a> or the <a href="robin-dr400-occasion.html">Robin DR400</a> illustrate this category well: robust aircraft, well documented on the used market, with a network of mechanics familiar with the type across Europe. For a higher budget and superior cruise performance, a composite aircraft like the <a href="cirrus-sr22-occasion-guide-achat-budget.html">Cirrus SR22</a> brings speed and comfort, at the cost of a higher operating budget.</p>
+
+<h2 id="budget">Budget and operating cost comparison</h2>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Light 2-seat single-engine</th><th>Classic 4-seat single-engine</th></tr></thead>
+<tbody>
+<tr><td>Used acquisition budget</td><td>Generally more accessible</td><td>Higher for comparable age and equipment</td></tr>
+<tr><td>Fuel consumption</td><td>Moderate</td><td>Higher, varies by model</td></tr>
+<tr><td>Payload for luggage</td><td>Limited</td><td>Comfortable, rear seats available</td></tr>
+<tr><td>Insurance</td><td>Generally lower</td><td>Generally higher</td></tr>
+<tr><td>Parts and mechanic availability</td><td>Varies by model</td><td>Often very good on widely produced models</td></tr>
+</tbody></table></div>
+<p>As with any light aircraft purchase, the real cost per flight hour depends heavily on the aircraft's condition, remaining engine potential and intended frequency of use. An aircraft that flies little but is old can require costly work in the short term, while a well-maintained aircraft, even an older one, can prove more economical over time.</p>
+
+<h2 id="destination">Choosing based on the type of weekend trip</h2>
+<p>The final choice depends a great deal on the type of weekend trip in mind. For local outings, nearby airfields and very light luggage, an economical 2-seater is more than enough and makes it easier to fly more often without blowing the fuel budget. For more ambitious weekends, involving longer distances, more luggage or a less accessible destination airfield, a 4-seater offers an appreciable safety and comfort margin.</p>
+<p>Weather and season also matter: an aircraft with better range makes it easier to route around a patch of bad weather without derailing the weekend plan, an argument frequently cited by owners who regularly fly as a pair.</p>
+
+<h2 id="occasion">Buying used: points to watch</h2>
+<p>Whatever model you choose, buying a used light aircraft for this type of use deserves the same precautions as any aircraft purchase: a full review of the logbook, consistency of engine hours (SMOH) with the aircraft's age, a careful look at the airframe and avionics, and a check of the certificate of airworthiness (CofA) validity.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Always have a pre-purchase inspection carried out by an independent mechanic familiar with the type before committing, especially if the aircraft hasn't flown much recently.</div></div>
+<p>Comparing several listings of similar models remains the best way to get a feel for the market and spot a well-maintained aircraft, whether a light 2-seater or a classic 4-seater flown by two.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your weekend aircraft for two</h3>
+            <p>Compare used 2- and 4-seat single-engine listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Cessna 172: the complete buying guide</strong><p>Budget, points to watch and maintenance for the most-produced training aircraft in the world.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="piper-pa28-cherokee-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Piper PA-28 Cherokee: buying guide</strong><p>A robust, widely available 4-seat single-engine, perfect for regular use by two or as a family.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="premier-achat-avion-guide-debutant.html" class="card"><span class="icon-box"><i data-icon="compass"></i></span><span class="eyebrow">Buyer's guide</span><strong>Buying your first aircraft: a beginner's guide</strong><p>The key steps to a successful first aircraft purchase, from choosing a model to financing.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

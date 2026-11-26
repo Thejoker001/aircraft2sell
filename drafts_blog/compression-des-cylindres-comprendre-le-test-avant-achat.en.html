@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Cylinder compression: how the differential compression test works, how to read the results, and why to require it before buying a used aircraft.">
+<meta name="keywords" content="aircraft cylinder compression, differential compression test, aircraft engine compression test, used aircraft engine check, pre-purchase engine inspection">
+<meta property="og:title" content="Cylinder Compression: Understanding the Pre-Purchase Test | Aircraft2Sell">
+<meta property="og:description" content="Cylinder compression: how the differential compression test works, how to read the results, and why to require it before buying a used aircraft.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/compression-des-cylindres-comprendre-le-test-avant-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/compression-des-cylindres-comprendre-le-test-avant-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/compression-des-cylindres-comprendre-le-test-avant-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/compression-des-cylindres-comprendre-le-test-avant-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/compression-des-cylindres-comprendre-le-test-avant-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Cylinder Compression: Understanding the Pre-Purchase Test | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Cylinder Compression: Understanding the Pre-Purchase Test", "description": "Cylinder compression: how the differential compression test works, how to read the results, and why to require it before buying a used aircraft.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/compression-des-cylindres-comprendre-le-test-avant-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Cylinder Compression: Understanding the Pre-Purchase Test", "item": "https://aircraft2sell.eu/en/compression-des-cylindres-comprendre-le-test-avant-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Cylinder compression</span></nav>
+    <span class="eyebrow">Technical guide</span>
+    <h1>Cylinder Compression: Understanding the Pre-Purchase Test</h1>
+    <p>How the differential compression test works, how to read the results, and why to systematically require it before buying a used aircraft.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#principe">The principle of the differential compression test</a></li><li><a href="#deroulement">How the test is actually performed</a></li><li><a href="#interpretation">Reading the results: trend and likely causes</a></li><li><a href="#achat">A key indicator when buying a used aircraft</a></li><li><a href="#frequence">Frequency and normal test context</a></li><li><a href="#limites">The limits of the compression test</a></li><li><a href="#apres">After a low reading: what to do</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="principe">The principle of the differential compression test</h2>
+<p>The cylinder compression test is one of the most revealing checks that can be performed on a light aircraft piston engine, whether a Lycoming or a Continental. On almost every general aviation engine in service, the <strong>differential compression test</strong> is used rather than the "static" test found on some automotive engines. The principle is to inject compressed air at a known pressure into each cylinder, with the piston positioned at top dead centre on the compression stroke, and then measure the pressure that actually remains in the combustion chamber.</p>
+<p>The gap between the applied pressure and the measured pressure directly indicates how well the cylinder seals: the smaller the gap, the better the cylinder holds pressure, a sign of healthy piston rings, valves and valve seats. This differential method is favoured in aviation because it is markedly more sensitive than a simple static test for detecting a localised leak, and above all because it allows the likely source of a leak to be identified by listening for escaping air, as explained further below.</p>
+
+<h2 id="deroulement">How the test is actually performed</h2>
+<p>The test is carried out with the engine warm, ideally right after a flight or an extended ground run, because clearances between moving parts close up at normal operating temperatures and the result then reflects the engine's actual in-service condition. A test performed on a cold engine can give falsely low readings on an otherwise healthy engine.</p>
+<p>The mechanic removes each spark plug in turn, positions the piston of the cylinder being tested at top dead centre on the compression stroke (intake and exhaust valves closed), then connects a gauge set fitted with a calibrated orifice. They set the upstream air pressure to a standard reference value, then read the resulting downstream pressure for each cylinder. The operation is repeated cylinder by cylinder across the whole engine (four, six or more cylinders depending on the model).</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Engine warm, ideally tested right after a recent flight or a sufficient ground run.</span></li>
+  <li><i data-icon="check"></i><span>Piston precisely positioned at top dead centre, compression stroke.</span></li>
+  <li><i data-icon="check"></i><span>Upstream air pressure stabilised before reading each cylinder.</span></li>
+  <li><i data-icon="check"></i><span>Reading logged for each cylinder, with both upstream and measured pressure.</span></li>
+</ul>
+
+<h2 id="interpretation">Reading the results: trend and likely causes</h2>
+<p>A compression result is always expressed as a ratio between the measured pressure and the applied pressure (for example "70/80", meaning 70 psi measured against 80 psi applied). Engine manufacturers generally recommend a closer look at a cylinder once the gap exceeds roughly a quarter of the applied pressure, and above all paying attention to any significant difference between cylinders on the same engine: a cylinder clearly weaker than its neighbours is often more meaningful than a slightly low but uniform absolute value across the whole engine.</p>
+<p>When a leak is found, the mechanic typically uses a mechanic's stethoscope to listen for where the injected compressed air is escaping, which helps narrow down the diagnosis:</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Hissing at the exhaust</strong> — generally points to an exhaust valve not seating perfectly (wear, carbon buildup, slight sticking).</span></li>
+  <li><i data-icon="check"></i><span><strong>Hissing at the intake</strong> — points to the intake valve rather than the exhaust valve.</span></li>
+  <li><i data-icon="check"></i><span><strong>Audible air at the crankcase breather</strong> — suggests a leak past the piston rings or cylinder walls.</span></li>
+  <li><i data-icon="check"></i><span><strong>No identifiable noise despite a measured leak</strong> — can point to a head gasket or a more diffuse fault requiring further investigation.</span></li>
+</ul>
+<p>As with oil analysis, the trend over time matters most: compression that stays stable from one check to the next is a good sign, a gradual and steady decline reflects normal wear slowly accelerating, and a sharp drop between two close checks warrants an immediate investigation.</p>
+
+<h2 id="achat">A key indicator when buying a used aircraft</h2>
+<p>For a buyer, requiring a recent compression test, ideally carried out as part of a pre-purchase inspection by a mechanic independent of the seller, is one of the most cost-effective checks available given how little it costs. A consistent, cylinder-by-cylinder reading in line with the engine manufacturer's expectations is a reassuring signal about the engine's overall condition, to be combined with the engine logbook history, hours since major overhaul (SMOH) and, where available, the oil analysis history.</p>
+<p>A single compression test with no prior history, however, has limited diagnostic value: it describes the engine's condition at that moment but says nothing about its trend over time. Always ask the seller for the readings from previous checks recorded in the engine logbook, not just the most recent one.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Ask for the readings from the last two or three checks, not just the most recent.</span></li>
+  <li><i data-icon="check"></i><span>Have the test performed or redone as part of the pre-purchase inspection, by a mechanic of your own choosing.</span></li>
+  <li><i data-icon="check"></i><span>Cross-reference the readings with SMOH and the oil analysis history for a complete picture of the engine.</span></li>
+  <li><i data-icon="check"></i><span>A significant difference between cylinders often carries more weight in negotiation than a slightly low but uniform absolute value.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Caution</strong> — Never rely on a compression reading supplied only by the seller or their own mechanic. Always have the result checked by your own independent inspector before finalising the purchase.</div></div>
+
+<h2 id="frequence">Frequency and normal test context</h2>
+<p>The compression test is part of the checks carried out during periodic engine inspections, particularly during the annual inspection or the hour-based checks set out in the aircraft's maintenance programme. Many workshops also perform it routinely every time spark plugs are removed, an operation already scheduled at regular intervals on piston engines.</p>
+<p>An engine that has not flown for a long time can show degraded compression values simply because of internal corrosion linked to inactivity, without this necessarily reflecting progressive mechanical wear. This is one more reason why flying regularly, or at least running the engine properly, helps keep compression values stable over time.</p>
+
+<h2 id="limites">The limits of the compression test</h2>
+<p>The compression test only detects sealing defects in the cylinders (valves, rings, walls) at the precise moment of the check. It does not replace oil analysis, which reveals progressive wear through dissolved metals, nor borescope inspection, which allows a visual look at the internal condition of cylinders, valves and valve seats. These three tools are complementary and should be considered together rather than in isolation to assess an engine's actual condition.</p>
+<p>The test also does not detect certain faults that do not directly affect cylinder sealing, such as bearing wear or an oil pump fault: other indicators (in-flight oil pressure, oil analysis, abnormal noises) remain necessary for a complete engine assessment.</p>
+
+<h2 id="apres">After a low reading: what to do</h2>
+<p>A low compression reading on one or more cylinders does not automatically mean a full engine overhaul is required. Depending on the cause identified with the stethoscope, some repairs remain localised and relatively limited in cost: replacing a valve and its seat, or working on the rings of a single cylinder, can sometimes be done without removing the whole engine, depending on the engine type and the extent of the fault.</p>
+<p>Conversely, low and consistent readings across several cylinders, combined with a high SMOH and a rising oil consumption trend, point more towards a full overhaul to budget for. In every case, get the required repair precisely quoted by an approved workshop before negotiating the aircraft's final price.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always factor the cost of any engine repair identified by the compression test into your negotiation, rather than treating the listed price as final.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to compare aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Find an inspector <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To take your buying or selling project further.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Maintenance</span><strong>The cost of maintaining a light aircraft</strong><p>Overhauls, parts, labour: what light aircraft maintenance really costs over the flight hours.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="pieges-achat-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="alert-triangle"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pitfalls to avoid when buying a used aircraft</strong><p>The most common mistakes and how to protect yourself when buying a used light aircraft.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

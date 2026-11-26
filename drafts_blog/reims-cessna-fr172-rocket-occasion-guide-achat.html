@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Guide d'achat du Reims-Cessna FR172 Rocket d'occasion : origine, budget à prévoir, points de vigilance à l'inspection, entretien moteur et revente en Europe.">
+<meta property="og:title" content="Reims-Cessna FR172 Rocket d'occasion : guide d'achat | Aircraft2Sell">
+<meta property="og:description" content="Guide d'achat du Reims-Cessna FR172 Rocket d'occasion : origine, budget à prévoir, points de vigilance à l'inspection, entretien moteur et revente en Europe.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/reims-cessna-fr172-rocket-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/reims-cessna-fr172-rocket-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/reims-cessna-fr172-rocket-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/reims-cessna-fr172-rocket-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/reims-cessna-fr172-rocket-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Reims-Cessna FR172 Rocket d'occasion : guide d'achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Reims-Cessna FR172 Rocket d'occasion : guide d'achat", "description": "Guide d'achat du Reims-Cessna FR172 Rocket d'occasion : origine, budget à prévoir, points de vigilance à l'inspection, entretien moteur et revente en Europe.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/reims-cessna-fr172-rocket-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Reims-Cessna FR172 Rocket d'occasion : guide d'achat", "item": "https://aircraft2sell.eu/reims-cessna-fr172-rocket-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Reims-Cessna FR172 Rocket d'occasion</span></nav>
+    <span class="eyebrow">Guide modèle</span>
+    <h1>Reims-Cessna FR172 Rocket d'occasion : guide d'achat</h1>
+    <p>Origine, budget à prévoir, points de vigilance à l'inspection, entretien moteur et perspectives de revente pour acheter un Reims-Cessna FR172 Rocket d'occasion en toute connaissance de cause.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#origine">Qu'est-ce que le Reims-Cessna FR172 Rocket</a></li><li><a href="#difference">Pourquoi le « Rocket » se distingue du Cessna 172 classique</a></li><li><a href="#budget">Quel budget prévoir à l'achat</a></li><li><a href="#inspection">Les points à vérifier avant d'acheter</a></li><li><a href="#moteur">Moteur Continental IO-360 : entretien et grande visite</a></li><li><a href="#entretien">Entretien courant et coûts d'exploitation</a></li><li><a href="#revente">Revente et marché de l'occasion en Europe</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="origine">Qu'est-ce que le Reims-Cessna FR172 Rocket</h2>
+<p>Le FR172 Rocket est une variante construite sous licence par Reims Aviation, à Reims, en France, à partir de la cellule du Cessna 172. Produit principalement dans les années 1960 et 1970 pour répondre à la demande du marché européen, cet avion a été équipé d'un moteur plus puissant que celui du Cessna 172 d'origine, ce qui lui a valu son surnom de « Rocket » chez les pilotes et les mécaniciens.</p>
+<p>Cette particularité de fabrication française en fait un avion relativement rare en dehors de l'Europe, mais bien connu des aéro-clubs et propriétaires privés du continent, où l'on en retrouve encore un nombre significatif en état de vol. Sur le marché de l'occasion, le FR172 Rocket occupe une place à part : il combine la robustesse et la simplicité mécanique du Cessna 172 avec des performances de montée et un comportement au décollage sensiblement supérieurs.</p>
+
+<h2 id="difference">Pourquoi le « Rocket » se distingue du Cessna 172 classique</h2>
+<p>La différence majeure entre le FR172 Rocket et un Cessna 172 d'occasion standard se situe au niveau de la motorisation et de l'hélice. Le Rocket reçoit un moteur Continental IO-360 à injection, nettement plus puissant que les moteurs Lycoming habituellement montés sur le 172, associé à une hélice à pas variable sur la plupart des exemplaires. Le résultat se traduit par un meilleur taux de montée, une charge utile généralement plus confortable et des performances au décollage appréciées en terrain court ou en altitude.</p>
+<p>Cette motorisation particulière a toutefois une conséquence directe sur la recherche de pièces et la disponibilité des mécaniciens formés sur ce moteur spécifique : avant d'acheter, il est utile de s'assurer qu'un atelier de maintenance familier avec le Continental IO-360 à injection est accessible dans sa région, car certains ateliers habitués aux seuls moteurs Lycoming peuvent être moins à l'aise avec ce type de motorisation.</p>
+
+<h2 id="budget">Quel budget prévoir à l'achat</h2>
+<p>Le prix d'un FR172 Rocket d'occasion dépend principalement de l'âge de la cellule, des heures cellule et moteur accumulées, du statut du moteur par rapport à sa dernière révision, et de l'état de l'avionique installée. Les appareils ayant conservé un moteur et une hélice proches de leur révision récente se négocient généralement à un niveau sensiblement supérieur à ceux qui approchent de leur limite de potentiel.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Impact sur le prix</th></tr></thead>
+<tbody>
+<tr><td>Heures moteur depuis la dernière révision</td><td>Un moteur proche de sa limite pèse fortement sur la négociation</td></tr>
+<tr><td>État de l'hélice à pas variable</td><td>Son entretien spécifique influence directement la valeur de l'appareil</td></tr>
+<tr><td>Rareté et disponibilité en Europe</td><td>Un avion bien documenté et localisé peut se négocier avec moins de marge</td></tr>
+<tr><td>Historique d'entretien</td><td>Un carnet d'entretien complet et suivi rassure fortement l'acheteur</td></tr>
+</tbody></table></div>
+<p>Au-delà du prix d'achat affiché, prévoyez un budget pour l'inspection pré-achat, les frais d'immatriculation et de transfert, l'assurance, et une éventuelle remise en état de l'avionique ou de la cellule si l'avion le nécessite. La rareté relative du modèle peut aussi allonger les délais de recherche d'un exemplaire correspondant précisément à vos attentes.</p>
+
+<h2 id="inspection">Les points à vérifier avant d'acheter</h2>
+<p>Comme pour tout avion d'occasion, une inspection pré-achat menée par un mécanicien indépendant qualifié sur le type est indispensable avant de finaliser une transaction. Pour un FR172 Rocket, certains points méritent une vigilance particulière, en raison de sa motorisation spécifique et de son âge.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Historique complet du moteur Continental IO-360 : heures écoulées depuis la dernière révision, respect du programme d'entretien constructeur, traçabilité des pièces changées.</span></li>
+  <li><i data-icon="check"></i><span>État et entretien de l'hélice à pas variable, dont le mécanisme de régulation doit être vérifié avec attention.</span></li>
+  <li><i data-icon="check"></i><span>Corrosion de la cellule et de la structure, en particulier sur les exemplaires ayant volé près du littoral ou stockés en extérieur pendant de longues périodes.</span></li>
+  <li><i data-icon="check"></i><span>Validité et cohérence du certificat de navigabilité ainsi que des documents de traçabilité liés à la fabrication française de l'appareil.</span></li>
+  <li><i data-icon="check"></i><span>Carnet d'entretien complet, sans zone d'ombre sur les propriétaires successifs et les réparations effectuées au fil du temps.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Ne jamais se contenter des déclarations du vendeur sur l'état général : un rapport d'inspection indépendant écrit, réalisé par un mécanicien familier du Continental IO-360, reste la meilleure protection contre une mauvaise surprise après l'achat.</div></div>
+
+<h2 id="moteur">Moteur Continental IO-360 : entretien et grande visite</h2>
+<p>Le moteur Continental IO-360 à injection qui équipe le FR172 Rocket demande un suivi rigoureux, notamment au niveau du système d'injection, plus sensible que le carburateur simple d'un moteur Lycoming équivalent. Un entretien régulier et documenté de ce système limite les pannes et préserve la fiabilité du moteur sur la durée.</p>
+<p>À l'approche de sa limite de potentiel, le moteur devra passer par une grande visite complète, dont le coût doit être anticipé dans le budget de détention de l'appareil. Demander au vendeur le statut précis du moteur par rapport à cette échéance, ainsi que l'historique SMOH, permet d'évaluer sereinement la part de cet investissement à venir dans le prix global de la transaction.</p>
+
+<h2 id="entretien">Entretien courant et coûts d'exploitation</h2>
+<p>Le coût d'exploitation d'un FR172 Rocket reste globalement comparable à celui d'un Cessna 172 d'occasion, avec un léger surcoût lié à la motorisation spécifique et à l'hélice à pas variable. Les postes de dépense principaux restent la visite annuelle obligatoire, l'assurance, le stationnement et, à plus long terme, la révision du moteur et de l'hélice une fois leur potentiel atteint.</p>
+<p>Faire entretenir l'appareil dans un atelier habitué au Continental IO-360 et à l'hélice à pas variable permet de limiter les mauvaises surprises et de préserver la valeur de revente de l'avion. Un suivi rigoureux et documenté de l'entretien constitue un argument de poids lors d'une revente future.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez systématiquement les trois dernières factures de maintenance avant de faire une offre : elles donnent une image fidèle du sérieux de l'entretien passé et de la connaissance qu'a l'atelier de ce type de moteur.</div></div>
+
+<h2 id="revente">Revente et marché de l'occasion en Europe</h2>
+<p>Le FR172 Rocket reste un avion de niche sur le marché européen de l'occasion, apprécié pour ses performances supérieures à celles du Cessna 172 standard, mais disponible en quantités plus limitées. Cette rareté relative peut jouer en faveur du vendeur d'un exemplaire bien entretenu, avec un historique transparent et un dossier technique complet, tout en rendant la recherche parfois plus longue pour l'acheteur.</p>
+<p>Comparer plusieurs annonces de modèles similaires, lorsque c'est possible, reste la meilleure façon d'évaluer un juste prix. Les écarts constatés entre deux exemplaires du même millésime s'expliquent presque toujours par le statut du moteur et de l'hélice, ainsi que par la qualité du suivi d'entretien documenté dans le carnet.</p>
+<p>Pour un acheteur patient, la rareté du FR172 Rocket peut aussi se transformer en opportunité : certains vendeurs méconnaissent la valeur réelle de leur appareil par rapport à un Cessna 172 standard et fixent un prix proche de celui d'un modèle moins performant. À l'inverse, un propriétaire bien informé, conscient des atouts de motorisation et de performances de son avion, demandera un prix cohérent avec cette rareté. Dans les deux cas, prendre le temps de comparer l'historique technique de plusieurs exemplaires reste la meilleure protection contre une évaluation déséquilibrée, que ce soit à l'achat ou lors d'une revente future.</p>
+<p>Enfin, gardez à l'esprit que la communauté de propriétaires et de clubs familiers du FR172 Rocket en Europe constitue une ressource précieuse pour affiner votre jugement sur un exemplaire particulier. Échanger avec des pilotes expérimentés sur ce type d'appareil, avant de signer, permet souvent de repérer des points d'attention spécifiques à ce modèle qu'un acheteur non averti pourrait négliger.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Reims-Cessna FR172 Rocket</h3>
+            <p>Comparez les annonces de FR172 Rocket d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cessna 172 d'occasion : guide d'achat complet</strong><p>Budget, points de vigilance et entretien pour l'avion d'entraînement le plus produit au monde.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="mooney-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Mooney d'occasion : performance et budget d'entretien</strong><p>Ce qu'il faut savoir sur la performance et le budget d'entretien d'un Mooney d'occasion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

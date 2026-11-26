@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="L'analyse d'huile moteur : comment elle détecte l'usure avant la panne, quels paramètres surveiller et comment l'utiliser à l'achat d'un avion d'occasion.">
+<meta name="keywords" content="analyse d'huile moteur avion, SOAP aviation, diagnostic moteur avion, usure moteur avion occasion, huile moteur Lycoming Continental">
+<meta property="og:title" content="Analyse d'huile moteur : un outil de diagnostic préventif | Aircraft2Sell">
+<meta property="og:description" content="L'analyse d'huile moteur : comment elle détecte l'usure avant la panne, quels paramètres surveiller et comment l'utiliser à l'achat d'un avion d'occasion.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Analyse d'huile moteur : un outil de diagnostic préventif | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Analyse d'huile moteur : un outil de diagnostic préventif", "description": "L'analyse d'huile moteur : comment elle détecte l'usure avant la panne, quels paramètres surveiller et comment l'utiliser à l'achat d'un avion d'occasion.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Analyse d'huile moteur : un outil de diagnostic préventif", "item": "https://aircraft2sell.eu/analyse-d-huile-moteur-un-outil-de-diagnostic-preventif.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Analyse d'huile moteur</span></nav>
+    <span class="eyebrow">Guide technique</span>
+    <h1>Analyse d'huile moteur : un outil de diagnostic préventif</h1>
+    <p>Comment l'analyse d'huile détecte l'usure moteur avant qu'elle ne se traduise par une panne, quels paramètres surveiller et comment s'en servir à l'achat d'un avion d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#principe">Le principe de l'analyse d'huile moteur</a></li><li><a href="#parametres">Les paramètres mesurés et ce qu'ils révèlent</a></li><li><a href="#interpretation">Interpréter les résultats : tendance plutôt que valeur isolée</a></li><li><a href="#achat">Un outil précieux lors de l'achat d'un avion d'occasion</a></li><li><a href="#frequence">Fréquence et méthode de prélèvement</a></li><li><a href="#limites">Les limites de l'analyse d'huile</a></li><li><a href="#cout">Coût et mise en œuvre pratique</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="principe">Le principe de l'analyse d'huile moteur</h2>
+<p>L'analyse d'huile moteur, souvent désignée par l'acronyme SOAP (Spectrometric Oil Analysis Program), consiste à faire examiner un échantillon d'huile prélevé lors de chaque vidange par un laboratoire spécialisé. L'objectif n'est pas de juger la qualité de l'huile elle-même, mais d'y rechercher des traces de métaux d'usure provenant des différentes pièces internes du moteur : paliers, chemises, segments, pignons, roulements. Chaque alliage laisse une signature chimique propre, ce qui permet d'identifier non seulement qu'une usure est en cours, mais aussi, souvent, quelle pièce en est la source.</p>
+<p>Cette approche s'inscrit dans la logique de la maintenance préventive : plutôt que d'attendre une panne ou une baisse de performance perceptible, on surveille des indicateurs invisibles à l'œil nu mais mesurables en laboratoire, bien avant qu'un incident ne survienne. Sur les moteurs à pistons Lycoming et Continental qui équipent la grande majorité des avions légers, cette pratique s'est largement généralisée chez les exploitants attentifs, qu'il s'agisse de propriétaires privés, d'écoles de pilotage ou de flottes commerciales.</p>
+
+<h2 id="parametres">Les paramètres mesurés et ce qu'ils révèlent</h2>
+<p>Un rapport d'analyse d'huile standard mesure la concentration de plusieurs métaux, exprimée en parties par million (ppm), ainsi que quelques indicateurs complémentaires sur l'état de l'huile elle-même.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Fer</strong> — provient principalement des chemises de cylindre, des arbres à cames et des paliers ; une hausse progressive peut indiquer une usure normale des chemises, une hausse brutale un problème localisé.</span></li>
+  <li><i data-icon="check"></i><span><strong>Aluminium</strong> — signature des pistons et de certains carters ; des niveaux élevés associés à du silicium peuvent trahir une contamination par des particules abrasives entrées dans le moteur.</span></li>
+  <li><i data-icon="check"></i><span><strong>Cuivre, plomb, étain</strong> — associés aux coussinets et paliers lisses ; une hausse combinée de ces trois métaux oriente fortement le diagnostic vers une usure de palier.</span></li>
+  <li><i data-icon="check"></i><span><strong>Chrome</strong> — présent sur certains segments de piston chromés ; sa présence seule n'est pas toujours alarmante, mais une évolution rapide doit être surveillée.</span></li>
+  <li><i data-icon="check"></i><span><strong>Silicium</strong> — indicateur clé de contamination par poussière ou sable, souvent lié à un filtre à air défectueux ou mal entretenu.</span></li>
+  <li><i data-icon="check"></i><span><strong>Viscosité et teneur en eau/carburant</strong> — renseignent sur l'état général de l'huile et sur d'éventuelles anomalies de combustion ou d'étanchéité.</span></li>
+</ul>
+<p>Le laboratoire compare systématiquement ces valeurs à des seuils statistiques établis sur de larges populations de moteurs du même type, ce qui permet de distinguer une valeur normale pour un moteur donné d'une valeur réellement préoccupante.</p>
+
+<h2 id="interpretation">Interpréter les résultats : tendance plutôt que valeur isolée</h2>
+<p>La règle la plus importante en analyse d'huile est qu'une mesure isolée a peu de valeur diagnostique. Chaque moteur a sa propre « ligne de base » : un niveau de fer légèrement supérieur à la moyenne peut être parfaitement normal pour un moteur donné, tant qu'il reste stable d'une vidange à l'autre. Ce qui compte réellement, c'est l'évolution dans le temps, mesurée vidange après vidange sur un historique d'au moins trois à cinq prélèvements consécutifs.</p>
+<p>Une tendance à la hausse progressive et régulière traduit généralement une usure normale qui s'accélère doucement avec l'âge du moteur. À l'inverse, un saut brutal d'un ou plusieurs métaux entre deux vidanges rapprochées est le signal qui doit alerter : il indique souvent qu'un phénomène d'usure localisé vient de démarrer ou de s'aggraver, et justifie une inspection complémentaire (dépose de filtre à huile pour examen des particules, contrôle boroscopique des cylindres, vérification de la pression d'huile).</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À retenir</strong> — Conservez systématiquement l'historique complet des rapports d'analyse dans le carnet moteur. Un rapport isolé sans comparatif antérieur perd une grande partie de sa valeur diagnostique.</div></div>
+
+<h2 id="achat">Un outil précieux lors de l'achat d'un avion d'occasion</h2>
+<p>Pour un acheteur, l'historique des analyses d'huile constitue l'un des documents les plus informatifs qu'un vendeur puisse fournir, au même titre que le carnet moteur et le carnet de route. Un historique complet et régulier, sans anomalie non expliquée, est un signe fort de sérieux dans l'entretien de l'appareil et donne une image fiable de l'état réel du moteur, bien au-delà du simple nombre d'heures depuis révision (SMOH) affiché sur l'annonce.</p>
+<p>À l'inverse, l'absence totale d'historique d'analyse d'huile n'est pas en soi disqualifiante — de nombreux moteurs parfaitement sains n'ont jamais fait l'objet de ce suivi — mais elle prive l'acheteur d'un indicateur précieux et doit inciter à une inspection pré-achat d'autant plus rigoureuse, incluant si possible une analyse d'huile réalisée à l'occasion de la vidange qui précède ou suit immédiatement la transaction.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Demandez systématiquement les rapports d'analyse des trois à cinq dernières vidanges, pas seulement le dernier.</span></li>
+  <li><i data-icon="check"></i><span>Vérifiez la cohérence entre les heures de vol indiquées sur chaque rapport et celles du carnet moteur.</span></li>
+  <li><i data-icon="check"></i><span>Si aucun historique n'existe, envisagez de faire réaliser une analyse dans le cadre de l'inspection pré-achat.</span></li>
+  <li><i data-icon="check"></i><span>Une tendance stable sur plusieurs vidanges pèse souvent plus, dans la négociation, qu'un faible nombre d'heures SMOH.</span></li>
+</ul>
+
+<h2 id="frequence">Fréquence et méthode de prélèvement</h2>
+<p>L'analyse d'huile se réalise à chaque vidange, c'est-à-dire selon l'intervalle de vidange recommandé par le motoriste, généralement entre 25 et 50 heures de vol pour la plupart des moteurs à pistons Lycoming et Continental, parfois davantage avec certains filtres à huile complets. Le prélèvement doit être effectué moteur chaud, après un vol récent, pour que les particules en suspension soient correctement représentées dans l'échantillon, puis envoyé rapidement au laboratoire dans le flacon fourni par celui-ci.</p>
+<p>La plupart des laboratoires spécialisés (en Europe comme aux États-Unis) renvoient un rapport sous quelques jours, avec les valeurs mesurées, les seuils de référence pour le type de moteur concerné et des commentaires d'interprétation. Beaucoup de mécaniciens intègrent ce prélèvement systématiquement à chaque passage en atelier, ce qui en fait une routine peu coûteuse en temps additionnel.</p>
+
+<h2 id="limites">Les limites de l'analyse d'huile</h2>
+<p>L'analyse d'huile est un outil de diagnostic complémentaire, pas une garantie absolue. Elle ne détecte que ce qui se dissout ou se disperse finement dans l'huile : une grosse particule métallique issue d'une défaillance brutale peut très bien être piégée par le filtre à huile sans apparaître de façon significative dans l'analyse spectrométrique. C'est pourquoi l'examen du filtre à huile coupé et l'inspection visuelle des particules retenues restent un complément indispensable, en particulier après une vidange suivant un fonctionnement anormal (survitesse, surchauffe, choc).</p>
+<p>De même, l'analyse d'huile ne remplace ni le contrôle de compression des cylindres, ni l'inspection boroscopique, ni le suivi de la consommation d'huile entre vidanges, qui restent des indicateurs complémentaires essentiels du diagnostic moteur global. Elle doit être vue comme une pièce du puzzle, à combiner avec les autres pratiques de surveillance plutôt qu'à utiliser isolément.</p>
+
+<h2 id="cout">Coût et mise en œuvre pratique</h2>
+<p>Le coût d'une analyse d'huile reste modeste au regard de l'enjeu : comptez généralement entre 20 et 40 € par prélèvement selon le laboratoire et le niveau de détail du rapport demandé. Sur la durée de vie d'un moteur, cumulé à chaque vidange, ce coût reste négligeable comparé à celui d'une panne moteur imprévue ou d'une révision anticipée.</p>
+<p>De nombreux ateliers de maintenance agréés proposent ce service en routine et peuvent constituer et suivre l'historique pour le compte du propriétaire. Pour un acheteur ou un futur propriétaire, intégrer cette pratique dès la première vidange suivant l'achat est l'une des mesures de maintenance préventive les plus rentables qui soit, en complément d'un entretien régulier et d'une inspection pré-achat sérieuse.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Changez toujours de laboratoire avec prudence : les seuils de référence peuvent légèrement varier d'un prestataire à l'autre, ce qui peut fausser la lecture de la tendance si vous changez de laboratoire en cours de suivi.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Entretien</span><strong>Le coût d'entretien d'un avion léger</strong><p>Révisions, pièces, main d'œuvre : combien coûte réellement l'entretien d'un avion léger au fil des heures de vol.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="pieges-achat-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="alert-triangle"></i></span><span class="eyebrow">Guide acheteur</span><strong>Les pièges à éviter à l'achat d'un avion d'occasion</strong><p>Les erreurs les plus fréquentes et comment s'en protéger lors de l'achat d'un avion léger d'occasion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

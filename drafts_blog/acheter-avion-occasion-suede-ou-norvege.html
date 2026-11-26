@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Acheter un avion d'occasion en Suède ou en Norvège en 2026 : marché, prix, immatriculation (Transportstyrelsen / CAA Norway), TVA et pièges à éviter. Comparatif complet.">
+<meta property="og:title" content="Acheter un avion d'occasion en Suède ou en Norvège : quel pays choisir | Aircraft2Sell">
+<meta property="og:description" content="Acheter un avion d'occasion en Suède ou en Norvège en 2026 : marché, prix, immatriculation (Transportstyrelsen / CAA Norway), TVA et pièges à éviter. Comparatif complet.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/acheter-avion-occasion-suede-ou-norvege.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/acheter-avion-occasion-suede-ou-norvege.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-suede-ou-norvege.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-suede-ou-norvege.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-suede-ou-norvege.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Acheter un avion d'occasion en Suède ou en Norvège : quel pays choisir | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Acheter un avion d'occasion en Suède ou en Norvège : quel pays choisir", "description": "Acheter un avion d'occasion en Suède ou en Norvège en 2026 : marché, prix, immatriculation (Transportstyrelsen / CAA Norway), TVA et pièges à éviter. Comparatif complet.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/acheter-avion-occasion-suede-ou-norvege.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Acheter un avion d'occasion en Suède ou en Norvège", "item": "https://aircraft2sell.eu/acheter-avion-occasion-suede-ou-norvege.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Suède ou Norvège</span></nav>
+    <span class="eyebrow">Comparatif pays</span>
+    <h1>Acheter un avion d'occasion en Suède ou en Norvège : quel pays choisir</h1>
+    <p>Marché, prix, immatriculation, TVA/fiscalité et pièges à éviter : un comparatif complet pour décider où acheter votre avion léger d'occasion entre la Suède et la Norvège.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#marches">Deux marchés scandinaves, deux dynamiques différentes</a></li><li><a href="#prix">Comparatif des prix par type d'appareil</a></li><li><a href="#immatriculation">Immatriculation : Transportstyrelsen contre CAA Norway</a></li><li><a href="#fiscalite">TVA et fiscalité : la Norvège hors Union européenne</a></li><li><a href="#climat">Climat, infrastructures et usage réel de l'appareil</a></li><li><a href="#inspection">Inspection pré-achat et documents</a></li><li><a href="#choix">Quel pays choisir selon votre profil</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="marches">Deux marchés scandinaves, deux dynamiques différentes</h2>
+<p>La Suède et la Norvège sont deux marchés d'aviation légère actifs, portés par une tradition aéronautique ancienne et un territoire qui rend l'avion particulièrement utile pour relier des régions peu denses. La Suède, avec un maillage d'aérodromes relativement dense et une base installée importante, propose une offre large de monomoteurs de tourisme, de biplaces et d'ULM, facilitant la comparaison entre plusieurs appareils similaires.</p>
+<p>La Norvège, avec son relief montagneux et son littoral découpé, dispose d'un marché plus restreint mais où l'avion léger occupe une place particulièrement utilitaire, notamment pour desservir des zones isolées. L'offre y est un peu moins abondante que côté suédois, mais reste de qualité, avec un entretien globalement rigoureux imposé par les conditions d'exploitation locales.</p>
+<p>Les deux pays appliquent les normes de navigabilité EASA dans le cadre de l'espace économique européen (EEE), ce qui simplifie grandement la comparaison technique entre un appareil suédois et un appareil norvégien, malgré leurs statuts différents vis-à-vis de l'Union européenne.</p>
+
+<h2 id="prix">Comparatif des prix par type d'appareil</h2>
+<p>Les fourchettes de prix restent globalement comparables entre les deux pays pour un appareil de catégorie et d'état équivalents, le niveau de prix dépendant avant tout de l'historique moteur (heures restantes avant TBO), de l'état de la cellule et de l'avionique installée plutôt que du seul pays de vente. On observe toutefois en Norvège une légère prime sur les appareils équipés pour l'exploitation sur pistes courtes ou en conditions difficiles (pneus renforcés, équipements de dégivrage), alors que la Suède offre davantage de choix sur l'ensemble des gammes de prix grâce au volume d'annonces disponible.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Type d'appareil</th><th>Suède</th><th>Norvège</th></tr></thead>
+<tbody>
+<tr><td>ULM</td><td>15 000 à 55 000 €</td><td>Offre plus limitée, prix comparables ou légèrement supérieurs</td></tr>
+<tr><td>Monomoteur léger (Cessna 172, Piper PA-28)</td><td>45 000 à 115 000 €</td><td>50 000 à 125 000 €</td></tr>
+<tr><td>Monomoteur haute performance / utilitaire court-courrier</td><td>120 000 à 280 000 € et plus</td><td>130 000 à 300 000 € et plus, prime pour équipements pistes courtes</td></tr>
+<tr><td>Bimoteur léger / turbopropulseur</td><td>180 000 à 380 000 € et plus</td><td>Offre présente, souvent orientée utilitaire, prix alignés sur le marché nordique</td></tr>
+</tbody>
+</table></div>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Comparez toujours à potentiel moteur et niveau d'équipement équivalents : l'écart de prix entre un appareil suédois et un appareil norvégien de même génération tient presque toujours à ces critères plus qu'au pays lui-même.</div></div>
+
+<h2 id="immatriculation">Immatriculation : Transportstyrelsen contre CAA Norway</h2>
+<p>En Suède, tout aéronef basé et exploité dans le pays doit être immatriculé auprès de la <strong>Transportstyrelsen (agence suédoise des transports)</strong>, sous préfixe <strong>SE-</strong>. En Norvège, l'autorité compétente est la <strong>Civil Aviation Authority of Norway (CAA Norway / Luftfartstilsynet)</strong>, qui attribue le préfixe <strong>LN-</strong>. Dans les deux pays, un achat entre particuliers déjà immatriculés localement se traduit par une simple mise à jour du titulaire, tandis qu'un appareil importé depuis un autre pays nécessite d'abord sa radiation du registre d'origine.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Certificat de navigabilité et ARC en cours de validité</strong> — à vérifier avant de signer, dans les deux pays.</span></li>
+  <li><i data-icon="check"></i><span><strong>Acte de vente (bill of sale)</strong> — daté, signé par les deux parties, mentionnant le numéro de série, exigé par la Transportstyrelsen comme par la CAA Norway.</span></li>
+  <li><i data-icon="check"></i><span><strong>Attestation d'assurance responsabilité civile</strong> — requise avant la première utilisation sous la nouvelle immatriculation, en Suède comme en Norvège.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — La Suède, membre de l'Union européenne, applique directement les règles communes EASA de transfert entre États membres, généralement simples et assez rapides (de 2 à 8 semaines). La Norvège, bien que membre de l'espace économique européen et donc de l'espace EASA, n'appartient pas à l'Union européenne douanière : un import en provenance d'un pays de l'UE ou l'inverse reste possible mais demande de vérifier spécifiquement les formalités douanières applicables auprès de la CAA Norway et des douanes norvégiennes.</div></div>
+
+<h2 id="fiscalite">TVA et fiscalité : la Norvège hors Union européenne</h2>
+<p>C'est le point de différenciation le plus important entre les deux pays. La Suède, membre de l'Union européenne, applique le régime de TVA communautaire : une vente entre particuliers résidents de l'UE est généralement hors TVA, tandis qu'une vente par un professionnel ou un import hors UE reste soumis à la TVA à l'importation.</p>
+<p>La Norvège n'est pas membre de l'Union européenne ni de son régime de TVA, même si elle fait partie de l'espace économique européen. Un aéronef introduit en Norvège est en principe soumis à la TVA norvégienne (calculée sur la valeur de l'appareil), sauf situations particulières à valider au cas par cas. À l'inverse, un appareil norvégien vendu et exporté vers l'UE peut nécessiter des formalités douanières spécifiques à l'entrée dans le territoire de l'Union. Dans les deux sens, il est indispensable de faire valider sa situation fiscale avant l'acquisition, en particulier si l'appareil a déjà changé plusieurs fois de pays d'immatriculation.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Situation</th><th>Suède (UE)</th><th>Norvège (hors UE, EEE)</th></tr></thead>
+<tbody>
+<tr><td>Vente entre particuliers résidents locaux</td><td>Généralement hors TVA</td><td>TVA norvégienne potentiellement due à l'importation dans le pays</td></tr>
+<tr><td>Vente par un professionnel</td><td>TVA potentiellement applicable</td><td>TVA norvégienne généralement applicable</td></tr>
+<tr><td>Import/export entre les deux pays</td><td>Formalités douanières spécifiques à vérifier au cas par cas</td><td>Formalités douanières spécifiques à vérifier au cas par cas</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="climat">Climat, infrastructures et usage réel de l'appareil</h2>
+<p>Au-delà des aspects réglementaires, le climat et la géographie jouent un rôle important dans le choix d'un appareil adapté à chacun des deux pays. En Suède, les hivers rigoureux imposent un équipement de dégivrage ou au minimum une bonne isolation moteur pour les démarrages par grand froid, ainsi qu'un hangar fermé pour la conservation de l'appareil durant la saison froide.</p>
+<p>En Norvège, le relief montagneux, les pistes courtes et parfois non goudronnées de certaines régions, ainsi que les conditions météorologiques côtières changeantes, favorisent les appareils robustes, capables d'opérer sur des terrains sommaires, voire équipés pour l'exploitation sur skis ou flotteurs selon la région. Ces spécificités locales influencent directement le type d'appareil que l'on trouve le plus couramment sur le marché de l'occasion dans chaque pays.</p>
+
+<h2 id="inspection">Inspection pré-achat et documents</h2>
+<p>Qu'il s'agisse d'un appareil suédois ou norvégien, une inspection pré-achat par un mécanicien agréé indépendant du vendeur reste la meilleure protection contre les mauvaises surprises. Elle porte sur l'état de la cellule, la cohérence du carnet moteur, l'historique de maintenance et la conformité de l'avionique aux exigences européennes en vigueur (transpondeur, radio 8.33 kHz), des exigences communes aux deux pays du fait de l'application des normes EASA.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Carnets de cellule, moteur et hélice à jour, sans rupture chronologique, qu'il s'agisse d'un carnet tenu en Suède ou en Norvège.</span></li>
+  <li><i data-icon="check"></i><span>Historique des factures de maintenance des trois dernières années, dans un atelier agréé du pays concerné.</span></li>
+  <li><i data-icon="check"></i><span>Absence de corrosion ou de dommage lié à l'exposition au climat froid et humide typique de la région, vérifiable via le dossier de maintenance et une inspection visuelle approfondie.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne finalisez jamais un achat, en Suède comme en Norvège, sans avoir vu les carnets originaux et fait vérifier leur cohérence par un professionnel indépendant du vendeur.</div></div>
+
+<h2 id="choix">Quel pays choisir selon votre profil</h2>
+<p>Le choix entre la Suède et la Norvège dépend avant tout de votre projet. La Suède séduit les acheteurs qui privilégient un volume d'offres important pour comparer de nombreux appareils similaires et négocier à partir d'un marché actif, avec l'avantage administratif d'un transfert d'immatriculation simplifié au sein de l'Union européenne. La Norvège peut être intéressante pour des appareils robustes adaptés à une exploitation exigeante, mais implique de bien anticiper la question douanière et fiscale propre à un pays hors Union européenne, surtout en cas d'import ou d'export transfrontalier.</p>
+<p>Dans tous les cas, le critère décisif reste la qualité de l'entretien et la transparence de l'historique de l'appareil, bien plus que le seul pays d'immatriculation. Comparer plusieurs annonces dans les deux pays, à budget et catégorie équivalents, reste la meilleure façon de faire un choix éclairé.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Si vous envisagez un import entre les deux pays, faites valider en amont les formalités douanières et fiscales applicables par un professionnel spécialisé : cela évite les mauvaises surprises après la signature.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre avion en Suède ou en Norvège</h3>
+            <p>Consultez les annonces vérifiées d'avions à vendre en Suède et en Norvège sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="acheter-avion-occasion-suede.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Achat</span><strong>Acheter un avion d'occasion en Suède : guide complet</strong><p>Marché, prix, immatriculation et pièges à éviter pour acheter en Suède.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="acheter-avion-occasion-norvege.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Achat</span><strong>Acheter un avion d'occasion en Norvège : guide complet</strong><p>Marché, prix, immatriculation et pièges à éviter pour acheter en Norvège.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion en Europe.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

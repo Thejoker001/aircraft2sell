@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used agricultural aircraft for crop spraying: the European market, dedicated airframes, regulation, buying budget and pre-purchase red flags.">
+<meta property="og:title" content="Used agricultural aircraft: crop spraying and the European market | Aircraft2Sell">
+<meta property="og:description" content="Used agricultural aircraft for crop spraying: the European market, dedicated airframes, regulation, buying budget and pre-purchase red flags.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/avion-agricole-d-occasion-epandage-et-marche-europeen.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/avion-agricole-d-occasion-epandage-et-marche-europeen.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/avion-agricole-d-occasion-epandage-et-marche-europeen.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/avion-agricole-d-occasion-epandage-et-marche-europeen.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/avion-agricole-d-occasion-epandage-et-marche-europeen.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used agricultural aircraft: crop spraying and the European market | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used agricultural aircraft: crop spraying and the European market", "description": "Used agricultural aircraft for crop spraying: the European market, dedicated airframes, regulation, buying budget and pre-purchase red flags.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/avion-agricole-d-occasion-epandage-et-marche-europeen.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used agricultural aircraft: crop spraying and the European market", "item": "https://aircraft2sell.eu/en/avion-agricole-d-occasion-epandage-et-marche-europeen.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Agricultural aircraft</span></nav>
+    <span class="eyebrow">Thematic guide</span>
+    <h1>Used agricultural aircraft: crop spraying and the European market</h1>
+    <p>Understanding the European market for used agricultural aircraft: airframes dedicated to crop spraying, regulation, budget and what to check before buying or selling.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#market">A niche but structured European market</a></li><li><a href="#aircraft">Aircraft built for crop spraying</a></li><li><a href="#regulation">Regulation and certification: the broad picture</a></li><li><a href="#budget">Buying budget and operating costs</a></li><li><a href="#inspection">Pre-purchase inspection: what's specific to ag aircraft</a></li><li><a href="#logbook">Logbook, engine hours and major overhaul</a></li><li><a href="#documents">Documents and registration in Europe</a></li><li><a href="#advice">Buying or selling a used ag aircraft: our advice</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="market">A niche but structured European market</h2>
+<p>The agricultural aircraft occupies a distinct place in the general aviation landscape. Unlike a touring or training aircraft, it is designed and operated for a specific mission: spraying crop protection products or fertilizer over large fields, typically in countries with a strong arable-farming tradition such as France, Spain, Romania or Poland. The used market here is narrower than a mainstream segment, but it remains active, driven by farms, aerial work companies and cooperatives that renew their fleets on a regular cycle.</p>
+<p>Demand varies significantly depending on national rules, which increasingly restrict aerial spraying of certain products across the European Union. This shift is pushing part of the market toward complementary missions — fertilizer spreading, treatment against specific pests, or even seeding — which directly affects resale value depending on how versatile the aircraft is.</p>
+
+<h2 id="aircraft">Aircraft built for crop spraying</h2>
+<p>The European used market blends North American-built aircraft designed specifically for intensive agricultural work with European-built airframes, or conversions, aimed at smaller operations. Single-engine aircraft dedicated to spraying — whether piston or turbine-powered — stand out through a reinforced airframe, a large-capacity hopper, a protected cockpit and dedicated spray booms.</p>
+<p>On the used market, you typically find aircraft that have accumulated a high number of flight hours over a short but intensive working life: unlike a touring aircraft that flies a few dozen hours a year, an active agricultural aircraft can log several hundred hours per season, concentrated over just a few months. This intensity of use has a direct impact on the condition of the airframe, the engine and the hydraulic or spraying systems, and must be factored into any value assessment.</p>
+
+<h2 id="regulation">Regulation and certification: the broad picture</h2>
+<p>Operating an agricultural aircraft in Europe falls under both the aircraft's own airworthiness rules and the agricultural and environmental regulations governing aerial application of plant protection products, which vary from one member state to another and are updated regularly. Before buying, it is essential to check with the relevant national civil aviation authority and the agriculture ministry concerned which spraying authorizations currently remain valid for the mission you plan to carry out.</p>
+<p>On the airworthiness side, an agricultural aircraft can be certified in a standard category or in a category dedicated to aerial work, with approved specific equipment (hopper, booms, emergency dump systems). Any change to the spraying configuration must be documented and approved, otherwise the aircraft may fall outside its approved airworthiness envelope.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point of caution</strong> — Never assume that spraying equipment fitted to the aircraft is automatically covered by its CofA. Always ask for the modification approval paperwork before committing.</div></div>
+
+<h2 id="budget">Buying budget and operating costs</h2>
+<p>The acquisition budget for a used agricultural aircraft varies considerably depending on the powerplant (piston or turbine), hopper capacity, airframe age and engine condition. Beyond the purchase price, an operator must factor in recurring costs that are often higher than on a touring aircraft: accelerated wear from intensive seasonal rotations, chemical exposure that can speed up corrosion, and specific upkeep of spray booms and pumps.</p>
+<p>Insurance is also a cost to anticipate: agricultural aerial work, with very low-level flying over cultivated fields, carries a different risk profile from a leisure flight, which is reflected in the premiums quoted by aviation-specialist insurers.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Purchase price heavily dependent on the powerplant (piston or turbine) and engine condition.</span></li>
+  <li><i data-icon="check"></i><span>Maintenance and overhaul costs often higher than an equivalent touring aircraft, due to intensive seasonal use.</span></li>
+  <li><i data-icon="check"></i><span>Specific agricultural aerial-work insurance, best negotiated with an aviation-specialist broker.</span></li>
+  <li><i data-icon="check"></i><span>Cost and availability of parts for spraying equipment (hopper, booms, pumps).</span></li>
+</ul>
+
+<h2 id="inspection">Pre-purchase inspection: what's specific to ag aircraft</h2>
+<p>Beyond a standard pre-purchase inspection (airframe, engine, avionics), an agricultural aircraft requires additional checks tied to its mission. Corrosion caused by repeated exposure to chemicals is a major point of attention, particularly around the hopper, the booms, flight controls located near spraying circuits, and the lower parts of the airframe, which are regularly exposed to unprepared farm strips.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Corrosion and chemical residue on the airframe, hopper and spray booms.</span></li>
+  <li><i data-icon="check"></i><span>Landing gear condition, often stressed by operation on unprepared agricultural strips.</span></li>
+  <li><i data-icon="check"></i><span>Operation and tightness of the spraying system: pumps, valves, emergency dump mechanism.</span></li>
+  <li><i data-icon="check"></i><span>Consistency between declared flight hours and the seasonal intensity of use shown in the logbook.</span></li>
+</ul>
+<p>As with any used aircraft, this inspection should be entrusted to an independent mechanic, ideally one familiar with agricultural working aircraft and their specific equipment.</p>
+
+<h2 id="logbook">Logbook, engine hours and major overhaul</h2>
+<p>The logbook of an agricultural aircraft must record not only standard engine hours, but also the maintenance history of the spraying equipment. Hours since the last engine overhaul (SMOH) remains a central value indicator, but it must be weighed against the real intensity of use: an aircraft approaching its major overhaul after intensive agricultural operation does not carry the same risk profile as one with the same hours accumulated from occasional leisure flying.</p>
+<p>Before buying, ask for the full detail of past major overhauls, their date, which shop carried them out and which parts were replaced. A complete, consistent maintenance record performed by an approved shop remains the best indicator of the aircraft's real value.</p>
+
+<h2 id="documents">Documents and registration in Europe</h2>
+<p>As with any used aircraft, buying an agricultural aircraft means gathering a complete document file: a valid CofA, the flight logbook, the engine logbook, and the history of modifications and approvals related to the spraying equipment. In Europe, registering an aerial-work aircraft follows the same administrative principles as any other aircraft, with procedures specific to each national authority.</p>
+<p>If the aircraft changes its country of operation, also check that local aerial-spraying authorizations will actually be granted in the new country of registration before finalizing the purchase: these authorizations are not always automatically transferable from one member state to another.</p>
+
+<h2 id="advice">Buying or selling a used ag aircraft: our advice</h2>
+<p>For a buyer, the priority is to cross-check the aircraft's real operating history (seasons worked, area treated) against its logbook, in order to correctly assess accumulated wear. For a seller, documenting this history precisely — including spraying campaigns and any mission conversions — makes negotiation easier and reassures a professional buyer used to this kind of assessment.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Have the pre-purchase inspection carried out by a mechanic familiar with agricultural working aircraft, and include a condition-of-inspection clause in the sale agreement.</div></div>
+<p>Finally, comparing several listings of similar models remains the best way to assess a fair price in this niche market, where the value gap between two apparently similar aircraft can be significant depending on their real operating history.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Ready to compare aircraft?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Find an inspector <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="documents-obligatoires-vente-avion.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Seller's guide</span><strong>Mandatory documents to sell an aircraft</strong><p>The complete list of documents needed to legally sell an aircraft in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="map-pin"></i></span><span class="eyebrow">Buyer's guide</span><strong>Registering an aircraft in Europe</strong><p>How to register an aircraft in France or Europe: procedures, registration marks, timelines, costs and pitfalls after purchase.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

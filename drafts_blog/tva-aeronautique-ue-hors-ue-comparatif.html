@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="TVA aéronautique dans l'UE, en Suisse, au Royaume-Uni et en Norvège : comparatif des régimes, de l'achat transfrontalier et des points à vérifier avant d'acheter.">
+<meta property="og:title" content="TVA aéronautique dans l'UE vs hors UE : comparatif | Aircraft2Sell">
+<meta property="og:description" content="TVA aéronautique dans l'UE, en Suisse, au Royaume-Uni et en Norvège : comparatif des régimes, de l'achat transfrontalier et des points à vérifier avant d'acheter.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/tva-aeronautique-ue-hors-ue-comparatif.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/tva-aeronautique-ue-hors-ue-comparatif.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/tva-aeronautique-ue-hors-ue-comparatif.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/tva-aeronautique-ue-hors-ue-comparatif.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/tva-aeronautique-ue-hors-ue-comparatif.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>TVA aéronautique dans l'UE vs hors UE : comparatif (Suisse, Royaume-Uni, Norvège)</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "TVA aéronautique dans l'UE vs hors UE : comparatif", "description": "TVA aéronautique dans l'UE, en Suisse, au Royaume-Uni et en Norvège : comparatif des régimes, de l'achat transfrontalier et des points à vérifier avant d'acheter.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/tva-aeronautique-ue-hors-ue-comparatif.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "TVA aéronautique dans l'UE vs hors UE : comparatif", "item": "https://aircraft2sell.eu/tva-aeronautique-ue-hors-ue-comparatif.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">TVA UE vs hors UE</span></nav>
+    <span class="eyebrow">Fiscalité</span>
+    <h1>TVA aéronautique dans l'UE vs hors UE : comparatif</h1>
+    <p>Suisse, Royaume-Uni, Norvège : comment la TVA aéronautique diffère selon le pays d'achat, d'immatriculation ou de livraison, et ce qu'il faut vérifier avant de signer.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#contexte">Pourquoi la TVA aéronautique varie autant en Europe</a></li><li><a href="#ue">Le régime TVA au sein de l'Union européenne</a></li><li><a href="#suisse">La Suisse : hors UE, mais un cadre très aligné</a></li><li><a href="#royaume-uni">Le Royaume-Uni post-Brexit : TVA et douane</a></li><li><a href="#norvege">La Norvège : hors UE et hors marché unique</a></li><li><a href="#tableau">Tableau comparatif synthétique</a></li><li><a href="#impact">Impact sur le choix du pays d'achat</a></li><li><a href="#pieges">Les pièges d'un achat transfrontalier</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="contexte">Pourquoi la TVA aéronautique varie autant en Europe</h2>
+<p>Un même avion peut être traité très différemment selon le pays où la vente est juridiquement réalisée, le pays d'immatriculation visé et la résidence fiscale de l'acheteur. L'Union européenne harmonise les grands principes de la TVA entre ses membres, mais chaque pays conserve des marges de manœuvre sur les taux et certaines exonérations. Hors de l'UE, des pays comme la Suisse, le Royaume-Uni ou la Norvège appliquent leurs propres règles de TVA et de droits de douane, avec des logiques parfois proches du modèle européen et parfois nettement différentes.</p>
+<p>Pour un acheteur d'avion léger, la question se pose concrètement dans trois cas fréquents : acheter un appareil déjà basé dans un autre pays européen, importer un avion depuis un pays tiers, ou revendre un appareil immatriculé dans un pays et le faire baser dans un autre. Dans les trois cas, le traitement de la TVA dépend de la qualification de l'opération (vente entre particuliers, vente par un professionnel, importation) bien plus que de la seule nationalité de l'appareil.</p>
+
+<h2 id="ue">Le régime TVA au sein de l'Union européenne</h2>
+<p>Au sein du marché intérieur européen, une vente entre particuliers résidents de l'UE n'est en général pas soumise à la TVA, dès lors que l'appareil a déjà été mis en libre circulation dans l'Union (TVA déjà acquittée ou appareil de fabrication européenne jamais exporté). Une vente réalisée par un professionnel (revendeur, société de gestion, club) peut en revanche déclencher une TVA, selon le statut du vendeur et le pays où la transaction est juridiquement rattachée.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Vente entre particuliers UE</strong> — généralement hors champ de la TVA si l'appareil est déjà en libre circulation dans l'Union.</span></li>
+  <li><i data-icon="check"></i><span><strong>Vente par un professionnel</strong> — TVA potentiellement due, taux et modalités propres au pays de la transaction.</span></li>
+  <li><i data-icon="check"></i><span><strong>Appareil jamais dédouané dans l'UE</strong> — une TVA à l'importation peut rester due même après plusieurs reventes internes.</span></li>
+</ul>
+<p>Le point de vigilance le plus fréquent concerne précisément ce dernier cas : un avion peut avoir changé plusieurs fois de propriétaire en Europe sans que sa situation douanière et TVA ait jamais été clarifiée. Mieux vaut obtenir une preuve documentaire de mise en libre circulation avant de considérer que l'appareil est « en règle ».</p>
+
+<h2 id="suisse">La Suisse : hors UE, mais un cadre très aligné</h2>
+<p>La Suisse n'appartient pas à l'Union européenne et applique donc sa propre TVA, distincte du système européen, avec son propre taux national et ses propres règles d'exonération. Un appareil importé en Suisse depuis l'UE est en principe soumis à la TVA suisse à l'importation, calculée sur la valeur en douane de l'appareil, sauf cas particulier. À l'inverse, un appareil exporté de Suisse vers l'UE peut être exonéré de TVA suisse à l'export, mais devenir redevable de la TVA du pays de destination.</p>
+<p>La proximité géographique et les accords bilatéraux entre la Suisse et l'UE facilitent la circulation des aéronefs et simplifient certaines démarches douanières, mais ne suppriment pas l'obligation de clarifier la TVA applicable à chaque mouvement transfrontalier. Le taux exact et les exonérations éventuelles doivent systématiquement être confirmés auprès de l'administration fiscale suisse ou d'un conseil spécialisé, le niveau précis variant selon la nature de l'opération et n'étant jamais à considérer comme acquis par analogie avec un autre pays.</p>
+
+<h2 id="royaume-uni">Le Royaume-Uni post-Brexit : TVA et douane</h2>
+<p>Depuis sa sortie de l'Union européenne, le Royaume-Uni applique sa propre TVA et ses propres droits de douane aux échanges avec l'UE, alors que ces mouvements étaient auparavant purement intra-communautaires. Un avion transporté de l'UE vers le Royaume-Uni, ou inversement, est désormais traité comme une importation ou une exportation au sens douanier, avec les formalités et la fiscalité qui en découlent.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Import vers le Royaume-Uni</strong> — TVA britannique à l'importation potentiellement due, calculée sur la valeur en douane déclarée.</span></li>
+  <li><i data-icon="check"></i><span><strong>Export depuis le Royaume-Uni vers l'UE</strong> — formalités douanières désormais obligatoires, à anticiper dans le calendrier de la transaction.</span></li>
+  <li><i data-icon="check"></i><span><strong>Statut douanier antérieur au Brexit</strong> — un appareil déjà basé au Royaume-Uni avant la sortie de l'UE a pu bénéficier d'un statut transitoire ; ce statut doit être vérifié document à l'appui, pas supposé.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Le traitement exact dépend du statut douanier historique de l'appareil et de la date des mouvements antérieurs. Faites valider la situation par un agent en douane ou un conseil fiscal avant toute transaction, plutôt que de vous fier à des règles générales.</div></div>
+
+<h2 id="norvege">La Norvège : hors UE et hors marché unique fiscal</h2>
+<p>La Norvège, membre de l'Espace économique européen mais pas de l'Union européenne, suit un régime de TVA propre, distinct du système harmonisé de l'UE. Un aéronef importé en Norvège depuis l'UE est en principe soumis à la TVA norvégienne à l'importation, et une vente locale entre résidents norvégiens suit les règles nationales norvégiennes, sans lien automatique avec le régime européen.</p>
+<p>L'appartenance à l'EEE facilite certains aspects réglementaires et de circulation des biens, mais ne crée pas d'union fiscale avec l'UE en matière de TVA : chaque mouvement transfrontalier d'un aéronef vers ou depuis la Norvège doit être examiné comme une opération avec un pays tiers au sens de la TVA, même si d'autres pans de la réglementation aéronautique (normes EASA notamment) restent largement alignés.</p>
+
+<h2 id="tableau">Tableau comparatif synthétique</h2>
+<p>Ce tableau résume les grandes logiques applicables, sans indiquer de taux précis : chaque taux national doit être vérifié au cas par cas auprès d'un conseil fiscal ou de l'administration compétente, les montants et seuils évoluant régulièrement.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Zone</th><th>Statut vis-à-vis de l'UE</th><th>Logique TVA dominante</th></tr></thead>
+<tbody>
+<tr><td>Union européenne</td><td>Membre</td><td>Harmonisée ; hors champ entre particuliers si libre circulation déjà acquise</td></tr>
+<tr><td>Suisse</td><td>Hors UE, accords bilatéraux</td><td>TVA nationale propre ; importation depuis l'UE traitée comme un pays tiers</td></tr>
+<tr><td>Royaume-Uni</td><td>Hors UE depuis le Brexit</td><td>TVA et douane britanniques propres ; mouvements UE traités comme import/export</td></tr>
+<tr><td>Norvège</td><td>EEE, hors UE</td><td>TVA nationale propre ; alignement réglementaire aéronautique mais pas fiscal</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="impact">Impact sur le choix du pays d'achat ou d'immatriculation</h2>
+<p>Le traitement TVA d'un aéronef influence directement le coût total d'acquisition, parfois de façon plus significative que l'écart de prix affiché entre deux annonces similaires. Avant de comparer deux offres situées dans des pays différents, il faut donc intégrer le risque et le coût fiscal potentiels, pas seulement le prix de vente nominal.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Demander systématiquement une preuve du statut TVA de l'appareil (document douanier ou attestation) avant de négocier.</span></li>
+  <li><i data-icon="check"></i><span>Anticiper le pays d'immatriculation final : il peut déclencher des obligations fiscales distinctes du pays d'achat.</span></li>
+  <li><i data-icon="check"></i><span>Intégrer le coût d'un conseil fiscal spécialisé dans le budget dès qu'une opération implique un pays hors UE.</span></li>
+</ul>
+
+<h2 id="pieges">Les pièges d'un achat transfrontalier</h2>
+<p>L'erreur la plus fréquente consiste à supposer qu'un appareil « en règle » dans son pays actuel le restera automatiquement une fois importé ou réimmatriculé ailleurs. Un deuxième piège classique est de confondre les règles de certification aéronautique (souvent harmonisées via l'EASA, y compris avec des pays hors UE) et les règles fiscales de TVA, qui elles ne le sont pas. Enfin, négocier un prix sans avoir chiffré l'impact TVA potentiel peut transformer une « bonne affaire » apparente en opération plus coûteuse que prévu une fois les formalités réglées.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne jamais considérer un taux ou une exonération TVA comme acquis par analogie avec un autre pays ou une transaction précédente : chaque opération doit être validée au cas par cas auprès d'un conseil fiscal compétent dans le pays concerné.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Comparez les annonces avant de vous décider</h3>
+            <p>Consultez les annonces vérifiées d'avions à vendre en Europe sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin sur la fiscalité et l'achat transfrontalier.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="tva-fiscalite-achat-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Fiscalité</span><strong>TVA et fiscalité lors de l'achat d'un aéronef en Europe</strong><p>Le panorama complet des règles de TVA applicables à l'achat d'un avion au sein de l'Union européenne.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="acheter-avion-occasion-suisse.html" class="card"><span class="icon-box"><i data-icon="map-pin"></i></span><span class="eyebrow">Achat</span><strong>Acheter un avion d'occasion en Suisse</strong><p>Marché, immatriculation OFAC et fiscalité pour un achat en Suisse.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="acheter-avion-occasion-royaume-uni-brexit.html" class="card"><span class="icon-box"><i data-icon="map-pin"></i></span><span class="eyebrow">Achat</span><strong>Acheter un avion d'occasion au Royaume-Uni après le Brexit</strong><p>Ce qui a changé pour l'importation, l'immatriculation CAA et la TVA depuis la sortie de l'UE.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

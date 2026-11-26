@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* never block the page on a parsing error */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Sailplane Pilot Licence (SPL): prerequisites, training programme, real budget and duration to get a glider pilot licence in Europe.">
+<meta property="og:title" content="Sailplane Pilot Licence (SPL): training and cost | Aircraft2Sell">
+<meta property="og:description" content="Sailplane Pilot Licence (SPL): prerequisites, training programme, real budget and duration to get a glider pilot licence in Europe.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/licence-de-pilote-de-planeur-spl-formation-et-cout.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/licence-de-pilote-de-planeur-spl-formation-et-cout.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/licence-de-pilote-de-planeur-spl-formation-et-cout.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/licence-de-pilote-de-planeur-spl-formation-et-cout.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/licence-de-pilote-de-planeur-spl-formation-et-cout.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Sailplane Pilot Licence (SPL): training and cost | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Sailplane Pilot Licence (SPL): training and cost", "description": "Prerequisites, training programme, real budget and duration to get a glider pilot licence in Europe.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/licence-de-pilote-de-planeur-spl-formation-et-cout.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Sailplane Pilot Licence (SPL)", "item": "https://aircraft2sell.eu/en/licence-de-pilote-de-planeur-spl-formation-et-cout.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">SPL Licence</span></nav>
+    <span class="eyebrow">Pilot guide</span>
+    <h1>Sailplane Pilot Licence (SPL): training and cost</h1>
+    <p>Prerequisites, training programme, real budget and duration to get a Sailplane Pilot Licence (glider pilot licence) in Europe.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>6 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#quest-ce">What is the SPL</a></li><li><a href="#prerequis">Prerequisites before you start</a></li><li><a href="#programme">The training programme</a></li><li><a href="#cout">The real budget to plan for</a></li><li><a href="#duree">How long it takes to obtain</a></li><li><a href="#remorquage">Winch launch or aerotow</a></li><li><a href="#apres">After the SPL: ratings and private use</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="quest-ce">What is the SPL</h2>
+<p>The SPL (Sailplane Pilot Licence) is the EASA licence that allows you to fly a glider independently, alone or with passengers, in a non-remunerated capacity, in Europe and in most countries recognising EASA licences. It replaced the former national glider pilot certificates when gliding licences were harmonised across Europe, while keeping the spirit of a training programme built around engineless flight, exploiting rising air (thermals, ridge, wave) and careful energy management of the aircraft.</p>
+
+<h2 id="prerequis">Prerequisites before you start</h2>
+<p>Before starting SPL training, a student must hold a suitable medical certificate (a class 2 certificate or a gliding-specific medical declaration depending on the country, generally more accessible than the one required for powered aircraft), and must be at least 16 years old to sit the final examination for the licence. First solo can happen earlier, from age 14 in many gliding clubs, which makes gliding an activity accessible to teenagers under an instructor's responsibility. No prior flying experience is required to start.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Medical certificate suited to gliding</strong> — class 2 or a gliding-specific declaration depending on the country and club.</span></li>
+  <li><i data-icon="check"></i><span><strong>Minimum age for the licence: 16</strong> — first solo is often possible from age 14 under dual-control supervision.</span></li>
+  <li><i data-icon="check"></i><span><strong>No prior flying experience required</strong> — training starts from a complete beginner level, even for a teenager.</span></li>
+</ul>
+
+<h2 id="programme">The training programme</h2>
+<p>SPL training combines a practical flying component with a theoretical one, validated by an exam covering several subjects (air law, meteorology, navigation, principles of gliding flight, glider performance, communications). On the practical side, the student progresses in stages within a gliding club: first dual-control flights with an instructor, learning the different launch methods (winch or aerotow depending on the airfield), first landings, first solo, then cross-country flights and preparation for the final flight test with an approved examiner.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Introductory flights</strong> — first dual-control flights to discover the handling and feel unique to gliders.</span></li>
+  <li><i data-icon="check"></i><span><strong>Launch training</strong> — mastering winch launches and/or aerotow depending on the methods available at the club.</span></li>
+  <li><i data-icon="check"></i><span><strong>Exploiting rising air</strong> — thermals, ridge and wave lift: the core skill of a glider pilot for staying airborne.</span></li>
+  <li><i data-icon="check"></i><span><strong>First solo</strong> — first solo flight, once the instructor is satisfied with the student's autonomy.</span></li>
+  <li><i data-icon="check"></i><span><strong>Cross-country flights</strong> — solo and dual-control flights to other airfields, with flight-planning and energy-management preparation.</span></li>
+  <li><i data-icon="check"></i><span><strong>Final flight test</strong> — practical test with an approved examiner, validating the award of the SPL.</span></li>
+</ul>
+
+<h2 id="cout">The real budget to plan for</h2>
+<p>The SPL is by far the most financially accessible pilot licence in light aviation, since the cost of a winch or aerotow launch is substantially lower than the hourly cost of a powered aircraft. Many gliding clubs also run on a non-profit, member-based model that further reduces the overall cost compared with a commercial flying school. The total budget depends heavily on the club, the preferred launch method (winch generally cheaper than aerotow) and the region.</p>
+<div class="table-wrap">
+<table class="table">
+<thead><tr><th>Expense item</th><th>Indicative budget</th></tr></thead>
+<tbody>
+<tr><td>Annual gliding club membership</td><td>€200 - €500</td></tr>
+<tr><td>Dual-control flights + launches (full training)</td><td>€1,500 - €4,000</td></tr>
+<tr><td>Theoretical training and exams</td><td>€150 - €400</td></tr>
+<tr><td>Suitable medical examination</td><td>€50 - €150</td></tr>
+</tbody>
+</table>
+</div>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — In many clubs, part of the instruction is given on a volunteer basis by club-member instructors, which explains the large budget gap compared with a PPL(A) at a commercial flying school.</div></div>
+
+<h2 id="duree">How long it takes to obtain</h2>
+<p>On an intensive course during a holiday period, an SPL can be obtained in a few weeks under favourable weather conditions. In standard club-based training, with regular weekend sessions spread over one or two gliding seasons, expect generally between 1 and 2 years. Weather plays a decisive role: gliding depends heavily on rising-air conditions, which can lengthen progress during less favourable seasons.</p>
+<p>Regularity of sessions remains the most decisive factor for fast progress: a student who flies every weekend during the season builds the right reflexes far faster than an irregular student, even over a comparable total number of hours. Many clubs also run one- to two-week intensive courses during school holidays, particularly well suited to students living far from the airfield or wanting to make quick progress early in the season.</p>
+
+<h2 id="remorquage">Winch launch or aerotow</h2>
+<p>Two main methods get a glider into the air: the winch, which pulls the glider along the ground via a cable up to a generally more modest release altitude, and aerotow, which allows a higher release altitude and makes it easier to reach a promising area of lift. The choice between the two depends mainly on the equipment available at the club's airfield; many clubs use both methods as complements to one another depending on the day's conditions.</p>
+<p>The winch remains overall cheaper per launch than aerotow, which explains its popularity in clubs geared towards training many students, while aerotow is often preferred for cross-country or competition flights that need a more comfortable starting altitude.</p>
+
+<h2 id="apres">After the SPL: ratings and private use</h2>
+<p>Once obtained, the SPL allows you to fly a glider for private use, alone or with a passenger, without remuneration. Additional ratings (mountain flying, aerobatic gliding, glider-towing for pilots already holding an aeroplane licence, cloud flying depending on the country) can later widen your scope of use. Many SPL holders eventually consider buying a used glider, alone or in co-ownership within the club, to fly more freely and choose their own slots without depending on the club's training glider.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Before buying a used glider, always have the logbook, flight hours and the validity of the certificate of airworthiness (CofA) checked by a licensed mechanic independent of the seller, especially regarding the structure and flight instruments.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Want to fly with your own glider?</h3>
+            <p>Browse verified listings on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="planeur-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buying</span><strong>Used Glider Buyer's Guide</strong><p>Budget, reference brands, inspection points, licence and resale.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="licence-pilote-prive-cout.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Pilot guide</span><strong>Private Pilot Licence (PPL): cost and duration</strong><p>Budget, duration, steps and tips for getting a private aeroplane pilot licence.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="planeurs.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Listings</span><strong>Gliders & Motor Gliders for Sale in Europe</strong><p>Verified listings of used gliders and motor gliders, no commission.</p><span class="btn-link">View listings <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

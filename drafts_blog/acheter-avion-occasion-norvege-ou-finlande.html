@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Acheter un avion d'occasion en Norvège ou en Finlande : comparatif marché, prix, immatriculation, fiscalité et climat pour choisir le meilleur pays.">
+<meta name="keywords" content="avion occasion Norvège, avion occasion Finlande, comparatif pays avion, immatriculation Luftfartstilsynet, immatriculation Traficom">
+<meta property="og:title" content="Acheter un avion d'occasion en Norvège ou en Finlande | Aircraft2Sell">
+<meta property="og:description" content="Acheter un avion d'occasion en Norvège ou en Finlande : comparatif marché, prix, immatriculation, fiscalité et climat pour choisir le meilleur pays.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/acheter-avion-occasion-norvege-ou-finlande.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/acheter-avion-occasion-norvege-ou-finlande.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/acheter-avion-occasion-norvege-ou-finlande.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/acheter-avion-occasion-norvege-ou-finlande.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/acheter-avion-occasion-norvege-ou-finlande.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Acheter un avion d'occasion en Norvège ou en Finlande | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Acheter un avion d'occasion en Norvège ou en Finlande : quel pays choisir", "description": "Acheter un avion d'occasion en Norvège ou en Finlande : comparatif marché, prix, immatriculation, fiscalité et climat pour choisir le meilleur pays.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/acheter-avion-occasion-norvege-ou-finlande.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Acheter un avion d'occasion en Norvège ou en Finlande", "item": "https://aircraft2sell.eu/acheter-avion-occasion-norvege-ou-finlande.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124a">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Norvège ou Finlande</span></nav>
+    <span class="eyebrow">Comparatif pays</span>
+    <h1>Acheter un avion d'occasion en Norvège ou en Finlande : quel pays choisir</h1>
+    <p>Marché, prix, immatriculation, fiscalité et climat : comparatif entre la Norvège et la Finlande pour vous aider à choisir où chercher votre avion d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Deux marchés nordiques, deux réalités d'exploitation</a></li><li><a href="#marche">Taille et profil du marché de l'occasion</a></li><li><a href="#prix">Comparatif des prix pratiqués</a></li><li><a href="#statut">Un statut différent vis-à-vis de l'Union européenne</a></li><li><a href="#immatriculation">Immatriculation : Luftfartstilsynet contre Traficom</a></li><li><a href="#climat">Climat, saisonnalité et entretien</a></li><li><a href="#entretien">Réseau d'entretien et disponibilité des pièces</a></li><li><a href="#choix">Quel pays privilégier selon votre profil</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Deux marchés nordiques, deux réalités d'exploitation</h2>
+<p>La Norvège et la Finlande partagent un climat nordique rigoureux, un territoire vaste et peu densément peuplé, et une culture de l'aviation légère marquée par de longues distances entre aérodromes. Elles n'en restent pas moins deux marchés très différents dans leur fonctionnement administratif : la Norvège, membre de l'Espace économique européen (EEE) mais pas de l'Union européenne, suit un régime fiscal et douanier distinct de celui de la Finlande, pleinement membre de l'UE et de la zone euro.</p>
+<p>Pour un acheteur qui envisage d'opérer dans le Grand Nord, que ce soit pour du tourisme aérien, de la liaison entre îles ou de l'aviation utilitaire sur skis ou flotteurs, comparer ces deux marchés permet de mieux cerner les contraintes pratiques propres à chaque pays avant de s'engager sur une annonce.</p>
+
+<h2 id="marche">Taille et profil du marché de l'occasion</h2>
+<p>Le marché norvégien de l'occasion est marqué par une forte proportion d'appareils adaptés aux terrains courts et non revêtus, ainsi qu'un nombre significatif d'hydravions et d'avions équipés de skis, cohérents avec la géographie du pays faite de fjords, de reliefs montagneux et de longues saisons hivernales. Les monomoteurs de tourisme classiques restent présents, mais le parc comporte une part notable d'appareils STOL utilisés pour relier des zones isolées.</p>
+<p>Le marché finlandais, quant à lui, s'appuie sur une tradition aéroclubiste particulièrement bien implantée, avec un grand nombre d'avions d'entraînement et de tourisme suivis de façon rigoureuse au sein de clubs structurés. Les appareils équipés pour l'hiver (skis, chauffage moteur) y sont également courants, la Finlande comptant un nombre élevé de petits lacs gelés utilisés comme terrains de fortune en saison hivernale.</p>
+
+<h2 id="prix">Comparatif des prix pratiqués</h2>
+<p>Les niveaux de prix entre les deux pays restent globalement comparables pour un modèle et un état d'entretien équivalents, sans décote ou prime systématique de l'un par rapport à l'autre. Les variations observées tiennent surtout à la rareté relative de certaines configurations spécifiques (hydravions, skis, moteurs chauffants) et à l'offre locale disponible au moment de la recherche.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Norvège</th><th>Finlande</th></tr></thead>
+<tbody>
+<tr><td>Statut vis-à-vis de l'UE</td><td>EEE, hors UE et hors union douanière</td><td>Membre de l'UE et de la zone euro</td></tr>
+<tr><td>Spécialités du marché</td><td>Appareils STOL, hydravions, skis</td><td>Avions d'aéroclub, appareils équipés hiver</td></tr>
+<tr><td>Niveau de prix pour un même modèle</td><td>Comparable, selon configuration</td><td>Comparable, selon configuration</td></tr>
+<tr><td>Langue des documents techniques</td><td>Norvégien, souvent anglais</td><td>Finnois ou suédois, souvent anglais</td></tr>
+</tbody></table></div>
+<p>Dans les deux pays, les appareils équipés spécifiquement pour l'exploitation hivernale (skis, moteurs chauffants, hélices renforcées) présentent une valeur qui dépend fortement de l'état de cet équipement additionnel, qu'il convient de faire estimer séparément de la cellule elle-même.</p>
+
+<h2 id="statut">Un statut différent vis-à-vis de l'Union européenne</h2>
+<p>La différence la plus structurante entre les deux pays concerne leur statut vis-à-vis de l'Union européenne. La Finlande est un État membre à part entière de l'UE, ce qui simplifie les transactions intracommunautaires entre professionnels et aligne la fiscalité applicable sur les règles communes européennes en matière de TVA.</p>
+<p>La Norvège, pour sa part, appartient à l'Espace économique européen mais reste hors de l'union douanière et de la TVA européenne. Une importation d'appareil depuis un autre pays de l'EEE ou de l'UE vers la Norvège peut donc impliquer des formalités douanières et une TVA norvégienne spécifique, distinctes de celles applicables entre deux pays membres de l'UE. Il est recommandé de vérifier ce point précisément auprès d'un professionnel avant toute transaction transfrontalière impliquant la Norvège.</p>
+
+<h2 id="immatriculation">Immatriculation : Luftfartstilsynet contre Traficom</h2>
+<p>En Norvège, l'immatriculation d'un aéronef relève de la <strong>Luftfartstilsynet</strong> (Autorité norvégienne de l'aviation civile), sous préfixe <strong>LN-</strong>. En Finlande, c'est <strong>Traficom</strong> (Agence finlandaise des transports et des communications) qui gère le registre, sous préfixe <strong>OH-</strong>. La Finlande, en tant qu'État membre de l'UE, applique pleinement les règles EASA pour le transfert d'immatriculation entre États membres. La Norvège, bien que participant au système EASA via son appartenance à l'EEE, peut appliquer des démarches administratives complémentaires propres à son statut hors UE, notamment en matière douanière.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Certificat de navigabilité et ARC en cours de validité</strong> — condition préalable à toute mise en vol sous la nouvelle immatriculation, en Norvège comme en Finlande.</span></li>
+  <li><i data-icon="check"></i><span><strong>Radiation du registre d'origine</strong> — nécessaire avant la nouvelle immatriculation si l'appareil change de pays.</span></li>
+  <li><i data-icon="check"></i><span><strong>Dossier technique complet</strong> — carnets de cellule, moteur et hélice à transmettre à la nouvelle autorité.</span></li>
+  <li><i data-icon="check"></i><span><strong>Vérification du statut douanier</strong> — point d'attention particulier pour tout appareil entrant en Norvège depuis un pays de l'UE.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Prévoyez un délai variable selon la complétude du dossier et, pour la Norvège, selon les formalités douanières éventuellement applicables ; se renseigner tôt auprès de l'autorité concernée évite les mauvaises surprises de calendrier.</div></div>
+
+<h2 id="climat">Climat, saisonnalité et entretien</h2>
+<p>Les deux pays partagent des hivers longs et rigoureux, avec un impact direct sur la conservation des appareils et sur leur configuration. Un avion basé en Norvège ou en Finlande passe souvent une partie de l'année sur neige ou sur glace, ce qui justifie un entretien particulièrement attentif du moteur (préchauffage avant démarrage), du train d'atterrissage et des éléments exposés au sel et à l'humidité en zone côtière norvégienne.</p>
+<p>La saisonnalité influence également le marché de l'occasion lui-même : les transactions se concentrent souvent sur les mois de printemps et d'été, période où les acheteurs potentiels peuvent plus facilement se déplacer pour une inspection pré-achat et un vol d'essai dans de bonnes conditions.</p>
+
+<h2 id="entretien">Réseau d'entretien et disponibilité des pièces</h2>
+<p>La Norvège dispose d'un réseau d'ateliers répartis le long de ses côtes et dans ses principales vallées, avec une expertise reconnue sur les hydravions et les appareils équipés de skis, une spécialité moins répandue ailleurs en Europe. La Finlande compte un réseau d'ateliers bien structuré autour de ses aéroclubs, avec une bonne disponibilité de pièces pour les modèles de tourisme et d'entraînement les plus courants.</p>
+<p>Dans les deux pays, le relief et les grandes distances entre aérodromes peuvent allonger les délais d'intervention pour un appareil basé loin d'un atelier agréé. Il est donc utile de vérifier la proximité d'un atelier compétent avant de s'engager sur une annonce, en particulier pour un appareil équipé de modifications spécifiques (skis, flotteurs, moteur chauffant).</p>
+
+<h2 id="choix">Quel pays privilégier selon votre profil</h2>
+<p>Pour un acheteur intéressé par l'aviation sur hydravion, sur skis ou par l'exploitation de terrains courts en zone de montagne ou de fjord, le marché norvégien offre une offre et une expertise locale difficiles à retrouver ailleurs en Europe. Pour un acheteur recherchant un avion de tourisme ou d'entraînement classique, suivi avec rigueur au sein d'un aéroclub structuré, le marché finlandais mérite une attention particulière.</p>
+<p>Le statut douanier de la Norvège, hors Union européenne, constitue un facteur déterminant pour un acheteur professionnel ou pour toute transaction impliquant plusieurs pays de l'UE : la Finlande, pleinement intégrée au marché unique européen, simplifie sensiblement ce type d'opération. À l'inverse, un acheteur établi en Norvège ou prévoyant d'y exploiter durablement son appareil n'est pas concerné par cette différence pour un achat purement local.</p>
+<p>Le budget global de possession doit également intégrer le convoyage : les distances au sein de la Norvège comme de la Finlande peuvent être importantes, et un appareil repéré loin de votre aérodrome de base entraînera des frais et un délai supplémentaires avant la première utilisation. Ce facteur, souvent sous-estimé dans les régions nordiques où les trajets routiers ou aériens peuvent être longs, mérite d'être chiffré avant de se décider pour une annonce plutôt qu'une autre.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Dans tous les cas, une inspection pré-achat par un mécanicien indépendant qualifié reste indispensable, qu'il s'agisse d'un appareil situé en Norvège, en Finlande ou ailleurs en Europe, avec une attention particulière portée à la corrosion et à l'état des équipements spécifiques à l'hiver.</div></div>
+<p>Au final, élargir sa recherche aux deux marchés nordiques permet souvent d'accéder à une offre complémentaire, chacun des deux pays présentant des spécialités différentes. Prendre le temps de comparer calmement les annonces disponibles en Norvège et en Finlande, en tenant compte du statut douanier propre à chacun, reste la meilleure stratégie pour trouver l'appareil le mieux adapté à votre usage.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre avion d'occasion</h3>
+            <p>Comparez les annonces d'avions d'occasion disponibles en Norvège, en Finlande et partout en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="acheter-avion-occasion-norvege.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide pays</span><strong>Acheter un avion d'occasion en Norvège</strong><p>Marché, prix, immatriculation Luftfartstilsynet, TVA hors UE et inspection pré-achat. Le guide complet.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Achat</span><strong>Immatriculer un aéronef en Europe</strong><p>Démarches, choix du pays d'immatriculation, dossier à constituer, délais et coûts.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124a"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

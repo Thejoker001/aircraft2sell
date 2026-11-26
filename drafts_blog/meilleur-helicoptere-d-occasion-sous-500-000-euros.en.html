@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Which used turbine helicopter should you buy with a budget under 500,000 euros? H125 vs Bell 407: price, maintenance, insurance and use cases.">
+<meta property="og:title" content="Best used helicopter under 500,000 euros | Aircraft2Sell">
+<meta property="og:description" content="Which used turbine helicopter should you buy with a budget under 500,000 euros? H125 vs Bell 407: price, maintenance, insurance and use cases.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/meilleur-helicoptere-d-occasion-sous-500-000-euros.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/meilleur-helicoptere-d-occasion-sous-500-000-euros.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/meilleur-helicoptere-d-occasion-sous-500-000-euros.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/meilleur-helicoptere-d-occasion-sous-500-000-euros.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/meilleur-helicoptere-d-occasion-sous-500-000-euros.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Best used helicopter under 500,000 euros | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Best used turbine helicopter under 500,000 euros: H125 or Bell 407", "description": "Which used turbine helicopter should you buy with a budget under 500,000 euros? H125 vs Bell 407: price, maintenance, insurance and use cases.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/meilleur-helicoptere-d-occasion-sous-500-000-euros.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Best used turbine helicopter under 500,000 euros: H125 or Bell 407", "item": "https://aircraft2sell.eu/en/meilleur-helicoptere-d-occasion-sous-500-000-euros.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Best helicopter under 500,000 euros</span></nav>
+    <span class="eyebrow">Comparison</span>
+    <h1>Best used turbine helicopter under 500,000 euros: H125 or Bell 407</h1>
+    <p>With a budget capped at 500,000 euros, two single-engine turbine helicopters dominate the used market in Europe: the Airbus H125 (AS350) and the Bell 407. Here is how their profiles, costs and typical use cases compare.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>9 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#marche">The turbine helicopter market under 500,000 euros</a></li><li><a href="#h125">Used Airbus H125: profile and budget</a></li><li><a href="#bell407">Used Bell 407: profile and budget</a></li><li><a href="#comparatif">Head-to-head: H125 vs Bell 407</a></li><li><a href="#entretien">Operating costs and maintenance</a></li><li><a href="#assurance">Insurance and agreed value for a turbine helicopter</a></li><li><a href="#usage">Which aircraft for which use</a></li><li><a href="#vigilance">What to watch for before buying</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="marche">The turbine helicopter market under 500,000 euros</h2>
+<p>A budget of 500,000 euros rules out most new turbine helicopters outright, but it does open real access to the used market for the two most common models in this segment: the Airbus H125 (formerly the AS350 Écureuil/Squirrel) and the Bell 407. Both single-engine turbine helicopters were built for versatility and both appear in significant numbers across the European market, coming from private ownership as well as from retiring commercial fleets (aerial work, transport, training).</p>
+<p>At this budget level, the aircraft's age, the engine potential remaining before a major overhaul, and its usage history (private versus school or intensive aerial work) weigh far more heavily on price than the build year alone.</p>
+
+<h2 id="h125">Used Airbus H125: profile and budget</h2>
+<p>The H125 is one of the most widely produced and most common single-engine turbine helicopters in the world, valued for its versatility and its ability to operate in demanding conditions such as high altitude and mountain work. On the used European market, well-equipped examples with a reasonable remaining engine potential can be negotiated below the 500,000-euro mark, particularly for older airframes or those with an aerial-work history.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Known for ruggedness and versatility across aerial work, private ownership, flight training and specialized missions.</span></li>
+  <li><i data-icon="check"></i><span>A very well developed parts and maintenance market in Europe, with a dense network of approved shops.</span></li>
+  <li><i data-icon="check"></i><span>Price varies widely depending on remaining potential before the next major engine and airframe overhaul, and on installed avionics.</span></li>
+</ul>
+
+<h2 id="bell407">Used Bell 407: profile and budget</h2>
+<p>The Bell 407 is the other major reference in this single-engine turbine budget range. It stands out for a generously sized cabin and flight handling generally described as stable, which makes it a frequent choice for passenger transport, surveillance work and certain specialized missions. As with the H125, the used market offers examples under 500,000 euros, mainly among older airframes or those with partially consumed engine potential.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Spacious cabin suited to passenger transport and in-flight comfort.</span></li>
+  <li><i data-icon="check"></i><span>Strong presence on the North American market, which affects parts availability and the choice of maintenance shop depending on where you buy.</span></li>
+  <li><i data-icon="check"></i><span>Price depends heavily on installed avionics and on well-documented maintenance history.</span></li>
+</ul>
+
+<h2 id="comparatif">Head-to-head: H125 vs Bell 407</h2>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Airbus H125</th><th>Bell 407</th></tr></thead>
+<tbody>
+<tr><td>Accessibility under 500,000 €</td><td>Older airframes or reduced potential</td><td>Older airframes or reduced potential</td></tr>
+<tr><td>Dominant historical use</td><td>Aerial work, mountain, specialized missions</td><td>Passenger transport, surveillance</td></tr>
+<tr><td>Cabin comfort</td><td>Good, geared toward operational versatility</td><td>Generally more spacious</td></tr>
+<tr><td>European maintenance network</td><td>Very well developed</td><td>Developed, with a strong North American presence</td></tr>
+<tr><td>Recognized ruggedness in harsh conditions</td><td>Reference point of the segment</td><td>Good, with a more general-purpose profile</td></tr>
+</tbody></table></div>
+<p>Beyond this table, every individual aircraft has to be assessed on its own merits: two H125s or two Bell 407s of the same year can show large price differences depending on remaining engine potential, airframe condition and the quality of the maintenance documentation provided by the seller.</p>
+<p>Another point often overlooked in the comparison is resale liquidity: both models benefit from an active secondary market in Europe, which makes a future resale easier, though demand can vary by region and season. A properly equipped, well-documented aircraft generally resells faster and on better terms, regardless of which model you choose at the outset.</p>
+
+<h2 id="entretien">Operating costs and maintenance</h2>
+<p>A turbine helicopter carries operating costs noticeably higher than a light piston single: fuel, scheduled turbine maintenance, the eventual major overhaul and type-specific parts make up most of the annual budget. For both models, hourly cost depends heavily on the remaining potential before the next major engine overhaul, something that should always be checked precisely in the engine logbook before buying.</p>
+<p>Access to a competent, type-rated approved maintenance network close to the planned operating base is a cost factor that is often underestimated: regularly ferrying the aircraft to a distant shop can meaningfully increase the annual maintenance budget.</p>
+
+<h2 id="assurance">Insurance and agreed value for a turbine helicopter</h2>
+<p>Hull insurance for a turbine helicopter works much like it does for a fixed-wing aircraft: it is based on an agreed value fixed in the policy and reviewed at every renewal. The chosen deductible level directly affects the annual premium, and insurers specializing in helicopters generally treat declared use — private, aerial work, passenger transport — as a key factor in the quoted rate.</p>
+<p>Before buying, it is worth requesting an insurance quote for the exact model under consideration: premium differences between an H125 and a Bell 407 of equivalent value can be significant depending on the type's claims history and parts availability.</p>
+
+<h2 id="usage">Which aircraft for which use</h2>
+<p>The choice between the H125 and the Bell 407 should start from the intended real-world use. For missions requiring strong operational versatility, mountain flying or demanding conditions, the H125 remains the historical reference in this segment. For a use mainly focused on passenger transport with a need for cabin comfort, the Bell 407 is often a sound choice.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Versatile missions and demanding conditions: the H125 carries a very broad operational track record.</span></li>
+  <li><i data-icon="check"></i><span>Passenger transport and cabin comfort: the Bell 407 generally has a perceived edge.</span></li>
+  <li><i data-icon="check"></i><span>Parts availability depending on where you plan to buy, which can be a decisive factor.</span></li>
+</ul>
+<p>In every case, the total budget to plan for goes well beyond the purchase price: it includes insurance, scheduled maintenance, fuel and a reserve for the upcoming major overhaul, which should always be factored into price negotiations.</p>
+
+<h2 id="vigilance">What to watch for before buying</h2>
+<p>For a used turbine helicopter, the pre-purchase inspection should pay particular attention to engine history (hours remaining before major overhaul), usage history (intensive aerial work versus moderate private use), and consistency between the flight logbook and the engine logbook.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Word of caution</strong> — Always have the inspection carried out by an independent mechanic approved on the exact type, and request the full maintenance history before any final negotiation, whether you are looking at an H125 or a Bell 407.</div></div>
+<p>Finally, comparing several listings of similar models and build years remains the best way to assess a fair price and spot a well-maintained aircraft, in a segment where valuation gaps between two seemingly similar examples can be substantial.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your turbine helicopter</h3>
+            <p>Compare used helicopter listings available across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="robinson-r66-occasion-guide-achat-helicoptere.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Robinson R66: helicopter buying guide</strong><p>Budget, maintenance and points to watch for Robinson's entry-level single-engine turbine helicopter.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="robinson-r44-occasion-guide-achat-helicoptere.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Robinson R44: helicopter buying guide</strong><p>Budget, maintenance and points to watch for one of the most common piston helicopters on the used market.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Insurance</span><strong>Insuring your aircraft in Europe: the complete guide</strong><p>Liability, hull cover, essential guarantees: how to properly insure your aircraft, helicopter or microlight in Europe.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Beechcraft Bonanza or Piper Malibu/Mirage: full comparison between the unpressurized single-engine and the pressurized single-engine, by budget and mission.">
+<meta property="og:title" content="Beechcraft Bonanza vs Piper Malibu/Mirage: simple or pressurized single-engine | Aircraft2Sell">
+<meta property="og:description" content="Beechcraft Bonanza or Piper Malibu/Mirage: full comparison between the unpressurized single-engine and the pressurized single-engine, by budget and mission.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/beechcraft-bonanza-vs-piper-malibu-mirage-monomoteur-simple-ou-pressurise.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/beechcraft-bonanza-vs-piper-malibu-mirage-monomoteur-simple-ou-pressurise.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/beechcraft-bonanza-vs-piper-malibu-mirage-monomoteur-simple-ou-pressurise.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/beechcraft-bonanza-vs-piper-malibu-mirage-monomoteur-simple-ou-pressurise.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/beechcraft-bonanza-vs-piper-malibu-mirage-monomoteur-simple-ou-pressurise.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Beechcraft Bonanza vs Piper Malibu/Mirage: simple or pressurized single-engine | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Beechcraft Bonanza vs Piper Malibu/Mirage: simple or pressurized single-engine", "description": "Beechcraft Bonanza or Piper Malibu/Mirage: full comparison between the unpressurized single-engine and the pressurized single-engine, by budget and mission.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/beechcraft-bonanza-vs-piper-malibu-mirage-monomoteur-simple-ou-pressurise.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Beechcraft Bonanza vs Piper Malibu/Mirage", "item": "https://aircraft2sell.eu/en/beechcraft-bonanza-vs-piper-malibu-mirage-monomoteur-simple-ou-pressurise.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Bonanza vs Malibu/Mirage</span></nav>
+    <span class="eyebrow">Comparison</span>
+    <h1>Beechcraft Bonanza vs Piper Malibu/Mirage: simple or pressurized single-engine</h1>
+    <p>Two high-end piston single-engine aircraft, two philosophies: the straightforward, proven Bonanza against the pressurized Malibu/Mirage, built to fly high and fast. A comparison to help you choose based on your budget and mission.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">Two philosophies of high-end piston single-engine</a></li><li><a href="#bonanza">The Bonanza: simplicity, toughness and controlled cost</a></li><li><a href="#malibu">The Malibu/Mirage: pressurization and altitude</a></li><li><a href="#budget">Budget comparison: purchase and operation</a></li><li><a href="#pilotage">Flying skills and training requirements</a></li><li><a href="#usage">Which aircraft for which mission</a></li><li><a href="#occasion">Buying either one used: points to watch</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Two philosophies of high-end piston single-engine</h2>
+<p>The Beechcraft Bonanza and the Piper Malibu/Mirage (PA-46) both belong to the category of high-end piston single-engine aircraft, built for personal or business travel rather than pure training. Beyond this shared purpose, the two aircraft follow very different design logic. The Bonanza, produced for decades across several generations (including the famous V-tail version and the later conventional-tail 36 series), focuses on mechanical simplicity, ruggedness and a contained operating cost. The Malibu/Mirage, on the other hand, was designed from the outset as a pressurized single-engine aircraft, able to fly above most turbulence and bad weather while offering a cabin comfort closer to that of a twin or a small turboprop.</p>
+<p>Choosing between the two therefore comes down to deciding between two priorities: simplicity and cost control on one side, the ability to fly high, fast and comfortably on the other, with the added technical and financial complexity that goes with it.</p>
+
+<h2 id="bonanza">The Bonanza: simplicity, toughness and controlled cost</h2>
+<p>The Bonanza is one of the most produced and longest-lived piston single-engine aircraft in general aviation history. Its classic metal airframe, retractable gear and well-known fuel-injected engines make it an aircraft whose maintenance is widely understood across the light aviation workshop network, including in Europe. It carries no pressurization system, which considerably simplifies its structure, its upkeep and the number of systems to check during a pre-purchase inspection.</p>
+<p>This relative simplicity does not mean a basic aircraft: the Bonanza remains fast for an unpressurized single-engine, offers good payload, and has a reputation for pleasant handling. It is a sound choice for an owner-pilot who wants a capable touring aircraft without the constraints and operating budget of a pressurized system.</p>
+
+<h2 id="malibu">The Malibu/Mirage: pressurization and altitude</h2>
+<p>The Piper Malibu, later renamed Mirage in its subsequent versions, was the first piston single-engine aircraft certified with a pressurized cabin aimed at the light business aviation and high-end personal travel market. This pressurization allows it to fly at altitudes well above those reachable by a Bonanza, above much of the turbulence and degraded weather, while offering cabin comfort for occupants closer to that of an airliner.</p>
+<p>This advantage comes at a price: pressurization adds extra systems (pressure controller, blowers, door and window seals, reinforced structure) that must be inspected and maintained rigorously, and that represent a recurring expense specific to this type of aircraft. The turbocharger, needed to maintain power at altitude, also adds a specific monitoring and maintenance item that the non-turbocharged Bonanza does not have in its standard versions.</p>
+
+<h2 id="budget">Budget comparison: purchase and operation</h2>
+<p>Budget is often the deciding factor between the two aircraft. A Bonanza in good condition generally represents a more accessible entry price and lower annual operating cost than a comparable Malibu/Mirage, mainly because maintenance is limited to a single non-pressurized, non-turbocharged powerplant on its standard versions. The Malibu/Mirage, in exchange for its altitude capability and comfort, implies higher maintenance costs tied to pressurization, the turbocharger and often more sophisticated avionics.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Bonanza (unpressurized)</th><th>Malibu/Mirage (pressurized)</th></tr></thead>
+<tbody>
+<tr><td>Acquisition budget</td><td>Generally more accessible</td><td>Higher for comparable equipment</td></tr>
+<tr><td>System complexity</td><td>Relatively simple mechanics</td><td>Pressurization and turbocharger to monitor</td></tr>
+<tr><td>Annual maintenance cost</td><td>Generally more moderate</td><td>Higher, tied to the additional systems</td></tr>
+<tr><td>Altitude capability</td><td>Limited, unpressurized flight</td><td>Significantly higher thanks to the pressurized cabin</td></tr>
+<tr><td>Cabin comfort in cruise</td><td>Good for a single-engine</td><td>Superior, closer to a larger pressurized aircraft</td></tr>
+</tbody></table></div>
+<p>As is always true in used aviation, the price gap between two examples of the same model is mostly explained by airframe age, remaining engine potential and the consistency of the maintenance history, far more than by the model year alone shown in the listing.</p>
+
+<h2 id="pilotage">Flying skills and training requirements</h2>
+<p>Despite its performance, the Bonanza remains a single-engine aircraft that is accessible to an experienced private pilot holding a complex-aircraft endorsement for retractable gear and a variable-pitch propeller. The Malibu/Mirage requires additional training investment: managing pressurization, the turbocharger and generally more complete avionics creates a heavier cockpit workload, especially during the initial transition onto the type.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Bonanza: complex-aircraft endorsement for retractable gear and variable-pitch propeller, generally a quicker transition for a pilot already experienced on a capable single-engine.</span></li>
+  <li><i data-icon="check"></i><span>Malibu/Mirage: specific training in managing pressurization and the turbocharger, often paired with a manufacturer course or a type-specific instructor.</span></li>
+  <li><i data-icon="check"></i><span>Noticeably higher cockpit workload on the Malibu/Mirage, particularly during rapid climbs and descents.</span></li>
+</ul>
+<p>For a pilot who flies only occasionally, this difference in complexity can weigh heavily on the final decision, independent of budget alone.</p>
+
+<h2 id="usage">Which aircraft for which mission</h2>
+<p>The choice between a Bonanza and a Malibu/Mirage should first be based on the actual intended mission. For personal or business trips of medium distance, over moderate terrain and without a systematic need to climb above weather systems, the Bonanza offers an excellent balance between performance, simplicity and controlled cost.</p>
+<p>Conversely, a pilot who regularly makes long trips, wants to be able to fly above much of the disturbed weather, and values cabin comfort for passengers will find a compelling argument in the Malibu/Mirage, provided they accept the extra operating budget and technical complexity that come with it.</p>
+
+<h2 id="occasion">Buying either one used: points to watch</h2>
+<p>For a Bonanza, attention should focus on the complete history of the powerplant, the condition of the structure and the retractable gear, and the consistency between displayed hours and the maintenance invoices provided. For a Malibu/Mirage, these same checks remain necessary, but an in-depth check of the pressurization system (cabin sealing, pressure controller operation), turbocharger condition and compliance with the type's specific service bulletins — sometimes numerous on this model — must be added.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Always have the pre-purchase inspection carried out by an independent mechanic qualified on the exact type of the aircraft, and ask for the complete logbook and the record of applied service bulletins before committing.</div></div>
+<p>In all cases, comparing several listings of similar models and model years remains the best way to assess a fair price and spot a well-maintained aircraft, whether simple or pressurized single-engine.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Bonanza or Malibu/Mirage</h3>
+            <p>Compare used Beechcraft Bonanza and Piper Malibu/Mirage listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="beechcraft-bonanza-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Beechcraft Bonanza: buying guide</strong><p>Budget to plan for, inspection points to watch, maintenance and resale on the European market.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="cirrus-sr22-occasion-guide-achat-budget.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Cirrus SR22: buying guide and budget</strong><p>Budget to plan for, inspection points to watch, maintenance and resale on the European market.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

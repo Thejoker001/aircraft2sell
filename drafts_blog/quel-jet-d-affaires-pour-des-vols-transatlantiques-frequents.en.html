@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) {}
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Falcon, Global or Gulfstream: a buyer's comparison of business jets for frequent transatlantic flights, based on range, cabin and operating costs.">
+<meta property="og:title" content="Which business jet for frequent transatlantic flights | Aircraft2Sell">
+<meta property="og:description" content="Falcon, Global or Gulfstream: a buyer's comparison of business jets for frequent transatlantic flights, based on range, cabin and operating costs.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/quel-jet-d-affaires-pour-des-vols-transatlantiques-frequents.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/quel-jet-d-affaires-pour-des-vols-transatlantiques-frequents.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/quel-jet-d-affaires-pour-des-vols-transatlantiques-frequents.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/quel-jet-d-affaires-pour-des-vols-transatlantiques-frequents.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/quel-jet-d-affaires-pour-des-vols-transatlantiques-frequents.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Which business jet for frequent transatlantic flights | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Which business jet for frequent transatlantic flights", "description": "Falcon, Global or Gulfstream: a buyer's comparison of business jets for frequent transatlantic flights, based on range, cabin and operating costs.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/quel-jet-d-affaires-pour-des-vols-transatlantiques-frequents.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Which business jet for frequent transatlantic flights", "item": "https://aircraft2sell.eu/en/quel-jet-d-affaires-pour-des-vols-transatlantiques-frequents.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Transatlantic jet</span></nav>
+    <span class="eyebrow">Buyer comparison</span>
+    <h1>Which business jet for frequent transatlantic flights</h1>
+    <p>Falcon, Global or Gulfstream: how to choose the business jet best suited to regular Europe-America rotations, based on range, cabin and operating cost.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Table of contents</div>
+        <ol><li><a href="#stakes">Why the aircraft choice matters so much on the Atlantic</a></li><li><a href="#criteria">The deciding criteria for regular transatlantic flying</a></li><li><a href="#falcon">The Falcon range (Dassault)</a></li><li><a href="#global">The Global range (Bombardier)</a></li><li><a href="#gulfstream">The Gulfstream range</a></li><li><a href="#comparison">Range, cabin and cost comparison</a></li><li><a href="#usage">Which aircraft for which mission profile</a></li><li><a href="#used">Buying used: specific points to check</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="stakes">Why the aircraft choice matters so much on the Atlantic</h2>
+<p>A regular transatlantic route — Paris-New York, London-Miami or Geneva-Los Angeles with a technical stop — is not just another long-haul leg: it is a usage pattern that imposes precise constraints on range, cabin comfort and operational reliability, well beyond what a jet used mainly for intra-European routes needs to deliver.</p>
+<p>The segment of business jets able to cover these routes non-stop or with a minimal stop is concentrated around three historic manufacturers: Dassault with its Falcon range, Bombardier with its Global range, and Gulfstream with its G range. Each offers several aircraft with different positioning within that same segment.</p>
+
+<h2 id="criteria">The deciding criteria for regular transatlantic flying</h2>
+<p>Before comparing aircraft against each other, you need to define the exact mission profile you need, since that profile should drive the choice far more than brand reputation alone.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Real range with reserves</strong> — the manufacturer's quoted distance rarely includes weather margins, headwinds and regulatory reserves; always keep a margin for the longest legs (US West Coast, Asia via the North Atlantic).</span></li>
+  <li><i data-icon="check"></i><span><strong>Cruise speed</strong> — a speed difference translates directly into flight time saved on an eight-to-twelve-hour leg, often a decisive factor for heavy business use.</span></li>
+  <li><i data-icon="check"></i><span><strong>Long-duration cabin comfort</strong> — cabin height, availability of berthing, noise level and low cabin altitude pressurisation to reduce fatigue on a multi-hour flight.</span></li>
+  <li><i data-icon="check"></i><span><strong>Access to the airports you actually use</strong> — some business airfields impose runway or noise constraints that rule out certain heavier aircraft.</span></li>
+  <li><i data-icon="check"></i><span><strong>Operating cost per flight hour</strong> — fuel, scheduled maintenance and crew, weighed against your real annual hours flown across the Atlantic.</span></li>
+</ul>
+
+<h2 id="falcon">The Falcon range (Dassault)</h2>
+<p>Dassault positions its Falcon range around a balance between long-range capability, aerodynamic efficiency and the ability to operate from short runways or less-equipped business airfields, a real advantage for reaching secondary airports close to city centres on both sides of the Atlantic. The range's long-range variants are built to link Europe with the US East Coast and West Coast, with a wide cabin designed for comfort on multi-hour flights.</p>
+<p>This positioning makes it a relevant choice for operators who prioritise flexible airfield access over maximum cabin capacity, while still carrying enough range for most non-stop transatlantic rotations.</p>
+
+<h2 id="global">The Global range (Bombardier)</h2>
+<p>Bombardier built its Global range around maximum range and cruise speed, with aircraft capable of linking Europe with Asia or Australia in a single flight — well beyond pure transatlantic capability. For an Atlantic-focused mission, that extra range translates into a comfortable margin that easily absorbs headwinds and weather diversions, a real benefit for operational reliability.</p>
+<p>The cabin on Global aircraft is generally among the most spacious in the segment, with comfortable standing height and configurations that include separate sleeping areas, useful for regular transatlantic night flights.</p>
+
+<h2 id="gulfstream">The Gulfstream range</h2>
+<p>Gulfstream offers its G range across several levels of range and cabin size, with aircraft specifically designed for very long distances. The brand emphasises high cruise speed, reduced cabin fatigue through low cabin altitude pressurisation and advanced air filtration, and avionics oriented towards operational reliability on frequent international rotations.</p>
+<p>This positioning suits an operator flying repeated transatlantic routes throughout the year who values flight time saved as much as the physiological comfort of crew and passengers on sustained missions.</p>
+
+<h2 id="comparison">Range, cabin and cost comparison</h2>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Falcon</th><th>Global</th><th>Gulfstream</th></tr></thead>
+<tbody>
+<tr><td>Range positioning</td><td>Long-range with short-field access</td><td>Ultra long-range, beyond the Atlantic alone</td><td>Ultra long-range, several tiers depending on model</td></tr>
+<tr><td>Airfield access</td><td>Good access to short runways and secondary airfields</td><td>Standard for typical business airports</td><td>Standard for typical business airports</td></tr>
+<tr><td>Long-duration cabin comfort</td><td>Wide cabin, varied configurations</td><td>Among the most spacious in the segment</td><td>Focus on low cabin altitude and physiological comfort</td></tr>
+<tr><td>Operating cost</td><td>Varies by model within the range</td><td>Higher on ultra long-range variants</td><td>Higher on the most capable variants</td></tr>
+</tbody></table></div>
+<p>This table remains indicative: each range includes several models with different performance, and the meaningful comparison is always between two specific models that answer the same mission need, not between brands in general.</p>
+
+<h2 id="usage">Which aircraft for which mission profile</h2>
+<p>For a company flying frequent transatlantic rotations concentrated on a few well-served major cities, priority often goes to operational reliability and the most comfortable long-duration cabin, pointing towards the most capable variants of the Global or Gulfstream ranges.</p>
+<p>For an operator who also needs access to more constrained business airfields or secondary airports close to city centres, the Falcon range offers a compromise that is often decisive between sufficient range and flexible runway access.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — List your five most frequent destinations with their real distances and each airfield's runway constraints before comparing specific models: that mission profile, more than brand reputation, should drive the final choice.</div></div>
+
+<h2 id="used">Buying used: specific points to check</h2>
+<p>In this long-range jet segment, usage history weighs particularly heavily in valuing a used aircraft: an aircraft that has mostly flown long transatlantic rotations has a different engine cycle profile from one used on short, repeated legs, which affects the real wear on the powerplants.</p>
+<p>Always request the complete logbook, a detailed history of engine hours and the remaining SMOH balance for each engine, as well as the date and status of the next major overhaul scheduled in the maintenance programme. Also check the validity of the certificate of airworthiness (CofA) and have an independent pre-purchase inspection carried out before any commitment, whichever manufacturer you choose.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your long-range jet</h3>
+            <p>Compare long-range business jet listings available on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Buyer guide</span><strong>Turboprop or business jet: how to choose</strong><p>Cost, range, speed and usage comparison to pick the aircraft suited to your activity.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="importer-avion-usa-europe.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Buyer guide</span><strong>Importing an Aircraft from the United States to Europe</strong><p>EASA certification, transatlantic transport, customs and import VAT.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="prix-moyen-jet-prive-2026.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Market</span><strong>Average price of a private jet in 2026</strong><p>Very light jets, light jets, midsize and long-range: price ranges and operating costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

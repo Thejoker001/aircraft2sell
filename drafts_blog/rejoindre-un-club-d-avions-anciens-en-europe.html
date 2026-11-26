@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Comment rejoindre un club d'avions anciens en Europe : associations, appareils, carnet d'entretien, coûts réels et critères pour bien choisir sa structure.">
+<meta property="og:title" content="Rejoindre un club d'avions anciens en Europe | Aircraft2Sell">
+<meta property="og:description" content="Comment rejoindre un club d'avions anciens en Europe : associations, appareils, carnet d'entretien, coûts réels et critères pour bien choisir sa structure.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/rejoindre-un-club-d-avions-anciens-en-europe.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/rejoindre-un-club-d-avions-anciens-en-europe.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/rejoindre-un-club-d-avions-anciens-en-europe.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/rejoindre-un-club-d-avions-anciens-en-europe.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/rejoindre-un-club-d-avions-anciens-en-europe.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Rejoindre un club d'avions anciens en Europe | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Rejoindre un club d'avions anciens en Europe : guide pratique", "description": "Comment rejoindre un club d'avions anciens en Europe : associations, appareils, carnet d'entretien, coûts réels et critères pour bien choisir sa structure.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/rejoindre-un-club-d-avions-anciens-en-europe.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Rejoindre un club d'avions anciens en Europe : guide pratique", "item": "https://aircraft2sell.eu/rejoindre-un-club-d-avions-anciens-en-europe.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Clubs d'avions anciens</span></nav>
+    <span class="eyebrow">Guide communauté</span>
+    <h1>Rejoindre un club d'avions anciens en Europe : guide pratique</h1>
+    <p>Associations, appareils de collection, carnet d'entretien et coûts réels : tout ce qu'il faut savoir avant de candidater dans un club d'aviation ancienne.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi rejoindre un club d'avions anciens</a></li><li><a href="#familles">Les grandes familles de clubs et associations en Europe</a></li><li><a href="#appareils">Les appareils que l'on retrouve dans ces clubs</a></li><li><a href="#entretien">Carnet d'entretien et navigabilité en collection</a></li><li><a href="#couts">Combien ça coûte : cotisation, heures de vol, participation</a></li><li><a href="#choisir">Comment choisir son club : critères pratiques</a></li><li><a href="#pieges">Les pièges à éviter</a></li><li><a href="#candidater">Comment candidater et s'intégrer</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi rejoindre un club d'avions anciens</h2>
+<p>Voler sur un appareil de collection — un biplan des années 1930, un monomoteur militaire reconverti ou un classique en toile et bois — reste rarement accessible en propriété individuelle. L'entretien spécialisé, la rareté des pièces et le coût d'un hangar dédié rendent la mutualisation quasiment incontournable. Un club d'avions anciens permet de partager ces charges entre passionnés, tout en profitant de l'expérience collective pour l'entretien, le pilotage et la restauration.</p>
+<p>Au-delà de l'aspect financier, ces structures sont aussi le principal lieu de transmission du savoir-faire : pilotage spécifique à ces machines (pas de freins modernes, instruments rudimentaires, comportement au sol différent), techniques de restauration et connaissance historique des types. Un pilote isolé, même expérimenté sur avion moderne, progresse rarement seul sur ce type d'appareil sans l'encadrement d'un club.</p>
+<p>Ces clubs jouent aussi un rôle de mémoire collective pour l'aviation de leur région : nombre d'entre eux conservent des archives, des témoignages d'anciens pilotes ou de mécaniciens, et participent à des meetings aériens où leurs appareils sont présentés au public. Rejoindre une telle structure, c'est donc aussi s'inscrire dans une démarche de préservation patrimoniale qui dépasse la simple pratique du vol.</p>
+
+<h2 id="familles">Les grandes familles de clubs et associations en Europe</h2>
+<p>Le paysage associatif européen de l'aviation ancienne se répartit en plusieurs familles, qui ne proposent pas le même service :</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Associations de propriétaires-pilotes</strong> — structures légères organisées autour d'un ou plusieurs appareils en copropriété, souvent avec un statut associatif national.</span></li>
+  <li><i data-icon="check"></i><span><strong>Fédérations de type</strong> — regroupent les propriétaires d'un même modèle ou d'une même famille d'appareils à l'échelle européenne, utiles pour l'accès aux pièces détachées et à la documentation technique.</span></li>
+  <li><i data-icon="check"></i><span><strong>Clubs rattachés à un aérodrome</strong> — intègrent une flotte d'avions anciens au sein d'un aéroclub généraliste, avec des créneaux et un encadrement dédiés.</span></li>
+  <li><i data-icon="check"></i><span><strong>Associations de sauvegarde et de restauration</strong> — centrées sur la préservation d'un appareil unique ou d'une collection muséale, où le temps de vol est souvent secondaire à la restauration.</span></li>
+</ul>
+<p>Chaque pays européen a développé ses propres réseaux, souvent liés à l'histoire aéronautique locale : écoles de pilotage militaire d'après-guerre, usines reconverties, ou collections constituées autour d'un aérodrome historique. Un même club peut d'ailleurs cumuler plusieurs de ces profils à la fois.</p>
+
+<h2 id="appareils">Les appareils que l'on retrouve dans ces clubs</h2>
+<p>La notion d'« avion ancien » recouvre des réalités très différentes selon les clubs : biplans d'entraînement des années 1930-1950, avions de liaison militaire reconvertis, petits monomoteurs de tourisme des décennies 1950-1970, ou encore répliques construites selon des plans d'époque. Le point commun reste la rareté des pièces détachées et la nécessité d'un savoir-faire de maintenance spécifique, souvent transmis oralement entre mécaniciens du club plutôt que documenté de façon industrielle.</p>
+<p>Certains clubs se spécialisent sur une seule famille d'appareils pour mutualiser l'outillage et la connaissance technique, d'autres accueillent une flotte hétérogène où chaque membre apporte son propre avion tout en participant à l'entretien collectif du hangar et des équipements communs.</p>
+
+<h2 id="entretien">Carnet d'entretien et navigabilité en collection</h2>
+<p>La gestion de la navigabilité d'un appareil ancien suit les mêmes principes que pour tout avion d'occasion, avec une difficulté supplémentaire : la disponibilité des pièces d'origine. Le carnet d'entretien (logbook) de l'appareil doit retracer l'intégralité de son historique — heures moteur (engine hours) depuis la construction et depuis la dernière grande visite (major overhaul), interventions structurelles, remplacements de pièces et, le cas échéant, le temps écoulé depuis la révision moteur (SMOH).</p>
+<p>Le certificat de navigabilité (CofA) d'un appareil ancien peut relever d'un régime particulier selon son statut (certifié de type ou appareil historique à navigabilité restreinte) : les règles exactes varient selon le pays et l'autorité de l'aviation civile compétente, et doivent être vérifiées directement auprès du club et de l'autorité locale plutôt que supposées identiques partout en Europe.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Avant de rejoindre un club, demandez à consulter le carnet d'entretien complet des appareils de la flotte : un historique de maintenance sérieux et continu est le meilleur indicateur de la santé financière et technique de l'association.</div></div>
+
+<h2 id="couts">Combien ça coûte : cotisation, heures de vol, participation</h2>
+<p>Le budget d'adhésion à un club d'avions anciens comporte généralement trois volets : une cotisation annuelle à l'association (qui couvre l'assurance collective, le hangar et les frais fixes), un tarif horaire de vol propre à chaque appareil de la flotte, et une contribution en temps ou en compétences pour l'entretien et les travaux de restauration. Ce dernier point n'est pas anecdotique : la plupart des clubs sérieux attendent une implication réelle des membres dans la vie technique de l'association, pas seulement une participation financière.</p>
+<p>Le tarif horaire d'un appareil ancien est souvent supérieur à celui d'un avion d'école moderne comparable, en raison du coût de l'entretien spécialisé et de la rareté des pièces. Un budget réaliste doit intégrer cette donnée dès le départ, plutôt que de se focaliser uniquement sur le montant de la cotisation d'entrée.</p>
+
+<h2 id="choisir">Comment choisir son club : critères pratiques</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Santé financière de l'association : comptes à jour, trésorerie suffisante pour couvrir les imprévus de maintenance.</span></li>
+  <li><i data-icon="check"></i><span>Qualité et disponibilité de l'encadrement : instructeurs et mécaniciens réellement présents, pas seulement sur le papier.</span></li>
+  <li><i data-icon="check"></i><span>État documenté de la flotte : carnets d'entretien complets, historique des grandes visites, liste des pièces critiques à surveiller.</span></li>
+  <li><i data-icon="check"></i><span>Ambiance et disponibilité réelle des créneaux de vol, surtout si la flotte est partagée entre de nombreux membres.</span></li>
+  <li><i data-icon="check"></i><span>Localisation de l'aérodrome et accessibilité pour des visites régulières, la pratique de l'aviation ancienne demandant un entretien plus fréquent.</span></li>
+</ul>
+<p>N'hésitez pas à assister à plusieurs journées club avant de candidater, et à discuter directement avec des membres de longue date plutôt que seulement avec le bureau de l'association. Ces échanges informels révèlent souvent bien mieux l'ambiance réelle et le fonctionnement quotidien de la structure que les documents officiels ou le site internet de l'association.</p>
+
+<h2 id="pieges">Les pièges à éviter</h2>
+<p>Le principal piège consiste à sous-estimer le temps d'implication réellement attendu : certains clubs demandent plusieurs week-ends par an consacrés à l'entretien ou à la restauration, en plus des cotisations. Un autre écueil fréquent est de rejoindre une structure dont la flotte vieillit sans plan de financement clair pour les grandes visites à venir — un appareil ancien immobilisé pour une révision majeure peut rester cloué au sol plusieurs mois, voire plusieurs années selon la disponibilité des pièces.</p>
+<p>Enfin, méfiez-vous des associations qui n'ont pas de carnet d'entretien centralisé et à jour pour chaque appareil : l'absence de traçabilité rigoureuse est un signal d'alerte sérieux, aussi bien pour la sécurité que pour la valeur patrimoniale de la flotte.</p>
+
+<h2 id="candidater">Comment candidater et s'intégrer</h2>
+<p>La plupart des clubs fonctionnent par recommandation ou par période d'essai : quelques vols en tant que passager ou élève, puis une période probatoire avant l'adhésion complète. Préparez votre candidature en mettant en avant votre expérience de pilotage existante, mais aussi votre disponibilité réelle pour participer à la vie de l'association — c'est souvent ce second critère qui pèse le plus dans la décision du bureau.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez systématiquement un vol de découverte avant toute adhésion financière : le comportement au sol et en vol d'un appareil ancien diffère souvent fortement de ce à quoi un pilote moderne est habitué.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="users"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils de collection ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Assurance</span><strong>Assurer son aéronef en Europe : le guide complet</strong><p>Responsabilité civile, corps de l'appareil, garanties indispensables : comment bien assurer votre avion, hélicoptère ou ULM en Europe.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="copropriete-avion-guide.html" class="card"><span class="icon-box"><i data-icon="users"></i></span><span class="eyebrow">Copropriété</span><strong>La copropriété d'avion : le guide complet</strong><p>Partager un avion entre plusieurs propriétaires : statuts juridiques, répartition des coûts et bonnes pratiques.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Réglementation</span><strong>Immatriculer un aéronef en Europe</strong><p>Procédures, registres nationaux et démarches pour immatriculer votre avion dans votre pays européen.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

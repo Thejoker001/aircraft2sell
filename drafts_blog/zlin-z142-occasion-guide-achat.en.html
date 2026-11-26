@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Used Zlín Z-142 buying guide: budget, points to watch on the Avia M337 engine, maintenance and typical uses (training, light aerobatics, leisure).">
+<meta property="og:title" content="Used Zlín Z-142: Buying Guide | Aircraft2Sell">
+<meta property="og:description" content="Used Zlín Z-142 buying guide: budget, points to watch on the Avia M337 engine, maintenance and typical uses (training, light aerobatics, leisure).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/zlin-z142-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/zlin-z142-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/zlin-z142-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/zlin-z142-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/zlin-z142-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Used Zlín Z-142: Buying Guide | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Used Zlín Z-142: Buying Guide", "description": "Used Zlín Z-142 buying guide: budget, points to watch on the Avia M337 engine, maintenance and typical uses (training, light aerobatics, leisure).", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/zlin-z142-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Used Zlín Z-142: Buying Guide", "item": "https://aircraft2sell.eu/en/zlin-z142-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Used Zlín Z-142</span></nav>
+    <span class="eyebrow">Model guide</span>
+    <h1>Used Zlín Z-142: Buying Guide</h1>
+    <p>Budget to plan for, points to watch on the Avia M337 engine, routine maintenance and typical uses to help you buy a used Zlín Z-142 with full knowledge of the facts.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>6 min read</span>
+      <span><i data-icon="calendar"></i>November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#presentation">What the Zlín Z-142 is and why it still appeals</a></li><li><a href="#budget">What budget to plan for at purchase</a></li><li><a href="#moteur">The Avia M337 engine: points to watch</a></li><li><a href="#cellule">Metal airframe and light aerobatics: what to inspect</a></li><li><a href="#entretien">Routine maintenance and parts availability</a></li><li><a href="#usages">Training, light aerobatics and leisure: typical uses</a></li><li><a href="#revente">Used market and resale</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">What the Zlín Z-142 is and why it still appeals</h2>
+<p>The Zlín Z-142 is a side-by-side two-seat trainer, built in Czechoslovakia by Moravan (the Zlín/Otrokovice factory), developed as an evolution of the Z-42 for pilot training in the aero clubs of the Eastern Bloc. Robust, simple to maintain and offering enough performance for an introduction to light aerobatics, it trained several generations of pilots across Central Europe before finding a second life on the used market among private owners and aero clubs in Western Europe.</p>
+<p>Its classic metal airframe, fixed landing gear and proven powerplant make it an accessible aircraft, appreciated for leisure flying, navigation training or an introduction to gentle aerobatics. It has neither the prestige nor the rarity of a dedicated aerobatic Zlín, but it remains a sound choice for anyone looking for an affordable two-seater, easy to fly and cheap to maintain compared with equivalent Western standards.</p>
+
+<h2 id="budget">What budget to plan for at purchase</h2>
+<p>The price of a used Z-142 depends above all on the condition of the airframe, hours elapsed since the last engine overhaul (SMOH hours), the quality of the paint and interior, and the consistency of the maintenance logbook. An aircraft based in Central Europe, from a former aero club with well-documented records, generally trades at a noticeably more accessible level than an already-restored example based in Western Europe.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Criterion</th><th>Impact on price</th></tr></thead>
+<tbody>
+<tr><td>Remaining SMOH hours</td><td>An engine close to its overhaul limit weighs heavily on resale price</td></tr>
+<tr><td>Airframe and paint condition</td><td>A recent, well-documented restoration significantly increases the aircraft's value</td></tr>
+<tr><td>Maintenance history</td><td>A complete logbook and consistent maintenance at an approved shop reassure the buyer</td></tr>
+<tr><td>Country of origin</td><td>An aircraft already based in Western Europe avoids ferry and compliance costs</td></tr>
+</tbody></table></div>
+<p>Beyond the purchase price, your budget should include ancillary costs: an independent mechanic's pre-purchase inspection qualified on the type, registration and transfer fees, insurance, and possibly a radio or transponder upgrade to comply with current European regulatory requirements.</p>
+
+<h2 id="moteur">The Avia M337 engine: points to watch</h2>
+<p>The Z-142 is fitted with the Avia M337 piston engine, a Czechoslovak powerplant specific to this type and less widespread than the Lycoming or Continental engines found on Western trainer aircraft. Before buying, it is essential to check the complete engine history, compliance with the maintenance program set by the engine manufacturer, and the traceability of replaced parts.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Complete history of the Avia M337 engine: hours elapsed since the last overhaul, compliance with the manufacturer's overhaul interval, parts traceability.</span></li>
+  <li><i data-icon="check"></i><span>Real availability of spare parts and the existence of an approved workshop familiar with this engine before committing, as the network remains less dense than for a Lycoming.</span></li>
+  <li><i data-icon="check"></i><span>Condition of the propeller and compliance of its own maintenance file, separate from the engine's.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point of caution</strong> — Never negotiate a Z-142 without having first identified a workshop able to maintain the Avia M337 engine in your region: this is the main cost and availability factor for this type outside Central Europe.</div></div>
+
+<h2 id="cellule">Metal airframe and light aerobatics: what to inspect</h2>
+<p>The Z-142's airframe is a classic metal construction, generally straightforward to inspect for a mechanic familiar with light aircraft. As the aircraft has often been used for training and sometimes for an introduction to gentle aerobatics, particular attention should be paid to the structural points most stressed by this type of use.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Checking for corrosion on the metal structure, especially on an aircraft that has spent long periods parked outdoors or in a humid climate.</span></li>
+  <li><i data-icon="check"></i><span>Condition of fittings and attachment points subject to higher loads in case of aerobatic use, even light aerobatics.</span></li>
+  <li><i data-icon="check"></i><span>Complete logbook and technical file, with no grey areas in the aircraft's history or any potential intensive use at a flying school.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — An aircraft long used for training is not necessarily a drawback: rigorous aero club maintenance is often a sign of seriousness, provided the records are complete and consistent.</div></div>
+
+<h2 id="entretien">Routine maintenance and parts availability</h2>
+<p>Routine maintenance of a Z-142 remains generally accessible, but the availability of specific parts (Avia engine, some original Czechoslovak instruments) is less immediate than with an aircraft fitted with standard Western components. It is advisable to reach out beforehand to the community of Zlín owners in Europe, who can point you towards parts suppliers and workshops familiar with this type.</p>
+<p>Having the aircraft maintained at a workshop already experienced with the type helps limit unpleasant surprises and preserve its resale value, particularly for anything related to the engine and its accessories.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — Always ask for the latest maintenance invoices before making an offer: they give an accurate picture of how seriously the aircraft has been maintained and how familiar the workshop was with the type.</div></div>
+<p>The availability of a competent workshop directly affects annual operating costs: an owner far from any structure familiar with the Zlín often has to budget for the mechanic's travel costs, or even an occasional ferry flight of the aircraft to a specialised workshop in Central Europe. This factor, specific to rarer types, deserves to be anticipated before buying rather than discovered at the time of the first major overhaul.</p>
+
+<h2 id="usages">Training, light aerobatics and leisure: typical uses</h2>
+<p>The Z-142 suits leisure flying, navigation training and a first introduction to light aerobatics for pilots already trained on another type. Its original design, built for school use, makes it an easy aircraft to handle, with good visibility thanks to its side-by-side seating and predictable controls.</p>
+<p>It is less suited to a pilot primarily seeking advanced aerobatic performance, for which more recent, specialised models remain better adapted. Its main strength remains an excellent balance of acquisition cost, ease of maintenance and flying enjoyment for regular use among enthusiasts or within a club.</p>
+<p>Some owners also use it as a transition aircraft before buying a more demanding aerobatic model, since it allows them to get used to the feel of a light, direct-control aircraft without the budget pressure of a competition type. Others simply keep it as a club aircraft, shared among several pilots passionate about Central Europe's aviation heritage, which helps spread the fixed costs of maintenance and hangarage.</p>
+
+<h2 id="revente">Used market and resale</h2>
+<p>The used market for the Z-142 remains a niche, sustained by a community of enthusiasts and a handful of specialised workshops in Europe. Demand is stronger in Central and Eastern Europe, where the type is historically well known, but a growing number of restored examples also find buyers in Western Europe, drawn by the charm of an aircraft with real heritage and by its generally contained operating costs.</p>
+<p>A well-maintained aircraft, with a transparent history and complete documentation on the Avia M337 engine, generally resells more easily than one whose technical file has grey areas. Comparing several similar listings remains the best way to assess a fair price, both for buying and for preparing a future resale.</p>
+<p>Before committing, take the time to talk with other Zlín owners, for example through type associations or specialist forums: their practical experience with parts availability, the Avia M337 engine's long-term behaviour and trusted workshops in Europe is often more useful than reading a technical spec sheet alone.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your Zlín Z-142</h3>
+            <p>Compare used Zlín Z-142 listings available in Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>Go further in your buying or selling project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Cessna 172: the complete buying guide</strong><p>Budget, points to watch and maintenance for the most-produced training aircraft in the world.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="robin-dr400-occasion.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Robin DR400: what you need to know</strong><p>Wood-and-fabric airframe specifics, maintenance and budget for a used DR400.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Buyer's guide</span><strong>Pre-purchase aircraft inspection: the complete guide</strong><p>Everything you need to check before buying a used aircraft. Technical inspection, documents, engine history and airworthiness.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js?v=20260909a" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

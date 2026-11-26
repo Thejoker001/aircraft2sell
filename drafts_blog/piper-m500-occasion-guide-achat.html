@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Guide d'achat du Piper M500 d'occasion : budget, points de vigilance sur ce turbopropulseur PA-46, entretien et revente en Europe.">
+<meta property="og:title" content="Piper M500 d'occasion : guide d'achat turbopropulseur | Aircraft2Sell">
+<meta property="og:description" content="Guide d'achat du Piper M500 d'occasion : budget, points de vigilance sur ce turbopropulseur PA-46, entretien et revente en Europe.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/piper-m500-occasion-guide-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/piper-m500-occasion-guide-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/piper-m500-occasion-guide-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/piper-m500-occasion-guide-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/piper-m500-occasion-guide-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Piper M500 d'occasion : guide d'achat turbopropulseur | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Piper M500 d'occasion : guide d'achat turbopropulseur", "description": "Guide d'achat du Piper M500 d'occasion : budget, points de vigilance sur ce turbopropulseur PA-46, entretien et revente en Europe.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/piper-m500-occasion-guide-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Piper M500 d'occasion : guide d'achat turbopropulseur", "item": "https://aircraft2sell.eu/piper-m500-occasion-guide-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Piper M500 d'occasion</span></nav>
+    <span class="eyebrow">Guide modèle</span>
+    <h1>Piper M500 d'occasion : guide d'achat turbopropulseur</h1>
+    <p>Budget à prévoir, points de vigilance à l'inspection, entretien de ce turbopropulseur monomoteur de la famille PA-46 et perspectives de revente pour acheter un Piper M500 d'occasion en toute connaissance de cause.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi le M500 séduit les acheteurs de turbopropulseur</a></li><li><a href="#famille">Sa place dans la famille PA-46</a></li><li><a href="#budget">Quel budget prévoir à l'achat</a></li><li><a href="#inspection">Les points à vérifier avant d'acheter</a></li><li><a href="#turbine">Spécificités de la motorisation turbopropulseur</a></li><li><a href="#entretien">Entretien et coûts d'exploitation</a></li><li><a href="#pressurisation">Cabine pressurisée : un atout à surveiller</a></li><li><a href="#revente">Revente et marché de l'occasion</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi le M500 séduit les acheteurs de turbopropulseur</h2>
+<p>Le Piper M500 est la version turbopropulseur la plus récente de la célèbre famille PA-46, un monomoteur à cabine pressurisée pensé pour parcourir de longues distances à haute altitude avec un bon niveau de confort et de fiabilité. Il s'adresse à des pilotes propriétaires qui franchissent une étape depuis un monomoteur à pistons et recherchent les performances, la vitesse de croisière et la capacité à voler au-dessus des intempéries qu'offre une motorisation turbine.</p>
+<p>Sur le marché de l'occasion, le M500 est recherché pour son équilibre entre coût d'acquisition, performances et facilité d'exploitation comparé à des turbopropulseurs plus gros et plus coûteux. C'est un appareil qui demande néanmoins une bonne préparation budgétaire et une formation spécifique avant la prise en main.</p>
+
+<h2 id="famille">Sa place dans la famille PA-46</h2>
+<p>La famille PA-46 a connu plusieurs évolutions depuis son lancement, avec des versions à moteur à pistons et des versions turbopropulseur se succédant au fil du temps. Le M500 représente l'évolution la plus récente de la motorisation turbine de cette lignée, avec des améliorations d'avionique et de systèmes par rapport aux versions antérieures.</p>
+<p>Avant d'acheter, il est important de bien vérifier l'année de production exacte et le standard d'avionique installé, car plusieurs évolutions se sont succédé au sein même de la gamme turbopropulseur PA-46, avec des écarts de prix et d'équipement parfois significatifs.</p>
+
+<h2 id="budget">Quel budget prévoir à l'achat</h2>
+<p>Le prix d'un Piper M500 d'occasion dépend avant tout de l'âge de l'appareil, des heures moteur depuis la dernière révision de la turbine, du standard d'avionique installé et de l'état général de la cellule et de la cabine pressurisée. Les turbopropulseurs se négocient naturellement à un niveau d'investissement plus élevé qu'un monomoteur à pistons équivalent, en cohérence avec leurs performances et leur coût d'exploitation.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Impact sur le prix</th></tr></thead>
+<tbody>
+<tr><td>Heures moteur depuis la dernière révision</td><td>Un moteur proche de sa limite de révision pèse fortement sur le prix de revente</td></tr>
+<tr><td>Standard d'avionique installé</td><td>Les évolutions successives au sein de la gamme PA-46 créent des écarts de valorisation</td></tr>
+<tr><td>État de la cabine pressurisée</td><td>Une pressurisation en bon état évite des frais de remise en conformité coûteux</td></tr>
+<tr><td>Historique d'entretien documenté</td><td>Un carnet d'entretien complet et suivi en atelier agréé rassure l'acheteur</td></tr>
+</tbody></table></div>
+<p>Au-delà du prix d'achat, il faut intégrer dans son budget l'inspection pré-achat par un mécanicien indépendant qualifié sur le type, les frais d'immatriculation et de transfert, une assurance adaptée à un turbopropulseur, et la formation spécifique nécessaire pour être qualifié sur ce type d'appareil.</p>
+
+<h2 id="inspection">Les points à vérifier avant d'acheter</h2>
+<p>Une inspection pré-achat menée par un mécanicien indépendant qualifié sur le type est indispensable avant de finaliser une transaction. Pour un M500, certains points méritent une attention particulière.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Historique complet de la turbine : heures moteur depuis la dernière révision (SMOH), respect du programme d'entretien constructeur, traçabilité des interventions.</span></li>
+  <li><i data-icon="check"></i><span>État du système de pressurisation de la cabine, souvent le point technique le plus coûteux à remettre en état sur un PA-46.</span></li>
+  <li><i data-icon="check"></i><span>État et mises à jour de l'avionique intégrée, ainsi que la conformité aux obligations réglementaires en vigueur.</span></li>
+  <li><i data-icon="check"></i><span>Carnet de route, carnet d'entretien et dossier technique complets, sans zone d'ombre sur l'historique de l'appareil.</span></li>
+  <li><i data-icon="check"></i><span>Validité du certificat de navigabilité et cohérence de toutes les modifications apportées à l'appareil au fil du temps.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Ne jamais se contenter des déclarations du vendeur sur l'état général : un rapport d'inspection indépendant écrit, mené par un spécialiste du type, reste la meilleure protection contre une mauvaise surprise après l'achat.</div></div>
+
+<h2 id="turbine">Spécificités de la motorisation turbopropulseur</h2>
+<p>Passer d'un moteur à pistons à une turbine change sensiblement la logique d'entretien et d'exploitation. La motorisation turbine impose un programme de maintenance spécifique, souvent basé sur des heures moteur strictement suivies, avec des opérations de révision planifiées à l'avance plutôt que des réparations correctives.</p>
+<p>Cette rigueur a un coût, mais elle offre en contrepartie une fiabilité généralement élevée et une plus grande prévisibilité des dépenses d'entretien sur le long terme, à condition de respecter scrupuleusement le programme constructeur.</p>
+
+<h2 id="entretien">Entretien et coûts d'exploitation</h2>
+<p>Le coût d'exploitation d'un Piper M500 reste comparable à celui des autres turbopropulseurs monomoteurs de sa catégorie, avec un carburant (kérosène) et des postes de maintenance spécifiques à la turbine. Les postes de dépense principaux restent la visite annuelle obligatoire, l'assurance, le stationnement, le carburant et, à plus long terme, la révision de la turbine une fois le potentiel horaire atteint.</p>
+<p>Faire entretenir l'appareil dans un atelier agréé habitué au type permet de limiter les mauvaises surprises et de préserver sa valeur de revente. Un suivi rigoureux et documenté de l'entretien est un argument de poids lors d'une revente future.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Demandez systématiquement les dernières factures de maintenance de la turbine avant de faire une offre : elles donnent une image fidèle du sérieux de l'entretien passé.</div></div>
+
+<h2 id="pressurisation">Cabine pressurisée : un atout à surveiller</h2>
+<p>La cabine pressurisée du M500 permet de voler à haute altitude avec un confort appréciable pour les occupants, au-dessus de la plupart des turbulences et des intempéries. C'est un atout majeur de cette famille d'appareils, mais aussi un système technique à surveiller : les joints et les systèmes de pressurisation s'usent avec le temps et peuvent nécessiter une remise en état.</p>
+<p>Avant d'acheter, il est utile de demander au vendeur l'historique des interventions sur le système de pressurisation, afin d'anticiper d'éventuels frais si une remise en état approche.</p>
+
+<h2 id="revente">Revente et marché de l'occasion</h2>
+<p>Le marché de l'occasion du Piper M500 reste actif en Europe, porté par l'attractivité de la famille PA-46 pour les pilotes propriétaires qui souhaitent passer à la turbine sans basculer vers des turbopropulseurs plus gros et plus coûteux à exploiter. Un appareil bien entretenu, avec un historique transparent et une avionique à jour, se revend généralement plus facilement et dans de meilleures conditions qu'un appareil dont le dossier technique comporte des zones d'ombre.</p>
+<p>Comparer plusieurs annonces de modèles similaires reste la meilleure façon d'évaluer un juste prix, aussi bien pour acheter que pour préparer une future revente. Les écarts de prix entre deux appareils du même millésime s'expliquent presque toujours par le potentiel moteur restant et la qualité de l'équipement avionique.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre Piper M500</h3>
+            <p>Comparez les annonces de turbopropulseurs d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cirrus-sr22-occasion-guide-achat-budget.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cirrus SR22 d'occasion : guide d'achat et budget</strong><p>Budget à prévoir, points de vigilance à l'inspection, entretien et perspectives de revente.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide acheteur</span><strong>Turbopropulseur ou jet privé : comment choisir</strong><p>Comparatif coûts, autonomie, vitesse et usage pour choisir l'aéronef adapté à votre activité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

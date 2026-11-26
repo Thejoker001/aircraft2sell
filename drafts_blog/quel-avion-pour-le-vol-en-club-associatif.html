@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Redirection automatique par langue navigateur
+   --------------------------------------------------------------------------
+   Sur une page FR (racine, sans /en/ ni /et/), si le navigateur du visiteur
+   est configuré en anglais ET qu'une version EN de cette page existe, on
+   redirige une seule fois vers /en/<page>. Le choix est mémorisé (localStorage)
+   pour ne plus jamais re-rediriger ensuite, y compris si le visiteur revient
+   volontairement en FR via le sélecteur de langue du footer.
+
+   Ne s'exécute PAS :
+   - sur les pages déjà sous /en/ ou /et/ (pas de boucle)
+   - si un choix de langue a déjà été fait une fois (a2s_lang_choice_made)
+   - si la page n'a pas d'équivalent EN (TRANSLATED_PAGES)
+   - pour les crawlers (voir isLikelyBot ci-dessous)
+
+   CORRECTIF 2026-09-21 : contrairement à l'hypothèse initiale, Googlebot rend
+   la page avec Chrome headless (navigator.language = "en-US" par défaut) et
+   EXÉCUTE ce script — confirmé via Search Console URL Inspection sur la page
+   d'accueil (userCanonical basculait sur /en/index.html malgré une visite de
+   l'URL FR). Impact : le "signal utilisateur" observé par Google pour la
+   page racine pouvait dériver vers la version anglaise. Un filtrage sur
+   navigator.webdriver + une liste d'UA de crawlers connus élimine ce risque
+   sans changer le comportement pour un vrai visiteur humain.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* Détection best-effort des crawlers : navigator.webdriver est vrai pour
+     Chrome headless (Googlebot, Bingbot, Puppeteer/Playwright...) ; on
+     couvre aussi les UA de crawlers connus au cas où webdriver ne serait pas
+     exposé. Un faux négatif reste sans danger (au pire, ancien comportement) ;
+     un faux positif ne fait que priver un humain de la redirection auto,
+     jamais casser la navigation (le sélecteur de langue manuel reste dispo). */
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  /* Déjà sur une version traduite : ne rien faire. */
+  if (/^\/(en|et)\//.test(path)) return;
+
+  /* Un choix a déjà été fait une fois (redirection automatique OU clic
+     manuel sur le sélecteur de langue) : ne plus jamais re-rediriger. */
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  /* Pages disponibles en anglais (même liste que nav.js/footer.js). */
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  /* Langue du navigateur (première préférence uniquement, en minuscules,
+     code ISO 2 lettres avant le tiret éventuel : "en-US" -> "en"). */
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  /* Marquer le choix comme fait AVANT de rediriger, pour que la page /en/
+     de destination (qui charge aussi ce script) ne redirige pas à son tour
+     ni ne déclenche de nouvelle vérification au retour arrière. */
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+/* Marque tout choix MANUEL de langue (clic sur un lien hreflang du nav/footer)
+   comme définitif, pour ne plus jamais déclencher la redirection automatique
+   ci-dessus — y compris si le visiteur revient volontairement en FR. Délégué
+   sur document pour capter les liens injectés dynamiquement par nav.js/footer.js. */
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Robin DR400, Cessna 172 ou Piper PA-28 : quel avion choisir pour le vol en club associatif ? Comparatif budget, entretien et usage pédagogique.">
+<meta property="og:title" content="Quel avion pour le vol en club associatif | Aircraft2Sell">
+<meta property="og:description" content="Robin DR400, Cessna 172 ou Piper PA-28 : quel avion choisir pour le vol en club associatif ? Comparatif budget, entretien et usage pédagogique.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/quel-avion-pour-le-vol-en-club-associatif.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/quel-avion-pour-le-vol-en-club-associatif.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/quel-avion-pour-le-vol-en-club-associatif.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/quel-avion-pour-le-vol-en-club-associatif.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/quel-avion-pour-le-vol-en-club-associatif.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Quel avion pour le vol en club associatif | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Quel avion pour le vol en club associatif", "description": "Robin DR400, Cessna 172 ou Piper PA-28 : quel avion choisir pour le vol en club associatif ? Comparatif budget, entretien et usage pédagogique.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/quel-avion-pour-le-vol-en-club-associatif.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Quel avion pour le vol en club associatif", "item": "https://aircraft2sell.eu/quel-avion-pour-le-vol-en-club-associatif.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Vol en club associatif</span></nav>
+    <span class="eyebrow">Comparatif usage</span>
+    <h1>Quel avion pour le vol en club associatif</h1>
+    <p>Robin DR400, Cessna 172 ou Piper PA-28 : comparatif des trois avions les plus répandus dans les clubs et associations aéronautiques pour vous aider à choisir.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Trois avions historiques du vol en club</a></li><li><a href="#dr400">Le Robin DR400 : agilité et conception française</a></li><li><a href="#cessna172">Le Cessna 172 : la référence mondiale de la formation</a></li><li><a href="#pa28">Le Piper PA-28 : simplicité et robustesse</a></li><li><a href="#comparatif">Comparatif budget, entretien et usage pédagogique</a></li><li><a href="#choix">Quel appareil choisir pour son club ou son association</a></li><li><a href="#occasion">Acheter d'occasion pour un club : points de vigilance</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Trois avions historiques du vol en club</h2>
+<p>Le Robin DR400, le Cessna 172 et le Piper PA-28 constituent, depuis des décennies, l'ossature de la flotte des clubs et associations aéronautiques en Europe. Ces trois monomoteurs à moteur à pistons partagent un même objectif de conception : offrir un appareil simple à exploiter, suffisamment robuste pour supporter une utilisation intensive par de nombreux pilotes différents, et abordable pour une structure associative gérée en copropriété ou en club.</p>
+<p>Chacun possède néanmoins sa propre philosophie de conception, ce qui se traduit par des différences sensibles de maniabilité, de coûts d'exploitation et de profil pédagogique. Le choix entre ces trois appareils dépend largement des priorités du club : budget disponible, type de formation dispensée, ou habitudes déjà installées dans la flotte existante.</p>
+
+<h2 id="dr400">Le Robin DR400 : agilité et conception française</h2>
+<p>Le Robin DR400 se distingue par sa structure mixte bois et toile sur une partie de la cellule, une aile basse et une verrière offrant une excellente visibilité en vol. Très répandu dans les aéroclubs français et plus largement en Europe, il est réputé pour son agilité en vol et son comportement dynamique, appréciés aussi bien en formation qu'en voyage associatif.</p>
+<p>Sa structure, en partie non métallique, impose un entretien spécifique différent de celui d'un avion tout métal : surveillance de l'état du bois, de la toile et des collages, en complément des vérifications classiques de cellule et de moteur. Pour un club disposant d'un mécanicien ou d'un atelier familier de ce type de structure, cela ne pose pas de difficulté particulière, mais cela doit être anticipé avant l'achat.</p>
+
+<h2 id="cessna172">Le Cessna 172 : la référence mondiale de la formation</h2>
+<p>Le Cessna 172 est l'avion d'entraînement le plus produit au monde, et ce succès repose largement sur sa simplicité d'exploitation et sa robustesse. Sa cellule entièrement métallique, son train fixe et son comportement en vol prévisible en font un appareil particulièrement adapté à la formation au pilotage privé, où la tolérance aux erreurs de pilotage et la facilité de maintenance sont des critères déterminants.</p>
+<p>Pour un club, l'un des grands atouts du Cessna 172 est la disponibilité des pièces détachées et la présence d'un réseau d'ateliers familiers du type sur l'ensemble du territoire européen, ce qui limite les immobilisations prolongées. C'est souvent le choix privilégié des clubs qui accueillent un grand nombre d'élèves pilotes et qui recherchent avant tout la disponibilité opérationnelle de leur flotte.</p>
+
+<h2 id="pa28">Le Piper PA-28 : simplicité et robustesse</h2>
+<p>Le Piper PA-28, décliné en plusieurs versions au fil des générations, partage avec le Cessna 172 une cellule tout métal et une réputation de robustesse, tout en se distinguant par son aile basse et une configuration de cabine différente, appréciée par certains pilotes pour le confort et la visibilité qu'elle procure en croisière.</p>
+<p>Comme le Cessna 172, le PA-28 bénéficie d'un parc mondial important, ce qui facilite l'accès aux pièces et à la documentation technique. De nombreux clubs qui exploitent déjà un ou plusieurs PA-28 dans leur flotte privilégient naturellement ce modèle lors d'un renouvellement, pour conserver une cohérence de formation et de maintenance.</p>
+
+<h2 id="comparatif">Comparatif budget, entretien et usage pédagogique</h2>
+<p>Sur le plan budgétaire, ces trois appareils occupent un segment de prix globalement comparable à équipement et âge similaires, les écarts dépendant surtout de l'état de la cellule, des heures moteur restantes et de l'avionique installée. Les différences les plus marquées entre les trois modèles portent sur le type d'entretien à anticiper et sur le profil pédagogique recherché par le club.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Robin DR400</th><th>Cessna 172</th><th>Piper PA-28</th></tr></thead>
+<tbody>
+<tr><td>Structure</td><td>Mixte bois/toile et métal</td><td>Tout métal</td><td>Tout métal</td></tr>
+<tr><td>Disponibilité des pièces</td><td>Bonne, réseau surtout européen</td><td>Très large, réseau mondial</td><td>Très large, réseau mondial</td></tr>
+<tr><td>Comportement en vol</td><td>Agile et dynamique</td><td>Stable et prévisible</td><td>Stable, aile basse</td></tr>
+<tr><td>Profil pédagogique</td><td>Formation et voyage club</td><td>Formation intensive</td><td>Formation et voyage club</td></tr>
+<tr><td>Entretien spécifique</td><td>Surveillance bois/toile sur une partie de la cellule</td><td>Maintenance classique tout métal</td><td>Maintenance classique tout métal</td></tr>
+</tbody></table></div>
+<p>Au-delà de ce tableau, le coût réel à l'heure de vol pour un club dépend surtout de la fréquence d'utilisation, du nombre de membres partageant l'appareil et de la rigueur du suivi de l'entretien programmé.</p>
+
+<h2 id="choix">Quel appareil choisir pour son club ou son association</h2>
+<p>Pour un club orienté vers la formation intensive de nombreux élèves, avec un objectif de disponibilité opérationnelle maximale et un réseau de maintenance facilement accessible, le Cessna 172 ou le Piper PA-28 constituent souvent des choix naturels, grâce à leur simplicité et à l'ampleur de leur parc mondial.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Cessna 172 ou PA-28 : pertinents pour une flotte homogène tout métal et une disponibilité de pièces maximale.</span></li>
+  <li><i data-icon="check"></i><span>Robin DR400 : intéressant pour un club recherchant agilité en vol et habitué à l'entretien d'une structure mixte.</span></li>
+  <li><i data-icon="check"></i><span>Cohérence avec la flotte existante du club : limiter le nombre de types différents réduit les coûts de formation des mécaniciens et des instructeurs.</span></li>
+  <li><i data-icon="check"></i><span>Disponibilité locale d'un atelier agréé pour le type retenu, critère souvent sous-estimé lors du choix.</span></li>
+</ul>
+<p>À l'inverse, un club déjà historiquement équipé en DR400, ou recherchant un appareil au comportement en vol plus dynamique pour sa formation, trouvera dans le Robin DR400 un argument pédagogique et une tradition bien ancrée dans de nombreux aéroclubs européens.</p>
+
+<h2 id="occasion">Acheter d'occasion pour un club : points de vigilance</h2>
+<p>Pour une structure associative, l'achat d'un avion d'occasion représente un investissement collectif important, financé le plus souvent par les cotisations et l'activité du club. Il est donc essentiel de faire réaliser une inspection pré-achat rigoureuse par un mécanicien indépendant, de vérifier l'historique complet du carnet d'entretien et les heures moteur restantes avant la prochaine grande visite, et d'anticiper le coût de cette grande visite dans le plan de financement du club.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Pour un appareil destiné à une utilisation intensive par de nombreux pilotes, privilégiez un carnet d'entretien rigoureusement tenu et un historique de pannes transparent plutôt qu'un prix d'achat légèrement plus bas.</div></div>
+<p>Comparer plusieurs annonces de modèles et de millésimes similaires reste la meilleure façon d'évaluer un juste prix et de repérer un appareil correctement entretenu, qu'il s'agisse d'un Robin DR400, d'un Cessna 172 ou d'un Piper PA-28.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez l'avion de votre club</h3>
+            <p>Comparez les annonces de Robin DR400, Cessna 172 et Piper PA-28 d'occasion en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cessna-172-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Guide modèle</span><strong>Cessna 172 d'occasion : guide d'achat complet</strong><p>Budget, points de vigilance et entretien pour l'avion d'entraînement le plus produit au monde.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="louer-ou-acheter-avion.html" class="card"><span class="icon-box"><i data-icon="swap"></i></span><span class="eyebrow">Guide acheteur</span><strong>Louer ou acheter un avion : comment choisir</strong><p>Comparatif détaillé entre la location à l'heure, le club, la copropriété et l'achat en pleine propriété.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="licence-pilote-prive-cout.html" class="card"><span class="icon-box"><i data-icon="award"></i></span><span class="eyebrow">Guide débutant</span><strong>Coût d'une licence de pilote privé</strong><p>Budget complet pour obtenir sa licence de pilote privé : formation, heures de vol, examens et frais annexes.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

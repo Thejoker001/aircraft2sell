@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Prix du carburant et SAF : quel impact sur le marché de l'avion d'occasion en 2026 ? Coûts d'usage, choix des modèles, revente. Le guide complet.">
+<meta property="og:title" content="Impact du prix du carburant et du SAF sur le marché de l'occasion | Aircraft2Sell">
+<meta property="og:description" content="Prix du carburant et SAF : quel impact sur le marché de l'avion d'occasion en 2026 ? Coûts d'usage, choix des modèles, revente. Le guide complet.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/impact-du-prix-du-carburant-et-du-saf-sur-le-marche-de-l-occasion.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/impact-du-prix-du-carburant-et-du-saf-sur-le-marche-de-l-occasion.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/impact-du-prix-du-carburant-et-du-saf-sur-le-marche-de-l-occasion.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/impact-du-prix-du-carburant-et-du-saf-sur-le-marche-de-l-occasion.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/impact-du-prix-du-carburant-et-du-saf-sur-le-marche-de-l-occasion.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Impact du prix du carburant et du SAF sur le marché de l'occasion</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Impact du prix du carburant et du SAF sur le marché de l'occasion", "description": "Prix du carburant et SAF : quel impact sur le marché de l'avion d'occasion en 2026 ? Coûts d'usage, choix des modèles, revente. Le guide complet.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/impact-du-prix-du-carburant-et-du-saf-sur-le-marche-de-l-occasion.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Impact du prix du carburant et du SAF sur le marché de l'occasion", "item": "https://aircraft2sell.eu/impact-du-prix-du-carburant-et-du-saf-sur-le-marche-de-l-occasion.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Carburant et SAF</span></nav>
+    <span class="eyebrow">Marché</span>
+    <h1>Impact du prix du carburant et du SAF sur le marché de l'occasion</h1>
+    <p>Comment l'évolution du prix du carburant aviation et la montée en puissance du carburant d'aviation durable (SAF) influencent les coûts d'usage, les choix d'achat et la revente des avions d'occasion.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#contexte">Le carburant, un poste de coût central</a></li><li><a href="#saf">Le SAF : qu'est-ce que c'est et où en est-on</a></li><li><a href="#usage">Impact sur le coût d'usage d'un avion d'occasion</a></li><li><a href="#modeles">Quels modèles sont les plus exposés</a></li><li><a href="#demande">Effet sur la demande et les choix d'achat</a></li><li><a href="#revente">Effet sur la valeur de revente</a></li><li><a href="#strategies">Stratégies pour les acheteurs</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="contexte">Le carburant, un poste de coût central</h2>
+<p>Pour un propriétaire d'avion léger, le carburant représente historiquement l'un des postes de coût d'exploitation les plus visibles, aux côtés de l'entretien, de l'assurance et des frais d'hangar. Contrairement à ces autres postes, qui évoluent de façon relativement progressive, le prix du carburant aviation peut varier assez fortement d'une saison à l'autre ou d'un aérodrome à l'autre, en fonction de facteurs géopolitiques et logistiques largement hors du contrôle du propriétaire.</p>
+<p>Cette volatilité pèse directement sur le budget prévisionnel d'un acheteur : un avion peu gourmand en carburant devient plus attractif lorsque les prix sont élevés, tandis qu'un modèle plus consommateur mais moins coûteux à l'achat peut rester compétitif lorsque le carburant reste abordable. Le marché de l'occasion réagit à ces signaux, parfois avec un décalage de plusieurs mois.</p>
+
+<h2 id="saf">Le SAF : qu'est-ce que c'est et où en est-on</h2>
+<p>Le carburant d'aviation durable (Sustainable Aviation Fuel, ou SAF) désigne une famille de carburants produits à partir de sources renouvelables ou de déchets, utilisables en remplacement partiel ou total du kérosène fossile sur les moteurs existants, sans modification majeure. Son développement est porté par les objectifs de réduction des émissions du secteur aérien, avec des obligations d'incorporation progressive qui montent en puissance dans plusieurs pays européens au fil des prochaines années.</p>
+<p>Le SAF concerne avant tout l'aviation commerciale et, de plus en plus, l'aviation d'affaires équipée de turbines. Son adoption sur l'aviation légère à moteur à pistons reste pour l'instant marginale, ce segment utilisant majoritairement de l'essence avion (avgas) dont la problématique environnementale et les solutions de substitution suivent un calendrier distinct de celui du SAF. Nous resterons volontairement prudents sur les écarts de prix entre SAF et kérosène classique : ces écarts varient fortement selon le pays, le fournisseur et la période, et toute fourchette précise risquerait d'être obsolète au moment de la lecture.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Le SAF reste aujourd'hui plus coûteux à produire que le kérosène fossile. Son prix dépend de la technologie de production, du pays et des incitations en vigueur : vérifiez toujours une donnée de prix auprès d'une source à jour avant de l'utiliser dans un calcul.</div></div>
+
+<h2 id="usage">Impact sur le coût d'usage d'un avion d'occasion</h2>
+<p>Le coût horaire de fonctionnement d'un avion d'occasion dépend fortement de sa consommation de carburant, elle-même liée à la motorisation, à l'âge de la cellule et au type de vol pratiqué. Un monomoteur léger moderne, souvent plus efficace qu'un modèle ancien équivalent, peut offrir un avantage de coût d'usage significatif lorsque le prix du carburant augmente, même si son prix d'achat est plus élevé.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Consommation horaire</strong> — un critère à comparer systématiquement entre deux modèles candidats à l'achat, au même titre que le prix d'acquisition.</span></li>
+  <li><i data-icon="check"></i><span><strong>Type de vol envisagé</strong> — un usage intensif (école, voyages longs) amplifie l'impact du prix du carburant sur le budget annuel, bien plus qu'un usage occasionnel.</span></li>
+  <li><i data-icon="check"></i><span><strong>Motorisation</strong> — certains moteurs plus récents ou optimisés affichent une consommation sensiblement inférieure à cylindrée ou puissance équivalente.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Avant d'acheter, demandez au vendeur ou à l'aéroclub des données réelles de consommation sur plusieurs vols types, plutôt que de vous fier uniquement à la fiche constructeur, qui reflète des conditions d'essai optimales.</div></div>
+
+<h2 id="modeles">Quels modèles sont les plus exposés</h2>
+<p>Les appareils les plus sensibles à une hausse durable du prix du carburant sont ceux affichant une consommation horaire élevée au regard de leur usage réel : certains bimoteurs anciens, des turbopropulseurs utilisés pour de courtes missions ne justifiant pas leur vitesse de croisière, ou des jets d'affaires de première génération moins économes que les modèles récents. À l'inverse, les monomoteurs légers modernes à consommation optimisée et les motorisations diesel ou économes en carburant tendent à mieux résister, leur avantage relatif se renforçant lorsque les prix montent.</p>
+<p>Sur le segment des turbines, l'écart de consommation entre deux générations de moteurs peut être notable, ce qui explique en partie pourquoi les appareils les plus anciens d'une même famille subissent souvent une décote plus marquée en période de prix du carburant élevés, indépendamment de leur état mécanique.</p>
+
+<h2 id="demande">Effet sur la demande et les choix d'achat</h2>
+<p>Lorsque le prix du carburant augmente de façon durable, la demande sur le marché de l'occasion a tendance à se déplacer vers les appareils les plus économes de leur catégorie, et à l'inverse à ralentir sur les modèles réputés gourmands. Ce phénomène n'est pas nouveau : il a déjà été observé par le passé lors de précédents épisodes de hausse du prix du carburant, et il se traduit généralement par un allongement du délai de vente pour les appareils les moins efficients, plutôt que par un effondrement brutal de leur prix affiché.</p>
+<p>La montée progressive des obligations d'incorporation de SAF dans certains pays pourrait, à terme, ajouter une variable supplémentaire pour les segments d'aviation d'affaires et de turbines, sans qu'il soit possible aujourd'hui de quantifier précisément cet effet sur le marché de l'occasion léger, qui reste pour l'essentiel hors du périmètre direct de ces obligations.</p>
+
+<h2 id="revente">Effet sur la valeur de revente</h2>
+<p>Un acheteur qui raisonne sur plusieurs années de détention a intérêt à intégrer l'efficacité carburant de l'appareil dans son calcul de valeur de revente anticipée, et pas seulement dans son budget d'usage immédiat. Un modèle réputé économe conserve généralement mieux sa valeur en période de prix du carburant élevés, car il reste recherché par les futurs acheteurs confrontés aux mêmes contraintes budgétaires.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne négligez pas l'effet psychologique du prix du carburant sur la perception des acheteurs potentiels au moment de la revente : même si le coût réel sur la durée de détention reste raisonnable, un modèle perçu comme gourmand peut subir un allongement du délai de vente.</div></div>
+
+<h2 id="strategies">Stratégies pour les acheteurs</h2>
+<p>Face à cette incertitude sur l'évolution du prix du carburant et du SAF, quelques réflexes simples permettent d'acheter plus sereinement. Comparez systématiquement la consommation réelle de plusieurs modèles candidats avant de vous focaliser sur le seul prix d'achat. Intégrez le coût du carburant dans un budget annuel complet, aux côtés de l'entretien et de l'assurance, plutôt que de le considérer isolément. Enfin, gardez à l'esprit qu'un appareil efficace reste un argument de revente solide, quelle que soit l'évolution future du marché du carburant.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Utilisez les annonces et les fiches techniques disponibles sur Aircraft2Sell pour comparer la consommation annoncée de plusieurs modèles similaires avant de vous décider : c'est un critère de comparaison aussi pertinent que le prix affiché ou les heures moteur.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Comparez les coûts d'usage avant d'acheter</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell et comparez la consommation de plusieurs appareils similaires.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="cout-entretien-avion-leger.html" class="card"><span class="icon-box"><i data-icon="wrench"></i></span><span class="eyebrow">Entretien</span><strong>Le coût d'entretien d'un avion léger</strong><p>Révisions, grande visite, pièces : comprendre et anticiper le budget d'entretien de votre appareil.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="tendances-marche.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Marché</span><strong>Tendances du marché de l'aviation légère</strong><p>Évolution des prix, des volumes et des modèles les plus recherchés sur le marché de l'occasion.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="estimer-valeur-revente-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="bar-chart"></i></span><span class="eyebrow">Revente</span><strong>Estimer la valeur de revente d'un avion d'occasion</strong><p>Les critères qui déterminent la valeur de revente d'un appareil et comment anticiper sa décote.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

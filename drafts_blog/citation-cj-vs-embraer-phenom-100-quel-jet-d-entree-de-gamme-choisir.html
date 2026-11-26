@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Citation CJ ou Embraer Phenom 100 : comparatif complet des deux jets d'affaires d'entrée de gamme, budget, performances, cabine et achat d'occasion.">
+<meta property="og:title" content="Citation CJ vs Embraer Phenom 100 : quel jet choisir | Aircraft2Sell">
+<meta property="og:description" content="Citation CJ ou Embraer Phenom 100 : comparatif complet des deux jets d'affaires d'entrée de gamme, budget, performances, cabine et achat d'occasion.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/citation-cj-vs-embraer-phenom-100-quel-jet-d-entree-de-gamme-choisir.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/citation-cj-vs-embraer-phenom-100-quel-jet-d-entree-de-gamme-choisir.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/citation-cj-vs-embraer-phenom-100-quel-jet-d-entree-de-gamme-choisir.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/citation-cj-vs-embraer-phenom-100-quel-jet-d-entree-de-gamme-choisir.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/citation-cj-vs-embraer-phenom-100-quel-jet-d-entree-de-gamme-choisir.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Citation CJ vs Embraer Phenom 100 : quel jet choisir | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Citation CJ vs Embraer Phenom 100 : quel jet d'entrée de gamme choisir", "description": "Citation CJ ou Embraer Phenom 100 : comparatif complet des deux jets d'affaires d'entrée de gamme, budget, performances, cabine et achat d'occasion.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/citation-cj-vs-embraer-phenom-100-quel-jet-d-entree-de-gamme-choisir.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Citation CJ vs Embraer Phenom 100", "item": "https://aircraft2sell.eu/citation-cj-vs-embraer-phenom-100-quel-jet-d-entree-de-gamme-choisir.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Citation CJ vs Phenom 100</span></nav>
+    <span class="eyebrow">Comparatif</span>
+    <h1>Citation CJ vs Embraer Phenom 100 : quel jet d'entrée de gamme choisir</h1>
+    <p>Deux références du jet d'affaires d'entrée de gamme : comparatif complet entre le Citation CJ et l'Embraer Phenom 100 pour choisir selon votre budget, votre mission et vos priorités en matière de cabine et d'avionique.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>7 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#presentation">Deux jets d'entrée de gamme, deux philosophies</a></li><li><a href="#citationcj">Le Citation CJ : la référence historique</a></li><li><a href="#phenom100">L'Embraer Phenom 100 : le challenger moderne</a></li><li><a href="#budget">Comparatif budget : achat et exploitation</a></li><li><a href="#performances">Performances et mission type</a></li><li><a href="#cabine">Cabine et confort passager</a></li><li><a href="#occasion">Acheter l'un ou l'autre d'occasion : points de vigilance</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="presentation">Deux jets d'entrée de gamme, deux philosophies</h2>
+<p>Le Cessna Citation CJ (en particulier les versions CJ1, CJ2 et CJ3) et l'Embraer Phenom 100 occupent tous deux le segment des jets d'affaires d'entrée de gamme, pensés pour un pilote unique ou un équipage réduit et des missions régionales. Pourtant, ces deux appareils reflètent deux approches de conception différentes : le Citation CJ prolonge une lignée historique construite depuis des décennies, tandis que le Phenom 100 a été conçu plus récemment avec une cabine et une avionique pensées pour la génération actuelle de pilotes-propriétaires.</p>
+<p>Le choix entre les deux dépend moins d'un classement objectif que de l'adéquation entre la mission envisagée, le budget disponible et les préférences en matière de cabine et d'avionique.</p>
+
+<h2 id="citationcj">Le Citation CJ : la référence historique</h2>
+<p>La famille Citation CJ s'est imposée comme une valeur sûre du marché de l'occasion grâce à un réseau de maintenance mondial très dense, une disponibilité de pièces détachées éprouvée et une réputation de robustesse. Les versions successives — CJ1, CJ2, CJ3 — ont progressivement amélioré l'autonomie, la vitesse de croisière et la capacité d'emport, offrant un choix large sur le marché de l'occasion selon le budget et la mission recherchée.</p>
+<p>Sa relative simplicité de pilotage, longtemps un argument commercial fort, en fait également un appareil appréciable pour un pilote-propriétaire qui souhaite voler en équipage réduit, sous réserve d'une qualification adaptée à la variante concernée.</p>
+
+<h2 id="phenom100">L'Embraer Phenom 100 : le challenger moderne</h2>
+<p>Lancé plus récemment que les premières générations de Citation CJ, le Phenom 100 a été conçu directement pour le segment des « very light jets », avec une cabine plus large à épaisseur égale, une avionique Garmin intégrée nativement et une insonorisation particulièrement travaillée pour ce segment. Sa conception plus récente se traduit également par des coûts de maintenance initiaux souvent plus prévisibles sur les premières années d'exploitation, grâce à un réseau de service après-vente Embraer structuré dès la mise en service de l'appareil.</p>
+<p>En contrepartie, le Phenom 100 dispose d'un réseau mondial de pièces et d'ateliers historiquement moins étendu que celui du Citation, bien qu'il se soit considérablement renforcé depuis le lancement de l'appareil.</p>
+
+<h2 id="budget">Comparatif budget : achat et exploitation</h2>
+<p>Sur le marché de l'occasion, le prix d'acquisition dépend fortement du millésime, des heures moteur restantes avant la prochaine grande visite et de l'équipement avionique installé. De manière générale, les premières générations de Citation CJ (CJ1) se négocient à des niveaux de prix d'entrée comparables ou légèrement inférieurs à un Phenom 100, tandis qu'un CJ3 plus récent et mieux équipé se positionne au-dessus.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Critère</th><th>Citation CJ (CJ1/CJ2/CJ3)</th><th>Embraer Phenom 100</th></tr></thead>
+<tbody>
+<tr><td>Ancienneté de la lignée</td><td>Famille historique, large choix de millésimes</td><td>Conception plus récente, choix plus restreint en occasion ancienne</td></tr>
+<tr><td>Réseau de maintenance</td><td>Très dense, mondial, pièces largement disponibles</td><td>Réseau Embraer structuré, en expansion continue</td></tr>
+<tr><td>Cabine</td><td>Plus étroite sur les premières générations</td><td>Sensiblement plus large à gabarit comparable</td></tr>
+<tr><td>Avionique</td><td>Variable selon le millésime et les rétrofits</td><td>Suite Garmin intégrée de façon homogène</td></tr>
+<tr><td>Positionnement prix d'entrée</td><td>Accessible sur les premières générations (CJ1)</td><td>Comparable, selon équipement et heures restantes</td></tr>
+</tbody></table></div>
+<p>Au-delà du prix d'achat, le coût réel à l'heure de vol dépend fortement du potentiel moteur restant, du contrat de maintenance horaire éventuellement souscrit et de la disponibilité des pièces pour le millésime précis concerné.</p>
+<p>Un contrat de maintenance horaire (de type programme à l'heure de vol) permet de lisser les dépenses d'entretien moteur sur la durée plutôt que de subir une facture ponctuelle lourde au moment de la grande visite. Ce type de contrat existe pour les deux familles de jets, mais son coût et sa disponibilité varient selon le motoriste et le réseau d'ateliers agréés présents dans la zone géographique d'exploitation envisagée, un critère à ne pas négliger avant l'achat.</p>
+
+<h2 id="performances">Performances et mission type</h2>
+<p>Les deux appareils visent des missions similaires : vols régionaux à moyenne distance, trajets d'affaires ponctuels, accès à des pistes plus courtes que celles utilisées par des jets de catégorie supérieure. Les versions les plus récentes et les mieux motorisées du Citation CJ, notamment le CJ3, offrent une autonomie et une capacité d'emport supérieures au Phenom 100, ce qui peut faire la différence pour des missions transcontinentales fréquentes ou un nombre de passagers plus élevé.</p>
+<p>Le Phenom 100 reste pertinent pour des missions plus courtes avec un nombre de passagers restreint, où sa cabine plus confortable et son avionique homogène pèsent davantage dans la décision que l'autonomie maximale disponible.</p>
+
+<h2 id="cabine">Cabine et confort passager</h2>
+<p>La largeur de cabine est souvent l'argument le plus cité en faveur du Phenom 100 : à dimensions extérieures comparables, sa cabine offre davantage d'espace utile et une meilleure impression d'espace pour les passagers assis en vis-à-vis. Le Citation CJ, en particulier sur ses premières générations, propose une cabine plus étroite, bien que les versions CJ3 et les rétrofits d'avionique et d'aménagement intérieur aient nettement amélioré le confort perçu au fil des années.</p>
+<p>Pour un usage essentiellement personnel ou familial sur des trajets courts, cette différence de confort cabine peut peser davantage dans le choix final que l'écart de performances pures entre les deux appareils.</p>
+
+<h2 id="occasion">Acheter l'un ou l'autre d'occasion : points de vigilance</h2>
+<p>Qu'il s'agisse d'un Citation CJ ou d'un Phenom 100, l'achat d'occasion impose une vérification rigoureuse du carnet d'entretien, des heures moteur restantes avant la prochaine grande visite (SMOH) et de l'application de toutes les consignes de navigabilité applicables au type et au millésime précis. Une inspection pré-achat réalisée par un centre agréé du constructeur concerné reste la meilleure protection, en particulier pour vérifier l'historique des moteurs et de l'avionique installée, souvent modifiée au fil des propriétaires successifs.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Demandez systématiquement un bilan de potentiel moteur à jour auprès du motoriste avant de vous engager, en complément du carnet d'entretien de l'appareil.</div></div>
+<p>Dans tous les cas, comparer plusieurs annonces de millésimes et d'équipements similaires reste la meilleure façon d'évaluer un juste prix et d'identifier un appareil correctement entretenu, qu'il s'agisse d'un Citation CJ ou d'un Phenom 100.</p>
+<p>Enfin, au-delà des caractéristiques techniques des deux appareils, le choix d'un courtier ou d'un centre de vente spécialisé dans le type précis visé facilite grandement la recherche : il connaît l'historique des appareils disponibles sur le marché, la cohérence des prix demandés et les points de négociation habituels pour chaque millésime, ce qui réduit sensiblement le risque d'une mauvaise surprise après l'achat.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Trouvez votre prochain jet d'affaires</h3>
+            <p>Comparez les annonces de Citation CJ et Embraer Phenom 100 d'occasion disponibles en Europe sur Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="turbopropulseur-ou-jet-affaires.html" class="card"><span class="icon-box"><i data-icon="swap"></i></span><span class="eyebrow">Guide acheteur</span><strong>Turbopropulseur ou jet privé : comment choisir</strong><p>Turbopropulseur ou jet d'affaires : comparatif coûts, autonomie, vitesse et usage pour choisir l'aéronef adapté à votre activité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="prix-moyen-jet-prive-2026.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Achat</span><strong>Prix moyen d'un jet privé en 2026 : ce qu'il faut savoir</strong><p>Very light jets, jets légers, midsize et long-range. Fourchettes de prix, coûts d'exploitation et facteurs qui font varier la valeur.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="financer-jet-affaires-leasing-credit-bail-copropriete.html" class="card"><span class="icon-box"><i data-icon="credit-card"></i></span><span class="eyebrow">Financement</span><strong>Financer un jet d'affaires : leasing, crédit-bail et copropriété</strong><p>Leasing, crédit-bail et copropriété : comparatif des solutions de financement pour l'achat d'un jet d'affaires en Europe, avantages et inconvénients.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

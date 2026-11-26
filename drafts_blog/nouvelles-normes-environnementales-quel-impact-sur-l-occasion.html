@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Normes environnementales et aviation légère : quel impact sur la valeur et la revente d'un avion d'occasion ? Bruit, carburants, émissions, sans date ni chiffre inventé.">
+<meta property="og:title" content="Nouvelles normes environnementales : quel impact sur l'occasion | Aircraft2Sell">
+<meta property="og:description" content="Normes environnementales et aviation légère : quel impact sur la valeur et la revente d'un avion d'occasion ? Bruit, carburants, émissions, sans date ni chiffre inventé.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/nouvelles-normes-environnementales-quel-impact-sur-l-occasion.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/nouvelles-normes-environnementales-quel-impact-sur-l-occasion.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/nouvelles-normes-environnementales-quel-impact-sur-l-occasion.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/nouvelles-normes-environnementales-quel-impact-sur-l-occasion.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/nouvelles-normes-environnementales-quel-impact-sur-l-occasion.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Nouvelles normes environnementales : quel impact sur l'occasion</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Nouvelles normes environnementales : quel impact sur l'occasion", "description": "Normes environnementales et aviation légère : quel impact sur la valeur et la revente d'un avion d'occasion ? Bruit, carburants, émissions, sans date ni chiffre inventé.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/nouvelles-normes-environnementales-quel-impact-sur-l-occasion.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Nouvelles normes environnementales : quel impact sur l'occasion", "item": "https://aircraft2sell.eu/nouvelles-normes-environnementales-quel-impact-sur-l-occasion.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Normes environnementales</span></nav>
+    <span class="eyebrow">Réglementation</span>
+    <h1>Nouvelles normes environnementales : quel impact sur l'occasion</h1>
+    <p>Bruit, émissions, carburants alternatifs : comment les tendances réglementaires européennes pourraient influencer la valeur et la revente d'un avion d'occasion, sans céder à l'alarmisme ni à l'anticipation hasardeuse.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#contexte">Pourquoi les normes environnementales montent en puissance</a></li><li><a href="#leviers">Les grands leviers réglementaires en discussion</a></li><li><a href="#valeur">Quel impact potentiel sur la valeur des appareils existants</a></li><li><a href="#carburants">Carburants alternatifs et risque d'obsolescence perçue</a></li><li><a href="#aerodromes">Restrictions locales liées au bruit sur certains aérodromes</a></li><li><a href="#anticiper">Comment anticiper l'impact sur la revente</a></li><li><a href="#verifier">Ce qu'il faut vérifier avant d'acheter un avion ancien</a></li><li><a href="#conclusion">Conclusion : une tendance à surveiller, pas un couperet</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="contexte">Pourquoi les normes environnementales montent en puissance dans l'aviation légère</h2>
+<p>L'aviation légère n'est plus seulement regardée sous l'angle de la sécurité ou de la performance : les enjeux climatiques et sonores occupent une place croissante dans les discussions réglementaires européennes. Sans qu'aucun texte précis ne soit figé à ce jour pour l'ensemble des catégories d'appareils légers, la tendance de fond est claire : réduire l'empreinte sonore autour des aérodromes, encourager les carburants moins carbonés, et pousser progressivement le secteur vers des solutions de propulsion alternatives.</p>
+<p>Pour un propriétaire ou un acheteur d'avion d'occasion (used aircraft), cette évolution ne se traduit pas par un bouleversement immédiat, mais elle change la façon dont il faut évaluer un appareil à moyen terme. Un avion parfaitement en règle aujourd'hui peut se retrouver, dans quelques années, soumis à des restrictions locales plus strictes ou à des coûts de mise en conformité plus élevés — sans que cela signifie pour autant qu'il perdra toute valeur d'usage.</p>
+
+<h2 id="leviers">Les grands leviers réglementaires en discussion : bruit, émissions, carburants</h2>
+<p>Trois axes structurent les réflexions en cours au niveau européen, portées notamment par l'EASA et les autorités nationales de l'aviation civile. Le premier concerne les nuisances sonores, avec une pression croissante de certains riverains et collectivités locales pour limiter les créneaux horaires ou le nombre de mouvements des appareils les plus bruyants. Le second porte sur les émissions de CO2 et la décarbonation progressive du secteur, dans la continuité des engagements pris à l'échelle de l'aviation commerciale mais avec une transposition encore en construction pour l'aviation légère. Le troisième concerne l'évolution des carburants disponibles, entre carburants durables et alternatives électriques ou hybrides sur certains segments.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Bruit</strong> — tendance à des restrictions locales plus fines, aérodrome par aérodrome, plutôt qu'une règle uniforme continentale.</span></li>
+  <li><i data-icon="check"></i><span><strong>Émissions</strong> — orientations encore en discussion pour l'aviation légère, sans calendrier précis arrêté à ce jour pour l'ensemble des catégories.</span></li>
+  <li><i data-icon="check"></i><span><strong>Carburants</strong> — montée en puissance progressive des carburants durables et des premières solutions électriques certifiées sur des segments restreints.</span></li>
+</ul>
+<p>Aucune de ces tendances ne doit être interprétée comme un texte réglementaire définitif et daté : elles décrivent une direction, pas une règle précise applicable à telle ou telle catégorie d'appareil. Tout acheteur sérieux doit vérifier l'état exact de la réglementation applicable à son cas auprès de l'autorité compétente avant de fonder une décision sur une anticipation réglementaire.</p>
+
+<h2 id="valeur">Quel impact potentiel sur la valeur des avions d'occasion existants</h2>
+<p>À court terme, le parc existant d'avions d'occasion n'est pas remis en cause par ces évolutions : un appareil en règle aujourd'hui reste en règle, et aucun retrait de navigabilité généralisé n'est à l'ordre du jour. L'impact se joue plutôt sur la perception du marché et sur l'anticipation des acheteurs les plus prudents, qui commencent à intégrer la question environnementale dans leur grille de décision, au même titre que l'état mécanique ou l'historique d'entretien.</p>
+<p>Concrètement, deux catégories d'appareils sont le plus souvent évoquées comme potentiellement plus exposées à moyen terme : les modèles anciens particulièrement bruyants, utilisés sur des terrains proches de zones habitées, et les appareils dont la motorisation rendrait une conversion future vers des carburants alternatifs plus complexe ou plus coûteuse. À l'inverse, les appareils déjà compatibles avec les carburants durables actuels, ou bénéficiant d'une motorisation reconnue comme discrète, pourraient voir leur attractivité relative se maintenir, voire se renforcer.</p>
+
+<h2 id="carburants">Carburants alternatifs et risque d'obsolescence perçue</h2>
+<p>Les carburants durables commencent à être disponibles dans certains aéroports et aérodromes européens, souvent en mélange avec le carburant traditionnel plutôt qu'en substitution complète. Pour la plupart des moteurs à pistons classiques équipant l'aviation légère d'occasion, la compatibilité avec ces carburants reste un sujet suivi de près par les motoristes, sans qu'un remplacement obligatoire généralisé ne soit annoncé à ce jour.</p>
+<p>La propulsion électrique ou hybride, pour sa part, concerne encore un nombre restreint de modèles certifiés, principalement sur des segments d'entraînement ou de vol local. Elle ne constitue pas, à l'heure actuelle, une alternative directe pour la majorité des avions de voyage ou de loisir d'occasion. Le risque d'« obsolescence perçue » existe néanmoins sur le plan marketing : un acheteur sensible aux enjeux environnementaux peut préférer, à budget équivalent, un appareil plus récent ou plus économe en carburant, même sans obligation réglementaire qui l'impose.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Aucune norme ne force aujourd'hui le retrait d'un avion d'occasion en bon état mécanique pour des raisons de carburant ou de motorisation. La prudence porte sur l'anticipation du marché, pas sur un risque réglementaire immédiat et certain.</div></div>
+
+<h2 id="aerodromes">Restrictions locales liées au bruit et aux émissions sur certains aérodromes</h2>
+<p>C'est souvent à l'échelle locale, et non au niveau d'une règle européenne unique, que les restrictions les plus concrètes apparaissent : limitation des créneaux de vol d'entraînement le week-end, quotas de mouvements pour les appareils les plus bruyants, ou conditions d'accès renforcées sur certains terrains proches de zones résidentielles. Ces décisions relèvent généralement des gestionnaires d'aérodrome ou des collectivités locales, et varient fortement d'un pays, voire d'une région, à l'autre.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Se renseigner sur les règles spécifiques de l'aérodrome de rattachement envisagé, pas seulement sur la réglementation nationale générale.</span></li>
+  <li><i data-icon="check"></i><span>Vérifier si l'appareil envisagé figure parmi les catégories déjà soumises à des restrictions locales de bruit sur ce terrain précis.</span></li>
+  <li><i data-icon="check"></i><span>Anticiper qu'un aérodrome aujourd'hui sans restriction peut en introduire ultérieurement, en fonction de la pression des riverains.</span></li>
+</ul>
+
+<h2 id="anticiper">Comment anticiper l'impact sur la revente de son appareil</h2>
+<p>Pour un propriétaire qui envisage de revendre dans les prochaines années, la meilleure stratégie n'est pas de spéculer sur un texte réglementaire hypothétique, mais de documenter précisément la situation actuelle de son appareil : conformité sonore connue, compatibilité carburant, historique d'entretien à jour dans le carnet d'entretien (logbook). Un dossier clair et complet rassure un acheteur potentiel, quelle que soit l'évolution future de la réglementation.</p>
+<p>Il peut également être pertinent de surveiller, sans urgence excessive, les publications officielles de l'EASA et des autorités nationales concernant l'aviation légère, afin de ne pas être pris au dépourvu si une évolution concrète venait à être confirmée. Cette veille reste toutefois une précaution raisonnable, pas une raison de céder un appareil dans l'urgence sur la base d'une rumeur ou d'une anticipation non confirmée.</p>
+
+<h2 id="verifier">Ce qu'il faut vérifier avant d'acheter un avion ancien dans ce contexte</h2>
+<p>Pour un acheteur, l'enjeu environnemental s'ajoute aux vérifications classiques sans les remplacer. Le carnet d'entretien (logbook) et le certificat de navigabilité (CofA) restent les documents de référence pour juger de l'état général de l'appareil, tout comme les heures moteur (engine hours) et le temps depuis la grande visite (SMOH, ou major overhaul selon le motoriste).</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Carnet d'entretien</strong> — historique complet, cohérent avec les heures moteur déclarées.</span></li>
+  <li><i data-icon="check"></i><span><strong>Certificat de navigabilité</strong> — en cours de validité, sans restriction locale déjà appliquée à cet appareil.</span></li>
+  <li><i data-icon="check"></i><span><strong>SMOH et grande visite</strong> — temps restant avant la prochaine révision majeure, à intégrer dans le budget global.</span></li>
+  <li><i data-icon="check"></i><span><strong>Conformité sonore</strong> — certificat ou mention existante, à comparer aux règles de l'aérodrome d'accueil envisagé.</span></li>
+</ul>
+
+<h2 id="conclusion">Conclusion : une tendance à surveiller, pas un couperet réglementaire</h2>
+<p>Les normes environnementales façonneront progressivement l'aviation légère européenne, mais à un rythme encore incertain et sans calendrier précis arrêté pour l'ensemble du marché de l'occasion. Pour l'acheteur comme pour le vendeur, la bonne approche consiste à intégrer cette dimension dans l'analyse globale de l'appareil — aux côtés de l'état mécanique, de l'historique d'entretien et de la localisation d'usage — plutôt que d'en faire un facteur de décision isolé fondé sur des anticipations non confirmées.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Ne basez jamais une décision d'achat ou de vente sur une rumeur de future réglementation. Vérifiez toujours l'état exact des textes en vigueur auprès de l'EASA ou de l'autorité nationale compétente avant de tirer une conclusion.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin sur la réglementation et le marché de l'occasion.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="tendances-marche.html" class="card"><span class="icon-box"><i data-icon="trending-up"></i></span><span class="eyebrow">Marché</span><strong>Tendances du marché aéronautique</strong><p>Prix moyens par catégorie d'aéronef, calculés à partir des annonces publiées sur Aircraft2Sell.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="importer-avion-usa-europe.html" class="card"><span class="icon-box"><i data-icon="globe"></i></span><span class="eyebrow">Guide acheteur</span><strong>Importer un avion des États-Unis vers l'Europe</strong><p>Certification EASA, douanes, TVA et transport : le parcours complet d'une importation.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Guide acheteur</span><strong>Immatriculer un aéronef en Europe</strong><p>Démarches, choix du pays d'immatriculation, dossier à constituer, délais et coûts.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

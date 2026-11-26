@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Comment vérifier l'historique accident et incident d'un avion d'occasion avant achat : registres officiels, carnet de route, rapports d'enquête, signaux d'alerte.">
+<meta property="og:title" content="Vérifier l'historique accident/incident d'un avion avant achat | Aircraft2Sell">
+<meta property="og:description" content="Comment vérifier l'historique accident et incident d'un avion d'occasion avant achat : registres officiels, carnet de route, rapports d'enquête, signaux d'alerte.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/verifier-l-historique-accident-incident-d-un-avion-avant-achat.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/verifier-l-historique-accident-incident-d-un-avion-avant-achat.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/verifier-l-historique-accident-incident-d-un-avion-avant-achat.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/verifier-l-historique-accident-incident-d-un-avion-avant-achat.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/verifier-l-historique-accident-incident-d-un-avion-avant-achat.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Vérifier l'historique accident/incident d'un avion avant achat | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Vérifier l'historique accident/incident d'un avion avant achat : guide complet", "description": "Comment vérifier l'historique accident et incident d'un avion d'occasion avant achat : registres officiels, carnet de route, rapports d'enquête, signaux d'alerte.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/verifier-l-historique-accident-incident-d-un-avion-avant-achat.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Vérifier l'historique accident/incident d'un avion avant achat : guide complet", "item": "https://aircraft2sell.eu/verifier-l-historique-accident-incident-d-un-avion-avant-achat.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Historique accident/incident</span></nav>
+    <span class="eyebrow">Guide acheteur</span>
+    <h1>Vérifier l'historique accident/incident d'un avion avant achat</h1>
+    <p>Comment vérifier l'historique accident et incident d'un avion d'occasion avant achat : registres officiels, carnet de route, rapports d'enquête, signaux d'alerte.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#pourquoi">Pourquoi vérifier l'historique accident/incident</a></li><li><a href="#definitions">Accident, incident grave, incident : les distinctions</a></li><li><a href="#registre">Immatriculation et registre : point de départ</a></li><li><a href="#enquete">Les rapports d'enquête de sécurité</a></li><li><a href="#carnet">Croiser le carnet de route et le carnet moteur</a></li><li><a href="#signaux">Signaux d'alerte à ne pas ignorer</a></li><li><a href="#expert">Faire appel à un expert indépendant</a></li><li><a href="#decision">Décider en connaissance de cause</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="pourquoi">Pourquoi vérifier l'historique accident/incident</h2>
+<p>Un avion d'occasion qui a connu un accident ou un incident grave n'est pas forcément un mauvais achat — tout dépend de la nature de l'événement et de la qualité de la réparation qui a suivi. Ce qui est en revanche inacceptable, c'est d'acheter sans savoir. Un atterrissage train rentré réparé dans les règles par un atelier agréé, documenté et contrôlé, peut être parfaitement sûr. Un dommage structurel masqué, jamais déclaré, est un risque qui peut coûter la vie à son nouveau propriétaire et compromettre sa couverture d'assurance.</p>
+<p>L'historique accident/incident conditionne aussi la valeur de revente. Un appareil avec un passé documenté et des réparations tracées se négocie différemment d'un appareil dont le passé reste flou, même si techniquement les deux sont en état de vol. Vérifier cet historique avant achat, c'est protéger à la fois sa sécurité et son investissement.</p>
+
+<h2 id="definitions">Accident, incident grave, incident : les distinctions</h2>
+<p>Les autorités de l'aviation civile et les organismes d'enquête (comme le BEA en France, l'AAIB au Royaume-Uni, la NTSB aux États-Unis, ou l'EASA au niveau européen) distinguent plusieurs catégories d'événements, avec des seuils de gravité qui déterminent le niveau d'investigation :</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Accident</strong> — événement ayant entraîné des blessures graves, un décès, ou des dommages substantiels à l'aéronef compromettant sa structure, ses performances ou ses caractéristiques de vol.</span></li>
+  <li><i data-icon="check"></i><span><strong>Incident grave</strong> — circonstances révélant qu'un accident aurait pu se produire (quasi-collision, sortie de piste à grande vitesse, panne moteur en vol sans conséquence finale...).</span></li>
+  <li><i data-icon="check"></i><span><strong>Incident</strong> — événement lié à l'exploitation de l'aéronef qui affecte ou pourrait affecter la sécurité, sans atteindre le niveau de gravité d'un accident.</span></li>
+</ul>
+<p>Cette distinction compte pour votre recherche : les accidents et incidents graves font quasi systématiquement l'objet d'un rapport d'enquête public, alors que des incidents mineurs peuvent n'être tracés que dans la documentation interne de l'exploitant ou de l'atelier de maintenance, sans publication officielle.</p>
+
+<h2 id="registre">Immatriculation et registre : point de départ</h2>
+<p>La première étape consiste à identifier précisément l'appareil par son numéro d'immatriculation (marque) et, idéalement, son numéro de série constructeur. Avec ces deux identifiants, vous pouvez :</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Consulter le registre d'immatriculation du pays concerné, qui liste souvent les changements de propriétaire et parfois des mentions administratives.</span></li>
+  <li><i data-icon="check"></i><span>Rechercher l'historique des immatriculations successives si l'appareil a changé de pays — un avion revendu plusieurs fois entre continents mérite une attention particulière sur la continuité documentaire.</span></li>
+  <li><i data-icon="check"></i><span>Croiser le numéro de série avec les bases de données publiques d'événements de sécurité aérienne, qui référencent généralement l'appareil par son immatriculation et/ou son numéro de série.</span></li>
+</ul>
+<p>Un changement fréquent d'immatriculation ou de pays d'enregistrement n'est pas en soi suspect, mais il complique la recherche : chaque juridiction a ses propres bases et délais de publication, et un événement survenu sous une immatriculation précédente peut être plus difficile à retrouver sous l'immatriculation actuelle.</p>
+
+<h2 id="enquete">Les rapports d'enquête de sécurité</h2>
+<p>La plupart des pays disposent d'un organisme d'enquête de sécurité aérienne indépendant, distinct de l'autorité de régulation, dont la mission est d'établir les causes des accidents et incidents graves (pas de rechercher une responsabilité juridique). Leurs rapports sont généralement publics et consultables gratuitement :</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Rechercher par immatriculation ou numéro de série dans la base de l'organisme d'enquête du pays où l'appareil a été exploité au moment de l'événement, pas uniquement du pays de résidence actuel du vendeur.</span></li>
+  <li><i data-icon="check"></i><span>Consulter également les bases internationales qui agrègent des rapports de plusieurs pays, utiles si l'historique de l'appareil traverse plusieurs juridictions.</span></li>
+  <li><i data-icon="check"></i><span>Lire le rapport complet, pas seulement le résumé : les causes identifiées, les dommages constatés et les recommandations donnent une idée précise de ce qui a réellement été endommagé et comment cela a été traité.</span></li>
+  <li><i data-icon="check"></i><span>Vérifier si des consignes de navigabilité (CN/AD) spécifiques ont été émises à la suite de l'événement, et si elles ont été appliquées à cet appareil précis.</span></li>
+</ul>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — L'absence de rapport public ne garantit pas l'absence d'événement. Certains incidents mineurs ne sont jamais rendus publics, en particulier quand ils n'ont pas atteint le seuil réglementaire d'investigation obligatoire. Le silence des bases de données complète votre enquête, il ne la remplace pas.</div></div>
+
+<h2 id="carnet">Croiser le carnet de route et le carnet moteur</h2>
+<p>Les registres officiels donnent une vue externe. Le carnet de route (livre de bord) et le carnet moteur, eux, sont la trace interne de la vie de l'appareil, tenue par ses exploitants successifs. Leur lecture attentive révèle souvent ce qu'aucune base de données publique ne mentionnera :</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Rechercher des interruptions inexpliquées dans la chronologie des vols — plusieurs mois ou années sans activité peuvent correspondre à une immobilisation pour réparation majeure.</span></li>
+  <li><i data-icon="check"></i><span>Repérer les mentions de « grande visite » (remise à neuf complète du moteur) ou de remplacement de cellule hors calendrier normal de maintenance, qui peuvent signaler un dommage antérieur.</span></li>
+  <li><i data-icon="check"></i><span>Vérifier la cohérence entre les heures moteur inscrites au carnet de route, celles du carnet moteur, et celles affichées dans l'avionique si l'appareil en est équipé — un écart significatif mérite une explication.</span></li>
+  <li><i data-icon="check"></i><span>Comparer le SMOH (heures depuis la dernière révision majeure, « since major overhaul ») déclaré par le vendeur avec les factures et rapports d'atelier correspondants.</span></li>
+  <li><i data-icon="check"></i><span>Demander les factures et rapports d'intervention associés à toute réparation structurelle mentionnée, pas uniquement la mention dans le carnet : l'atelier ayant réalisé le travail, les pièces remplacées, les contrôles effectués.</span></li>
+</ul>
+
+<h2 id="signaux">Signaux d'alerte à ne pas ignorer</h2>
+<p>Certains éléments, pris isolément, ne prouvent rien ; réunis, ils justifient une vigilance accrue et, souvent, une inspection technique approfondie avant toute poursuite de la transaction :</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Vendeur réticent ou évasif à fournir le carnet complet, ou qui ne propose qu'un résumé au lieu des documents originaux.</span></li>
+  <li><i data-icon="check"></i><span>Pages manquantes, arrachées ou réécrites dans le carnet de route ou le carnet moteur.</span></li>
+  <li><i data-icon="check"></i><span>Historique de propriété avec plusieurs reventes rapprochées, en particulier après un changement de pays d'immatriculation difficile à tracer.</span></li>
+  <li><i data-icon="check"></i><span>Mentions vagues de type « réparation mineure » sans détail, facture, ni référence à un atelier identifiable.</span></li>
+  <li><i data-icon="check"></i><span>Prix sensiblement inférieur au marché pour un modèle et un état apparemment comparables, sans explication cohérente.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Aucun de ces signaux ne doit, seul, vous faire renoncer automatiquement. Mais chacun justifie une question précise au vendeur, et une vérification croisée avant de poursuivre la négociation.</div></div>
+
+<h2 id="expert">Faire appel à un expert indépendant</h2>
+<p>La recherche documentaire a ses limites : elle révèle ce qui a été déclaré ou publié, pas ce qui a été caché. C'est pourquoi la vérification de l'historique accident/incident doit toujours se combiner avec une inspection technique pré-achat réalisée par un mécanicien agréé indépendant du vendeur. Lui seul peut confirmer physiquement si une réparation structurelle a eu lieu, qu'elle soit documentée ou non.</p>
+<p>Un expert habitué à ce type de dossier saura aussi orienter la recherche documentaire : il connaît les bases pertinentes selon le pays d'exploitation de l'appareil et peut repérer des incohérences entre le carnet et l'état physique constaté lors de l'inspection.</p>
+
+<h2 id="decision">Décider en connaissance de cause</h2>
+<p>Un historique accident/incident documenté, cohérent, avec des réparations tracées et réalisées par des ateliers agréés, n'est pas un motif de renoncement automatique — c'est même, pour certains appareils plus anciens, la norme plutôt que l'exception. Ce qui doit faire renoncer, c'est l'incohérence : documents manquants, explications changeantes, refus de transparence.</p>
+<p>Dans tous les cas, intégrez une clause explicite dans le compromis de vente conditionnant la transaction à une vérification satisfaisante de l'historique et à une inspection technique concluante, avec possibilité de se retirer sans pénalité en cas de découverte non déclarée par le vendeur.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Conseil</strong> — Conservez une copie de toutes les recherches effectuées (captures d'écran des bases consultées, rapports téléchargés) : ce dossier constitue une preuve de votre diligence raisonnable, utile en cas de litige ultérieur.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="search"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="clipboard-check"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion : documents, inspection technique, déroulement et négociation.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="documents-obligatoires-vente-avion.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Guide vendeur</span><strong>Documents obligatoires pour la vente d'un avion</strong><p>La liste complète des documents à réunir pour vendre ou acheter un aéronef en toute sécurité juridique.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="pieges-achat-avion-occasion.html" class="card"><span class="icon-box"><i data-icon="alert-triangle"></i></span><span class="eyebrow">Guide acheteur</span><strong>Les pièges à éviter à l'achat d'un avion d'occasion</strong><p>Les erreurs les plus fréquentes et comment les éviter pour un achat serein.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

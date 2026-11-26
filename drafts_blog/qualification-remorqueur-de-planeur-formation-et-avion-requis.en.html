@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Glider tow pilot rating: prior experience, practical training, currency requirements and the aircraft used to tow gliders.">
+<meta property="og:title" content="Glider Tow Pilot Rating: Training and Aircraft Required | Aircraft2Sell">
+<meta property="og:description" content="Glider tow pilot rating: prior experience, practical training, currency requirements and the aircraft used to tow gliders.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/qualification-remorqueur-de-planeur-formation-et-avion-requis.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/qualification-remorqueur-de-planeur-formation-et-avion-requis.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/qualification-remorqueur-de-planeur-formation-et-avion-requis.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/qualification-remorqueur-de-planeur-formation-et-avion-requis.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/qualification-remorqueur-de-planeur-formation-et-avion-requis.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Glider Tow Pilot Rating: Training and Aircraft Required | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Glider Tow Pilot Rating: Training and Aircraft Required", "description": "Glider tow pilot rating: prior experience, practical training, currency requirements and the aircraft used to tow gliders.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/qualification-remorqueur-de-planeur-formation-et-avion-requis.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Glider Tow Pilot Rating", "item": "https://aircraft2sell.eu/en/qualification-remorqueur-de-planeur-formation-et-avion-requis.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261124b">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Glider Tow Pilot Rating</span></nav>
+    <span class="eyebrow">Thematic guide</span>
+    <h1>Glider Tow Pilot Rating: Training and Aircraft Required</h1>
+    <p>Becoming a glider tow pilot: prior experience, practical training, aircraft used, and the operational demands of a gliding club.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#role">The tow pilot's role in a gliding club</a></li><li><a href="#prereq">Prerequisites before training for towing</a></li><li><a href="#training">What the tow pilot training covers</a></li><li><a href="#currency">Keeping the rating current</a></li><li><a href="#aircraft">The aircraft used to tow gliders</a></li><li><a href="#technique">Technical specifics of towed flight</a></li><li><a href="#clubs">Becoming a tow pilot at a club: organisation and commitment</a></li><li><a href="#budget">Budget and outlook for tow pilots</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="role">The tow pilot's role in a gliding club</h2>
+<p>In the vast majority of gliding clubs without a winch, aerotow is what gets gliders into the air. The tow pilot pulls the glider up to the release altitude agreed with the glider pilot, typically between 300 and 1,000 metres above ground depending on conditions and the planned flight (local flying, circuit practice, cross-country). The role is far more demanding than it looks: the tow pilot alone manages the safety of the whole combination throughout takeoff and climb, with a glider in tow that behaves differently from a conventional aircraft and that can release at any moment if something goes wrong.</p>
+<p>The tow pilot sits at the centre of a club's activity: without one, no glider can fly on a given day. It's also one of the most sought-after ratings within clubs, which often struggle to field enough available tow pilots, particularly on weekdays or during gliding courses.</p>
+
+<h2 id="prereq">Prerequisites before training for towing</h2>
+<p>The glider tow rating is not a standalone licence but an additional endorsement on top of an existing powered-aircraft licence, most commonly a private pilot licence (PPL(A)) or an equivalent. Before considering this training, a pilot must already be comfortable flying the tow aircraft itself, with enough experience that basic handling is no longer a concern while learning the specifics of towing.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Hold a valid powered-aircraft licence, with current ratings and medical certificate.</span></li>
+  <li><i data-icon="check"></i><span>Meet a minimum number of flight hours on powered aircraft, which varies by national regulation and the club's own internal requirements.</span></li>
+  <li><i data-icon="check"></i><span>Have solid command of takeoff, climb and engine-failure-at-low-altitude procedures.</span></li>
+  <li><i data-icon="check"></i><span>Ideally be familiar with gliding operations, even without being a glider pilot, to understand the needs and signals of the glider in tow.</span></li>
+</ul>
+<p>In practice, many clubs recruit future tow pilots among their own powered-aircraft pilots who become interested in gliding, which eases both the integration and the motivation to commit long-term to this often-voluntary role.</p>
+
+<h2 id="training">What the tow pilot training covers</h2>
+<p>Tow pilot training takes place entirely with dual instruction from an experienced tow instructor, directly on the club's own tow aircraft. It combines a theoretical component covering safety procedures, the visual signals exchanged with the glider, and emergency handling, with a practical component made up of a series of real tows flown under supervision.</p>
+<h3>Points practised in flight</h3>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Taking up rope tension and performing a synchronised takeoff with the glider attached.</span></li>
+  <li><i data-icon="check"></i><span>Maintaining a flight path and speed suited to the climb, accounting for the weight and type of glider in tow.</span></li>
+  <li><i data-icon="check"></i><span>Continuous monitoring of the glider via the mirror and reacting to abnormal position deviations.</span></li>
+  <li><i data-icon="check"></i><span>Handling an engine failure on tow at different altitudes, with an immediate glider release when required.</span></li>
+  <li><i data-icon="check"></i><span>Managing an early release or a rope break, from both the tow plane and the glider side.</span></li>
+  <li><i data-icon="check"></i><span>Returning and setting up the approach once the glider has released, often in a distinct configuration and flight path.</span></li>
+</ul>
+<p>The number of tows required before being released to fly solo varies between clubs and federations, but it is common to need several dozen supervised tows before an instructor judges the candidate safe enough to operate without accompaniment. This caution reflects the fact that a handling error while towing puts the safety of two aircraft and two crews at risk simultaneously.</p>
+
+<h2 id="currency">Keeping the rating current</h2>
+<p>As with many flying qualifications, a recent-experience requirement generally applies to towing: a minimum number of tows or hours flown within a given period (often the preceding twelve months) to retain the privilege without a further check. Below that threshold, a check flight with a tow instructor is typically required before resuming the activity.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — The exact requirements for initial training, the number of supervised tows, and currency maintenance depend on the national regulatory framework and the internal rules of each club or federation: check directly with your national aviation federation and your club for the thresholds that actually apply.</div></div>
+<p>Beyond the minimum regulatory requirement, many clubs set their own internal criteria, sometimes stricter, particularly for towing heavy two-seat gliders, motor gliders, or operating in strong wind conditions, all of which demand additional experience before being authorised.</p>
+
+<h2 id="aircraft">The aircraft used to tow gliders</h2>
+<p>Not every aircraft is suited to towing. A good tow aircraft needs enough power for a brisk climb under load, good rearward visibility to monitor the glider, a structure and tow hook certified for the purpose, and the ruggedness to withstand intensive use made up of many short takeoff-climb-approach cycles on each flying day.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>High-wing aircraft with a clear cabin, offering better visibility of the glider on tow.</span></li>
+  <li><i data-icon="check"></i><span>An engine powerful enough to tow two-seat gliders or heavy motor gliders without excessively degrading the climb rate.</span></li>
+  <li><i data-icon="check"></i><span>A quick-release tow hook, installed and certified specifically for the task.</span></li>
+  <li><i data-icon="check"></i><span>A reinforced airframe and landing gear able to withstand a high frequency of takeoff and landing cycles.</span></li>
+</ul>
+<p>The Robin DR400 is one of the most widely used aircraft for this mission in French clubs, especially in its more powerful variants, thanks to its versatility across flight training, touring and towing. Other high-wing or low-wing aircraft, from North American and European light-aircraft manufacturers, fill the same role depending on each club's fleet and habits.</p>
+
+<h2 id="technique">Technical specifics of towed flight</h2>
+<p>Flying a tow aircraft differs noticeably from ordinary flying because of the extra mass of the glider attached, which changes takeoff and climb performance, and because the pilot must continuously fly "in formation" with an aircraft connected by a flexible rope. The pilot has to anticipate the glider's movements, particularly during turbulence or handling deviations by the glider pilot, and stay ready to release at any moment if the situation demands it.</p>
+<p>Communication between the two crews relies mainly on standardised visual signals (movements of the ailerons, of the rudder) since radio is not always used during the tow phase itself. This non-verbal dimension of coordination is an integral part of the learning curve and takes time to master even for a pilot already experienced on powered aircraft.</p>
+
+<h2 id="clubs">Becoming a tow pilot at a club: organisation and commitment</h2>
+<p>In most volunteer-run gliding clubs, the tow pilot position is filled by volunteers who dedicate part of their free time to the activity, in exchange for discounted or sometimes free glider or powered-aircraft flying hours, depending on the club's internal arrangements. This commitment requires regular availability, particularly on weekends and during the busy summer season, when demand for towing is highest.</p>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point to watch</strong> — Towing is demanding in terms of vigilance and mental workload across days that often involve dozens of rotations: cumulative fatigue is a risk factor that deserves as much attention as technical skill itself.</div></div>
+<p>Some tow pilots go on to become tow instructors themselves, training the next generation of candidates, which makes it a complete career path within gliding activity.</p>
+
+<h2 id="budget">Budget and outlook for tow pilots</h2>
+<p>Training for the tow rating generally costs far less than earning a pilot licence in the first place, since it mainly involves a number of dual-instruction flights with an instructor already in place at the club, without a heavy theoretical exam. The main investment is therefore the time devoted to training and then to the activity itself, far more than direct financial cost.</p>
+<p>For a club considering buying or replacing its tow aircraft, the choice of model should balance power, operating cost per flight hour, and parts availability on the used market: a rugged, well-maintained aircraft is often more economical over the long run than a higher-performing model that is more expensive to keep airworthy under such intensive use.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your club's tow aircraft</h3>
+            <p>Compare used aircraft suited to glider towing available across Europe on Aircraft2Sell.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To help you take your buying or selling project further.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="planeur-occasion-guide-achat.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Category guide</span><strong>Used Glider Buyer's Guide</strong><p>Budget, leading brands, inspection checkpoints and regulations for buying a used glider.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="robin-dr400-occasion.html" class="card"><span class="icon-box"><i data-icon="plane"></i></span><span class="eyebrow">Model guide</span><strong>Used Robin DR400: the French classic</strong><p>Variants, budget, maintenance and inspection points for one of the most widely used training and tow aircraft.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="licence-pilote-prive-cout.html" class="card"><span class="icon-box"><i data-icon="user-check"></i></span><span class="eyebrow">Pilot guide</span><strong>Private Pilot Licence (PPL): cost and duration</strong><p>Budget, duration, steps and tips for earning a private pilot licence in Europe, a prerequisite for towing.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261124b"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>

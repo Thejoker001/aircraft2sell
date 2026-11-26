@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+/* ==========================================================================
+   Aircraft2Sell — Handler de confirmation d'email (liens Supabase Auth)
+   --------------------------------------------------------------------------
+   Quand un utilisateur clique le lien de confirmation envoyé par email,
+   Supabase le redirige vers le site avec un hash contenant les tokens :
+       https://aircraft2sell.eu/#access_token=xxx&refresh_token=yyy&type=signup
+
+   Sans ce script, RIEN ne lisait ce hash : l'email était confirmé en base
+   mais l'utilisateur n'obtenait aucune session — il devait se reconnecter
+   manuellement (ou restait bloqué s'il ne comprenait pas). Résultat :
+   « les utilisateurs ne peuvent pas publier d'annonce ».
+
+   Ce script doit être chargé SANS defer, tôt dans le <head>, pour créer la
+   session AVANT que les scripts de page (pseudo-gate, garde login, etc.)
+   ne redirigent et ne fassent perdre le hash.
+   ========================================================================== */
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    /* Email + nom depuis le JWT (pas de second appel réseau). */
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    /* Nettoyer le hash de l'URL (le token ne doit pas rester visible). */
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    /* Destination : redirect_to (si même origine) → reset-password si
+       récupération → sinon dashboard. */
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) { /* ne jamais bloquer la page sur une erreur de parsing */ }
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Avion expérimental ou kit-built en Europe : immatriculation, limites d'usage, assurance et points de vigilance avant d'acheter ce type d'appareil d'occasion.">
+<meta property="og:title" content="Avion expérimental ou kit-built : particularités à l'achat en Europe | Aircraft2Sell">
+<meta property="og:description" content="Avion expérimental ou kit-built en Europe : immatriculation, limites d'usage, assurance et points de vigilance avant d'acheter ce type d'appareil d'occasion.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Avion expérimental ou kit-built : particularités à l'achat en Europe | Aircraft2Sell</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Avion expérimental ou kit-built : particularités à l'achat en Europe", "description": "Avion expérimental ou kit-built en Europe : immatriculation, limites d'usage, assurance et points de vigilance avant d'acheter ce type d'appareil d'occasion.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "fr", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://aircraft2sell.eu/"}, {"@type": "ListItem", "position": 2, "name": "Guides & Conseils", "item": "https://aircraft2sell.eu/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Avion expérimental ou kit-built : particularités à l'achat en Europe", "item": "https://aircraft2sell.eu/avion-experimental-ou-kit-built-particularites-a-l-achat-en-europe.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=20261124b">
+<link rel="stylesheet" href="mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injectée par nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Fil d'Ariane"><a href="index.html">Accueil</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Avion expérimental / kit-built</span></nav>
+    <span class="eyebrow">Guide thématique</span>
+    <h1>Avion expérimental ou kit-built : particularités à l'achat en Europe</h1>
+    <p>Un avion expérimental ou kit-built n'a pas le même statut qu'un appareil certifié. Immatriculation, usage, assurance, revente : ce qu'il faut comprendre avant d'acheter un appareil d'occasion de ce type en Europe.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min de lecture</span>
+      <span><i data-icon="calendar"></i>Publié le 24 novembre 2026</span>
+      <span><i data-icon="user-check"></i>Rédigé par l'équipe Aircraft2Sell</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Sommaire</div>
+        <ol><li><a href="#definition">Qu'est-ce qu'un avion expérimental ou kit-built</a></li><li><a href="#statut">Un statut réglementaire différent d'un avion certifié</a></li><li><a href="#achat-occasion">Acheter un kit-built d'occasion : ce qui change</a></li><li><a href="#inspection">Inspection pré-achat : des points spécifiques</a></li><li><a href="#assurance">Assurance et limites d'usage</a></li><li><a href="#revente">Revente et marché de l'occasion</a></li><li><a href="#pays">Des règles qui varient selon le pays</a></li><li><a href="#check-list">Check-list avant de s'engager</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="definition">Qu'est-ce qu'un avion expérimental ou kit-built</h2>
+<p>Un avion kit-built est un appareil assemblé par un constructeur amateur à partir d'un kit fourni par un fabricant (Van's Aircraft, Zenith, Sling, Lancair, pour ne citer que les plus connus), suivant des plans et des instructions détaillées. Une fois l'assemblage terminé et contrôlé, l'appareil reçoit un statut dit « expérimental » ou équivalent selon le pays, distinct de la certification de type classique appliquée aux avions produits en série par un constructeur industriel.</p>
+<p>Cette catégorie regroupe une grande diversité d'appareils : avions de voyage performants, répliques d'avions historiques, biplaces de voltige, ou encore machines très spécialisées construites en très petit nombre. Le point commun n'est pas la mission de l'appareil mais son mode de production et le cadre réglementaire qui en découle.</p>
+
+<h2 id="statut">Un statut réglementaire différent d'un avion certifié</h2>
+<p>Contrairement à un avion disposant d'une certification de type (EASA ou équivalent), un appareil kit-built n'a pas été évalué selon les mêmes exigences de conception. En Europe, il est enregistré sous un régime national spécifique aux aéronefs de construction amateur, souvent géré par une association ou une autorité nationale déléguée, plutôt que directement par l'EASA. Les modalités précises de ce régime varient d'un État membre à l'autre, ce qui rend indispensable une vérification locale avant tout projet d'achat ou d'importation.</p>
+<p>Ce statut a des conséquences concrètes : les limites d'usage commercial sont généralement restreintes ou interdites, et certaines modifications ou réparations peuvent nécessiter l'intervention du constructeur amateur d'origine, de son successeur désigné ou d'un organisme compétent reconnu par l'autorité nationale, selon les règles applicables dans le pays d'immatriculation.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>À savoir</strong> — Les règles d'immatriculation, de maintien de navigabilité et d'usage autorisé pour un appareil de construction amateur varient sensiblement selon le pays. Vérifiez toujours auprès de l'autorité de l'aviation civile du pays d'immatriculation concerné avant de vous engager.</div></div>
+
+<h2 id="achat-occasion">Acheter un kit-built d'occasion : ce qui change</h2>
+<p>Acheter un avion expérimental d'occasion diffère de l'achat d'un avion certifié sur plusieurs points essentiels. D'abord, la qualité de construction dépend directement du constructeur amateur d'origine : deux exemplaires du même modèle de kit peuvent présenter des niveaux de finition et de fiabilité très différents selon le soin apporté à l'assemblage, l'expérience du bâtisseur et la rigueur du suivi des instructions.</p>
+<p>Ensuite, le dossier technique prend une importance encore plus grande que pour un avion certifié. Le carnet de construction (building log), les photos prises pendant l'assemblage, les rapports d'inspection de conformité réalisés avant le premier vol et l'historique complet des modifications sont des pièces aussi précieuses que le carnet de route lui-même. Un dossier incomplet ou une construction dont l'historique n'est pas traçable doit être considéré comme un signal d'alerte fort.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Demandez le carnet de construction complet, pas seulement le carnet de route depuis la mise en service.</span></li>
+  <li><i data-icon="check"></i><span>Vérifiez l'identité du constructeur amateur d'origine et, si l'appareil a changé plusieurs fois de mains, la continuité du suivi technique.</span></li>
+  <li><i data-icon="check"></i><span>Renseignez-vous sur la notoriété du kit (modèle, fabricant) et sur les éventuels bulletins techniques ou retours d'expérience connus de la communauté de constructeurs.</span></li>
+  <li><i data-icon="check"></i><span>Vérifiez que l'appareil a bien été soumis à l'inspection de conformité avant son premier vol et que les limites de programme d'essais initial ont été respectées.</span></li>
+</ul>
+
+<h2 id="inspection">Inspection pré-achat : des points spécifiques</h2>
+<p>L'inspection pré-achat d'un avion kit-built suit les mêmes principes généraux que celle d'un avion certifié, avec des points d'attention supplémentaires propres à la construction amateur. Faire appel à un mécanicien ou un inspecteur indépendant, idéalement familier avec le type de kit concerné, reste la meilleure protection — voir notre guide sur l'inspection pré-achat d'un aéronef pour la méthodologie générale.</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Qualité des assemblages structuraux : rivetage, collage composite, soudures selon la technique de construction utilisée.</span></li>
+  <li><i data-icon="check"></i><span>Cohérence entre les plans du kit d'origine et les modifications réellement constatées sur l'appareil.</span></li>
+  <li><i data-icon="check"></i><span>Installation moteur et câblage électrique : souvent réalisés par le constructeur amateur lui-même, donc plus variables en qualité qu'une chaîne de production industrielle.</span></li>
+  <li><i data-icon="check"></i><span>Historique des incidents ou événements déclarés, et suivi des recommandations éventuelles émises par le fabricant du kit.</span></li>
+</ul>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point de vigilance</strong> — Un avion kit-built dont le constructeur amateur d'origine n'est plus joignable, ou dont le carnet de construction a été perdu, perd une grande partie de sa valeur de revente et de la confiance qu'un acheteur peut lui accorder, même si l'appareil vole sans problème apparent.</div></div>
+
+<h2 id="assurance">Assurance et limites d'usage</h2>
+<p>L'assurance d'un avion expérimental suit une logique particulière : les assureurs évaluent non seulement l'appareil et le pilote, mais aussi la réputation du modèle de kit et, parfois, la qualité documentée de la construction. Les primes peuvent être plus élevées que pour un modèle certifié équivalent, notamment pour les kits peu répandus ou les constructions uniques sans antériorité statistique.</p>
+<p>Sur le plan de l'usage, un appareil de catégorie expérimentale est le plus souvent réservé à un usage personnel et non commercial. Le transport de passagers payants, la location à des tiers ou l'utilisation en école de pilotage sont généralement exclus ou soumis à des conditions très restrictives selon le régime national applicable. Ces restrictions doivent être vérifiées avant l'achat si l'usage envisagé dépasse le simple vol personnel ou de loisir.</p>
+
+<h2 id="revente">Revente et marché de l'occasion</h2>
+<p>Le marché de l'occasion des avions kit-built reste actif en Europe, porté par des modèles populaires qui bénéficient d'une communauté de constructeurs et de pilotes bien organisée, facilitant l'accès aux pièces détachées, aux conseils techniques et au partage d'expérience. Les modèles plus rares ou les constructions uniques trouvent un public plus restreint, ce qui peut allonger le délai de revente.</p>
+<p>La transparence documentaire joue un rôle déterminant dans la valeur de revente : un appareil avec un carnet de construction complet, des photos d'assemblage et un historique de maintenance rigoureux se négocie dans de meilleures conditions qu'un appareil similaire dont la traçabilité est incertaine.</p>
+
+<h2 id="pays">Des règles qui varient selon le pays</h2>
+<p>Chaque pays européen encadre différemment la construction amateur et l'immatriculation des aéronefs expérimentaux : certains délèguent la gestion à une association nationale reconnue, d'autres appliquent des procédures directement supervisées par l'autorité de l'aviation civile. Les règles de transfert d'immatriculation lors d'une vente entre particuliers de pays différents, ou lors d'une importation, peuvent également différer sensiblement.</p>
+<p>Avant d'acheter un appareil immatriculé dans un pays différent de celui où vous prévoyez de le baser, renseignez-vous sur les démarches de changement d'immatriculation applicables aux aéronefs de construction amateur dans les deux pays concernés — la procédure peut être plus longue ou plus complexe que pour un avion certifié classique.</p>
+
+<h2 id="check-list">Check-list avant de s'engager</h2>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Carnet de construction complet, avec photos et rapports d'inspection de conformité avant premier vol.</span></li>
+  <li><i data-icon="check"></i><span>Vérification du statut réglementaire exact auprès de l'autorité ou de l'association compétente du pays d'immatriculation.</span></li>
+  <li><i data-icon="check"></i><span>Inspection technique par un professionnel indépendant familier avec le type de kit.</span></li>
+  <li><i data-icon="check"></i><span>Devis d'assurance obtenu avant l'achat, en précisant l'usage envisagé (personnel, voltige, voyage).</span></li>
+  <li><i data-icon="check"></i><span>Vérification des conditions de transfert d'immatriculation si l'appareil doit changer de pays de base.</span></li>
+</ul>
+<p>Bien préparé, l'achat d'un avion kit-built d'occasion permet d'accéder à des performances et à un plaisir de vol souvent supérieurs à ceux d'un avion certifié de budget comparable. La contrepartie est une vigilance documentaire et réglementaire plus poussée, qui doit être anticipée dès les premières recherches d'annonces.</p>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Prêt à comparer des appareils ?</h3>
+            <p>Parcourez les annonces vérifiées sur Aircraft2Sell, sans commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">Voir les annonces <i data-icon="arrow-right"></i></a>
+        <a href="inspecteurs.html" class="btn-secondary btn-lg" style="margin-top:.75rem">Trouver un inspecteur <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Guides associés</h2>
+        <p>Pour aller plus loin dans votre projet d'achat ou de vente.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">Tous les guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="inspection-pre-achat-avion.html" class="card"><span class="icon-box"><i data-icon="search"></i></span><span class="eyebrow">Guide acheteur</span><strong>L'inspection pré-achat d'un aéronef : guide complet</strong><p>Tout ce qu'il faut vérifier avant d'acheter un avion d'occasion. Inspection technique, documents, historique moteur et navigabilité.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="file-text"></i></span><span class="eyebrow">Guide thématique</span><strong>Immatriculation d'un aéronef en Europe</strong><p>Les démarches d'immatriculation d'un avion, hélicoptère ou ULM selon le pays, et les points de vigilance lors d'un changement de registre.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Assurance</span><strong>Assurer son aéronef en Europe : le guide complet</strong><p>Responsabilité civile, corps de l'appareil, garanties indispensables : comment bien assurer votre avion, hélicoptère ou ULM en Europe.</p><span class="btn-link">Lire le guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="icons.js?v=20261124b"></script>
+<script src="analytics.js" defer></script>
+<script src="rgpd-consent.js?v=20261006a" defer></script>
+<script src="nav.js?v=20261109a"></script>
+<script src="footer.js?v=20261109a"></script>
+</body>
+</html>

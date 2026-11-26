@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  'use strict';
+  try {
+    var h = location.hash || '';
+    if (!h || h.indexOf('access_token') === -1) return;
+
+    var params = new URLSearchParams(h.replace(/^#/, ''));
+    var at = params.get('access_token');
+    if (!at) return;
+
+    var rt = params.get('refresh_token');
+    var type = params.get('type') || '';
+
+    try { sessionStorage.setItem('a2s_auth_token', at); } catch (e) {}
+    if (rt) { try { localStorage.setItem('a2s_refresh_token', rt); } catch (e) {} }
+    try { localStorage.setItem('a2s_logged_in', 'true'); } catch (e) {}
+
+    try {
+      var p = JSON.parse(atob(at.split('.')[1]));
+      if (p && p.email) { try { localStorage.setItem('a2s_user_email', p.email); } catch (e) {} }
+      if (p && p.user_metadata && p.user_metadata.full_name) {
+        try { localStorage.setItem('a2s_user_name', p.user_metadata.full_name); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var red = params.get('redirect_to') || '';
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e2) { try { location.hash = ''; } catch (e3) {} }
+
+    var dest = 'dashboard.html';
+    if (type === 'recovery') {
+      dest = 'reset-password.html';
+    } else if (red) {
+      try {
+        var u = new URL(decodeURIComponent(red), location.origin);
+        if (u.origin === location.origin) dest = u.pathname.replace(/^\//, '') + u.search;
+      } catch (e4) {}
+    }
+
+    setTimeout(function () { window.location.href = dest; }, 120);
+  } catch (e) {}
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  function isLikelyBot() {
+    try {
+      if (navigator.webdriver) return true;
+      var ua = (navigator.userAgent || '').toLowerCase();
+      return /bot|crawl|spider|slurp|googlebot|bingbot|yandex|baiduspider|duckduckbot|semrush|ahrefs|facebookexternalhit|lighthouse|pagespeed/.test(ua);
+    } catch (e) { return false; }
+  }
+  if (isLikelyBot()) return;
+
+  var path = location.pathname;
+  if (/^\/(en|et)\//.test(path)) return;
+
+  try {
+    if (localStorage.getItem('a2s_lang_choice_made') === '1') return;
+  } catch (e) { return; }
+
+  var TRANSLATED_PAGES = ['index.html', 'search.html', 'listing.html', 'post-listing.html',
+    'avions-legers.html', 'jets-affaires.html', 'helicopteres.html', 'turboprops.html',
+    'ulm.html', 'avions-de-ligne.html', 'blog.html', 'guide-acheteur.html',
+    'assurance-aeronef-guide.html', 'comment-financer-avion-leger.html', 'copropriete-avion-guide.html',
+    'cout-entretien-avion-leger.html', 'delai-vente-avion.html', 'documents-obligatoires-vente-avion.html',
+    'immatriculation-aeronef-europe.html', 'importer-avion-usa-europe.html', 'inspection-pre-achat-avion.html',
+    'licence-pilote-prive-cout.html', 'louer-ou-acheter-avion.html', 'pieges-achat-avion-occasion.html',
+    'turbopropulseur-ou-jet-affaires.html', 'vendre-avion-particulier-europe.html',
+    '404.html', 'acheter-avion-occasion-allemagne.html', 'acheter-avion-occasion-espagne.html',
+    'acheter-avion-occasion-italie.html', 'acheter-avion-occasion-royaume-uni-brexit.html',
+    'acheter-avion-occasion-suisse.html', 'alerts.html', 'avions-a-vendre-allemagne.html',
+    'avions-a-vendre-espagne.html', 'avions-a-vendre-france.html', 'avions-a-vendre-italie.html',
+    'avions-a-vendre-royaume-uni.html', 'avions-a-vendre-suisse.html', 'cancel.html', 'checkout.html',
+    'comparateur.html', 'contact.html', 'dashboard.html', 'devenir-partenaire.html', 'estimation.html',
+    'estimer-valeur-revente-avion-occasion.html', 'faq.html', 'financement.html',
+    'helicoptere-occasion-guide-achat-particulier.html', 'inspecteurs.html', 'legal.html',
+    'listing-submitted.html', 'login.html', 'map.html', 'messages.html', 'onboarding.html',
+    'partenaires.html', 'pricing.html', 'prix-moyen-jet-prive-2026.html', 'pro-dealers.html',
+    'reset-password.html', 'seller.html', 'set-pseudo.html', 'sitemap.html', 'success.html',
+    'tendances-marche.html', 'ulm-ou-avion-leger-debuter.html', 'vendeur.html',
+    'vendre-avion-rapidement-erreurs-eviter.html', 'widget.html'];
+
+  var page = path.replace(/^\//, '').split(/[?#]/)[0] || 'index.html';
+  if (TRANSLATED_PAGES.indexOf(page) === -1) return;
+
+  var navLang = ((navigator.language || navigator.userLanguage || '') + '').slice(0, 2).toLowerCase();
+  if (navLang !== 'en') return;
+
+  try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (e) {}
+
+  location.replace('/en/' + page + location.search + location.hash);
+})();
+
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[hreflang]');
+  if (a) { try { localStorage.setItem('a2s_lang_choice_made', '1'); } catch (err) {} }
+});
+</script>
+<meta charset="UTF-8">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Registering an aircraft in Cyprus: the 5B- DCA register, eligibility rules, VAT and tax treatment, and pitfalls to avoid. The complete 2026 guide.">
+<meta property="og:title" content="Registering an Aircraft in Cyprus: Registry, VAT and Taxation | Aircraft2Sell">
+<meta property="og:description" content="Registering an aircraft in Cyprus: the 5B- DCA register, eligibility rules, VAT and tax treatment, and pitfalls to avoid. The complete 2026 guide.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://aircraft2sell.eu/en/immatriculation-aeronef-chypre-registre-fiscalite.html">
+<meta property="og:image" content="https://aircraft2sell.eu/og-image.png?v=3">
+<meta property="og:site_name" content="Aircraft2Sell">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://aircraft2sell.eu/en/immatriculation-aeronef-chypre-registre-fiscalite.html">
+<link rel="alternate" hreflang="fr" href="https://aircraft2sell.eu/immatriculation-aeronef-chypre-registre-fiscalite.html">
+<link rel="alternate" hreflang="en" href="https://aircraft2sell.eu/en/immatriculation-aeronef-chypre-registre-fiscalite.html">
+<link rel="alternate" hreflang="x-default" href="https://aircraft2sell.eu/immatriculation-aeronef-chypre-registre-fiscalite.html">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Registering an Aircraft in Cyprus: Registry, VAT and Taxation</title>
+<script type="application/ld+json">
+{"@type": "Article", "@context": "https://schema.org", "headline": "Registering an Aircraft in Cyprus: Registry, VAT and Taxation", "description": "Registering an aircraft in Cyprus: the 5B- DCA register, eligibility rules, VAT and tax treatment, and pitfalls to avoid. The complete 2026 guide.", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "inLanguage": "en", "author": {"@type": "Organization", "name": "Aircraft2Sell"}, "publisher": {"@type": "Organization", "name": "Aircraft2Sell", "logo": {"@type": "ImageObject", "url": "https://aircraft2sell.eu/icon-512.png"}, "url": "https://aircraft2sell.eu"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://aircraft2sell.eu/en/immatriculation-aeronef-chypre-registre-fiscalite.html"}}
+</script>
+<script type="application/ld+json">
+{"@type": "BreadcrumbList", "@context": "https://schema.org", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://aircraft2sell.eu/en/index.html"}, {"@type": "ListItem", "position": 2, "name": "Guides & Advice", "item": "https://aircraft2sell.eu/en/blog.html"}, {"@type": "ListItem", "position": 3, "name": "Registering an Aircraft in Cyprus: Registry, VAT and Taxation", "item": "https://aircraft2sell.eu/en/immatriculation-aeronef-chypre-registre-fiscalite.html"}]}
+</script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="/styles.css?v=20261106a">
+<link rel="stylesheet" href="/mobile.css?v=20260909a" media="(max-width: 1024px)">
+<style>
+.page-head .eyebrow{display:block;margin-bottom:.5rem}
+.guide-meta{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;font-size:.84rem;color:var(--a2s-text-muted);margin-top:.9rem}
+.guide-meta span{display:inline-flex;align-items:center;gap:.4rem}
+.guide-meta .ic{width:16px;height:16px}
+.toc{margin-bottom:2.25rem}
+.toc .card-body{padding:1.1rem 1.35rem}
+.toc-title{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a2s-text-muted);margin-bottom:.65rem}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:.4rem}
+.toc li{counter-increment:toc;display:flex;gap:.6rem;font-size:.92rem;line-height:1.45}
+.toc li::before{content:counter(toc) ".";font-weight:700;color:var(--a2s-text-faint);min-width:1.3rem}
+.toc a{color:var(--a2s-blue);font-weight:600}
+.toc a:hover{text-decoration:underline}
+.article h2{font-size:1.5rem;margin:2.5rem 0 .9rem;scroll-margin-top:calc(var(--nav-h) + 1.25rem)}
+.article h2:first-child{margin-top:0}
+.article h3{font-size:1.12rem;margin:1.6rem 0 .6rem}
+.article p{font-size:1.02rem;line-height:1.75;margin-bottom:1.1rem}
+.article ul.checks{display:flex;flex-direction:column;gap:.6rem;margin:0 0 1.35rem}
+.article ul.checks li{display:flex;gap:.65rem;align-items:flex-start;line-height:1.6;font-size:1rem}
+.article ul.checks .ic{width:18px;height:18px;color:var(--a2s-success);margin-top:.25rem}
+.article .alert{margin:1.5rem 0;font-size:.95rem}
+.article .table-wrap{margin:1rem 0 1.5rem;border:1px solid var(--a2s-border);border-radius:var(--a2s-radius-card);background:var(--a2s-surface)}
+.article .table{font-size:.92rem}
+.guide-cta{margin-top:3rem}
+.guide-cta .card-body{padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.guide-cta .icon-box{width:52px;height:52px}
+.guide-cta h3{margin-bottom:.3rem}
+.guide-cta p{color:var(--a2s-text-muted);margin:0;max-width:460px}
+.guide-cta .cta-text{display:flex;align-items:center;gap:1.1rem}
+.related a.card{display:flex;flex-direction:column;gap:.55rem;padding:1.35rem;color:inherit;transition:box-shadow .15s,border-color .15s}
+.related a.card:hover{border-color:var(--a2s-border-2);box-shadow:var(--a2s-shadow)}
+.related .card .icon-box{width:40px;height:40px;margin-bottom:.2rem}
+.related .card .icon-box .ic{width:20px;height:20px}
+.related .card strong{color:var(--a2s-navy);font-size:1rem;line-height:1.35}
+.related .card p{font-size:.86rem;color:var(--a2s-text-muted);line-height:1.55;margin:0}
+.related .card .btn-link{margin-top:auto;padding-top:.5rem}
+@media(max-width:768px){.guide-cta .card-body{padding:1.5rem}.article p{font-size:.98rem}}
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6fa26d01-f284-48ca-814b-ad6cf8dcee84"></script>
+</head>
+<body>
+<!-- nav injected by nav.js -->
+
+<div class="page-head">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Home</a><i data-icon="chevron-right"></i><a href="blog.html">Guides</a><i data-icon="chevron-right"></i><span aria-current="page">Registering in Cyprus</span></nav>
+    <span class="eyebrow">Registration</span>
+    <h1>Registering an Aircraft in Cyprus: Registry, VAT and Taxation</h1>
+    <p>The 5B- register run by the Cypriot DCA, eligibility rules, ownership structuring, VAT and applicable taxation: everything you need to know before registering an aircraft in Cyprus.</p>
+    <div class="guide-meta">
+      <span><i data-icon="clock"></i>8 min read</span>
+      <span><i data-icon="calendar"></i>Published on November 24, 2026</span>
+      <span><i data-icon="user-check"></i>Written by the Aircraft2Sell team</span>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container-narrow">
+
+    <div class="card toc">
+      <div class="card-body">
+        <div class="toc-title">Contents</div>
+        <ol><li><a href="#registre">The Cypriot aircraft register</a></li><li><a href="#pourquoi">Why Cyprus attracts owners and operators</a></li><li><a href="#conditions">Eligibility and registration process</a></li><li><a href="#tva">VAT and applicable taxation</a></li><li><a href="#documents">Required documents and timelines</a></li><li><a href="#pieges">What to watch out for before choosing Cyprus</a></li></ol>
+      </div>
+    </div>
+
+    <article class="article">
+<h2 id="registre">The Cypriot aircraft register</h2>
+<p>Cyprus operates its own aircraft register, maintained by the <strong>Department of Civil Aviation (DCA)</strong> of the Republic of Cyprus, an EU and EASA member state. Aircraft registered in Cyprus carry the <strong>5B-</strong> prefix, followed by a combination of letters unique to each aircraft. The register covers both private general aviation (light aircraft, helicopters, business jets) and commercial aviation, with procedures and documentation requirements that differ depending on the declared use of the aircraft.</p>
+<p>Since joining the European Union in 2004, and subsequently becoming fully integrated into the EASA regulatory framework, Cyprus applies the common European rulebook: Part-M and Part-CAMO for continuing airworthiness management, Part-145 for maintenance, Part-FCL for pilot licensing. This alignment makes mutual recognition of airworthiness certificates with other EU registers straightforward, and considerably simplifies a registration transfer between two member states compared with an import from outside the Union.</p>
+<p>The DCA issues and renews the certificate of airworthiness (CofA) and the airworthiness review certificate (ARC), working alongside an approved continuing airworthiness management organisation (CAMO) once an aircraft is operated commercially. For strictly private use, documentation requirements remain lighter but follow the same general logic as elsewhere in the European Union.</p>
+
+<h2 id="pourquoi">Why Cyprus attracts owners and operators</h2>
+<p>Several factors explain the appeal of the 5B- register for private owners as well as for business jet and helicopter operators. Cyprus occupies a strategic position in the eastern Mediterranean, at the crossroads of Europe, the Middle East and North Africa, making it a practical base for aircraft frequently operated across these three regions.</p>
+<p>Over the years the country has also positioned itself as a recognised jurisdiction for structuring aircraft ownership through dedicated Cypriot companies, offering a stable legal framework, an administration experienced with international files, and processing timelines that are generally competitive compared with some other European registers. This reputation particularly attracts owners of business jets and helicopters operated in a professional or semi-professional context, but the register is equally accessible to private light aviation (single and twin-engine touring aircraft).</p>
+<p>Finally, Cyprus's EU and EASA membership guarantees that a 5B- registration enjoys the same recognition as any other register in the Union: overflight, landing and operation across the whole European Economic Area require no additional steps linked to the aircraft's nationality.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — A register known for business aviation is not reserved for that segment alone: a private owner of a touring aircraft can register with Cyprus just as easily, provided their operating base or tax residence makes it suitable.</div></div>
+
+<h2 id="conditions">Eligibility and registration process</h2>
+<p>Registering an aircraft in Cyprus follows a process similar to other EASA member states, with a few local specifics related to ownership structuring. The Cypriot DCA notably reviews the following elements:</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span><strong>Established beneficial ownership</strong> — bill of sale or proof of title; the owner or operator may be an individual or a company, including a Cypriot company set up specifically to hold the aircraft.</span></li>
+  <li><i data-icon="check"></i><span><strong>Valid certificate of airworthiness or a complete technical file</strong> enabling its issuance, for an aircraft imported from another register.</span></li>
+  <li><i data-icon="check"></i><span><strong>Proof of deregistration from the previous register</strong> when the aircraft comes from another country, a requirement common to any registration transfer in Europe.</span></li>
+  <li><i data-icon="check"></i><span><strong>Liability insurance certificate</strong> covering the aircraft from the moment it enters service under Cypriot registration.</span></li>
+</ul>
+<p>For an aircraft operated commercially (a charter business jet, a helicopter used for aerial work), an air operator certificate (AOC) or a specific operating approval may also be required, alongside the mandatory involvement of an approved CAMO for continuing airworthiness management.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Good to know</strong> — Expect generally several weeks between submitting a complete file and the issuance of the new 5B- registration, a timeline comparable to other European registers, though it can vary significantly depending on file complexity and aircraft type.</div></div>
+
+<h2 id="tva">VAT and applicable taxation</h2>
+<p>The taxation applicable to an aircraft owned or operated in Cyprus depends heavily on the owner's status, the legal structure chosen and the aircraft's use. This topic consistently warrants a case-by-case review with a specialist tax adviser before any purchase or registration decision.</p>
+<p>The standard Cypriot VAT rate applies in principle to the purchase of an aircraft by a resident individual or entity, unless a specific exemption applies. Cyprus, like other Mediterranean jurisdictions, has in the past offered leasing-based schemes allowing the VAT taxable base for aircraft and pleasure yachts to be adjusted according to estimated usage time within EU waters or airspace. These arrangements have come under close scrutiny from European authorities under harmonised VAT and state-aid rules, and their application conditions have been significantly tightened or revised in recent years across several of the countries concerned.</p>
+<div class="table-wrap"><table class="table">
+<thead><tr><th>Situation</th><th>Indicative tax treatment</th></tr></thead>
+<tbody>
+<tr><td>Purchase by an EU-resident individual, private use</td><td>Standard VAT applies, unless a specific exemption</td></tr>
+<tr><td>Purchase via a dedicated Cypriot company / leasing structure</td><td>Variable treatment, governed by current European rules — case-by-case verification required</td></tr>
+<tr><td>Commercial operation (AOC, international air transport)</td><td>Potential exemption regimes linked to the nature of the activity</td></tr>
+</tbody>
+</table></div>
+<div class="alert alert-warning"><i data-icon="alert-triangle"></i><div><strong>Point of caution</strong> — VAT rules applicable to aircraft evolve over time and vary significantly depending on the ownership structure chosen. Never rely on a tax scheme presented as automatic or guaranteed by an intermediary without written validation from an independent Cypriot tax specialist and, if needed, from your own adviser in your country of residence.</div></div>
+
+<h2 id="documents">Required documents and timelines</h2>
+<p>Beyond the documents already mentioned, a complete registration file submitted to the Cypriot DCA typically includes:</p>
+<ul class="checks">
+  <li><i data-icon="check"></i><span>Bill of sale, dated and signed by both parties, stating the aircraft's serial number.</span></li>
+  <li><i data-icon="check"></i><span>Deregistration certificate from the register of origin, for an aircraft imported from another country.</span></li>
+  <li><i data-icon="check"></i><span>Up-to-date airframe, engine and propeller logbooks, with a consistent maintenance history and no chronological gaps.</span></li>
+  <li><i data-icon="check"></i><span>Updated weight and balance sheet following any equipment modification.</span></li>
+  <li><i data-icon="check"></i><span>Identity documents and, where applicable, the incorporation documents of the owning Cypriot company.</span></li>
+  <li><i data-icon="check"></i><span>Insurance certificate covering liability from the moment the aircraft enters service under the new registration.</span></li>
+</ul>
+<p>The overall timeline, from submission of a complete file to actual issuance of the certificate of registration and certificate of airworthiness, generally runs from several weeks to a few months, depending on how complete the file is and whether a CAMO needs to be brought in to validate continuing airworthiness.</p>
+
+<h2 id="pieges">What to watch out for before choosing Cyprus</h2>
+<p>The most common mistakes made by buyers interested in the Cypriot register mainly concern taxation and the legal structuring of ownership. Relying on a VAT scheme presented as guaranteed without having it validated in writing, underestimating the cost and administrative complexity of setting up and maintaining a dedicated Cypriot ownership company, or neglecting to verify the actual deregistration from the previous register are all classic pitfalls that can prove costly after signing.</p>
+<p>Another frequently underestimated point is the choice of management provider: working with a firm or a CAMO that is well established, experienced with international files and transparent about its recurring fees avoids many unpleasant surprises once the aircraft is registered.</p>
+<div class="alert alert-info"><i data-icon="info"></i><div><strong>Tip</strong> — As with any registration in a European country, have an independent pre-purchase inspection carried out before signing, and have the entire proposed tax and legal structure validated in writing before any financial commitment.</div></div>
+    </article>
+
+    <div class="card guide-cta">
+      <div class="card-body">
+        <div class="cta-text">
+          <span class="icon-box accent"><i data-icon="search"></i></span>
+          <div>
+            <h3>Find your next aircraft</h3>
+            <p>Browse verified listings of aircraft, helicopters and jets for sale on Aircraft2Sell, with no commission.</p>
+          </div>
+        </div>
+        <a href="search.html" class="btn-primary btn-lg">View listings <i data-icon="arrow-right"></i></a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section-sm section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <h2>Related guides</h2>
+        <p>To go further in your purchase or registration project.</p>
+      </div>
+      <a href="blog.html" class="btn-secondary">All guides <i data-icon="arrow-right"></i></a>
+    </div>
+    <div class="grid-3 related">
+<a href="immatriculation-aeronef-europe.html" class="card"><span class="icon-box"><i data-icon="clipboard"></i></span><span class="eyebrow">Buying</span><strong>Certification and registration of an aircraft in Europe</strong><p>Procedures, choosing the country of registration, the file to prepare, timelines and costs.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="acheter-avion-occasion-grece.html" class="card"><span class="icon-box"><i data-icon="map-pin"></i></span><span class="eyebrow">Buying</span><strong>Buying a used aircraft in Greece</strong><p>Market, prices, registration and taxation for a purchase in the eastern Mediterranean.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+<a href="assurance-aeronef-guide.html" class="card"><span class="icon-box"><i data-icon="shield"></i></span><span class="eyebrow">Insurance</span><strong>Insuring your aircraft in Europe: the complete guide</strong><p>Liability, hull cover, essential guarantees for your aircraft.</p><span class="btn-link">Read the guide <i data-icon="arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="a2sFooter"></div>
+<script src="/icons.js?v=20261007a"></script>
+<script src="/analytics.js" defer></script>
+<script src="/rgpd-consent.js?v=20261006a" defer></script>
+<script src="/nav.js?v=20261109a"></script>
+<script src="/footer.js?v=20261109a"></script>
+</body>
+</html>
