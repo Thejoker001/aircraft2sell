@@ -2431,8 +2431,15 @@ async function saveUserM(){var id=sel('mu-id').value;var _r=parseInt(sel('mu-rat
     if((sel('mu-status').value)==='banned'){
       try{await sb('PATCH','listings','seller_email=eq.'+encodeURIComponent(uEmail)+'&status=in.(pending,live)',{status:'rejected',rejection_reason:'Compte banni par l'+String.fromCharCode(39)+'administration'},true);}catch(e3){console.warn('Masquage annonces banni:',e3.message);}
       try{await sb('POST','rpc/ban_identity_permanently',null,{p_email:uEmail,p_by:'admin'},true);}catch(e4){console.warn('Blocage permanent email/IP:',e4.message);}
+      /* Les messages déjà ENVOYÉS par ce membre vers d'autres membres sont
+         rédigés (contenu remplacé par une explication du bannissement) :
+         l'original reste en base (original_content) pour un débannissement
+         explicite, mais le destinataire ne voit plus jamais le message
+         d'origine dans messages.html. */
+      try{await sb('POST','rpc/redact_banned_user_messages',null,{p_email:uEmail},true);}catch(e6){console.warn('Rédaction messages banni:',e6.message);}
     }else if(_prevStatus==='banned'){
       try{await sb('POST','rpc/unban_identity',null,{p_email:uEmail},true);}catch(e5){console.warn('Retrait liste noire:',e5.message);}
+      try{await sb('POST','rpc/unredact_banned_user_messages',null,{p_email:uEmail},true);}catch(e7){console.warn('Restauration messages débanni:',e7.message);}
     }
   }
   logAdmin('user.update','user',id,{plan:body.plan,status:body.status,certified:body.certified,rating:_r,is_free:isFree,founder:isFounder});
